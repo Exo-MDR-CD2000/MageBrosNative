@@ -1,0 +1,22 @@
+# Cross-compiling for Windows x64 from Linux or macOS with an llvm-mingw or MinGW-w64 toolchain:
+#   cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake
+# Put the toolchain's bin folder on PATH, or set MINGW_PREFIX to it.
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+set(_triple x86_64-w64-mingw32)
+if(DEFINED ENV{MINGW_PREFIX})
+  set(_bin "$ENV{MINGW_PREFIX}/")
+else()
+  set(_bin "")
+endif()
+set(CMAKE_C_COMPILER ${_bin}${_triple}-clang)
+set(CMAKE_CXX_COMPILER ${_bin}${_triple}-clang++)
+set(CMAKE_RC_COMPILER ${_bin}${_triple}-windres)
+find_program(_gcc ${_bin}${_triple}-gcc)
+if(NOT EXISTS ${CMAKE_C_COMPILER} AND _gcc)
+  set(CMAKE_C_COMPILER ${_bin}${_triple}-gcc)
+  set(CMAKE_CXX_COMPILER ${_bin}${_triple}-g++)
+endif()
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
