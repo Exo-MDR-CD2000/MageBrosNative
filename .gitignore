@@ -1,0 +1,25 @@
+# build output
+build/
+build-*/
+out/
+.vs/
+*.user
+
+# never commit the game's files or anything exported from them
+*.exe
+*.pdb
+*.dll
+*.mid
+export/
+mods/
+*.ini
+*.log
+# private reverse-engineering notes (disassembly and PDB dumps): never commit
+MageBros-analysis/
+*-analysis-private.zip
+*.asm
+# release zips, runtime files and test screenshots
+*.zip
+magebros_native.*
+*.bmp
+*.png
