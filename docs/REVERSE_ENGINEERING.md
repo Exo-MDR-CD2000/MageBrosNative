@@ -574,6 +574,88 @@ at the back (x 20). One state a tick (`else if`):
 The countdown (half turns before a jump) is 2–5 for type A and 1–2 for type B, picked anew
 after each jump; the direction is random (`Random(2) == 0` is clockwise).
 
+## Bosses and the dragon (`XBossBase`, `XBoss_Dragon`, `XBoss_DragonBody`, `JSpline`)
+
+**The boss** (`XGameObject::boss`, +0xcc): `XMap::_ConstructObjects` makes one for the codes `6`
+Dragon, `7` Genie, `8` Nest, `9` Wizard, at the cell centre and y = floor level × 25. It runs
+right after the enemies and is drawn right after them (before the water). A hero's shot tests it
+last, after the candles. The goal (`XMap::ProcessFrame`) opens, after the usual 300 ticks, when
+every torch is lit on a level without a boss, or when `BossDefeated()` (the boss has been NON
+for more than 500 ticks) on a boss level. The status display shows BOSS and `GetHealthMain()`
+hearts instead of the torches.
+
+**`XBossBase`** (vtable: Render, ProcessFrame, CollisionCheck_Fire, `_Damage`,
+`_CheckBattleStarted`): main health 10 by default, with a sub health per heart.
+`CollisionCheck_Fire`: scale > 0 and NORMAL, |Δz| and |Δx| ≤ the box's **Z** width + the shot's
+radius, then the shot's sphere against the mesh; a hit calls `_Damage` and stops the shot.
+`_Damage`: if it can be hurt, sound 0x270 at the boss's Z, a white flash for 12 ticks
+(`_ProcessDamage`), one sub-health point off; at 0 one heart goes and the sub health refills,
+and when the last heart goes `JMidiList::Stop` ("close all": the music stops), the explosion
+centre is set to the boss and it turns DEAD. `_CollisionCheck_Hero`: |Δz| and |Δx| ≤ the two
+boxes' half widths, then mesh against mesh; damage and knockback from the boss. The base
+`ProcessFrame` (used by the other bosses) bursts it over 300 ticks: a large explosion at the
+centre, then every 5 ticks a small one within 0.2–1 × the explosion radius in a random
+direction (sound 0x26b every 15), and finally 0x27c unpanned (`JSoundList::PlayMono`).
+
+**`XBoss_Dragon`** (`6`): head model 0x1d2 with the jaw frames 0x20a and 0x20d, mesh 0x20b,
+an `XShadow` of 38, a 60 × 40 box; 10 hearts of 4 hits (in World 4 `healthSubMax` becomes 6
+after the first heart is already set to 4). Points, from its cell (x, z):
+
+- floor points (`_InitFloorRefPos`), all at y 20: `F0..F3` at x − 80 and z + 200, + 280, +
+  360, + 440; `F4..F6` at x and z + 240, + 320, + 400; `F7..F10` at x + 80 and z + 200 … + 440;
+- swim pool 1 (`_InitSwimRefPos1`), round (x, z): (x − 80, −30, z − 80), (x − 80, −70, z),
+  (x − 80, −30, z + 80), (x, −70, z − 160), (x, −70, z + 160), (x + 80, −30, z − 80),
+  (x + 80, −70, z), (x + 80, −30, z + 80); pool 2 the same round z + 640.
+
+It starts at pool 1's first point in SWIM1. The battle starts when a NORMAL hero passes pool 1's
+point 4 (z + 160). Each move builds a `JSpline` on its first tick and follows it at a constant
+speed (1 / total length a tick), one state a tick:
+
+| State | Path (nodes) | Next |
+|---|---|---|
+| SWIM1 | pool 1: 0 1 2 4 7 6 5 3 0, closed (`MergeEnds`) | SWIM1 until the battle has started, then FLOORWAVE1 or FLOORSTRAIGHT1 (`Random(2)`) |
+| SWIM2 | pool 2: 2 1 0 3 5 6 7 4 2, closed | FLOORWAVE2 or FLOORSTRAIGHT2 |
+| FLOORWAVE1 | here, pool 1 point 1, a leap (pool 1 point 2, z + 60, y 80), F0 F8 F2 F10, pool 2 points 5 6 7 4 2 | SWIM2 |
+| FLOORWAVE2 | here, pool 2 point 1, a leap (pool 2 point 0, z − 60, y 80), F3 F9 F1 F7, pool 1 points 7 6 5 3 0 | SWIM1 |
+| FLOORSTRAIGHT1 | here, pool 1 point 1, (x, −70, z), pool 1 point 4 at y 60, F4, a random centre, F6, pool 2 point 3 at y 20, (x, −70, z + 640), pool 2 points 7 4 2 | SWIM2 |
+| FLOORSTRAIGHT2 | here, pool 2 point 1, (x, −70, z + 640), pool 2 point 3 at y 60, F6, a random centre, F4, pool 1 point 4 at y 20, (x, −70, z), pool 1 points 5 3 0 | SWIM1 |
+
+The random centre (`_GetRandomCenterPos`) is F5 moved by `Random(5)`: 0 none, 1 x − 40, 2
+x + 40, 3 and 4 both x + 80. On the straight crossings the flame starts as the travel passes 0.2
+and ends as it passes 0.5. Every tick: yaw eases (0.1) along the move and pitch (0.05) to
+−`FindPitch`; a large wave with its sound where it crosses −38 (`_CheckSplash`); the hero test;
+the position, yaw and pitch go into a 500-entry ring (`posRec`, `yawRec`, `pitchRec`). The flame
+(`flameCounter` counts every tick): STARTFLAME jaw frame 1 for 15 ticks, frame 2 until 50, then
+sound 0x27a and DOFLAME; DOFLAME frame 2 and a flame every 5 ticks (when the counter % 5 == 1)
+from 20 ahead along the yaw and pitch; ENDFLAME frame 2 until 35, frame 1 until 50, then
+NONFLAME (frame 0). Dying: a large explosion and 0x26b, and 16 ticks later the body starts
+dying.
+
+**`XBoss_DragonBody`**: 16 segments chained from the head (`firstBody`, each making the next):
+1–15 model 0x1d3 (mesh 0x20c), 16 the tail 0x1d1 (mesh 0x209); an `XShadow` of 38, a 45 × 40
+box; they can't be hurt but stop shots (each passes the test on to the next). Segment n takes
+the head's record from 28 × n ticks before (`(recIndex − 28n + 500) % 500`), with a silent wave
+where it crosses the water. Dying: each bursts (small explosion, 0x26b) and 16 ticks later the
+next starts; after the tail, 0x27c unpanned.
+
+**`JSpline`** (a rounded non-uniform spline): nodes of position, unit velocity and the distance to
+the next node. `AddNode`: the first node gets velocity 0 and distance 1; each new node's velocity
+is the direction of the new segment, and the segment's length is added to the total; the node
+before it gets the normalised average of the directions on either side (the incoming one divided
+by its length); the new end gets normalize(3 × its direction − the previous node's velocity),
+and when the third node arrives the start is redone the same way. `MergeEnds` (three or more
+nodes) moves the last node onto the first and gives both the normalised average of the first
+and last segment directions. `GetPosition(t)` walks the segments to the distance t × total, and
+evaluates that segment's cubic Hermite curve with the velocities scaled by the segment length
+(`Spline_GetPosition`: (t³, t², t, 1) × POSITION_MIXER × the rows (start velocity, start, end,
+end velocity), with POSITION_MIXER rows (1, 2, −2, 1), (−2, −3, 3, −1), (1, 0, 0, 0),
+(0, 1, 0, 0), filled by a static initializer).
+
+**`XBullet_Flame`**: a `JObject3D_Particle` of 50 with the explosion sheet 0x192 (4 × 4, 4 ticks
+a frame), radius 10, flying at 4.5 along its yaw and pitch and slowing by 0.03 a tick (not below
+0); the map, an object or a platform stops it where it was before the move. It hurts a hero only
+while its frame is below 9, and ends after 64 ticks.
+
 ## Particles and shadows (`XParticleList`, `XShadow`, `JObject3D`)
 
 **`JObject3D_Rect`** is a w × h quad of lit vertices in the XZ plane (v0 −x+z, v1 +x+z, v2 −x−z,

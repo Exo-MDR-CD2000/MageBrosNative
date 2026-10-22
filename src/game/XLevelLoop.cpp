@@ -3,6 +3,7 @@
 #include "framework/d3dutil.h"
 #include "game/XLevelView.h"
 #include "game/XMath.h"
+#include "game/XBoss.h"
 #include "game/XBullet.h"
 #include "game/XEnemy.h"
 #include "game/XGameContext.h"
@@ -57,7 +58,9 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
     hasBoss_ = false;
     mapCounter_ = 0;
     readyForWarp_ = false;
-    // XGameObject::InitLevel empties every list
+    // XGameObject::InitLevel empties every list (and deletes the last level's boss)
+    game_->boss = nullptr;
+    boss_.reset();
     enemies_->Empty();
     bullets_->Empty();
     platforms_->Empty();
@@ -78,6 +81,12 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
     g.platforms = platforms_.get();
     g.particles = particles_.get();
     g.playSound = [this](uint16_t id, float z) { sound_(id, z); };
+    g.playMono = [this](uint16_t id, float volume) {
+        if (playMono_) playMono_(id, volume);
+    };
+    g.stopMusic = [this] {
+        if (stopMusic_) stopMusic_();
+    };
     g.createEnemyCoin = [this](const XEnemyBase& e) { CreateEnemyCoin(e, (int)e.GetSizeType()); };
     g.createHeart = [this](const XEnemyBase& e) { CreateEnemyCoin(e, 2); };
     g.barrelCounter = &barrelCounter_;  // (kept for the whole game, as XGameObject's)
@@ -143,8 +152,12 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
             case XLevelView::Kind::Enemy:
                 if (XEnemyBase* e = enemies_->CreateEnemy(at, o.code)) e->SetFloorLevel(o.floor);
                 break;
-            case XLevelView::Kind::Boss:
+            case XLevelView::Kind::Boss:  // XMap::_ConstructObjects: '6' Dragon (the Genie, Nest and Wizard: stage 5)
                 hasBoss_ = true;
+                if (o.code == '6') {
+                    boss_ = std::make_unique<XBoss_Dragon>(game_.get(), at);
+                    g.boss = boss_.get();
+                }
                 break;
             case XLevelView::Kind::Platform:  // XPlatformList::CreatePlatform
                 if (XPlatformBase* p = platforms_->CreatePlatform(at, o.code)) p->SetFloorLevel(o.floor);
@@ -155,8 +168,10 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
     }
 }
 
+int XLevelLoop::BossHealth() const { return boss_ ? boss_->GetHealthMain() : 0; }
+
 bool XLevelLoop::IsReconstructed(char code) {
-    static const char kDone[] = "#$*+/OPQa15opb3d0jmvwHIJKABCDEFGi";
+    static const char kDone[] = "#$*+/OPQa15opb3d0jmvwHIJKABCDEFGi6";
     for (const char* c = kDone; *c; c++)
         if (*c == code) return true;
     return false;
@@ -223,11 +238,11 @@ void XLevelLoop::ProcessFire(Fire& f) {
     }
     if (f.localTime % 2 == 0) particles_->CreateHeroFireSmoke(f.pos, true, true);  // player 1, normal size
     // XHeroFire::ProcessFrame: the map, the heroes, objects, platforms, enemies, bullets,
-    // (candles) stop the shot with a flash
+    // (candles,) the boss stop the shot with a flash
     if (level_->Collision().IsBlockedFloat(f.pos.x, f.pos.z, f.pos.y) ||
         (hero_ && hero_->GetCollideBox().CollisionCheck(f.pos)) || statics_->CollisionCheck_Fire(f.pos) ||
         platforms_->CollisionCheck(f.pos) || enemies_->CollisionCheck_Fire(f.pos, f.radius, hero_ ? hero_->GetPos() : f.pos) ||
-        bullets_->CollisionCheck_Fire(f.pos, f.radius)) {
+        bullets_->CollisionCheck_Fire(f.pos, f.radius) || (boss_ && boss_->CollisionCheck_Fire(f.pos, f.radius))) {
         particles_->CreateHeroFireFlash(prev, true, true);
         f.live = false;
     } else if (TorchCollisionCheckFire(f)) {
@@ -248,8 +263,14 @@ void XLevelLoop::ProcessBeforeHero(float cameraZ) {
     // XMap::ProcessFrame
     mapCounter_++;
     if (!readyForWarp_) {
-        if (mapCounter_ > 300 && !hasBoss_ && litTorches_ >= (int)torches_.size()) readyForWarp_ = true;
-        // (a boss level opens when the boss is defeated: bosses come with stage 5)
+        // every torch lit, or on a boss level the boss defeated (gone for 500 ticks)
+        if (mapCounter_ > 300) {
+            if (!hasBoss_) {
+                if (litTorches_ >= (int)torches_.size()) readyForWarp_ = true;
+            } else if (boss_ && boss_->BossDefeated()) {
+                readyForWarp_ = true;
+            }
+        }
     }
     if (readyForWarp_) {
         if (mapCounter_ % 60 == 0) particles_->CreateWarpRing(D3DVECTOR(goalPos_.x, goalPos_.y + 0.5f, goalPos_.z));
@@ -341,8 +362,10 @@ void XLevelLoop::ProcessCoin(Coin& c) {
 }
 
 void XLevelLoop::ProcessAfterHero() {
-    // XGameObject::ProcessFrame after the heroes: enemies, coins, torches, platforms, objects
+    // XGameObject::ProcessFrame after the heroes: enemies, the boss, coins, torches, platforms,
+    // objects
     enemies_->ProcessFrame();
+    if (boss_) boss_->ProcessFrame();
     for (size_t i = 0; i < coins_.size(); i++) ProcessCoin(coins_[i]);
     // XTorchList::ProcessFrame
     for (Torch& t : torches_) {
@@ -385,7 +408,7 @@ void XLevelLoop::SetHeroAboveLastPlatform(bool heroA) {
 
 // ---------------------------------------------------------------------------- drawing
 
-void XLevelLoop::RenderObjects(Device* d) {
+void XLevelLoop::RenderObjects(Device* d, const D3DMATRIX& view) {
     // XGameObject::Render, after the map and the heroes: the coins, then the torches
     d->SetRenderState(D3DRENDERSTATE_LIGHTING, 1);
     for (Coin& c : coins_) {  // XCoin::Render
@@ -395,11 +418,12 @@ void XLevelLoop::RenderObjects(Device* d) {
         c.shadow->Render(d);
     }
     for (Torch& t : torches_) t.model->Render(d);
-    // platforms, static objects, (candles,) bullets, enemies
+    // platforms, static objects, (candles,) bullets, enemies, the boss
     platforms_->Render(d);
     statics_->Render(d);
-    bullets_->Render(d);
+    bullets_->Render(d, view);
     enemies_->Render(d);
+    if (boss_) boss_->Render(d);
     water_->Render(d);  // XWater::Render, before the particles
 }
 

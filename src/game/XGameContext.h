@@ -15,6 +15,7 @@ class XEnemyList;
 class XEnemyBase;
 class XBulletList;
 class XPlatformList;
+class XBossBase;
 class XParticleList;
 
 struct XGameContext {
@@ -25,8 +26,11 @@ struct XGameContext {
     XEnemyList* enemies = nullptr;
     XBulletList* bullets = nullptr;
     XPlatformList* platforms = nullptr;
+    XBossBase* boss = nullptr;  // XGameObject::boss (one per level at most)
     XParticleList* particles = nullptr;
     std::function<void(uint16_t waveId, float z)> playSound;  // XApplication::PlaySound
+    std::function<void(uint16_t waveId, float volume)> playMono;  // JSoundList::PlayMono (unpanned)
+    std::function<void()> stopMusic;  // JMidiList::Stop ("close all")
     std::function<void(const XEnemyBase& e)> createEnemyCoin;  // XCoinList::CreateEnemyCoin
     std::function<void(const XEnemyBase& e)> createHeart;      // XCoinList::CreateHeart
     int* barrelCounter = nullptr;  // XGameObject's count of barrels broken (every third gives a heart)

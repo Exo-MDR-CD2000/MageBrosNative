@@ -102,6 +102,7 @@ them.
   - `XBulletList` (50);
   - `XPlatformList` (35);
   - `XWater`;
+  - the boss (`XBoss.cpp`, one at most);
   - the torches, coins and hero shots.
 - **Tick order** (`XGameObject::ProcessFrame`):
   1. status display
@@ -112,7 +113,7 @@ them.
   6. enemy bullets
   7. hero A (*hero B*)
   8. enemies
-  9. *boss*
+  9. boss
   10. coins
   11. torches
   12. platforms
@@ -132,9 +133,10 @@ them.
   7. *candles*
   8. bullets
   9. enemies
-  10. water
-  11. particles
-  12. shots
+  10. boss
+  11. water
+  12. particles
+  13. shots
 - `XLevelLoop::IsReconstructed` / `kDone` lists the level codes that have been built. Every
   other code still draws a coloured marker cube (`XLevelView::FilterMarkers`). Add each code to
   `kDone` when you build its object.
@@ -243,9 +245,9 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: end of stage 4 chunk 5d)
+## Where we are (last updated: end of stage 4 chunk 5e)
 
-Stage 4 (first playable: World 1, player 1) is in progress. Chunks 1–4d and 5a–5d are done.
+Stage 4 (first playable: World 1, player 1) is in progress. Chunks 1–4d and 5a–5e are done.
 World 1-1 onwards plays with:
 
 - movement, shots, magic, torches, coins, the goal and warp;
@@ -260,33 +262,24 @@ World 1-1 onwards plays with:
   shadow is drawn on them (`XShadowOnPlatform`);
 - water (`XWater.cpp`) in every level whose row flag is `W` (all of worlds 1, 3 and 4): the
   hero dies with a splash below −58, shots, cannonballs and dropping platforms meet it with
-  waves (`XParticle_WaterWave`), and fish (`i`) swim and leap out of it.
+  waves (`XParticle_WaterWave`), and fish (`i`) swim and leap out of it;
+- the dragon (`6`, `XBoss.cpp`, `JSpline.cpp`): head and 16 body segments on spline paths, its
+  flames (`XBullet_Flame`), the boss hearts on the HUD, the music stopping and the goal opening
+  when it is defeated.
 
-### Next: chunk 5e, the dragon (World 1's boss, code `6`, level 1-10)
+### Next: chunk 6, polish and the playable World 1 zip
 
-Original listings to read:
+Play World 1 from 1-1 to 1-10 and check by screenshot what is still unverified, against the
+original where possible:
 
-- `XBossBase` (the shared boss code: health, damage, `BossDefeated`, collision with the hero)
-- `XBoss_Dragon` (head) and `XBoss_DragonBody` (its body segments)
-- `XBullet_Flame` (its flames) and `XBulletList::CreateFlame`
-- `XGameObject` for where the boss is created, ticked (after the enemies) and drawn
+- the fence door breaking, the third-barrel heart, torch flames, coin sparks, warp rings and
+  lights, the hit flash and the damage flash;
+- the turning cannon `K` and the straight cannonball (not used in World 1), and the platforms
+  `B` and `F` (not used in World 1; `E` is, in 1-10);
+- the dragon: a real fight (40 hits on the head), its fire, the body's burst chain, the goal
+  opening 500 ticks after it has gone, and the music stopping (`Midi::Close`).
 
-The work, in order:
-
-1. **`XBossBase`** and **`XBoss_Dragon` / `XBoss_DragonBody`**: create the boss for code `6`
-   (`XLevelLoop::Load`, `Kind::Boss`), tick it after the enemies and draw it. The dragon swims
-   in the water (`_ProcessFrame_Swim1/2`, `_CheckSplash`) and moves along the floor; level 1-10
-   is a water level.
-2. **`XBullet_Flame`** in `XBullet.cpp`.
-3. **The HUD**: the boss's health (`XGameScene::RenderStatus`, `bossHealth`).
-4. **The goal**: a boss level opens when the boss is defeated (`XLevelLoop.cpp` ~252, marked).
-5. Add `6` to `kDone`. Camera shake with the boss is still an open item (ROADMAP).
-
-Then:
-
-| Chunk | What it covers | Where to start |
-|---|---|---|
-| 6 | Polish and the playable World 1 zip | Check by screenshot what is still unverified: the fence door breaking, the third-barrel heart, torch flames, coin sparks, warp rings and lights, the hit flash and the damage flash. Compare against the original. |
+Then build the zip with `make_release.bat` and mark stage 4 done.
 
 After stage 4 come:
 
@@ -298,7 +291,6 @@ After stage 4 come:
 
 - Death restarts the level, and finishing the last level of a world goes to the next world.
   Both wait for the level select in stage 6.
-- Boss levels never open the goal (5e).
-- The dragon, the shop and the other unbuilt objects show as marker cubes.
+- The shop, the other bosses and the other unbuilt objects show as marker cubes.
 - No player 2 (stage 5).
 - Only the starting wand's shot pattern exists. The others come with the shop.

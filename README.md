@@ -9,8 +9,8 @@ original game logic unchanged when every option is at its default.
 > and gamepad, options menu), all 40 levels can be explored in the level viewer, and World 1-1
 > onwards can be played with World 1's enemies (slimes, bees, wallabies, spikes, needle fans,
 > barrels, fence doors), cannons and platforms: movement, shots, torches, coins, the goal, the
-> status display, shadows and particles, water and fish. Next: the dragon, World 1's boss (stage 4,
-> chunk 5e). The game logic is being reconstructed module by module; see
+> status display, shadows and particles, water and fish, and the dragon, World 1's boss. Next:
+> polish and the playable World 1 zip (stage 4, chunk 6). The game logic is being reconstructed module by module; see
 > [docs/ROADMAP.md](docs/ROADMAP.md).
 
 > **You need your own copy of the original game.** This repository contains no game content: no
@@ -43,7 +43,8 @@ fans, breakable barrels and fence doors) with the original pillars, barrels and 
 defeated enemies drop coins (fish excepted: they can't be hurt). Cannons fire rolling cannonballs that hurt the mage, and the
 platforms work: elevators that lift the mage while it stands on them, platforms that shuttle
 along the level carrying it, and fixed ones. The pits hold water: falling in ends a life with a
-splash, and fish leap out of it. The dragon (level 1-10) comes next. N/B change level, Tab switches to the
+splash, and fish leap out of it. In level 1-10 the dragon swims round its pools and crosses the
+floor breathing fire, its hearts on the status display; defeating it opens the goal. N/B change level, Tab switches to the
 **level viewer**: every one of the 40 levels, built by the
 original's own map code with each world's textures. The goal, coins and torches use their real
 models; other objects are colour-coded markers for now (blue platforms, brown objects, grey

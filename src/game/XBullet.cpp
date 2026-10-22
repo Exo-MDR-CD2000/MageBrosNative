@@ -1,5 +1,6 @@
 #include "game/XBullet.h"
 #include "game/JModel.h"
+#include "game/JObject3D.h"
 #include "game/XGameContext.h"
 #include "game/XHero.h"
 #include "game/XLevelView.h"
@@ -11,6 +12,7 @@
 
 namespace {
 constexpr uint16_t kModelCannonBall = 0x18d, kModelCannonRBall = 0x1f2;
+constexpr uint16_t kTexFlame = 0x192;
 constexpr float kQuarterPi = 0.785398f;
 
 // XBullet_Cannon: a ball flying straight along one of eight directions at 1.4 a tick, spinning
@@ -99,6 +101,58 @@ private:
     }
     float verticalSpeed_ = 0;
 };
+// XBullet_Flame: the dragon's fireball, a 50-unit sprite (the explosion sheet, 4 ticks a frame)
+// flying at 4.5 a tick along its yaw and pitch, slowing by 0.03 a tick. The map, an object or a
+// platform stops it where it was. It burns a hero during its first 9 frames and is gone after 64
+// ticks.
+class Flame : public XBulletBase {
+public:
+    enum SubState { MOVE = 0, STOP = 1 };
+    Flame(const XGameContext* g, const D3DVECTOR& p, float yaw, float pitch)
+        : XBulletBase(g, p), dirYaw_(yaw), dirPitch_(pitch) {
+        particle_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(1, 1));
+        particle_->SetTexture(kTexFlame);
+        particle_->Scale(50.0f);
+        particle_->SetUV(0, 0.25f, 0, 0.25f, 0);
+        particle_->SetWorldPos(pos_);
+        radius_ = 10.0f;
+        liveState_ = NORMAL;
+        subState_ = MOVE;
+    }
+    void ProcessFrame() override {
+        XBulletBase::ProcessFrame();
+        if (liveState_ != NORMAL) return;
+        if (subState_ == MOVE) {
+            const D3DVECTOR prev = pos_;
+            pos_.x += std::sin(dirYaw_) * speed_ * std::cos(-dirPitch_);
+            pos_.z += std::cos(dirYaw_) * speed_ * std::cos(-dirPitch_);
+            pos_.y += std::sin(-dirPitch_) * speed_;
+            speed_ -= 0.03f;
+            if (0 > speed_) speed_ = 0;
+            if (game_->level->Collision().IsBlockedFloat(pos_.x, pos_.z, pos_.y) || game_->statics->CollisionCheck(pos_) ||
+                game_->platforms->CollisionCheck(pos_)) {
+                pos_ = prev;
+                subState_ = STOP;
+            }
+        }
+        frame_ = (int)((localCounter_ / 4) % 16);
+        float u = (frame_ % 4) * 0.25f, v = (frame_ / 4) * 0.25f;
+        particle_->SetUV(u, u + 0.25f, v, v + 0.25f, 0);
+        if (frame_ < 9) CollisionCheck_Hero(game_->heroA);  // (and player 2: stage 5)
+        if (localCounter_ >= 64) liveState_ = NON;
+    }
+    void Render(Device* d, const D3DMATRIX& view) override {
+        if (liveState_ == NON) return;
+        particle_->SetWorldPos(pos_);
+        particle_->Render2(d, view);
+    }
+
+private:
+    SubState subState_ = MOVE;
+    float speed_ = 4.5f, dirYaw_, dirPitch_;
+    int frame_ = 0;
+    std::unique_ptr<JObject3DRect> particle_;
+};
 }  // namespace
 
 // --------------------------------------------------------------------------------- XBulletBase
@@ -106,7 +160,7 @@ private:
 XBulletBase::XBulletBase(const XGameContext* game, const D3DVECTOR& pos) : game_(game), pos_(pos) {}
 XBulletBase::~XBulletBase() = default;
 
-void XBulletBase::Render(Device* d) {
+void XBulletBase::Render(Device* d, const D3DMATRIX&) {
     if (liveState_ == NON) return;
     if (model_) model_->Render(d);
     if (shadow_) {
@@ -164,6 +218,11 @@ void XBulletList::CreateCannonRBall(const D3DVECTOR& pos, float yaw) {
     if (i >= 0) slots_[i] = std::make_unique<CannonRBall>(game_, pos, yaw);
 }
 
+void XBulletList::CreateFlame(const D3DVECTOR& pos, float yaw, float pitch) {
+    int i = GetNullIndex();
+    if (i >= 0) slots_[i] = std::make_unique<Flame>(game_, pos, yaw, pitch);
+}
+
 void XBulletList::ProcessFrame() {
     for (auto& s : slots_) {
         if (!s) continue;
@@ -172,9 +231,9 @@ void XBulletList::ProcessFrame() {
     }
 }
 
-void XBulletList::Render(Device* d) {
+void XBulletList::Render(Device* d, const D3DMATRIX& view) {
     for (auto& s : slots_)
-        if (s) s->Render(d);
+        if (s) s->Render(d, view);
 }
 
 bool XBulletList::CollisionCheck_Fire(const D3DVECTOR& pos, float radius) const {

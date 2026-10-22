@@ -2,6 +2,7 @@
 #include "game/XParticle.h"
 #include "game/XStatusDisplay.h"
 #include "audio/audio.h"
+#include "audio/midi.h"
 #include "core/assets.h"
 #include "core/game_files.h"
 #include "core/wave.h"
@@ -49,6 +50,8 @@ bool XGameScene::Load(int world, int level) {
     if (!statusDisplay_) statusDisplay_ = std::make_unique<XStatusDisplay>();
     statusDisplay_->InitForGame();
     loop_.SetLostGoldHandler([this](bool heroA, int amount) { statusDisplay_->ShowLostGoldMessage(heroA, amount); });
+    loop_.SetMonoSoundHandler([this](uint16_t id, float volume) { PlayStereo(id, 0.0f, volume); });  // JSoundList::PlayMono
+    loop_.SetStopMusicHandler([] { Midi::Close(); });  // JMidiList::Stop: "close all"
     camera_.ResetForGame(level_.Depth());
     processTicks_ = 0;
     return true;
@@ -189,7 +192,7 @@ void XGameScene::Render(Device* d) {
             heroShadow_->Render(d, level_.Collision());
         }
     }
-    loop_.RenderObjects(d);
+    loop_.RenderObjects(d, camera_.View());
     loop_.RenderEffects(d, camera_.View());
     D3DMATRIX identity;
     D3DUtil_SetIdentityMatrix(identity);
@@ -202,7 +205,7 @@ void XGameScene::RenderStatus(BackBuffer* bb) {
     info.world = level_.World();
     info.level = level_.Level();
     info.bossLevel = loop_.BossLevel();
-    info.bossHealth = 0;  // (the bosses come with stage 5)
+    info.bossHealth = loop_.BossHealth();
     info.litTorches = loop_.LitTorches();
     info.numTorches = loop_.NumTorches();
     info.onePlayer = onePlayer_;

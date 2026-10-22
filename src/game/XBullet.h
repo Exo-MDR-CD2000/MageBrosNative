@@ -10,7 +10,8 @@
 // the bullet carries on.
 //
 // Kinds so far: the cannon's straight ball (XBullet_Cannon) and its rolling ball
-// (XBullet_CannonRBall). The flame, needle ball, rocket and wizard fire come with their owners.
+// (XBullet_CannonRBall), and the dragon's flame (XBullet_Flame). The needle ball, rocket and
+// wizard fire come with their owners.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -30,7 +31,8 @@ public:
     XBulletBase(const XGameContext* game, const D3DVECTOR& pos);
     virtual ~XBulletBase();
     virtual void ProcessFrame() { localCounter_++; }
-    virtual void Render(Device* d);
+    // `view` turns sprite bullets (the flame) to face the camera
+    virtual void Render(Device* d, const D3DMATRIX& view);
 
     // XBulletBase::CollisionCheck_Fire: a hero's shot at `pos` with `radius` reaches this bullet
     bool CollisionCheck_Fire(const D3DVECTOR& pos, float radius) const;
@@ -60,8 +62,10 @@ public:
     void CreateCannonBall(const D3DVECTOR& pos, int dir);
     // XBulletList::CreateCannonRBall: a rolling ball at a yaw
     void CreateCannonRBall(const D3DVECTOR& pos, float yaw);
+    // XBulletList::CreateFlame: a fireball along a yaw and pitch
+    void CreateFlame(const D3DVECTOR& pos, float yaw, float pitch);
     void ProcessFrame();
-    void Render(Device* d);
+    void Render(Device* d, const D3DMATRIX& view);
 
     // A hero's shot: true if a bullet stopped it.
     bool CollisionCheck_Fire(const D3DVECTOR& pos, float radius) const;

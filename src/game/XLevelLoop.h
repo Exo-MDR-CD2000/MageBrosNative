@@ -3,8 +3,8 @@
 // enemies (XEnemyList) and particles (XParticleList). See docs/REVERSE_ENGINEERING.md,
 // "The level loop" and "Enemies and static objects".
 //
-// Also the enemies' bullets (XBulletList), the platforms (XPlatformList) and the water (XWater).
-// Still to come: candles, bosses and the remaining objects and enemies; only the starting wand's shot pattern is
+// Also the enemies' bullets (XBulletList), the platforms (XPlatformList), the water (XWater) and
+// the boss (the dragon so far). Still to come: candles, the other bosses and the remaining objects and enemies; only the starting wand's shot pattern is
 // made (the others come with the shop).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
@@ -26,6 +26,7 @@ class XEnemyBase;
 class XBulletList;
 class XPlatformList;
 class XWater;
+class XBossBase;
 class XShadowSimple;
 struct XGameContext;
 
@@ -33,6 +34,8 @@ class XLevelLoop : public XHeroWorld {
 public:
     using SoundFn = std::function<void(uint16_t waveId, float z)>;
     using LostGoldFn = std::function<void(bool heroA, int amount)>;
+    using MonoSoundFn = std::function<void(uint16_t waveId, float volume)>;
+    using StopMusicFn = std::function<void()>;
 
     XLevelLoop();
     ~XLevelLoop() override;
@@ -46,12 +49,16 @@ public:
     void ProcessAfterHero();
     // The level's objects (drawn after the heroes), then the particles and shots (drawn last;
     // `view` turns them to face the camera).
-    void RenderObjects(Device* d);
+    void RenderObjects(Device* d, const D3DMATRIX& view);
     void RenderEffects(Device* d, const D3DMATRIX& view);
 
     // Whether this port builds the object with this level code yet (the rest stay markers).
     static bool IsReconstructed(char code);
     void SetLostGoldHandler(LostGoldFn f) { lostGold_ = std::move(f); }
+    void SetMonoSoundHandler(MonoSoundFn f) { playMono_ = std::move(f); }
+    void SetStopMusicHandler(StopMusicFn f) { stopMusic_ = std::move(f); }
+    // XBossBase::GetHealthMain for the status display (0 without a boss)
+    int BossHealth() const;
     int NumTorches() const { return (int)torches_.size(); }
     int LitTorches() const { return litTorches_; }
 
@@ -118,6 +125,8 @@ private:
     XHeroStatus* status_ = nullptr;
     SoundFn sound_;
     LostGoldFn lostGold_;
+    MonoSoundFn playMono_;
+    StopMusicFn stopMusic_;
     std::vector<Fire> fires_;  // 30 slots
     std::vector<Torch> torches_;
     std::vector<Coin> coins_;
@@ -135,6 +144,7 @@ private:
     std::unique_ptr<XBulletList> bullets_;
     std::unique_ptr<XPlatformList> platforms_;
     std::unique_ptr<XWater> water_;
+    std::unique_ptr<XBossBase> boss_;  // XGameObject::boss
     bool useWater_ = false;
     std::unique_ptr<JObject3DRect> fireSprite_;  // drawn at each live shot
 };

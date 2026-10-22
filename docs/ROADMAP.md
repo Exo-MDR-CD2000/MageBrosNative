@@ -28,10 +28,10 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 5b | Bees, wallabies, barrels, fence doors, needle fans | the rest of World 1's enemies (fish aside) | Done |
 | 5c | Cannons and their shots (`XBulletList`), platforms (all seven kinds, A to G) | levels 1-4 to 1-9: cannons firing rolling balls, elevators, shuttles and fixed platforms that carry the mage | Done |
 | 5d | Water (`XWater`) and fish (`XEnemy_Fish`) | the water in the pits of every World 1 level, falling in, waves; fish in levels 1-3, 1-4, 1-7 and 1-9 | Done |
-| **5e** | **The dragon (World 1's boss)** | **level 1-10** | **Next** |
-| 6 | Polish and the playable zip | World 1 start to finish | |
+| 5e | The dragon, World 1's boss (`XBossBase`, `XBoss_Dragon`, its 16 body segments, `JSpline`, `XBullet_Flame`) | level 1-10: the dragon swims, crosses the floor breathing fire, shows its hearts on the status display; defeating it stops the music and opens the goal | Done |
+| **6** | **Polish and the playable zip** | **World 1 start to finish** | **Next** |
 
-Detailed next steps for 5e onward (which original classes to read, where each piece plugs in)
+Detailed next steps for chunk 6 (which original classes to read, where each piece plugs in)
 are in [CLAUDE.md](../CLAUDE.md), "Where we are".
 
 ## Open items
@@ -40,7 +40,7 @@ are in [CLAUDE.md](../CLAUDE.md), "Where we are".
 |---|---|
 | Which levels are boss levels | Settled: any level with a boss code (`6`–`9`); level 10 of each world and World 4's levels 2, 5, 8 |
 | Which way the mage faces at the start | Settled: yaw 0, along the level |
-| Two-player camera midpoint, camera shake | Stage 5 (player 2); camera shake with the boss (5e) |
+| Two-player camera midpoint, camera shake | Stage 5: player 2, and the hammer and stalactite enemies (the only callers of `XCamera::StartShaking`) |
 | Hero-on-hero collision and carrying | Stage 5 (player 2) |
 | Static objects' collision with the hero | Done (5a): `XStaticObjList` and `XCollideBox` as the original |
 | Sound panning | Done (4c): pan, fade and per-sound copies as `JSound::PlayStereo` |
