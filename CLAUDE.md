@@ -276,8 +276,9 @@ original where possible:
   lights, the hit flash and the damage flash;
 - the turning cannon `K` and the straight cannonball (not used in World 1), and the platforms
   `B` and `F` (not used in World 1; `E` is, in 1-10);
-- the dragon: a real fight (40 hits on the head), its fire, the body's burst chain, the goal
-  opening 500 ticks after it has gone, and the music stopping (`Midi::Close`).
+- the dragon: the owner played the fight in 0.1.4 (its fire, the death and the burst chain,
+  the music stopping, the goal opening) and it looked right; still to compare against the
+  original game. The water, splashes and fish were rechecked by screenshot after the pit fix.
 
 Then build the zip with `make_release.bat` and mark stage 4 done.
 
