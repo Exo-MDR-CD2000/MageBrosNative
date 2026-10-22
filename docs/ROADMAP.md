@@ -7,8 +7,8 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 1 | Asset loading from `MageBros.exe`, ColDet collision library, Windows build | Done |
 | 2 | Engine: window, OpenGL renderer, sound, MIDI music, keyboard/gamepad, options menu | Done |
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
-| **4** | **First playable: World 1 with player 1** | **In progress** |
-| 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | |
+| 4 | First playable: World 1 with player 1 | Done |
+| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **Next** |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | |
 | 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | |
 
@@ -29,10 +29,9 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 5c | Cannons and their shots (`XBulletList`), platforms (all seven kinds, A to G) | levels 1-4 to 1-9: cannons firing rolling balls, elevators, shuttles and fixed platforms that carry the mage | Done |
 | 5d | Water (`XWater`) and fish (`XEnemy_Fish`) | the water in the pits of every World 1 level, falling in, waves; fish in levels 1-3, 1-4, 1-7 and 1-9 | Done |
 | 5e | The dragon, World 1's boss (`XBossBase`, `XBoss_Dragon`, its 16 body segments, `JSpline`, `XBullet_Flame`) | level 1-10: the dragon swims, crosses the floor breathing fire, shows its hearts on the status display; defeating it stops the music and opens the goal | Done |
-| **6** | **Polish and the playable zip** | **World 1 start to finish** | **Next** |
+| 6 | Checks and the playable World 1 zip | the remaining effects and the objects World 1 doesn't use (the turning cannon, the straight cannonball, platforms `B` and `F`) checked by screenshot; World 1 played start to finish by the owner | Done |
 
-Detailed next steps for chunk 6 (which original classes to read, where each piece plugs in)
-are in [CLAUDE.md](../CLAUDE.md), "Where we are".
+Stage 5 is planned in [CLAUDE.md](../CLAUDE.md), "Where we are".
 
 ## Open items
 

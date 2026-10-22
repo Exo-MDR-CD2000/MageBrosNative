@@ -245,10 +245,9 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: end of stage 4 chunk 5e)
+## Where we are (last updated: end of stage 4)
 
-Stage 4 (first playable: World 1, player 1) is in progress. Chunks 1–4d and 5a–5e are done.
-World 1-1 onwards plays with:
+Stage 4 (first playable: World 1, player 1) is done. World 1 plays from 1-1 to 1-10 with:
 
 - movement, shots, magic, torches, coins, the goal and warp;
 - the HUD, stereo sound, the death sequence, shadows and particles;
@@ -267,24 +266,34 @@ World 1-1 onwards plays with:
   flames (`XBullet_Flame`), the boss hearts on the HUD, the music stopping and the goal opening
   when it is defeated.
 
-### Next: chunk 6, polish and the playable World 1 zip
+### Checked in chunk 6
 
-Play World 1 from 1-1 to 1-10 and check by screenshot what is still unverified, against the
-original where possible:
+By screenshot: the fence door breaking, torch flames, coin sparks, warp rings and the goal's
+lights, the hit and damage flashes, the turning cannon `K` (2-5), the straight cannonball (3-1),
+the up-only elevator `B` (2-4) and the dropping platform `F` (4-10), and the water, splashes,
+fish and dragon again after the pit fix. The owner checked in play: barrels breaking with their
+coins, the dragon fight, and World 1 from start to finish. Still to compare against the
+original game: the dragon fight and the third-barrel heart.
 
-- the fence door breaking, the third-barrel heart, torch flames, coin sparks, warp rings and
-  lights, the hit flash and the damage flash;
-- the turning cannon `K` and the straight cannonball (not used in World 1), and the platforms
-  `B` and `F` (not used in World 1; `E` is, in 1-10);
-- the dragon: the owner played the fight in 0.1.4 (its fire, the death and the burst chain,
-  the music stopping, the goal opening) and it looked right; still to compare against the
-  original game. The water, splashes and fish were rechecked by screenshot after the pit fix.
+### Next: stage 5, the whole game (worlds 2 to 4, every object, two-player co-op)
 
-Then build the zip with `make_release.bat` and mark stage 4 done.
+Not split into chunks yet: agree the chunks with the owner first. The pieces, roughly in level
+order:
 
-After stage 4 come:
+- the remaining enemies (`c`/`4` squid, `e` turtle, `f` kiwi, `g` ghost, `h`/`2` mushroom, `k`
+  hammer, `q` `r` `s` fans, `t` floor fan, `u` stalactite, `x`/`y` needle ball, `z` jump
+  needle) and their bullets (needle ball, rocket);
+- the remaining static objects (`M` `N` pots, `R` rocket launcher, `T` tree, `U` plant; `S`
+  shop waits for stage 6) and the candles (row flag `C`, `XCandleList`, with the candle
+  flames);
+- the other bosses: the genie (`7`), the nest (`8`, with the bird) and the wizard (`9`, with its
+  blade, wand and fire);
+- camera shake (`XCamera::StartShaking`, from the hammer and stalactite);
+- player 2 (`XHeroB`): its input, the camera midpoint, hero-on-hero collision and carrying, the
+  second HUD panel and the second platform shadow (the `heroB` slots marked in the code).
 
-- **Stage 5:** the whole game, with player 2 and co-op.
+After stage 5 come:
+
 - **Stage 6:** the front end: title, save slots, level select, shop, ending.
 - **Stage 7:** opt-in modern extras.
 

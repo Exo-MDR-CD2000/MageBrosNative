@@ -5,12 +5,12 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 4 of 7.** The engine runs (window, OpenGL renderer, sound, MIDI music, keyboard
+> **Status: stage 4 of 7 done.** The engine runs (window, OpenGL renderer, sound, MIDI music, keyboard
 > and gamepad, options menu), all 40 levels can be explored in the level viewer, and World 1-1
 > onwards can be played with World 1's enemies (slimes, bees, wallabies, spikes, needle fans,
 > barrels, fence doors), cannons and platforms: movement, shots, torches, coins, the goal, the
 > status display, shadows and particles, water and fish, and the dragon, World 1's boss. Next:
-> polish and the playable World 1 zip (stage 4, chunk 6). The game logic is being reconstructed module by module; see
+> the whole game, worlds 2 to 4 and two-player co-op (stage 5). The game logic is being reconstructed module by module; see
 > [docs/ROADMAP.md](docs/ROADMAP.md).
 
 > **You need your own copy of the original game.** This repository contains no game content: no
