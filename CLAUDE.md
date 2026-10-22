@@ -148,7 +148,10 @@ ctest --test-dir build --output-on-failure   # formats, collision, map_geometry,
   runs 800,000 random ticks.
 
 **Windows (the owner's platform).** Run `make_release.bat` (VS 2022+, "Desktop development with
-C++"). It builds, tests and writes `build\MageBrosNative-<ver>-windows-x64.zip`. Or open the
+C++"). It builds, tests and writes `build\MageBrosNative-<ver>-windows-x64.zip`. Each run
+raises the version in `CMakeLists.txt` first: patch by default, or pass `minor`, `major` or
+`none`. A failed build puts the version back, so commit `CMakeLists.txt` with each release. It
+runs the map and hero tests when `..\MageBros.exe` exists, and pauses at the end. Or open the
 folder in Visual Studio / use `cmake -S . -B build -A x64`. SDL3 is fetched on first configure.
 
 **Cross-compile for Windows from Linux** (llvm-mingw):

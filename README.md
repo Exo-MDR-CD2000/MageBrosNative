@@ -86,7 +86,11 @@ ctest --test-dir build -C Release        # format tests, no game files needed
 ```
 
 On Windows, double-click `make_release.bat` (Visual Studio 2022+ with the "Desktop development
-with C++" workload): it builds, runs the tests and writes `build\MageBrosNative-<version>-windows-x64.zip`.
+with C++" workload): it raises the patch version in `CMakeLists.txt`, builds, runs the tests and
+writes `build\MageBrosNative-<version>-windows-x64.zip`. Run it as `make_release.bat minor`,
+`major` or `none` (rebuild at the current version) to choose the version step; a failed build
+puts the version back. With `MageBros.exe` in the folder above the repository it also runs the map
+and hero tests.
 From Linux or macOS, cross-compile with llvm-mingw or MinGW-w64:
 `cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`.
 SDL3 is downloaded and built automatically the first time. To build only the tools and tests (no
