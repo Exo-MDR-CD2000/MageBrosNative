@@ -102,7 +102,11 @@ How `_ConstructFloorAndWall` builds a level, in order:
 
 1. Side walls for the whole level (`_CreateSideWalls`).
 2. Back walls for every row, chosen by the row flag (`_CreateBackWalls`).
-3. Underground scenery for every column (`_CreateUnderground`).
+3. Underground scenery for every cell (`_CreateUnderground`): 40 × 200 cliff faces from y 0 to
+   −200. A cell with a floor gets one under each edge whose neighbour (+X, +Z or −Z) is a hole
+   (or outside the map); a hole cell gets only the face against the back wall when it is in the
+   first column, and nothing else, so a run of holes is one open pit (with the water showing
+   across it on a water level). The −X side is never built: the camera can't see it.
 4. For every cell with a height digit: a floor tile (`_CreateFloor`) and walls where a
    neighbouring cell's height differs (`_CreateWalls`).
 5. A second pass turns every `H` cell into a bridge at the neighbouring floor height
@@ -518,9 +522,8 @@ the push of each hero marked above (and, for Y, of the hero standing on that her
 
 The elevator, like every state machine here, runs one state a tick (`else if`): a new state
 starts on the next tick. Every platform clears both "above" flags at the end of its tick, so they only carry what the
-heroes reported in this tick (the heroes run before the platforms). Over a hole the
-underground faces of `_CreateUnderground` (0 to −200 at every cell edge) hide part of a
-platform at −25 from the camera, in the original as here.
+heroes reported in this tick (the heroes run before the platforms). Over a hole a platform sits
+at −25, its top 7 below the floor, in the open pit.
 
 **The hero and platforms** (`XHeroBase::ProcessFrame`): the X and Z checks run against the
 other hero, the static objects, the candles, the platforms and then the map. Falling, the Y

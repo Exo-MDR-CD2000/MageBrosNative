@@ -130,13 +130,18 @@ struct Builder {
         Append(out.floorMesh, q);
     }
 
-    // _CreateUnderground: 200-deep cliff faces where a neighbouring cell has no floor.
+    // _CreateUnderground: 200-deep cliff faces under the edge of a floor cell where a neighbour
+    // (+X, +Z or -Z) has no floor. A hole cell gets only the face at the back wall (x = 0), so a
+    // run of holes is one open pit.
     void Underground(int x, int z, float px, float pz) {
-        if (Level(x, z) < 0 && x - 1 < 0) {
-            Quad q(40.0f, 200.0f);
-            q.UV(0.125f, 0.375f, 0.0f, 1.0f);
-            FacingPlusX(q).Shift(px - 20.0f, -100.0f, pz);
-            Append(out.undergroundMesh, q);
+        if (Level(x, z) < 0) {
+            if (x - 1 < 0) {
+                Quad q(40.0f, 200.0f);
+                q.UV(0.125f, 0.375f, 0.0f, 1.0f);
+                FacingPlusX(q).Shift(px - 20.0f, -100.0f, pz);
+                Append(out.undergroundMesh, q);
+            }
+            return;
         }
         if (Level(x + 1, z) < 0) {
             Quad q(40.0f, 200.0f);
