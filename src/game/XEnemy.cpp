@@ -6,6 +6,7 @@
 #include "game/XLevelView.h"
 #include "game/XMath.h"
 #include "game/XParticle.h"
+#include "game/XPlatform.h"
 #include "game/XStaticObj.h"
 #include <cfloat>
 #include <cmath>
@@ -19,18 +20,6 @@ long RandomI(long lo, long hi, bool inclusive) { return Random(hi - lo + (inclus
 
 // FindDirectionXZ: the yaw from `from` towards `to` (sin along X, cos along Z)
 float FindDirectionXZ(const D3DVECTOR& from, const D3DVECTOR& to) { return FindYaw(to.x - from.x, to.z - from.z); }
-
-// MakeValueCloseTo_Constant / MakeAngleCloseTo_Constant: a fixed step towards the target
-float MakeValueCloseTo_Constant(float cur, float target, float step) {
-    if (std::fabs(cur - target) <= step) return target;
-    return target > cur ? cur + step : cur - step;
-}
-float MakeAngleCloseTo_Constant(float cur, float target, float step) {
-    cur = NormaliseAngle(cur);
-    target = NormaliseAngle(target);
-    if (std::fabs(cur - target) > kPi) cur += target > cur ? 6.28319f : -6.28319f;
-    return NormaliseAngle(MakeValueCloseTo_Constant(cur, target, step));
-}
 
 // ------------------------------------------------------------------------------- XEnemy_Slime
 // 'a' slime (1 health), '1' king slime (20), '5' queen slime (120, starts at x 100). It walks a
@@ -599,7 +588,7 @@ void XEnemyBase::SetPosZ(float z) {
 bool XEnemyBase::UpdatePosX(float x) {
     bool a = game_->enemies->CollisionCheckX(x, *this);
     bool b = game_->statics->CollisionCheckX(x, *collideBox_, true);
-    bool c = false;  // (XPlatformList::CollisionCheckX: the platforms come with chunk 5c)
+    bool c = game_->platforms->CollisionCheckX(x, *collideBox_, true);
     bool d = game_->CollisionCheckX_Floor(x, *collideBox_, floorLevel_);
     SetPosX(x);
     return a || b || c || d;
@@ -608,7 +597,7 @@ bool XEnemyBase::UpdatePosX(float x) {
 bool XEnemyBase::UpdatePosZ(float z) {
     bool a = game_->enemies->CollisionCheckZ(z, *this);
     bool b = game_->statics->CollisionCheckZ(z, *collideBox_, true);
-    bool c = false;
+    bool c = game_->platforms->CollisionCheckZ(z, *collideBox_, true);
     bool d = game_->CollisionCheckZ_Floor(z, *collideBox_, floorLevel_);
     SetPosZ(z);
     return a || b || c || d;

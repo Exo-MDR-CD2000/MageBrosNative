@@ -3,8 +3,9 @@
 // against and (by default) the shots stop at.
 //
 // XStaticObjList keeps 150 slots, filled in order; its loops stop at the first empty slot.
-// Object codes (XStaticObjList::CreateObject): 'O' barrel, 'P' pillar, 'Q' small pillar; the
-// cannons, pots, rocket launcher, shop, tree and plant arrive with their chunks. Fences ('/', and
+// Object codes (XStaticObjList::CreateObject): 'H' 'I' 'J' cannon (facing 4, 0, 2 eighths of a
+// turn), 'K' turning cannon, 'O' barrel, 'P' pillar, 'Q' small pillar; the pots, rocket launcher,
+// shop, tree and plant arrive with their chunks. Fences ('/', and
 // the fence doors 'v' 'w' as neighbours) are shaped by XMap::_ConstructObjects from their four
 // neighbours.
 //

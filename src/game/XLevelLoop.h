@@ -3,8 +3,9 @@
 // enemies (XEnemyList) and particles (XParticleList). See docs/REVERSE_ENGINEERING.md,
 // "The level loop" and "Enemies and static objects".
 //
-// Still to come: platforms, cannons and other objects, the remaining enemies (chunk 5b on); only
-// the starting wand's shot pattern is made (the others come with the shop).
+// Also the enemies' bullets (XBulletList) and the platforms (XPlatformList). Still to come: water,
+// candles, bosses and the remaining objects and enemies; only the starting wand's shot pattern is
+// made (the others come with the shop).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -22,6 +23,8 @@ class XParticleList;
 class XStaticObjList;
 class XEnemyList;
 class XEnemyBase;
+class XBulletList;
+class XPlatformList;
 class XShadowSimple;
 struct XGameContext;
 
@@ -35,8 +38,8 @@ public:
     // Builds the level's objects. `onePlayer` sets the coin values.
     void Load(const XLevelView& level, XHero* hero, XHeroStatus* status, bool onePlayer, SoundFn sound);
 
-    // In the original's order: the map (goal), particles and shots come before the hero; the
-    // enemies, coins, torches and static objects after it. `cameraZ` is the camera's look-at Z
+    // In the original's order: the map (goal), particles, shots and bullets come before the hero;
+    // the enemies, coins, torches, platforms and static objects after it. `cameraZ` is the camera's look-at Z
     // (what is near enough to move and to draw).
     void ProcessBeforeHero(float cameraZ);
     void ProcessAfterHero();
@@ -68,6 +71,10 @@ public:
     bool StaticCollisionX(float& newX, const XCollideBox& box) override;
     bool StaticCollisionZ(float& newZ, const XCollideBox& box) override;
     bool StaticCollisionY(float& newY, const XCollideBox& box) override;
+    bool PlatformCollisionX(float& newX, const XCollideBox& box) override;
+    bool PlatformCollisionZ(float& newZ, const XCollideBox& box) override;
+    bool PlatformCollisionY(float& newY, const XCollideBox& box) override;
+    void SetHeroAboveLastPlatform(bool heroA) override;
 
 private:
     struct Fire {
@@ -122,5 +129,7 @@ private:
     std::unique_ptr<XParticleList> particles_;
     std::unique_ptr<XStaticObjList> statics_;
     std::unique_ptr<XEnemyList> enemies_;
+    std::unique_ptr<XBulletList> bullets_;
+    std::unique_ptr<XPlatformList> platforms_;
     std::unique_ptr<JObject3DRect> fireSprite_;  // drawn at each live shot
 };

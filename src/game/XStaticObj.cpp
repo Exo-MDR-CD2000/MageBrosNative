@@ -1,15 +1,20 @@
 #include "game/XStaticObj.h"
 #include "core/log.h"
 #include "game/JModel.h"
+#include "game/XBullet.h"
 #include "game/XGameContext.h"
+#include "game/XMath.h"
 #include "game/XParticle.h"
+#include <cmath>
 
 namespace {
 // models
 constexpr uint16_t kModelPillar = 0x170, kModelPillarWorld3 = 0x292, kModelPillarLow = 0x1ef;
 constexpr uint16_t kModelPillarSmall = 0x1db, kModelBarrel = 0x1f6;
 constexpr uint16_t kModelFenceStraight = 0x1d9, kModelFenceCorner = 0x1d8, kModelFenceT = 0x205;
-constexpr float kHalfPi = 1.5708f, kPi = 3.14159f;
+constexpr uint16_t kModelCannon = 0x18c, kModelCannonRBarrel = 0x1f4, kModelCannonRBase = 0x1f3;
+constexpr uint16_t kSoundCannon = 0x262;
+constexpr float kHalfPi = 1.5708f, kPi = 3.14159f, kQuarterPi = 0.785398f;
 
 // XStaticObj_Pillar: 27 wide; 146.5 tall (165 in world 3, model 0x292). Over a hole (the floor
 // level is negative) a taller pillar (180) stands from y = -38.
@@ -59,6 +64,103 @@ public:
         collideBox_ = std::make_unique<XCollideBox>(27.0f, 42.8f);
         collideBox_->SetPos(pos_);
     }
+};
+
+// XStaticObj_Cannon ('H' 'I' 'J', facing directions 4, 0 and 2: 45 degrees apart): a 33-wide,
+// 34-tall cannon with a 38-unit shadow. Every 550 ticks it fires from 21 up, sound 0x262, and
+// kicks its barrel up 8 degrees (easing back at 0.15 a tick): a rolling ball in worlds 1 and 2, a
+// straight ball in worlds 3 and 4.
+class Cannon : public XStaticObjBase {
+public:
+    Cannon(const XGameContext* g, const D3DVECTOR& p, int dir) : XStaticObjBase(g, p), dir_(dir) {
+        model_ = std::make_unique<JObject3DX>(kModelCannon);
+        model_->SetYaw(dir_ * kQuarterPi);
+        model_->SetPos(pos_);
+        model_->UpdateWorldMatrix();
+        shadow_ = std::make_unique<XShadowSimple>(38.0f);
+        shadow_->SetPosXZ(pos_);
+        collideBox_ = std::make_unique<XCollideBox>(33.0f, 34.0f);
+        collideBox_->SetPos(pos_);
+    }
+    void ProcessFrame() override {
+        XStaticObjBase::ProcessFrame();
+        if (localCounter_ % 550 == 0) {
+            D3DVECTOR at(pos_.x, pos_.y + 21.0f, pos_.z);
+            if (game_->world <= 1) game_->bullets->CreateCannonRBall(at, dir_ * kQuarterPi);
+            else game_->bullets->CreateCannonBall(at, dir_);
+            pitch_ = -0.139626f;
+            game_->playSound(kSoundCannon, pos_.z);
+        } else {
+            pitch_ = MakeAngleCloseTo_Constant(pitch_, 0.0f, 0.00261799f);
+        }
+        model_->SetPitch(pitch_);
+        model_->UpdateWorldMatrix();
+    }
+
+private:
+    int dir_;
+};
+
+// XStaticObj_CannonR ('K'): a turning cannon (barrel 0x1f4 on base 0x1f3) with a 38-unit shadow,
+// a 32-wide, 22-tall box from 30 up and an 18-wide, 40-tall box at its foot. It turns towards
+// the closer hero (0.6 degrees a tick) for 430 ticks, then holds: 60 ticks in it fires a rolling
+// ball from 5 ahead and 40 up along its yaw (sound 0x262, kick as the fixed cannon), and after
+// 120 it turns again.
+class CannonR : public XStaticObjBase {
+public:
+    enum MoveState { ROTATE = 0, FIRE = 1 };
+    CannonR(const XGameContext* g, const D3DVECTOR& p, XStaticObjList* list) : XStaticObjBase(g, p), list_(list) {
+        yaw_ = kHalfPi;
+        model_ = std::make_unique<JObject3DX>(kModelCannonRBarrel);
+        model_->SetYaw(yaw_);
+        model_->SetPos(pos_);
+        model_->UpdateWorldMatrix();
+        shadow_ = std::make_unique<XShadowSimple>(38.0f);
+        shadow_->SetPosXZ(pos_);
+        collideBox_ = std::make_unique<XCollideBox>(32.0f, 22.0f);
+        collideBox_->SetPos(D3DVECTOR(pos_.x, pos_.y + 30.0f, pos_.z));
+        base_ = std::make_unique<JObject3DX>(kModelCannonRBase);
+        base_->SetPos(pos_);
+        base_->UpdateWorldMatrix();
+    }
+    void CreateExtraCollideBox() override { list_->CreateCollideBox(pos_, 18.0f, 40.0f, 18.0f); }
+    void ProcessFrame() override {
+        XStaticObjBase::ProcessFrame();
+        if (moveState_ == ROTATE) {
+            yaw_ = MakeAngleCloseTo_Constant(yaw_, game_->DirToCloserHero(pos_), 0.010472f);
+            if (localCounter_ >= 430) {
+                localCounter_ = 0;
+                moveState_ = FIRE;
+            }
+        }
+        if (moveState_ == FIRE) {
+            if (localCounter_ == 60) {
+                D3DVECTOR at(pos_.x + std::sin(yaw_) * 5.0f, pos_.y + 40.0f, pos_.z + std::cos(yaw_) * 5.0f);
+                game_->bullets->CreateCannonRBall(at, yaw_);
+                pitch_ = -0.139626f;
+                game_->playSound(kSoundCannon, pos_.z);
+            }
+            if (localCounter_ >= 120) {
+                localCounter_ = 0;
+                moveState_ = ROTATE;
+            }
+        }
+        pitch_ = MakeAngleCloseTo_Constant(pitch_, 0.0f, 0.00261799f);
+        model_->SetYaw(yaw_);
+        model_->SetPitch(pitch_);
+        model_->UpdateWorldMatrix();
+    }
+    void Render(Device* d) override {
+        if (!enabled_ || !game_->IsVisible(pos_)) return;
+        model_->Render(d);
+        base_->Render(d);
+        shadow_->Render(d);
+    }
+
+private:
+    XStaticObjList* list_;
+    MoveState moveState_ = ROTATE;
+    std::unique_ptr<JObject3DX> base_;
 };
 
 // XStaticObj_CollideBox: no model, just the box
@@ -162,9 +264,16 @@ XStaticObjBase* XStaticObjList::CreateObject(const D3DVECTOR& pos, char code) {
         case 'O': return Put(std::make_unique<Barrel>(game_, pos));
         case 'P': return Put(std::make_unique<Pillar>(game_, pos));
         case 'Q': return Put(std::make_unique<PillarSmall>(game_, pos));
+        case 'H': return Put(std::make_unique<Cannon>(game_, pos, 4));
+        case 'I': return Put(std::make_unique<Cannon>(game_, pos, 0));
+        case 'J': return Put(std::make_unique<Cannon>(game_, pos, 2));
+        case 'K': {
+            XStaticObjBase* c = Put(std::make_unique<CannonR>(game_, pos, this));
+            if (c) c->CreateExtraCollideBox();
+            return c;
+        }
         default:
-            // cannons (H I J K), pots (M N), rocket launcher (R), shop (S), tree (T), plant (U):
-            // later chunks
+            // pots (M N), rocket launcher (R), shop (S), tree (T), plant (U): later chunks
             return nullptr;
     }
 }

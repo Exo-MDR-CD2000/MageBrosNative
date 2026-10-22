@@ -34,6 +34,18 @@ float MakeAngleCloseTo(float cur, float target, float factor, float minStep, flo
     return NormaliseAngle(MakeValueCloseTo(cur, target, factor, minStep, maxStep));
 }
 
+float MakeValueCloseTo_Constant(float cur, float target, float step) {
+    if (std::fabs(cur - target) <= step) return target;
+    return target > cur ? cur + step : cur - step;
+}
+
+float MakeAngleCloseTo_Constant(float cur, float target, float step) {
+    cur = NormaliseAngle(cur);
+    target = NormaliseAngle(target);
+    if (std::fabs(cur - target) > 3.14159f) cur += target > cur ? 6.28319f : -6.28319f;
+    return NormaliseAngle(MakeValueCloseTo_Constant(cur, target, step));
+}
+
 float FindYaw(float a, float b) { return NormaliseAngle(std::atan2(a, b)); }
 
 float ApproxDistance(const D3DVECTOR& a, const D3DVECTOR& b) {

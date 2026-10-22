@@ -26,12 +26,12 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4d | Shadow (`XShadow`) and particle effects (`XParticleList`, `JObject3D`) | the hero's shadow, shot trails and flashes, torch flames, coin sparkles, warp rings and lights, landing dust, explosions | Done |
 | 5a | Enemy framework (`XEnemyList`, ColDet hits, damage, defeat, coin drops), static objects (`XStaticObjList`: pillars, barrels, fences), slimes and spikes | shoot slimes, collect their coins, avoid spikes | Done |
 | 5b | Bees, wallabies, barrels, fence doors, needle fans | the rest of World 1's enemies (fish aside) | Done |
-| **5c** | **Cannons and their shots, moving platforms (A C D E G)** | **levels 1-4 to 1-9** | **Next** |
-| 5d | Water and fish | levels 1-3, 1-4, 1-7, 1-9 | |
+| 5c | Cannons and their shots (`XBulletList`), platforms (all seven kinds, A to G) | levels 1-4 to 1-9: cannons firing rolling balls, elevators, shuttles and fixed platforms that carry the mage | Done |
+| **5d** | **Water and fish** | **levels 1-3, 1-4, 1-7, 1-9** | **Next** |
 | 5e | The dragon (World 1's boss) | level 1-10 | |
 | 6 | Polish and the playable zip | World 1 start to finish | |
 
-Detailed next steps for 5c onward (which original classes to read, where each piece plugs in)
+Detailed next steps for 5d onward (which original classes to read, where each piece plugs in)
 are in [CLAUDE.md](../CLAUDE.md), "Where we are".
 
 ## Open items

@@ -99,6 +99,8 @@ them.
   - `XParticleList` (300 slots);
   - `XStaticObjList` (150);
   - `XEnemyList` (110);
+  - `XBulletList` (50);
+  - `XPlatformList` (35);
   - the torches, coins and hero shots.
 - **Tick order** (`XGameObject::ProcessFrame`):
   1. status display
@@ -106,13 +108,13 @@ them.
   3. *water*
   4. particles
   5. hero shots
-  6. *enemy bullets*
+  6. enemy bullets
   7. hero A (*hero B*)
   8. enemies
   9. *boss*
   10. coins
   11. torches
-  12. *platforms*
+  12. platforms
   13. static objects
   14. *candles*
   15. camera
@@ -124,11 +126,14 @@ them.
   2. hero and shadow
   3. coins
   4. torches
-  5. *platforms*
+  5. platforms
   6. static objects
-  7. enemies
-  8. particles
-  9. shots
+  7. *candles*
+  8. bullets
+  9. enemies
+  10. *water*
+  11. particles
+  12. shots
 - `XLevelLoop::IsReconstructed` / `kDone` lists the level codes that have been built. Every
   other code still draws a coloured marker cube (`XLevelView::FilterMarkers`). Add each code to
   `kDone` when you build its object.
@@ -237,62 +242,50 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: end of stage 4 chunk 5b)
+## Where we are (last updated: end of stage 4 chunk 5c)
 
-Stage 4 (first playable: World 1, player 1) is in progress. Chunks 1–4d, 5a and 5b are done.
+Stage 4 (first playable: World 1, player 1) is in progress. Chunks 1–4d and 5a–5c are done.
 World 1-1 onwards plays with:
 
 - movement, shots, magic, torches, coins, the goal and warp;
 - the HUD, stereo sound, the death sequence, shadows and particles;
 - pillars, barrels and fences;
 - slimes, needles, bees, wallabies, barrel enemies, fence doors and needle fans, all with coin
-  and heart drops.
+  and heart drops;
+- cannons (`H` `I` `J` `K`) and their bullets (`XBullet.cpp`): rolling balls in worlds 1–2,
+  straight balls in worlds 3–4, with smoke and the BulletExplode burst;
+- all seven platform kinds (`XPlatform.cpp`, codes `A`–`G`): the hero lands on them, rides
+  them (push) and is lifted by elevators; enemies, shots and bullets stop on them; the hero's
+  shadow is drawn on them (`XShadowOnPlatform`).
 
-### Next: chunk 5c, cannons and moving platforms (levels 1-4 to 1-9)
+### Next: chunk 5d, water and fish (levels 1-3, 1-4, 1-7, 1-9)
 
 Original listings to read:
 
-- `XStaticObj_Cannon`, `XStaticObj_CannonR`
-- `XBulletList`, `XBulletBase`, `XBullet_Cannon`, `XBullet_CannonRBall`
-- `XParticle_Smoke`, `XParticle_BulletExplode`
-- `XPlatformList`, `XPlatformBase`, `XPlatform_*`, `XShadowOnPlatform`
+- `XWater` (and `XMap::UseWater`, which says whether a level has water)
+- `XParticle_WaterWave`
+- `XEnemy_Fish`
 
 The work, in order:
 
-1. **Cannons** `H` `I` `J` (`XStaticObj_Cannon`, facing directions 4, 0, 2) and `K`
-   (`XStaticObj_CannonR`, with `CreateExtraCollideBox`). Create them in
-   `XStaticObjList::CreateObject` and add the codes to `kDone`.
-2. **`XBulletList`** with `CreateCannonBall` and `CreateCannonRBall`:
-   - plug it into the tick order after the hero shots and into the render order;
-   - bullets hurt the hero (`_CollisionCheck_Hero`);
-   - hero shots stop on bullets (`XBulletList::CollisionCheck_Fire`), in the slot already
-     commented in `XLevelLoop::ProcessFire`;
-   - add the Smoke and BulletExplode particle kinds to `XParticle`.
-3. **`XPlatformList`**: `CreatePlatform` maps the codes as follows.
-
-   | Code | Platform |
-   |---|---|
-   | `A`, `B` | `XPlatform_Elevator` |
-   | `C` | `AutoZ` |
-   | `D` | `AutoX` |
-   | `E` | `RightOnly` |
-   | `F` | `Drop` |
-   | `G` | `Stay` |
-
-   World 1 uses A, C, D, E and G. Then wire up:
-   - the hero: X, Z and Y collision against platforms, riding (`SetHeroAAbove`, `_PushHero*`)
-     and `GetLastCollidePlatform`, in the `XHero.cpp` slots marked "(candles, platforms,)";
-   - enemies: `XEnemyBase::UpdatePosX`/`Z` (marked in `XEnemy.cpp` near line 602);
-   - shots: they stop on platforms;
-   - shadows: `XShadowOnPlatform`;
-   - the platform's slot in the tick and render orders.
+1. **`XWater`**: Init, ProcessFrame and Render. Its tick slot is right after the map
+   (`XLevelLoop::ProcessBeforeHero`, marked) and it is drawn after the enemies, before the
+   particles (`XLevelLoop::RenderObjects` / `RenderEffects`).
+2. **The water rules elsewhere**:
+   - the hero: water levels use −58 as the "fell out" height (`XHero.cpp` ~273, marked);
+   - the rolling cannonball: below −38 it makes a wave (above −43) and bursts (`XBullet.cpp`,
+     `CannonRBall::ProcessFrame`, marked);
+   - the Drop platform: below −38 it stops accelerating, with a wave as it crosses −38
+     (`XPlatform.cpp`, `Drop`, marked).
+3. **`XParticle_WaterWave`** in `XParticle` (`CreateWaterWave(pos, ?, ?)`: the bullet and the
+   platform pass 0 and 1).
+4. **`XEnemy_Fish`** (`i`) in `XEnemyList::CreateEnemy`, and add `i` to `kDone`.
 
 Then:
 
 | Chunk | What it covers | Where to start |
 |---|---|---|
-| 5d | Water and fish | `XWater` (Init, ProcessFrame, Render; tick slot after the map), `XParticle_WaterWave`, `XEnemy_Fish` (`i`; levels 1-3, 1-4, 1-7, 1-9). Water levels use −58 as the "fell out" height (`XHero.cpp` ~267). |
-| 5e | The dragon, World 1's boss (code `6`, level 1-10) | `XBossBase`, `XBoss_Dragon` and `XBoss_DragonBody`, flame bullets (`XBullet_Flame`), the boss health on the HUD (`XGameScene.cpp` `bossHealth`), and the goal opening when the boss is defeated (`XLevelLoop.cpp` ~223). |
+| 5e | The dragon, World 1's boss (code `6`, level 1-10) | `XBossBase`, `XBoss_Dragon` and `XBoss_DragonBody`, flame bullets (`XBullet_Flame`), the boss health on the HUD (`XGameScene.cpp` `bossHealth`), and the goal opening when the boss is defeated (`XLevelLoop.cpp` ~238). |
 | 6 | Polish and the playable World 1 zip | Check by screenshot what is still unverified: the fence door breaking, the third-barrel heart, torch flames, coin sparks, warp rings and lights, the hit flash and the damage flash. Compare against the original. |
 
 After stage 4 come:
@@ -307,6 +300,6 @@ After stage 4 come:
   Both wait for the level select in stage 6.
 - Boss levels never open the goal (5e).
 - No water (5d).
-- Cannons, platforms, fish, the shop and the other unbuilt objects show as marker cubes.
+- Fish, the shop and the other unbuilt objects show as marker cubes.
 - No player 2 (stage 5).
 - Only the starting wand's shot pattern exists. The others come with the shop.

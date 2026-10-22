@@ -2,9 +2,9 @@
 //
 // Reconstructed so far: input, walking and turning, gravity, jumping, landing, the map
 // collision, falling out of the level, the dying sequence, the animation frames and the wand,
-// shots and magic points, damage and knockback, the warp, and standing on static objects (the
-// torch posts). Still to come: the other hero, platforms, candles, water, the white damage flash
-// and the effects (stage 4 chunks 4c-5, stage 5).
+// shots and magic points, damage and knockback, the warp, standing on static objects (the torch
+// posts) and riding platforms. Still to come: the other hero, candles and water (stage 4 chunk
+// 5d, stage 5).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -44,6 +44,12 @@ public:
     virtual bool StaticCollisionX(float& newX, const XCollideBox& box) { return false; }
     virtual bool StaticCollisionZ(float& newZ, const XCollideBox& box) { return false; }
     virtual bool StaticCollisionY(float& newY, const XCollideBox& box) { return false; }
+    // XPlatformList::CollisionCheckX / Z / Y for the hero's box; true on a hit
+    virtual bool PlatformCollisionX(float& newX, const XCollideBox& box) { return false; }
+    virtual bool PlatformCollisionZ(float& newZ, const XCollideBox& box) { return false; }
+    virtual bool PlatformCollisionY(float& newY, const XCollideBox& box) { return false; }
+    // XPlatformList::GetLastCollidePlatform()->SetHeroAAbove(1): the hero stands on that platform
+    virtual void SetHeroAboveLastPlatform(bool heroA) {}
     // XHeroFireList::_CreateFire_Normal: one shot from the hero at an angle (Create8Way)
     virtual void CreateFireAt(const XHero& hero, float angle) {}
     // XGameObject::boss != nullptr
@@ -82,6 +88,19 @@ public:
     void KnockBack(const D3DVECTOR& from);       // XHeroBase::KnockBack
     void StartDying();                           // XHeroBase::StartDying
     void UpdateMagicLevel();                     // XHeroBase::UpdateMagicLevel
+    // XHeroBase::IncreasePushX / Y / Z: added to the next tick's move (a platform carrying it)
+    void IncreasePushX(float v) { push_.x += v; }
+    void IncreasePushY(float v) { push_.y += v; }
+    void IncreasePushZ(float v) { push_.z += v; }
+    void SetPosY(float y);  // XHeroBase::SetPosY (a rising platform lifts the hero)
+    // XHeroBase::CollisionCheckX / Z: another box (a moving platform) stopped by this hero's box
+    // while the hero is in the NORMAL state
+    bool CollisionCheckX(float& newX, const XCollideBox& box) const {
+        return liveState_ == NORMAL && box_.CollisionCheckX(newX, box, false);
+    }
+    bool CollisionCheckZ(float& newZ, const XCollideBox& box) const {
+        return liveState_ == NORMAL && box_.CollisionCheckZ(newZ, box, false);
+    }
 
     const D3DVECTOR& GetPos() const { return pos_; }
     float GetYaw() const { return yaw_; }
@@ -97,7 +116,6 @@ private:
     void ProcessDying(XHeroWorld& world);
     int GetKeyDir(const XHeroInput& in) const;  // _GetKeyDir: 0..7, in 45 degree steps
     void SetPosX(float x);
-    void SetPosY(float y);
     void SetPosZ(float z);
     void UpdateWorldMatrix();  // _UpdateWorldMatrix
 

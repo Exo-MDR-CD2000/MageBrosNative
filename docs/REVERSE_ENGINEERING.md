@@ -446,6 +446,95 @@ without a coin.
 turning (0.6 + 0.1 × world)° a tick on a post (model 0x17e, a static 19 × 87 box). Can't be hurt;
 drawn without the visibility test.
 
+## Cannons and bullets (`XStaticObj_Cannon`, `XStaticObj_CannonR`, `XBulletList`)
+
+**Cannon** (`H` `I` `J`: directions 4, 0, 2, in eighths of a turn, so `H` fires along −Z, `I`
+along +Z and `J` along +X towards the camera): model 0x18c turned to its direction, shadow 38,
+box 33 × 34. Every 550 ticks (`localCounter % 550 == 0`) it fires from 21 above its foot: a
+rolling ball (`CreateCannonRBall`, at the direction's yaw) in worlds 1 and 2
+(`XLevelStatus::currentWorld <= 1`), a straight ball (`CreateCannonBall`, by direction) in
+worlds 3 and 4. Firing plays 0x262 and kicks the barrel's pitch to −8° (−0.139626); on every
+other tick it eases back to 0 by 0.15° (0.00261799) a tick.
+
+**CannonR** (`K`): barrel 0x1f4 (yaw starts at 90°) on base 0x1f3, shadow 38, a 32-wide,
+22-tall box from 30 above its foot, and an extra 18-wide, 40-tall box at its foot
+(`CreateExtraCollideBox`). ROTATE: turns towards the closer hero (`FindDirToCloserHero`) by
+0.6° (0.010472) a tick; after 430 ticks, FIRE with the counter reset. FIRE: at tick 60 a
+rolling ball from 5 ahead along its yaw and 40 up, sound 0x262 and the kick; at 120 back to
+ROTATE. The pitch eases back every tick.
+
+**`XBulletList`** has 50 slots; a new bullet takes the first free one (none is made when all
+are busy). `ProcessFrame` runs every bullet and deletes those that reached NON; the loops skip
+empty slots. It runs after the hero shots and before the heroes, and is drawn after the static
+objects (and candles), before the enemies.
+
+**`XBulletBase`**: position, yaw, pitch, radius, a model, an `XShadow` (the split shadow) and a
+debug sphere. `Render` draws the model and the shadow (no visibility test).
+`_CollisionCheck_Hero`: the bullet and the hero NORMAL, |Δz| ≤ hero box width Z + radius,
+|Δx| ≤ width X + radius, then `CheckCollision_Sphere(pos, radius)` on the hero's mesh
+(MageCOL); the hero is damaged and knocked back from the bullet. `CollisionCheck_Fire` (a
+hero's shot): |Δz| and |Δx| ≤ both radii, then `ApproxDistance` < both radii. The shot stops;
+the bullet carries on.
+
+| Bullet | Model, shadow, radius | Each tick | Bursts |
+|---|---|---|---|
+| Cannon | 0x18d, 17, 8 | pitch + 4° (0.0698132); 1.4 along its direction; smoke every 11 ticks | after 15 ticks, on the map (`IsBlockedFloat`), a static object, a platform or a hero |
+| CannonRBall | 0x1f2, 19, 9 | pitch + 3.5° (0.0610865); falls 0.016 a tick (at most 4), its bottom put on the floor by the point form of `XMap::CollisionCheckY` (which zeroes the fall); 1 along its yaw; smoke every 15 ticks | after 25 ticks, the same; gone below −200; on a water level, below −38 it makes a wave (above −43) and bursts |
+
+A burst makes a `BulletExplode` where the bullet was before the tick's move, and ends the
+bullet. The point form of `XMap::CollisionCheckY(y, x, z)`: if the cell at (x, z) is blocked
+at the height of y, y becomes (cell level + 1) × 25.
+
+## Platforms (`XPlatformList`, `XPlatformBase`, `XPlatform_*`, `XShadowOnPlatform`)
+
+**`XPlatformList`** has 35 slots, filled in order; every loop stops at the first empty slot.
+`CreatePlatform` gives each platform the next OID: `A` Elevator, `B` Elevator (up only), `C`
+AutoZ, `D` AutoX, `E` RightOnly, `F` Drop, `G` Stay. It is made at the cell centre and y =
+floor level × 25 (−25 over a hole), then `SetFloorLevel`. It runs after the torches and before
+the static objects, and is drawn after the torches, before the static objects.
+
+The list's checks: `CollisionCheckX` / `Z` (a box, with the caller's ignoreY: the heroes pass
+0, the enemies 1), `CollisionCheckX` / `Z` for a platform (skipping itself by OID, heights
+ignored), `CollisionCheckY` (clears `lastCollidePlatform`, then remembers the last platform
+hit) and `CollisionCheck` (a point inside: bullets and shots).
+
+**`XPlatformBase`**: model, box, `XShadowOnPlatform`, the flags `heroAAbove` / `heroBAbove`.
+`Render`: within the visible range, the model then the hero shadows on it. `_UpdatePosX` /
+`Z`: `XMap::CollisionCheckX_Floor` (its result is the return value), the other platforms, the
+static objects (heights ignored), then each hero in the NORMAL state as an obstacle
+(`XHeroBase::CollisionCheckX`: the hero's box against the platform's, heights counted); then
+the position. `_CollisionCheckY_Hero`: a NORMAL hero inside the box is put on its top
+(`XCollideBox::CollisionCheckY` with y = the hero's y). `_PushHeroX` / `Y` / `Z` add the move to
+the push of each hero marked above (and, for Y, of the hero standing on that hero).
+
+| Platform | Model, box | Behaviour |
+|---|---|---|
+| Elevator `A` / `B` | 0x181 / 0x275 on base 0x182 / 0x274 (both turned 90°, the base fixed at the cell), 40 × 200 | Starts 170 below the cell (its top 30 above the floor). WAIT: a hero on it → MOVEUP. MOVEUP: +0.5 a tick (sound 0x273 when the counter % 20 == 1), clamped at the start height; lifts the heroes; at the top, or when no hero is on it, `A` goes to MOVEDOWN and `B` to WAIT. MOVEDOWN: falls (0.08 a tick, at most 4) to the bottom, carrying the heroes, then WAIT. |
+| AutoZ `C` | 0x183 (90°), 40 × 18 | Moves 0.35 + 0.05 × world a tick along Z, starting towards +Z, turning back when the floor's edge stops it; carries the heroes. |
+| AutoX `D` | the same | 0.35 a tick along X, the same way. |
+| RightOnly `E` | the same | Waits for a hero, then moves 0.35 + 0.1 × world a tick along +Z, carrying the heroes, until the floor's edge stops it for good. |
+| Drop `F` | the same | Waits for a hero; 20 ticks later falls (0.08 a tick, at most 4), carrying the heroes; stops below −500. On a water level it stops accelerating below −38 and makes a wave as it crosses −38. |
+| Stay `G` | the same | Never moves. |
+
+Every platform clears both "above" flags at the end of its tick, so they only carry what the
+heroes reported in this tick (the heroes run before the platforms). Over a hole the
+underground faces of `_CreateUnderground` (0 to −200 at every cell edge) hide part of a
+platform at −25 from the camera, in the original as here.
+
+**The hero and platforms** (`XHeroBase::ProcessFrame`): the X and Z checks run against the
+other hero, the static objects, the candles, the platforms and then the map. Falling, the Y
+check runs against the other hero, the static objects, the platforms, the map and the candles;
+landing on a platform marks it (`SetHeroAAbove` / `SetHeroBAbove`, by `IsHeroA`). Rising, only
+the other hero, the static objects and the candles stop the head: a jump passes up through a
+platform. Enemies' `UpdatePosX` / `Z` (heights ignored) and the shots also stop against
+platforms.
+
+**`XShadowOnPlatform`**: two 35 × 35 `JObject3D_Shadow` rects (texture 0xa3), one per hero.
+For a hero NORMAL or DYING whose y is not below the box top, the hero's 35-unit square is
+clipped to the platform's 40 × 40 top (box centre ± 20); the visible part is drawn 0.2 above
+the box top, with the matching share of the texture (u from the left, v flipped) and scaled to
+it.
+
 ## Particles and shadows (`XParticleList`, `XShadow`, `JObject3D`)
 
 **`JObject3D_Rect`** is a w × h quad of lit vertices in the XZ plane (v0 −x+z, v1 +x+z, v2 −x−z,
@@ -485,9 +574,10 @@ shots.
 | GetCoinEffect | a collected coin, at its centre | three particles of 18, 0x294, flying out along (sin a, 3, cos a) normalised at 1.6 a tick, a = −90°, 30°, 150° | after 20 ticks alpha × 0.9 |
 | EnemyExplode | the dying hero (large), enemies, barrels, bosses | particle 180 (large) or 100, 0x190, 4 × 4 frames, 6 ticks each | 96 ticks |
 | Smoke | bullets and rockets | particle 10, 0x198, growing by × (1 + 0.12 × 0.9ⁿ) | alpha −0.015 |
+| BulletExplode | a bursting bullet, where it was before its move; plays 0x279 when made | particle 60, 0x192, 4 × 4 frames, 4 ticks each | 64 ticks |
 
-Still to come with their owners: BulletExplode, CandleFire1/2, LampSteam, HammerEffect,
-WaterWave, WizardFireFlash.
+Still to come with their owners: CandleFire1/2, LampSteam, HammerEffect, WaterWave,
+WizardFireFlash.
 
 **`XShadow(size)`** (the hero's is 35) draws texture 0xa3 under a position as up to four
 `JObject3D_Shadow` rects. Its square is split at the cell edge in X when the floors on either

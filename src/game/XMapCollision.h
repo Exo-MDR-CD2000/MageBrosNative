@@ -17,6 +17,14 @@ public:
     bool CollisionCheckX(float& newX, const XCollideBox& box) const;
     bool CollisionCheckZ(float& newZ, const XCollideBox& box) const;
     bool CollisionCheckY(float& newY, const XCollideBox& box) const;  // only while moving down
+    // XMap::CollisionCheckY(float&, const float&, const float&): a point at (x, newY, z) inside a
+    // floor is put on top of its cell ((level + 1) * 25)
+    bool CollisionCheckY(float& newY, float x, float z) const {
+        int cy = CellY(newY);
+        if (!IsBlocked(CellX(x, true), CellZ(z, true), cy)) return false;
+        newY = (cy + 1) * 25.0f;
+        return true;
+    }
     // Outside the map, or the floor at (x, z) is higher than `level`.
     bool IsBlocked(int x, int z, int level) const;
     // XMap::IsBlockedFloat: IsBlocked at a world position (cells with the floor flag set)

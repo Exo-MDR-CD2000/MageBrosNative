@@ -13,6 +13,8 @@ constexpr uint16_t kTexHeroFlashA = 0x194, kTexHeroFlashB = 0x195;
 constexpr uint16_t kTexShotA = 0x15c, kTexShotB = 0x184;
 constexpr uint16_t kTexTorchFire1 = 0x187, kTexTorchFire2 = 0x188;
 constexpr uint16_t kTexWarpRing = 0x1a5, kTexCoin = 0x294, kTexLand = 0x295, kTexShadow = 0xa3;
+constexpr uint16_t kTexBulletExplode = 0x192;
+constexpr uint16_t kSoundBulletExplode = 0x279;
 constexpr float kDegree = 0.0174533f;
 
 // ---------------------------------------------------------------------------------- the kinds
@@ -60,6 +62,28 @@ public:
         float u = (frame % 4) * 0.25f, v = (frame / 4) * 0.25f;
         particle_->SetUV(u, u + 0.25f, v, v + 0.25f, 0);
         if (localCounter_ >= 96) state_ = NON;
+    }
+};
+
+// XParticle_BulletExplode: where a bullet hits; a 16-frame explosion (4 x 4 sheet) 60 across, 4
+// ticks a frame, with sound 0x279
+class BulletExplode : public XParticleBase {
+public:
+    BulletExplode(XParticleList* l, const D3DVECTOR& p) : XParticleBase(l, p) {
+        particle_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(1, 1));
+        particle_->SetTexture(kTexBulletExplode);
+        particle_->Scale(60.0f);
+        particle_->SetUV(0, 0.25f, 0, 0.25f, 0);
+        state_ = NORMAL;
+        l->PlaySound(kSoundBulletExplode, pos_.z);
+    }
+    void ProcessFrame() override {
+        XParticleBase::ProcessFrame();
+        if (state_ != NORMAL) return;
+        int frame = (int)((localCounter_ / 4) % 16);
+        float u = (frame % 4) * 0.25f, v = (frame / 4) * 0.25f;
+        particle_->SetUV(u, u + 0.25f, v, v + 0.25f, 0);
+        if (localCounter_ >= 64) state_ = NON;
     }
 };
 
@@ -349,6 +373,11 @@ void XParticleList::Render(Device* d, const D3DMATRIX& view) {
 }
 
 void XParticleList::CreateSmoke(const D3DVECTOR& pos) { Add(std::make_unique<Smoke>(this, pos)); }
+void XParticleList::CreateBulletExplode(const D3DVECTOR& pos) {
+    // (the sound plays as the particle is made, so not when every slot is busy, as the original)
+    int i = GetNullIndex();
+    if (i >= 0) slots_[i] = std::make_unique<BulletExplode>(this, pos);
+}
 void XParticleList::CreateEnemyExplode(const D3DVECTOR& pos, bool large) {
     Add(std::make_unique<EnemyExplode>(this, pos, large));
 }

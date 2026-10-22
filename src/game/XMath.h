@@ -16,6 +16,10 @@ float MakeValueCloseTo(float cur, float target, float factor, float minStep, flo
 float NormaliseAngle(float a);
 // Eases angle `cur` towards `target` the short way round (MakeValueCloseTo on angles).
 float MakeAngleCloseTo(float cur, float target, float factor, float minStep, float maxStep);
+// MakeValueCloseTo_Constant / MakeAngleCloseTo_Constant: a fixed step towards the target (the
+// angle the short way round).
+float MakeValueCloseTo_Constant(float cur, float target, float step);
+float MakeAngleCloseTo_Constant(float cur, float target, float step);
 // atan2(a, b), normalised: the yaw of a stick direction is FindYaw(y, x).
 float FindYaw(float a, float b);
 // Manhattan distance refined by two Newton steps of the square root (not exact, on purpose).

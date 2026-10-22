@@ -13,6 +13,8 @@ class XHeroWorld;
 class XStaticObjList;
 class XEnemyList;
 class XEnemyBase;
+class XBulletList;
+class XPlatformList;
 class XParticleList;
 
 struct XGameContext {
@@ -21,6 +23,8 @@ struct XGameContext {
     XHeroWorld* heroWorld = nullptr;  // what XHero::Damage reports to
     XStaticObjList* statics = nullptr;
     XEnemyList* enemies = nullptr;
+    XBulletList* bullets = nullptr;
+    XPlatformList* platforms = nullptr;
     XParticleList* particles = nullptr;
     std::function<void(uint16_t waveId, float z)> playSound;  // XApplication::PlaySound
     std::function<void(const XEnemyBase& e)> createEnemyCoin;  // XCoinList::CreateEnemyCoin

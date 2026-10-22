@@ -5,8 +5,9 @@
 // particle runs (its local counter counts up first) and the finished ones are deleted; they are
 // drawn after the level's objects and before the shots.
 //
-// The effects so far are the hero's, the shots', the torches', the coins' and the goal's; the
-// enemies', bullets', candles' and bosses' kinds arrive with them.
+// The effects so far are the hero's, the shots', the torches', the coins', the goal's, the
+// enemies' and the bullets' (smoke and explosions); the water's, candles' and bosses' kinds arrive
+// with them.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -44,14 +45,22 @@ public:
 
     XParticleList();
     ~XParticleList();
+    // XApplication::PlaySound, for the particles that make a sound
+    using SoundFn = std::function<void(uint16_t waveId, float z)>;
+
     void SetHeroPos(HeroPosFn f) { heroPos_ = std::move(f); }
     D3DVECTOR HeroPos(bool heroA) const { return heroPos_ ? heroPos_(heroA) : D3DVECTOR(0, 0, 0); }
+    void SetPlaySound(SoundFn f) { playSound_ = std::move(f); }
+    void PlaySound(uint16_t waveId, float z) const {
+        if (playSound_) playSound_(waveId, z);
+    }
 
     void Empty();
     void ProcessFrame();
     void Render(Device* d, const D3DMATRIX& view);
 
     void CreateSmoke(const D3DVECTOR& pos);
+    void CreateBulletExplode(const D3DVECTOR& pos);
     void CreateEnemyExplode(const D3DVECTOR& pos, bool large);
     void CreateHeroFireSmoke(const D3DVECTOR& pos, bool heroA, bool large);
     void CreateHeroFireFlash(const D3DVECTOR& pos, bool heroA, bool large);
@@ -69,6 +78,7 @@ private:
     std::unique_ptr<XParticleBase> slots_[kSlots];
     int arrayPointer_ = 0;
     HeroPosFn heroPos_;
+    SoundFn playSound_;
 };
 
 // XShadowSimple: one size x size shadow on a fixed floor level (objects, enemies and coins that

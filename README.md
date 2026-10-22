@@ -8,8 +8,8 @@ original game logic unchanged when every option is at its default.
 > **Status: stage 4 of 7.** The engine runs (window, OpenGL renderer, sound, MIDI music, keyboard
 > and gamepad, options menu), all 40 levels can be explored in the level viewer, and World 1-1
 > onwards can be played with World 1's enemies (slimes, bees, wallabies, spikes, needle fans,
-> barrels, fence doors): movement, shots, torches, coins, the goal, the status display, shadows and
-> particles. Next: cannons and moving platforms (stage 4, chunk 5c). The game logic is being reconstructed module by module; see
+> barrels, fence doors), cannons and platforms: movement, shots, torches, coins, the goal, the
+> status display, shadows and particles. Next: water and fish (stage 4, chunk 5d). The game logic is being reconstructed module by module; see
 > [docs/ROADMAP.md](docs/ROADMAP.md).
 
 > **You need your own copy of the original game.** This repository contains no game content: no
@@ -39,8 +39,10 @@ life, gold and magic, sounds are panned left and right as the mage moves, and th
 shadow and particle effects are in (shot trails, torch flames, coin sparkles, warp rings,
 landing dust, explosions). World 1's enemies are in (slimes, bees, wallabies, spikes, needle
 fans, breakable barrels and fence doors) with the original pillars, barrels and fences;
-defeated enemies drop coins. Cannons, platforms, water and fish still show as coloured markers
-and come next. N/B change level, Tab switches to the
+defeated enemies drop coins. Cannons fire rolling cannonballs that hurt the mage, and the
+platforms work: elevators that lift the mage while it stands on them, platforms that shuttle
+along the level carrying it, and fixed ones. Water and fish still show as coloured markers and
+come next. N/B change level, Tab switches to the
 **level viewer**: every one of the 40 levels, built by the
 original's own map code with each world's textures. The goal, coins and torches use their real
 models; other objects are colour-coded markers for now (blue platforms, brown objects, grey
