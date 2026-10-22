@@ -444,7 +444,14 @@ the whole game), a heart every third barrel, else a medium coin; sound 0x267.
 
 **Fence door** (`v` across X, `w` along Z and turned −90°): model 0x1dc, collision 0x1dd, box
 40 × 82 × 10, with a matching static box that doesn't stop shots. 5 health; bursts like a barrel
-without a coin.
+without a coin. A wooden gate, shorter than the fence. `XMap::_ConstructObjects` builds a fence
+piece only for `/`; `v` and `w` are enemies, and count as fence only when a fence piece picks
+its shape from its neighbours.
+
+**Shop** (`S`, `XStaticObj_Shop`): model 0x1ab turned 90°, a 112 × 1000 × 120 box, and a sign
+(texture 0x1ac, an 84 × 36.96 rect turned −90° about Y and −90° about Z, moved 56 out and 127.4
+up, opaque). A NORMAL hero within 15 of the doorstep (60 in front of it in X) calls
+`XShop::Start` once; it can start again after the hero has been more than 25 away.
 
 **Needle fan** (`m`): a spiked bar, model 0x17f, collision 0x17d, box 200 × 80, shadow 42,
 turning (0.6 + 0.1 × world)° a tick on a post (model 0x17e, a static 19 × 87 box). Can't be hurt;

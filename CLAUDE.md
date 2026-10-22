@@ -268,12 +268,16 @@ Stage 4 (first playable: World 1, player 1) is done. World 1 plays from 1-1 to 1
 
 ### Checked in chunk 6
 
-By screenshot: the fence door breaking, torch flames, coin sparks, warp rings and the goal's
+By screenshot: torch flames, coin sparks, warp rings and the goal's
 lights, the hit and damage flashes, the turning cannon `K` (2-5), the straight cannonball (3-1),
 the up-only elevator `B` (2-4) and the dropping platform `F` (4-10), and the water, splashes,
 fish and dragon again after the pit fix. The owner checked in play: barrels breaking with their
 coins, the dragon fight, and World 1 from start to finish. Still to compare against the
 original game: the dragon fight and the third-barrel heart.
+
+Fixed after stage 4, from the owner's play: the fence doors (`v` `w`) were built as metal fence
+pieces instead of the wooden gates, which made 1-2 unfinishable; now they stand and break as
+in the original. The shop (`S`, in 1-3, 1-6 and 1-9) is built; its screen waits for stage 6.
 
 ### Next: stage 5, the whole game (worlds 2 to 4, every object, two-player co-op)
 
@@ -301,6 +305,7 @@ After stage 5 come:
 
 - Death restarts the level, and finishing the last level of a world goes to the next world.
   Both wait for the level select in stage 6.
-- The shop, the other bosses and the other unbuilt objects show as marker cubes.
+- The shop's screen (the building stands; stage 6), the other bosses and the other unbuilt
+  objects (marker cubes).
 - No player 2 (stage 5).
 - Only the starting wand's shot pattern exists. The others come with the shop.

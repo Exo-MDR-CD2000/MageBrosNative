@@ -40,7 +40,9 @@ XLevelView::Kind Classify(char c) {
     if (c == '$') return K::Coin;
     if (c == '*') return K::Torch;
     if (c == '+') return K::TorchSmall;
-    if (c == '/' || c == 'v' || c == 'w') return K::Fence;
+    // XMap::_ConstructObjects builds a fence only for '/'; the fence doors 'v' 'w' are enemies
+    // (they count as fence only when a fence piece picks its shape from its neighbours)
+    if (c == '/') return K::Fence;
     if (c >= 'A' && c <= 'G') return K::Platform;
     if (c >= 'H' && c <= 'Z') return K::StaticObject;
     if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '5')) return K::Enemy;

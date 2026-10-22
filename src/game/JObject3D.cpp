@@ -47,6 +47,10 @@ void JObject3DRect::Scale(float sx, float sy, float sz) {
     for (auto& v : v_) SetPos(v, v.x * sx, v.y * sy, v.z * sz);
 }
 
+void JObject3DRect::Shift(const D3DVECTOR& d) {
+    for (auto& v : v_) SetPos(v, v.x + d.x, v.y + d.y, v.z + d.z);
+}
+
 void JObject3DRect::Rotate(int axis, float angle) {
     D3DMATRIX m;
     if (axis == 0) D3DUtil_SetRotateXMatrix(m, angle);

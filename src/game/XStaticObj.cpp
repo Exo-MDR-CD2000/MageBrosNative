@@ -1,6 +1,8 @@
 #include "game/XStaticObj.h"
 #include "core/log.h"
 #include "game/JModel.h"
+#include "game/JObject3D.h"
+#include "game/XHero.h"
 #include "game/XBullet.h"
 #include "game/XGameContext.h"
 #include "game/XMath.h"
@@ -14,6 +16,7 @@ constexpr uint16_t kModelPillarSmall = 0x1db, kModelBarrel = 0x1f6;
 constexpr uint16_t kModelFenceStraight = 0x1d9, kModelFenceCorner = 0x1d8, kModelFenceT = 0x205;
 constexpr uint16_t kModelCannon = 0x18c, kModelCannonRBarrel = 0x1f4, kModelCannonRBase = 0x1f3;
 constexpr uint16_t kSoundCannon = 0x262;
+constexpr uint16_t kModelShop = 0x1ab, kTexShopSign = 0x1ac;
 constexpr float kHalfPi = 1.5708f, kPi = 3.14159f, kQuarterPi = 0.785398f;
 
 // XStaticObj_Pillar: 27 wide; 146.5 tall (165 in world 3, model 0x292). Over a hole (the floor
@@ -162,6 +165,56 @@ private:
     std::unique_ptr<JObject3DX> base_;
 };
 
+// XStaticObj_Shop ('S'): the shop building (model 0x1ab turned a quarter) with a 112 x 1000 x 120
+// box and its sign (texture 0x1ac, 84 x 36.96, upright and facing the camera, 56 out and 127.4
+// up). A hero standing within 15 of the doorstep (60 in front) opens the shop; it can open again
+// once the hero has stepped more than 25 away.
+class Shop : public XStaticObjBase {
+public:
+    Shop(const XGameContext* g, const D3DVECTOR& p) : XStaticObjBase(g, p), checkPos_(p) {
+        model_ = std::make_unique<JObject3DX>(kModelShop);
+        model_->SetYaw(kHalfPi);
+        model_->SetPos(pos_);
+        model_->UpdateWorldMatrix();
+        collideBox_ = std::make_unique<XCollideBox>(112.0f, 1000.0f, 120.0f);
+        collideBox_->SetPos(pos_);
+        float w = 84.0f;
+        logo_ = std::make_unique<JObject3DRect>(w, w * 0.44f);
+        logo_->SetTexture(kTexShopSign);
+        logo_->UsePerspective(true);
+        logo_->SetFilterState(JObject3DRect::FILTER_LINEAR);
+        logo_->Rotate(1, -kHalfPi);
+        logo_->Rotate(2, -kHalfPi);
+        logo_->Shift(D3DVECTOR(56.0f, 127.4f, 0.0f));
+        logo_->Shift(pos_);
+        logo_->UpdateWorldMatrix();
+        checkPos_.x += 60.0f;
+    }
+    void ProcessFrame() override {
+        XStaticObjBase::ProcessFrame();
+        XHero* a = game_->heroA;
+        if (!heroAFinished_) {
+            if (a && a->GetLiveState() == XHero::NORMAL && 15.0f > ApproxDistance(a->GetPos(), checkPos_)) {
+                // (XShop::Start: the shop screen comes with stage 6)
+                heroAFinished_ = true;
+            }
+        } else if (a && ApproxDistance(a->GetPos(), checkPos_) > 25.0f) {
+            heroAFinished_ = false;
+        }
+        // (and player 2: stage 5)
+    }
+    void Render(Device* d) override {
+        if (!game_->IsVisible(pos_)) return;
+        XStaticObjBase::Render(d);
+        logo_->Render(d);
+    }
+
+private:
+    std::unique_ptr<JObject3DRect> logo_;
+    D3DVECTOR checkPos_;
+    bool heroAFinished_ = false;
+};
+
 // XStaticObj_CollideBox: no model, just the box
 class CollideBox : public XStaticObjBase {
 public:
@@ -271,8 +324,9 @@ XStaticObjBase* XStaticObjList::CreateObject(const D3DVECTOR& pos, char code) {
             if (c) c->CreateExtraCollideBox();
             return c;
         }
+        case 'S': return Put(std::make_unique<Shop>(game_, pos));
         default:
-            // pots (M N), rocket launcher (R), shop (S), tree (T), plant (U): later chunks
+            // pots (M N), rocket launcher (R), tree (T), plant (U): stage 5
             return nullptr;
     }
 }

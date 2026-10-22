@@ -30,6 +30,7 @@ public:
     void Scale(float sx, float sy, float sz);
     void Scale(float s) { Scale(s, s, s); }
     void Rotate(int axis, float angle);  // 0 = X, 1 = Y, 2 = Z
+    void Shift(const D3DVECTOR& d);       // JObject3D::Shift: move the vertices
     // u from u0 to u1 left to right, v from v0 to v1 front (+Z) to back, each pulled in by `inset`
     void SetUV(float u0, float u1, float v0, float v1, float inset);
     void SetColor(int r, int g, int b, int a);
