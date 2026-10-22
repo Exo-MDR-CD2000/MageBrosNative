@@ -177,6 +177,20 @@ void XGameScene::ProcessFrame() {
     }
 }
 
+void XGameScene::SetDeviceState(Device* d) {
+    // a 45-degree lens (aspect 0.75, near 10, far 1000), one white directional light from
+    // (-1, -1, 0.5) at full strength (specular 1, unused: specular lighting stays off) and a
+    // dim 0x4c4c4c ambient. The game never changes them afterwards; only the view moves.
+    D3DMATRIX proj;
+    D3DUtil_SetProjectionMatrix(proj, 0.785398f, 0.75f, 10.0f, 1000.0f);
+    d->SetTransform(D3DTRANSFORMSTATE_PROJECTION, &proj);
+    D3DLIGHT7 light;
+    D3DUtil_InitLight(light, D3DLIGHT_DIRECTIONAL, 1.0f, 1.0f, -1.0f, -1.0f, 0.5f);
+    d->SetLight(0, &light);
+    d->LightEnable(0, 1);
+    d->SetRenderState(D3DRENDERSTATE_AMBIENT, 0xff4c4c4c);
+}
+
 void XGameScene::Render(Device* d) {
     camera_.DoSetTransform(d);
     // XGameObject::Render: the map, the heroes (with their shadows), the level's objects, then the

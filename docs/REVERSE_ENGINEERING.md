@@ -136,6 +136,19 @@ bilinear filtering and perspective-correct texturing. Its centre is kept on the 
 - `MakeValueCloseTo(cur, target, factor, minStep, maxStep)`: snaps to the target once closer
   than `minStep`; otherwise moves `factor` of the gap, clamped to [`minStep`, `maxStep`].
 
+### Light and lens (`XApplication::InitDeviceObjects`)
+
+Set once when the device starts and never changed by the game (the scenes only move the view):
+dithering and lighting on, z-buffer on, blending off; projection
+`D3DUtil_SetProjectionMatrix(45° (0.785398), aspect 0.75, near 10, far 1000)`; light 0 a
+directional light from `D3DUtil_InitLight(DIRECTIONAL, diffuse 1, specular 1, -1, -1, 0.5)`
+(white at full strength; specular lighting stays off), enabled; ambient `0x4c4c4c`. The strong
+light and dim ambient give the models their marked light and dark sides.
+
+Normals: Direct3D 7 transforms them by the inverse transpose of the world-view matrix and, with
+`NORMALIZENORMALS` off (its default), never renormalizes them. A model drawn at scale s gets
+normals 1/s long, so the coins (scale 0.35 and 0.6) saturate to bright gold from every side.
+
 ### Level start, camera and music
 
 - Hero start (`XGameObject::XGameObject`): one player at (100, 0, 60), the middle of row 1;

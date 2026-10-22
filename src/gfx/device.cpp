@@ -42,7 +42,10 @@ void main() {
     vec4 cp = uProj * (uView * wp);
     cp.z = 2.0 * cp.z - cp.w;          // D3D clip z [0,w] -> GL [-w,w]
     gl_Position = cp;
-    vec3 n = mat3(uWorld) * aNormal;   // D3D7 default: normals are not renormalized
+    // D3D7 transforms normals by the inverse transpose of the world (and view) matrix and, with
+    // NORMALIZENORMALS off (its default), never renormalizes them: an object drawn at scale s gets
+    // normals 1/s long, so small scaled models (the coins at 0.35 and 0.6) light up brighter.
+    vec3 n = transpose(inverse(mat3(uWorld))) * aNormal;
     vNormal = n;
     vec4 col = uLighting ? d3dLight(n) : (uHasVertexColor ? aColor : vec4(1.0));
     vColor = col; vColorFlat = col; vUV = aUV;

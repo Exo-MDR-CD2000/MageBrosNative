@@ -89,6 +89,12 @@ protected:
         d->SetRenderState(D3DRENDERSTATE_DITHERENABLE, 1);
         d->SetRenderState(D3DRENDERSTATE_LIGHTING, 1);
         d->SetRenderState(D3DRENDERSTATE_ZENABLE, 1);
+        return S_OK;
+    }
+
+    // The level and model viewers' own lens and light (a viewer's, not the game's: a wider depth
+    // range and a softer light to inspect models). The game view uses XGameScene::SetDeviceState.
+    static void SetViewerDeviceState(Device* d) {
         D3DMATRIX proj;
         D3DUtil_SetProjectionMatrix(proj, 0.7330383f, 0.75f, 1.f, 5000.f);
         d->SetTransform(D3DTRANSFORMSTATE_PROJECTION, &proj);
@@ -97,7 +103,6 @@ protected:
         d->SetLight(0, &light);
         d->LightEnable(0, 1);
         d->SetRenderState(D3DRENDERSTATE_AMBIENT, 0xff808080);
-        return S_OK;
     }
 
     // test automation (--auto): "place=x,z" drops the hero there, "level=w,l" loads a level
@@ -148,11 +153,13 @@ protected:
         d->Clear(0, nullptr, 3, 0x1a2a44, 1.f, 0);
         d->BeginScene();
         if (mode_ == Mode::Game) {
+            XGameScene::SetDeviceState(d);
             scene_.Render(d);
             scene_.RenderStatus(GetBackBuffer());
             d->EndScene();
             return S_OK;
         }
+        SetViewerDeviceState(d);
         if (levelMode_) {
             // XCamera::_UpdateViewMatrix with the horizontal angle at pi/2 (the camera side, +x)
             D3DMATRIX view;

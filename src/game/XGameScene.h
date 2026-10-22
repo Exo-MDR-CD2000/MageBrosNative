@@ -32,6 +32,8 @@ public:
     void TestPlaceHero(float x, float z);
     void ProcessFrame();  // one 10 ms tick
     void Render(Device* d);
+    // XApplication::InitDeviceObjects: the projection, light and ambient the game draws with
+    static void SetDeviceState(Device* d);
 
     const XLevelView& Level() const { return level_; }
     const XHero& Hero() const { return *hero_; }
