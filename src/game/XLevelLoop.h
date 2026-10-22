@@ -3,8 +3,8 @@
 // enemies (XEnemyList) and particles (XParticleList). See docs/REVERSE_ENGINEERING.md,
 // "The level loop" and "Enemies and static objects".
 //
-// Also the enemies' bullets (XBulletList) and the platforms (XPlatformList). Still to come: water,
-// candles, bosses and the remaining objects and enemies; only the starting wand's shot pattern is
+// Also the enemies' bullets (XBulletList), the platforms (XPlatformList) and the water (XWater).
+// Still to come: candles, bosses and the remaining objects and enemies; only the starting wand's shot pattern is
 // made (the others come with the shop).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
@@ -25,6 +25,7 @@ class XEnemyList;
 class XEnemyBase;
 class XBulletList;
 class XPlatformList;
+class XWater;
 class XShadowSimple;
 struct XGameContext;
 
@@ -62,6 +63,8 @@ public:
     void CreateEnemyExplode(const D3DVECTOR& pos, int size) override;
     void CreateLandEffect(const D3DVECTOR& pos) override;
     void CreateHeroWarpPhoton(bool heroA) override;
+    bool UseWater() const override { return useWater_; }
+    void CreateWaterWave(const D3DVECTOR& pos, bool large, bool sound) override;
     void ShowLostGoldMessage(bool heroA, int amount) override {
         if (lostGold_) lostGold_(heroA, amount);
     }
@@ -131,5 +134,7 @@ private:
     std::unique_ptr<XEnemyList> enemies_;
     std::unique_ptr<XBulletList> bullets_;
     std::unique_ptr<XPlatformList> platforms_;
+    std::unique_ptr<XWater> water_;
+    bool useWater_ = false;
     std::unique_ptr<JObject3DRect> fireSprite_;  // drawn at each live shot
 };

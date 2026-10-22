@@ -270,8 +270,15 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
     }
     UpdateWorldMatrix();
 
-    // falling out of the level (water levels use -58: comes with water)
-    if (pos_.y < -200.0f) {
+    // falling out of the level: below -200, or on a water level below -58 with a large wave
+    // (and its sound) on the surface
+    if (!world.UseWater() && pos_.y < -200.0f) {
+        localCounter_ = 0;
+        liveState_ = DYING;
+        return;
+    }
+    if (world.UseWater() && pos_.y < -58.0f) {
+        world.CreateWaterWave(D3DVECTOR(pos_.x, -38.0f, pos_.z), true, true);
         localCounter_ = 0;
         liveState_ = DYING;
         return;

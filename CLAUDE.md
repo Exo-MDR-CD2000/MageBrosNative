@@ -101,11 +101,12 @@ them.
   - `XEnemyList` (110);
   - `XBulletList` (50);
   - `XPlatformList` (35);
+  - `XWater`;
   - the torches, coins and hero shots.
 - **Tick order** (`XGameObject::ProcessFrame`):
   1. status display
   2. map (goal)
-  3. *water*
+  3. water
   4. particles
   5. hero shots
   6. enemy bullets
@@ -131,7 +132,7 @@ them.
   7. *candles*
   8. bullets
   9. enemies
-  10. *water*
+  10. water
   11. particles
   12. shots
 - `XLevelLoop::IsReconstructed` / `kDone` lists the level codes that have been built. Every
@@ -242,9 +243,9 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: end of stage 4 chunk 5c)
+## Where we are (last updated: end of stage 4 chunk 5d)
 
-Stage 4 (first playable: World 1, player 1) is in progress. Chunks 1–4d and 5a–5c are done.
+Stage 4 (first playable: World 1, player 1) is in progress. Chunks 1–4d and 5a–5d are done.
 World 1-1 onwards plays with:
 
 - movement, shots, magic, torches, coins, the goal and warp;
@@ -256,36 +257,35 @@ World 1-1 onwards plays with:
   straight balls in worlds 3–4, with smoke and the BulletExplode burst;
 - all seven platform kinds (`XPlatform.cpp`, codes `A`–`G`): the hero lands on them, rides
   them (push) and is lifted by elevators; enemies, shots and bullets stop on them; the hero's
-  shadow is drawn on them (`XShadowOnPlatform`).
+  shadow is drawn on them (`XShadowOnPlatform`);
+- water (`XWater.cpp`) in every level whose row flag is `W` (all of worlds 1, 3 and 4): the
+  hero dies with a splash below −58, shots, cannonballs and dropping platforms meet it with
+  waves (`XParticle_WaterWave`), and fish (`i`) swim and leap out of it.
 
-### Next: chunk 5d, water and fish (levels 1-3, 1-4, 1-7, 1-9)
+### Next: chunk 5e, the dragon (World 1's boss, code `6`, level 1-10)
 
 Original listings to read:
 
-- `XWater` (and `XMap::UseWater`, which says whether a level has water)
-- `XParticle_WaterWave`
-- `XEnemy_Fish`
+- `XBossBase` (the shared boss code: health, damage, `BossDefeated`, collision with the hero)
+- `XBoss_Dragon` (head) and `XBoss_DragonBody` (its body segments)
+- `XBullet_Flame` (its flames) and `XBulletList::CreateFlame`
+- `XGameObject` for where the boss is created, ticked (after the enemies) and drawn
 
 The work, in order:
 
-1. **`XWater`**: Init, ProcessFrame and Render. Its tick slot is right after the map
-   (`XLevelLoop::ProcessBeforeHero`, marked) and it is drawn after the enemies, before the
-   particles (`XLevelLoop::RenderObjects` / `RenderEffects`).
-2. **The water rules elsewhere**:
-   - the hero: water levels use −58 as the "fell out" height (`XHero.cpp` ~273, marked);
-   - the rolling cannonball: below −38 it makes a wave (above −43) and bursts (`XBullet.cpp`,
-     `CannonRBall::ProcessFrame`, marked);
-   - the Drop platform: below −38 it stops accelerating, with a wave as it crosses −38
-     (`XPlatform.cpp`, `Drop`, marked).
-3. **`XParticle_WaterWave`** in `XParticle` (`CreateWaterWave(pos, ?, ?)`: the bullet and the
-   platform pass 0 and 1).
-4. **`XEnemy_Fish`** (`i`) in `XEnemyList::CreateEnemy`, and add `i` to `kDone`.
+1. **`XBossBase`** and **`XBoss_Dragon` / `XBoss_DragonBody`**: create the boss for code `6`
+   (`XLevelLoop::Load`, `Kind::Boss`), tick it after the enemies and draw it. The dragon swims
+   in the water (`_ProcessFrame_Swim1/2`, `_CheckSplash`) and moves along the floor; level 1-10
+   is a water level.
+2. **`XBullet_Flame`** in `XBullet.cpp`.
+3. **The HUD**: the boss's health (`XGameScene::RenderStatus`, `bossHealth`).
+4. **The goal**: a boss level opens when the boss is defeated (`XLevelLoop.cpp` ~252, marked).
+5. Add `6` to `kDone`. Camera shake with the boss is still an open item (ROADMAP).
 
 Then:
 
 | Chunk | What it covers | Where to start |
 |---|---|---|
-| 5e | The dragon, World 1's boss (code `6`, level 1-10) | `XBossBase`, `XBoss_Dragon` and `XBoss_DragonBody`, flame bullets (`XBullet_Flame`), the boss health on the HUD (`XGameScene.cpp` `bossHealth`), and the goal opening when the boss is defeated (`XLevelLoop.cpp` ~238). |
 | 6 | Polish and the playable World 1 zip | Check by screenshot what is still unverified: the fence door breaking, the third-barrel heart, torch flames, coin sparks, warp rings and lights, the hit flash and the damage flash. Compare against the original. |
 
 After stage 4 come:
@@ -299,7 +299,6 @@ After stage 4 come:
 - Death restarts the level, and finishing the last level of a world goes to the next world.
   Both wait for the level select in stage 6.
 - Boss levels never open the goal (5e).
-- No water (5d).
-- Fish, the shop and the other unbuilt objects show as marker cubes.
+- The dragon, the shop and the other unbuilt objects show as marker cubes.
 - No player 2 (stage 5).
 - Only the starting wand's shot pattern exists. The others come with the shop.

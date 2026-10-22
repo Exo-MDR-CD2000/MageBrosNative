@@ -22,6 +22,12 @@ float MakeValueCloseTo_Constant(float cur, float target, float step);
 float MakeAngleCloseTo_Constant(float cur, float target, float step);
 // atan2(a, b), normalised: the yaw of a stick direction is FindYaw(y, x).
 float FindYaw(float a, float b);
+// Interpolate: a + (b - a) * t, and D3DVectorInterpolate on each coordinate.
+float Interpolate(float a, float b, float t);
+D3DVECTOR D3DVectorInterpolate(const D3DVECTOR& a, const D3DVECTOR& b, float t);
+// FindPitch: atan(dy / distance in XZ) from `from` to `to`; straight up or down (+-90 degrees)
+// when they share X and Z.
+float FindPitch(const D3DVECTOR& from, const D3DVECTOR& to);
 // Manhattan distance refined by two Newton steps of the square root (not exact, on purpose).
 float ApproxDistance(const D3DVECTOR& a, const D3DVECTOR& b);
 // JStandard's random helpers, on the C library's rand() like the original:

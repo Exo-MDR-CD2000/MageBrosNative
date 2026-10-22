@@ -39,6 +39,12 @@ public:
     int MusicTrack() const;
     // XMap::GetFloorLevel at a world position (ConvertPosXToMapX / Z with the floor flag set).
     int FloorAt(float x, float z) const;
+    // XMap::UseWater: a row's flag is 'W' (XMap::_ConstructWallObjects)
+    bool UseWater() const {
+        for (char f : grid_.rowFlags)
+            if (f == 'W') return true;
+        return false;
+    }
     // XMap's collision with this level.
     const MapCollision& Collision() const { return collision_; }
     // A short description for the window title.

@@ -83,7 +83,12 @@ public:
             liveState_ = NON;
         }
         if (pos_.y < -200.0f) liveState_ = NON;
-        // (on a water level a ball sinking below -38 makes a wave and bursts: comes with the water)
+        // on a water level, below -38: a wave (unless already below -43) and a burst
+        if (game_->useWater && pos_.y < -38.0f) {
+            if (pos_.y > -43.0f) game_->particles->CreateWaterWave(D3DVECTOR(pos_.x, -38.0f, pos_.z), false, true);
+            game_->particles->CreateBulletExplode(prev);
+            liveState_ = NON;
+        }
         UpdateWorldMatrix();
     }
 

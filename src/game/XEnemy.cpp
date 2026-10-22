@@ -501,6 +501,120 @@ public:
 private:
     std::unique_ptr<JObject3DX> fanBase_;
 };
+
+// -------------------------------------------------------------------------------- XEnemy_Fish
+// 'i': a fish swimming round a circle of radius 80 about (100, -62, cell z) under the water, a
+// half turn at a time (1 degree a tick, the way picked at random), and after a few half turns
+// (2 to 5 for type A, 1 to 2 for type B) jumping across the circle from one side to the other
+// (x 20 to 180, 92 high at the top), with a wave each time it crosses the surface. Type A
+// (model 0x203) lives in worlds 1-2, type B (0x2af) in 3-4. It can't be hurt or stopped; its
+// 200 x 120 box stays at the centre, so the mesh decides what it touches.
+class Fish : public XEnemyBase {
+public:
+    enum MoveState { NON = 0, SWIM1 = 1, SWIM2 = 2, JUMP1 = 3, JUMP2 = 4 };
+    Fish(const XGameContext* g, int oid, const D3DVECTOR& p, bool typeA) : XEnemyBase(g, oid, p, SMALL), typeA_(typeA) {
+        static const uint16_t kFramesA[5] = {0x203, 0x200, 0x203, 0x201, 0x202};
+        static const uint16_t kFramesB[5] = {0x2af, 0x2b0, 0x2af, 0x2b1, 0x2b2};
+        const uint16_t* f = typeA_ ? kFramesA : kFramesB;
+        model_ = std::make_unique<JObject3DX>(f[0]);
+        for (int i = 1; i < 5; i++) model_->AppendFrame(f[i]);
+        model_->SetCollisionModel(0x1ff);
+        startPos_.x = 100.0f;
+        startPos_.y = -62.0f;
+        collideBox_ = std::make_unique<XCollideBox>(200.0f, 120.0f);
+        collideBox_->SetPos(startPos_);
+        posAngle_ = 0;
+        pos_ = GetPosAtAngle(posAngle_);
+        UpdateWorldMatrix();
+        clockwise_ = Random(2) == 0;
+        jumpReadyTimer_ = typeA_ ? (int)RandomI(2, 5, true) : (int)RandomI(1, 2, true);
+        damagable_ = false;
+        chasable_ = false;
+        collidable_ = false;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = SWIM1;
+    }
+    void ProcessFrame() override {
+        if (!game_->IsUpdatable(pos_)) return;
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        // one state a tick (a new state starts on the next)
+        if (moveState_ == SWIM1) Swim(0.0f, kPi, -kPi, SWIM2, JUMP2);
+        else if (moveState_ == SWIM2) Swim(kPi, 2.0f * kPi, 0.0f, SWIM1, JUMP1);
+        else if (moveState_ == JUMP1 || moveState_ == JUMP2) Jump();
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);
+    }
+
+private:
+    static constexpr float kPi = 3.14159f;
+
+    // XEnemy_Fish::GetPosAtAngle: on the circle, angle 0 at the back (x 20), turning towards +Z
+    D3DVECTOR GetPosAtAngle(float a) const {
+        a -= 1.5708f;
+        return D3DVECTOR(std::sin(a) * 80.0f + startPos_.x, startPos_.y, std::cos(a) * 80.0f + startPos_.z);
+    }
+    // _ProcessFrame_Swim1 (0 to +-180 degrees) and _ProcessFrame_Swim2 (180 to 360 or 0): half a
+    // turn, then the next half turn or, when the countdown runs out, a jump
+    void Swim(float from, float clockwiseEnd, float otherEnd, MoveState next, MoveState jump) {
+        if (localCounter_ == 1) posAngle_ = from;
+        if (clockwise_) {
+            posAngle_ += 0.0174533f;
+            if (posAngle_ >= clockwiseEnd) posAngle_ = clockwiseEnd;
+        } else {
+            posAngle_ -= 0.0174533f;
+            if (otherEnd >= posAngle_) posAngle_ = otherEnd;
+        }
+        const D3DVECTOR prev = pos_;
+        pos_ = GetPosAtAngle(posAngle_);
+        yaw_ = MakeAngleCloseTo(yaw_, FindDirectionXZ(prev, pos_), 0.1f, 0.0f, FLT_MAX);
+        pitch_ = MakeAngleCloseTo(pitch_, 0.0f, 0.1f, 0.0f, FLT_MAX);
+        walkCounter_++;
+        frame_ = (int)((walkCounter_ / 12) % 4);
+        if (posAngle_ >= clockwiseEnd || otherEnd >= posAngle_) {
+            localCounter_ = 0;
+            moveState_ = --jumpReadyTimer_ <= 0 ? jump : next;
+        }
+    }
+    // _ProcessFrame_Jump: JUMP1 from x 20 to 180, JUMP2 back, 0.008 of the way a tick, arcing 92 up
+    void Jump() {
+        if (localCounter_ == 1) {
+            jumpTravel_ = 0;
+            D3DVECTOR back(startPos_.x - 80.0f, startPos_.y, startPos_.z), front(startPos_.x + 80.0f, startPos_.y, startPos_.z);
+            jumpStart_ = moveState_ == JUMP1 ? back : front;
+            jumpEnd_ = moveState_ == JUMP1 ? front : back;
+        }
+        jumpTravel_ += 0.008f;
+        if (jumpTravel_ >= 1.0f) jumpTravel_ = 1.0f;
+        const D3DVECTOR prev = pos_;
+        pos_ = D3DVectorInterpolate(jumpStart_, jumpEnd_, jumpTravel_);
+        pos_.y += std::sin(kPi * jumpTravel_) * 92.0f;
+        yaw_ = MakeAngleCloseTo(yaw_, FindDirectionXZ(prev, pos_), 0.1f, 0.0f, FLT_MAX);
+        pitch_ = MakeAngleCloseTo(pitch_, -FindPitch(prev, pos_), 0.1f, 0.0f, FLT_MAX);
+        if (jumpTravel_ > 0.3f && 0.7f > jumpTravel_) {
+            frame_ = 4;  // mid-air
+        } else {
+            walkCounter_++;
+            frame_ = (int)((walkCounter_ / 12) % 4);
+        }
+        // a wave where it crosses the surface
+        if (game_->useWater && (prev.y < -38.0f) != (pos_.y < -38.0f))
+            game_->particles->CreateWaterWave(D3DVECTOR(pos_.x, -38.0f, pos_.z), false, true);
+        if (jumpTravel_ >= 1.0f) {
+            clockwise_ = Random(2) == 0;
+            jumpReadyTimer_ = typeA_ ? (int)RandomI(2, 5, true) : (int)RandomI(1, 2, true);
+            localCounter_ = 0;
+            moveState_ = moveState_ == JUMP1 ? SWIM2 : SWIM1;
+        }
+    }
+
+    MoveState moveState_ = NON;
+    bool typeA_, clockwise_ = true;
+    float posAngle_ = 0, jumpTravel_ = 0;
+    unsigned walkCounter_ = 0;
+    int jumpReadyTimer_ = 0;
+    D3DVECTOR jumpStart_{0, 0, 0}, jumpEnd_{0, 0, 0};
+};
 }  // namespace
 
 // ---------------------------------------------------------------------------------- XGameContext
@@ -722,7 +836,8 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case 'w': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, true); break;
         case 'o': e = std::make_unique<Needle>(game_, lastOID_, pos, false); break;
         case 'p': e = std::make_unique<Needle>(game_, lastOID_, pos, true); break;
-        default: break;  // the other enemies: chunk 5b on
+        case 'i': e = std::make_unique<Fish>(game_, lastOID_, pos, game_->world < 2); break;
+        default: break;  // the other enemies: stage 5
     }
     slots_[i] = std::move(e);
     lastOID_++;

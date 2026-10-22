@@ -3,6 +3,7 @@
 #include "game/JObject3D.h"
 #include "game/XGameContext.h"
 #include "game/XHero.h"
+#include "game/XParticle.h"
 #include "game/XStaticObj.h"
 #include <algorithm>
 
@@ -52,9 +53,10 @@ public:
     }
     void ProcessFrame() override {
         localCounter_++;
+        // one state a tick (a new state starts on the next)
         if (moveState_ == WAIT) Wait();
-        if (moveState_ == MOVEUP) MoveUp();
-        if (moveState_ == MOVEDOWN) MoveDown();
+        else if (moveState_ == MOVEUP) MoveUp();
+        else if (moveState_ == MOVEDOWN) MoveDown();
         UpdateWorldMatrix();
         heroAAbove_ = heroBAbove_ = false;
     }
@@ -177,8 +179,8 @@ private:
 };
 
 // XPlatform_Drop ('F'): 20 ticks after a hero first stands on it, it falls (0.08 a tick, at most
-// 4) carrying the heroes down, and stops below -500. (Water levels hold it at -38 with a wave:
-// comes with the water.)
+// 4) carrying the heroes down, and stops below -500. On a water level it stops speeding up below
+// -38 and makes a wave as it crosses -38.
 class Drop : public XPlatformBase {
 public:
     enum MoveState { NON = 0, WAIT = 1, DROP = 2 };
@@ -194,11 +196,16 @@ public:
                 moveState_ = DROP;
             }
         } else if (moveState_ == DROP && localCounter_ > 20) {
-            verticalSpeed_ -= 0.08f;
-            if (verticalSpeed_ < -4.0f) verticalSpeed_ = -4.0f;
+            if (!(game_->useWater && pos_.y < -38.0f)) {
+                verticalSpeed_ -= 0.08f;
+                if (verticalSpeed_ < -4.0f) verticalSpeed_ = -4.0f;
+            }
+            const D3DVECTOR prev = pos_;
             SetPosY(pos_.y + verticalSpeed_);
             PushHeroY(verticalSpeed_);
             UpdateWorldMatrix();
+            if (game_->useWater && (prev.y < -38.0f) != (pos_.y < -38.0f))
+                game_->particles->CreateWaterWave(D3DVECTOR(pos_.x, -38.0f, pos_.z), false, true);
             if (pos_.y < -500.0f) {
                 localCounter_ = 0;
                 moveState_ = NON;

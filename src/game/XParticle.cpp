@@ -15,6 +15,7 @@ constexpr uint16_t kTexTorchFire1 = 0x187, kTexTorchFire2 = 0x188;
 constexpr uint16_t kTexWarpRing = 0x1a5, kTexCoin = 0x294, kTexLand = 0x295, kTexShadow = 0xa3;
 constexpr uint16_t kTexBulletExplode = 0x192;
 constexpr uint16_t kSoundBulletExplode = 0x279;
+constexpr uint16_t kTexWaterWave = 0x18f, kSoundWaterWave = 0x278;
 constexpr float kDegree = 0.0174533f;
 
 // ---------------------------------------------------------------------------------- the kinds
@@ -393,6 +394,14 @@ void XParticleList::CreateTorchFire2(const D3DVECTOR& pos) { Add(std::make_uniqu
 void XParticleList::CreateWarpRing(const D3DVECTOR& pos) {
     // 15 units across, growing by 3 (x 0.985 a tick); fades (x 0.975) after 50 ticks
     Add(std::make_unique<FlatRing>(this, pos, kTexWarpRing, 15.0f, 3.0f, 0.985f, 50, 0.975f));
+}
+void XParticleList::CreateWaterWave(const D3DVECTOR& pos, bool large, bool sound) {
+    // XParticle_WaterWave: 24 across (36 large) growing by 3 (3.5 large) x 0.95 a tick, fading x 0.97
+    // a tick from the start; sound 0x278 when asked and the particle is made
+    int i = GetNullIndex();
+    if (i < 0) return;
+    slots_[i] = std::make_unique<FlatRing>(this, pos, kTexWaterWave, large ? 36.0f : 24.0f, large ? 3.5f : 3.0f, 0.95f, 0, 0.97f);
+    if (sound) PlaySound(kSoundWaterWave, pos.z);
 }
 void XParticleList::CreateLandEffect(const D3DVECTOR& pos) {
     // 30 units across, growing by 3.5 (x 0.92 a tick); fades (x 0.92) after 10 ticks

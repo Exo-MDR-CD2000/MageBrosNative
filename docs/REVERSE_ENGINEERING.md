@@ -516,7 +516,8 @@ the push of each hero marked above (and, for Y, of the hero standing on that her
 | Drop `F` | the same | Waits for a hero; 20 ticks later falls (0.08 a tick, at most 4), carrying the heroes; stops below −500. On a water level it stops accelerating below −38 and makes a wave as it crosses −38. |
 | Stay `G` | the same | Never moves. |
 
-Every platform clears both "above" flags at the end of its tick, so they only carry what the
+The elevator, like every state machine here, runs one state a tick (`else if`): a new state
+starts on the next tick. Every platform clears both "above" flags at the end of its tick, so they only carry what the
 heroes reported in this tick (the heroes run before the platforms). Over a hole the
 underground faces of `_CreateUnderground` (0 to −200 at every cell edge) hide part of a
 platform at −25 from the camera, in the original as here.
@@ -534,6 +535,44 @@ For a hero NORMAL or DYING whose y is not below the box top, the hero's 35-unit 
 clipped to the platform's 40 × 40 top (box centre ± 20); the visible part is drawn 0.2 above
 the box top, with the matching share of the texture (u from the left, v flipped) and scaled to
 it.
+
+## Water and fish (`XWater`, `XEnemy_Fish`)
+
+**Which levels have water** (`XMap::_ConstructWallObjects`, `XMap::UseWater`): any level whose
+row flag (the first character of a line) is `W`. Row 0 (the start row) of every level in worlds
+1, 3 and 4 carries it, and no World 2 level does, so all of worlds 1, 3 and 4 have water in
+their pits. (The row flag `C` makes a candle.)
+
+**`XWater`**: two `JObject3D_Rect` sheets over the whole map (5 × rows cells), scaled to it and
+centred on it, with one texture repeat per cell. `water1` is drawn at y −38, blended
+(TRANSPARENT, alpha 0.4), texture 0x18e (World 3: 0x28f); `water2` at −39, added (PARTICLE,
+alpha 0.6), texture 0x1a6 (World 3: 0x290). Both use perspective and linear filtering. Each tick
+the texture offsets drift: water1 by (0.0006, 0.0014), water2 by (0.0003, 0.0007), wrapping at
+1. `XGameObject::InitLevel` calls `Deinit`, then `Init` on a water level. It runs right after
+the map and is drawn after the enemies, before the particles: water2 first, then water1.
+
+**On a water level**:
+
+- the hero dies below −58 instead of −200, with a large wave (and its sound) at (x, −38, z);
+- a hero's shot below −38 ends, with a small wave if it is above −43;
+- a rolling cannonball below −38 bursts, with a small wave if above −43;
+- a dropping platform stops speeding up below −38 and makes a small wave as it crosses −38.
+
+**Fish** (`i`): type A (models 0x203, frames 0x200 0x203 0x201, jump frame 0x202) in worlds 1–2
+(`currentWorld < 2`), type B (0x2af, 0x2b0 0x2af 0x2b1, jump 0x2b2) in worlds 3–4; collision
+mesh 0x1ff. It is centred at (100, −62, cell z) with a 200 × 120 box there that never moves (its
+position is written directly), so the mesh decides what it touches. It can't be hurt, chased
+or pushed. `GetPosAtAngle(a)`: (100 + 80 sin(a − 90°), −62, z + 80 cos(a − 90°)), so angle 0 is
+at the back (x 20). One state a tick (`else if`):
+
+| State | What it does |
+|---|---|
+| SWIM1 | From angle 0, 1° a tick clockwise to 180° or anticlockwise to −180°; yaw eases (0.1) along the move, pitch to 0, frame (counter / 12) % 4. At the end the jump countdown drops by one: at 0 → JUMP2, else SWIM2. |
+| SWIM2 | The same from 180° to 360° or 0°; at the end → JUMP1 or SWIM1. |
+| JUMP1 / JUMP2 | From x 20 to 180 (JUMP1) or back, 0.008 of the way a tick, y + 92 sin(180° × travel); yaw and pitch (−`FindPitch`) ease along the move; frame 4 while travel is between 0.3 and 0.7. A small wave where it crosses −38. At the end: a new random direction, a new countdown, then SWIM2 after JUMP1, SWIM1 after JUMP2. |
+
+The countdown (half turns before a jump) is 2–5 for type A and 1–2 for type B, picked anew
+after each jump; the direction is random (`Random(2) == 0` is clockwise).
 
 ## Particles and shadows (`XParticleList`, `XShadow`, `JObject3D`)
 
@@ -575,9 +614,9 @@ shots.
 | EnemyExplode | the dying hero (large), enemies, barrels, bosses | particle 180 (large) or 100, 0x190, 4 × 4 frames, 6 ticks each | 96 ticks |
 | Smoke | bullets and rockets | particle 10, 0x198, growing by × (1 + 0.12 × 0.9ⁿ) | alpha −0.015 |
 | BulletExplode | a bursting bullet, where it was before its move; plays 0x279 when made | particle 60, 0x192, 4 × 4 frames, 4 ticks each | 64 ticks |
+| WaterWave | things meeting the water, at −38 | flat rect, scale 24 (36 large) growing by 3 (3.5 large) × 0.95 a tick, 0x18f; sound 0x278 when asked | alpha × 0.97 every tick; gone at ≤ 0.03 |
 
-Still to come with their owners: CandleFire1/2, LampSteam, HammerEffect, WaterWave,
-WizardFireFlash.
+Still to come with their owners: CandleFire1/2, LampSteam, HammerEffect, WizardFireFlash.
 
 **`XShadow(size)`** (the hero's is 35) draws texture 0xa3 under a position as up to four
 `JObject3D_Shadow` rects. Its square is split at the cell edge in X when the floors on either

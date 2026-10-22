@@ -3,8 +3,8 @@
 // Reconstructed so far: input, walking and turning, gravity, jumping, landing, the map
 // collision, falling out of the level, the dying sequence, the animation frames and the wand,
 // shots and magic points, damage and knockback, the warp, standing on static objects (the torch
-// posts) and riding platforms. Still to come: the other hero, candles and water (stage 4 chunk
-// 5d, stage 5).
+// posts), riding platforms and sinking in water. Still to come: the other hero and candles
+// (stage 5).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -61,6 +61,9 @@ public:
     // XParticleList::CreateLandEffect / CreateHeroWarpPhoton
     virtual void CreateLandEffect(const D3DVECTOR& pos) {}
     virtual void CreateHeroWarpPhoton(bool heroA) {}
+    // XMap::UseWater / XParticleList::CreateWaterWave
+    virtual bool UseWater() const { return false; }
+    virtual void CreateWaterWave(const D3DVECTOR& pos, bool large, bool sound) {}
 };
 
 // XHeroBase::XHeroInput: what _UpdateInput fills in each tick.

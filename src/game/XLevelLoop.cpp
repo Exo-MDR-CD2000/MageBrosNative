@@ -9,6 +9,7 @@
 #include "game/XParticle.h"
 #include "game/XPlatform.h"
 #include "game/XStaticObj.h"
+#include "game/XWater.h"
 #include "gfx/device.h"
 #include <cmath>
 #include <cstdlib>
@@ -32,6 +33,7 @@ XLevelLoop::XLevelLoop()
     enemies_ = std::make_unique<XEnemyList>(game_.get());
     bullets_ = std::make_unique<XBulletList>(game_.get());
     platforms_ = std::make_unique<XPlatformList>(game_.get());
+    water_ = std::make_unique<XWater>();
     // XHeroFire's look: an 18-unit particle (0.8 of that for the small shots of some wands)
     fireSprite_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(18.0f, 18.0f));
     fireSprite_->SetTexture(kTextureFireA);
@@ -61,6 +63,10 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
     platforms_->Empty();
     statics_->Empty();
     particles_->Empty();
+    // XWater::Deinit, then XWater::Init on a water level
+    water_->Deinit();
+    useWater_ = level.UseWater();
+    if (useWater_) water_->Init(LevelGrid::kWidth, level.Depth(), level.World());
 
     XGameContext& g = *game_;
     g.level = &level;
@@ -77,6 +83,7 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
     g.barrelCounter = &barrelCounter_;  // (kept for the whole game, as XGameObject's)
     g.onePlayer = onePlayer;
     g.world = level.World();
+    g.useWater = useWater_;
 
     // XMap::_ConstructObjects: each cell in turn, at the centre of the cell at its floor's height
     auto isFence = [&](int x, int z) {
@@ -149,7 +156,7 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
 }
 
 bool XLevelLoop::IsReconstructed(char code) {
-    static const char kDone[] = "#$*+/OPQa15opb3d0jmvwHIJKABCDEFG";
+    static const char kDone[] = "#$*+/OPQa15opb3d0jmvwHIJKABCDEFGi";
     for (const char* c = kDone; *c; c++)
         if (*c == code) return true;
     return false;
@@ -185,6 +192,9 @@ void XLevelLoop::CreateFireAt(const XHero& hero, float angle) {
 void XLevelLoop::CreateEnemyExplode(const D3DVECTOR& pos, int size) { particles_->CreateEnemyExplode(pos, size != 0); }
 void XLevelLoop::CreateLandEffect(const D3DVECTOR& pos) { particles_->CreateLandEffect(pos); }
 void XLevelLoop::CreateHeroWarpPhoton(bool heroA) { particles_->CreateHeroWarpPhoton(heroA); }
+void XLevelLoop::CreateWaterWave(const D3DVECTOR& pos, bool large, bool sound) {
+    particles_->CreateWaterWave(pos, large, sound);
+}
 
 bool XLevelLoop::TorchCollisionCheckFire(const Fire& f) {
     for (Torch& t : torches_) {
@@ -224,6 +234,10 @@ void XLevelLoop::ProcessFire(Fire& f) {
         f.live = false;
     } else if (f.pos.y < -200.0f) {
         f.live = false;
+    } else if (useWater_ && f.pos.y < -38.0f) {
+        // into the water: a small wave, unless it was already deeper than -43
+        if (f.pos.y > -43.0f) particles_->CreateWaterWave(D3DVECTOR(f.pos.x, -38.0f, f.pos.z), false, true);
+        f.live = false;
     }
 }
 
@@ -241,7 +255,7 @@ void XLevelLoop::ProcessBeforeHero(float cameraZ) {
         if (mapCounter_ % 60 == 0) particles_->CreateWarpRing(D3DVECTOR(goalPos_.x, goalPos_.y + 0.5f, goalPos_.z));
         if (mapCounter_ % 120 == 0) sound_(kSoundGoal, goalPos_.z);
     }
-    // (XWater::ProcessFrame comes here, with the water levels)
+    water_->ProcessFrame();  // XWater::ProcessFrame
     particles_->ProcessFrame();
     for (Fire& f : fires_)
         if (f.live) ProcessFire(f);
@@ -386,6 +400,7 @@ void XLevelLoop::RenderObjects(Device* d) {
     statics_->Render(d);
     bullets_->Render(d);
     enemies_->Render(d);
+    water_->Render(d);  // XWater::Render, before the particles
 }
 
 void XLevelLoop::RenderEffects(Device* d, const D3DMATRIX& view) {

@@ -33,6 +33,7 @@ struct XGameContext {
     float cameraZ = 0;      // XCamera's look-at Z
     bool onePlayer = true;  // XApplication's one-player flag
     int world = 0;          // XLevelStatus: 0-based world
+    bool useWater = false;  // XMap::UseWater
 
     // XCamera::IsVisible / IsUpdatable: within 400 / 480 units of the look-at point along Z
     bool IsVisible(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < 400.0f; }

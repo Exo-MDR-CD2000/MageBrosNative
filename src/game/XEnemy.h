@@ -14,7 +14,7 @@
 //
 // Codes so far: 'a' / '1' / '5' slime (small / king / queen), 'b' / '3' bee, 'd' / '0'
 // wallaby, 'j' barrel, 'm' needle fan, 'o' / 'p' needle (fixed / moving), 'v' / 'w' fence
-// door. The fish ('i') comes with the water (chunk 5d).
+// door, 'i' fish.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once

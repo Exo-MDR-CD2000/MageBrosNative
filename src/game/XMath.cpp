@@ -48,6 +48,20 @@ float MakeAngleCloseTo_Constant(float cur, float target, float step) {
 
 float FindYaw(float a, float b) { return NormaliseAngle(std::atan2(a, b)); }
 
+float Interpolate(float a, float b, float t) { return (b - a) * t + a; }
+
+D3DVECTOR D3DVectorInterpolate(const D3DVECTOR& a, const D3DVECTOR& b, float t) {
+    return D3DVECTOR(Interpolate(a.x, b.x, t), Interpolate(a.y, b.y, t), Interpolate(a.z, b.z, t));
+}
+
+float FindPitch(const D3DVECTOR& from, const D3DVECTOR& to) {
+    float dx = to.x - from.x, dz = to.z - from.z;
+    float d = std::sqrt(dx * dx + dz * dz);  // ExactDistanceXZ
+    float dy = to.y - from.y;
+    if (d == 0.0f) return dy >= 0.0f ? 1.5708f : -1.5708f;
+    return std::atan(dy / d);
+}
+
 float ApproxDistance(const D3DVECTOR& a, const D3DVECTOR& b) {
     float dx = std::fabs(b.x - a.x), dy = std::fabs(b.y - a.y), dz = std::fabs(b.z - a.z);
     float d = dx + dy + dz;

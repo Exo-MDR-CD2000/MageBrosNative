@@ -132,8 +132,7 @@ public:
                 localCounter_ = 0;
                 moveState_ = FIRE;
             }
-        }
-        if (moveState_ == FIRE) {
+        } else if (moveState_ == FIRE) {
             if (localCounter_ == 60) {
                 D3DVECTOR at(pos_.x + std::sin(yaw_) * 5.0f, pos_.y + 40.0f, pos_.z + std::cos(yaw_) * 5.0f);
                 game_->bullets->CreateCannonRBall(at, yaw_);
