@@ -281,6 +281,9 @@ pieces instead of the wooden gates, which made 1-2 unfinishable; now they stand 
 in the original. The shop (`S`, in 1-3, 1-6 and 1-9) is built; its screen waits for stage 6.
 The game now uses the original's light and lens and D3D7 normal scaling (0.2.2), and the wall
 candles (row flag `C`, `XCandle.cpp`) stand on the back wall with their flames.
+The game view now clears to black, as `XApplication::Render` does (0.2.4): the pits show the
+cleared screen through the water, and the port's navy had made them look bright. The viewers
+keep their navy.
 
 ### Next: stage 5, the whole game (worlds 2 to 4, every object, two-player co-op)
 

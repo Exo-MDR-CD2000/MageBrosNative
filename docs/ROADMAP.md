@@ -42,6 +42,7 @@ Stage 5 is planned in [CLAUDE.md](../CLAUDE.md), "Where we are".
 | Two-player camera midpoint, camera shake | Stage 5: player 2, and the hammer and stalactite enemies (the only callers of `XCamera::StartShaking`) |
 | Hero-on-hero collision and carrying | Stage 5 (player 2) |
 | Static objects' collision with the hero | Done (5a): `XStaticObjList` and `XCollideBox` as the original |
+| Colour under the pit water | Settled (0.2.4): black, the original's clear colour; nothing is drawn under the water sheets |
 | Sound panning | Done (4c): pan, fade and per-sound copies as `JSound::PlayStereo` |
 | Death and the last level of a world | Restart / next world as stand-ins until level select exists (stage 6) |
 
