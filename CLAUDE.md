@@ -301,10 +301,13 @@ hammer `k` (`XEnemy.cpp`), camera shake (`XCamera::StartShaking`, reached throug
 `XGameContext::startShaking`; the camera now always runs its tick and shake and only follows a
 hero that is alive), `XParticleList::CreateHammerEffect` and `AngleDifference` (`XMath`). Chunk
 5 is done (0.2.9): the fans `q` `r` `s` (`XEnemy.cpp`), which push the hero through
-`XHero::IncreasePushX/Z`. Chunk 6 (turtle) is next; wait for the owner to start it.
+`XHero::IncreasePushX/Z`. Chunk 6 is done (0.2.10): the turtle `e`
+(`XEnemy.cpp`; it overrides `Damage` to hide in its shell). Levels 2-1 to 2-9 now have nothing
+left unbuilt. Chunk 7 (the genie) is next; it may need splitting: check its size with the
+owner first. Wait for the owner to start it.
 The pieces:
 
-- the remaining enemies (`e` turtle, `f` kiwi, `g` ghost, `t` floor fan, `u`
+- the remaining enemies (`f` kiwi, `g` ghost, `t` floor fan, `u`
   stalactite, `z` jump needle) and the rocket launcher's rocket;
 - the remaining static objects (`M` `N` pots, `R` rocket launcher; the shop's screen waits for
   stage 6);

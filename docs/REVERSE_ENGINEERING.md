@@ -481,6 +481,16 @@ and then straight at a hero within 120; the yaw eases to it at 0.05 (king 0.03).
 A walk that moved it less than 15 sets turnAround and jumps; otherwise `Random(2)` picks JUMP
 or WAIT.
 
+**Turtle** (`e`): frames 0x1b0 0x1b1 0x1b0 0x1b2 0x1b3 with the model scaled 0.9, collision
+0x1b6, box 30.6 × 24.3, shadow 34, SMALL, health 99999, chasable. `MOVESTATE` NON / WALK / WAIT
+/ SHIELD, starting in WALK. WALK repeats 150-tick legs: on the first tick it notes its position
+and picks a target (`_GenerateBehindPos` after a stuck leg, else `_GenerateRandomPos`); every
+tick walkCounter + 1, frame (walkCounter/10 + 1) mod 4, the direction turns at most 0.8°
+(0.0139626) towards the closer hero if within 120 and not turning round, else towards the
+target; yaw = direction; it moves 0.4. At 150 turnAround = (moved less than 10) and the counter
+restarts. `_Damage` is overridden: no sound, flash or health, just counter 0 and SHIELD. SHIELD:
+frame 4, after 600 → WAIT: frame 0, after 50 → WALK with walkCounter 0.
+
 **Fan** (`q` `r` `s`: `dir` 4, 0, 2 eighths of a turn, so they blow along −Z, +Z and +X): model
 0x1ca, collision 0x1c9, box 70 × 85 and shadow 32 at the start; the fan itself sits 10.8 along
 the yaw (dir · 45°) and 44.5 up. Base model 0x1cb at the start with the same yaw, plus a static

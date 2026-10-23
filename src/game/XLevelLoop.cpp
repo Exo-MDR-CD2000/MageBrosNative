@@ -182,7 +182,7 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
 int XLevelLoop::BossHealth() const { return boss_ ? boss_->GetHealthMain() : 0; }
 
 bool XLevelLoop::IsReconstructed(char code) {
-    static const char kDone[] = "#$*+/OPQSa15opb3d0jmvwHIJKABCDEFGi6TUh2xyc4kqrs";
+    static const char kDone[] = "#$*+/OPQSa15opb3d0jmvwHIJKABCDEFGi6TUh2xyc4kqrse";
     for (const char* c = kDone; *c; c++)
         if (*c == code) return true;
     return false;

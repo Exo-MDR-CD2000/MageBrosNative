@@ -729,7 +729,89 @@ private:
     std::unique_ptr<JObject3DX> fanBase_;
 };
 
-// --------------------------------------------------------------------------------- XEnemy_Fan
+// ------------------------------------------------------------------------------ XEnemy_Turtle
+// 'e': a turtle (frames 0x1b0 0x1b1 0x1b0 0x1b2 0x1b3 at 0.9 scale, collision 0x1b6, a 30.6 x 24.3
+// box, shadow 34, 99999 health). It walks for ever at 0.4 a tick, turning at most 0.8 degrees a
+// tick towards a random point (or behind itself after a stuck 150-tick leg), or towards a hero
+// within 120. A shot never hurts it: it hides in its shell (frame 4) for 600 ticks, starting
+// over with each hit, then waits 50 and walks on.
+class Turtle : public XEnemyBase {
+public:
+    Turtle(const XGameContext* g, int oid, const D3DVECTOR& p) : XEnemyBase(g, oid, p, SMALL) {
+        static const uint16_t kFrames[5] = {0x1b0, 0x1b1, 0x1b0, 0x1b2, 0x1b3};
+        model_ = std::make_unique<JObject3DX>(kFrames[0]);
+        for (int i = 1; i < 5; i++) model_->AppendFrame(kFrames[i]);
+        model_->SetCollisionModel(0x1b6);
+        shadow_ = std::make_unique<XShadowSimple>(34.0f);
+        collideBox_ = std::make_unique<XCollideBox>(30.6f, 24.3f);
+        collideBox_->SetPos(startPos_);
+        dir_ = UnitRand() * 6.28319f;
+        yaw_ = dir_;
+        model_->SetScale(0.9f);
+        UpdateWorldMatrix();
+        health_ = 99999;
+        chasable_ = true;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = WALK;
+    }
+    void ProcessFrame() override {
+        if (!game_->IsUpdatable(pos_)) return;
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        if (moveState_ == WALK) Walk();
+        else if (moveState_ == WAIT) Wait();
+        else if (moveState_ == SHIELD) Shield();
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);
+    }
+
+protected:
+    // XEnemy_Turtle::_Damage: no sound, flash or health lost; into the shell (again)
+    void Damage(const D3DVECTOR&) override {
+        localCounter_ = 0;
+        moveState_ = SHIELD;
+    }
+
+private:
+    enum MoveState { NON = 0, WALK = 1, WAIT = 2, SHIELD = 3 };
+    void Walk() {
+        if (localCounter_ == 1) {
+            prevPosForWalk_ = pos_;
+            targetPos_ = turnAround_ ? GenerateBehindPos() : GenerateRandomPos();
+        }
+        walkCounter_++;
+        frame_ = (int)((walkCounter_ / 10 + 1) % 4);
+        if (!turnAround_ && game_->DistanceToCloserHero(pos_) < 120.0f)
+            dir_ = MakeAngleCloseTo_Constant(dir_, game_->DirToCloserHero(pos_), 0.0139626f);
+        else
+            dir_ = MakeAngleCloseTo_Constant(dir_, FindDirectionXZ(pos_, targetPos_), 0.0139626f);
+        yaw_ = dir_;
+        UpdatePosX(pos_.x + std::sin(dir_) * 0.4f);
+        UpdatePosZ(pos_.z + std::cos(dir_) * 0.4f);
+        if (localCounter_ < 150) return;
+        turnAround_ = ApproxDistance(pos_, prevPosForWalk_) < 10.0f;  // stuck: turn round next leg
+        localCounter_ = 0;
+    }
+    void Wait() {
+        if (localCounter_ == 1) frame_ = 0;
+        if (localCounter_ < 50) return;
+        walkCounter_ = 0;
+        localCounter_ = 0;
+        moveState_ = WALK;
+    }
+    void Shield() {
+        if (localCounter_ == 1) frame_ = 4;
+        if (localCounter_ < 600) return;
+        localCounter_ = 0;
+        moveState_ = WAIT;
+    }
+    MoveState moveState_ = NON;
+    unsigned walkCounter_ = 0;
+    bool turnAround_ = false;
+    D3DVECTOR targetPos_{0, 0, 0}, prevPosForWalk_{0, 0, 0};
+};
+
+// -------------------------------------------------------------------------------- XEnemy_Fan
 // 'q' 'r' 's' (directions 4, 0, 2 in eighths of a turn: blowing along -Z, +Z and +X): a fan
 // (model 0x1ca, collision 0x1c9, a 70 x 85 box, shadow 32) 10.8 out from its post (model 0x1cb,
 // a static 20 x 52 box) and 44.5 up, its blades turning 9 degrees a tick. It can't be hurt and
@@ -1265,6 +1347,7 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case 'y': e = std::make_unique<NeedleBall>(game_, lastOID_, pos, NeedleBall::Z_AXIS); break;
         case 'j': e = std::make_unique<BarrelEnemy>(game_, lastOID_, pos); break;
         case 'm': e = std::make_unique<NeedleFan>(game_, lastOID_, pos); break;
+        case 'e': e = std::make_unique<Turtle>(game_, lastOID_, pos); break;
         case 'k': e = std::make_unique<Hammer>(game_, lastOID_, pos); break;
         case 'q': e = std::make_unique<Fan>(game_, lastOID_, pos, 4); break;
         case 'r': e = std::make_unique<Fan>(game_, lastOID_, pos, 0); break;
