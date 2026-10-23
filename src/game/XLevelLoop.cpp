@@ -5,6 +5,7 @@
 #include "game/XMath.h"
 #include "game/XBoss.h"
 #include "game/XBullet.h"
+#include "game/XCandle.h"
 #include "game/XEnemy.h"
 #include "game/XGameContext.h"
 #include "game/XParticle.h"
@@ -35,6 +36,7 @@ XLevelLoop::XLevelLoop()
     bullets_ = std::make_unique<XBulletList>(game_.get());
     platforms_ = std::make_unique<XPlatformList>(game_.get());
     water_ = std::make_unique<XWater>();
+    candles_ = std::make_unique<XCandleList>(game_.get());
     // XHeroFire's look: an 18-unit particle (0.8 of that for the small shots of some wands)
     fireSprite_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(18.0f, 18.0f));
     fireSprite_->SetTexture(kTextureFireA);
@@ -64,6 +66,7 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
     enemies_->Empty();
     bullets_->Empty();
     platforms_->Empty();
+    candles_->Empty();
     statics_->Empty();
     particles_->Empty();
     // XWater::Deinit, then XWater::Init on a water level
@@ -79,6 +82,7 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
     g.enemies = enemies_.get();
     g.bullets = bullets_.get();
     g.platforms = platforms_.get();
+    g.candles = candles_.get();
     g.particles = particles_.get();
     g.playSound = [this](uint16_t id, float z) { sound_(id, z); };
     g.playMono = [this](uint16_t id, float volume) {
@@ -93,6 +97,10 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
     g.onePlayer = onePlayer;
     g.world = level.World();
     g.useWater = useWater_;
+
+    // XMap::_ConstructWallObjects: a candle on the back wall of each row flagged 'C'
+    for (int z = 0; z < level.Depth(); z++)
+        if (level.RowFlag(z) == 'C') candles_->CreateCandle(D3DVECTOR(0.0f, 0.0f, z * 40.0f + 20.0f));
 
     // XMap::_ConstructObjects: each cell in turn, at the centre of the cell at its floor's height
     auto isFence = [&](int x, int z) {
@@ -238,11 +246,11 @@ void XLevelLoop::ProcessFire(Fire& f) {
     }
     if (f.localTime % 2 == 0) particles_->CreateHeroFireSmoke(f.pos, true, true);  // player 1, normal size
     // XHeroFire::ProcessFrame: the map, the heroes, objects, platforms, enemies, bullets,
-    // (candles,) the boss stop the shot with a flash
+    // candles, the boss stop the shot with a flash
     if (level_->Collision().IsBlockedFloat(f.pos.x, f.pos.z, f.pos.y) ||
         (hero_ && hero_->GetCollideBox().CollisionCheck(f.pos)) || statics_->CollisionCheck_Fire(f.pos) ||
         platforms_->CollisionCheck(f.pos) || enemies_->CollisionCheck_Fire(f.pos, f.radius, hero_ ? hero_->GetPos() : f.pos) ||
-        bullets_->CollisionCheck_Fire(f.pos, f.radius) || (boss_ && boss_->CollisionCheck_Fire(f.pos, f.radius))) {
+        bullets_->CollisionCheck_Fire(f.pos, f.radius) || candles_->CollisionCheck(f.pos) || (boss_ && boss_->CollisionCheck_Fire(f.pos, f.radius))) {
         particles_->CreateHeroFireFlash(prev, true, true);
         f.live = false;
     } else if (TorchCollisionCheckFire(f)) {
@@ -383,7 +391,7 @@ void XLevelLoop::ProcessAfterHero() {
     }
     platforms_->ProcessFrame();
     statics_->ProcessFrame();
-    // (XCandleList::ProcessFrame: later)
+    candles_->ProcessFrame();  // XCandleList::ProcessFrame
 }
 
 // ---------------------------------------------------------------------------- static objects
@@ -399,6 +407,10 @@ bool XLevelLoop::StaticCollisionY(float& newY, const XCollideBox& box) { return 
 bool XLevelLoop::PlatformCollisionX(float& newX, const XCollideBox& box) { return platforms_->CollisionCheckX(newX, box, false); }
 bool XLevelLoop::PlatformCollisionZ(float& newZ, const XCollideBox& box) { return platforms_->CollisionCheckZ(newZ, box, false); }
 bool XLevelLoop::PlatformCollisionY(float& newY, const XCollideBox& box) { return platforms_->CollisionCheckY(newY, box); }
+bool XLevelLoop::CandleCollisionX(float& newX, const XCollideBox& box) { return candles_->CollisionCheckX(newX, box, false); }
+bool XLevelLoop::CandleCollisionZ(float& newZ, const XCollideBox& box) { return candles_->CollisionCheckZ(newZ, box, false); }
+bool XLevelLoop::CandleCollisionY(float& newY, const XCollideBox& box) { return candles_->CollisionCheckY(newY, box); }
+
 void XLevelLoop::SetHeroAboveLastPlatform(bool heroA) {
     if (XPlatformBase* p = platforms_->GetLastCollidePlatform()) {
         if (heroA) p->SetHeroAAbove(true);
@@ -418,9 +430,10 @@ void XLevelLoop::RenderObjects(Device* d, const D3DMATRIX& view) {
         c.shadow->Render(d);
     }
     for (Torch& t : torches_) t.model->Render(d);
-    // platforms, static objects, (candles,) bullets, enemies, the boss
+    // platforms, static objects, candles, bullets, enemies, the boss
     platforms_->Render(d);
     statics_->Render(d);
+    candles_->Render(d);
     bullets_->Render(d, view);
     enemies_->Render(d);
     if (boss_) boss_->Render(d);

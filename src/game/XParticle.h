@@ -6,8 +6,8 @@
 // drawn after the level's objects and before the shots.
 //
 // The effects so far are the hero's, the shots', the torches', the coins', the goal's, the
-// enemies', the bullets' (smoke and explosions) and the water's waves; the candles' and bosses'
-// kinds arrive with them.
+// enemies', the bullets' (smoke and explosions), the water's waves and the candles' flames; the
+// bosses' kinds arrive with them.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -67,6 +67,8 @@ public:
     void CreateHeroWarpPhoton(bool heroA);
     void CreateTorchFire1(const D3DVECTOR& pos);
     void CreateTorchFire2(const D3DVECTOR& pos);
+    void CreateCandleFire1(const D3DVECTOR& pos);
+    void CreateCandleFire2(const D3DVECTOR& pos);
     void CreateWarpRing(const D3DVECTOR& pos);
     void CreateGetCoinEffect(const D3DVECTOR& pos);
     void CreateLandEffect(const D3DVECTOR& pos);

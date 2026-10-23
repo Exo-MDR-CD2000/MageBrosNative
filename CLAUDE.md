@@ -103,6 +103,7 @@ them.
   - `XPlatformList` (35);
   - `XWater`;
   - the boss (`XBoss.cpp`, one at most);
+  - `XCandleList` (30, the wall candles);
   - the torches, coins and hero shots.
 - **Tick order** (`XGameObject::ProcessFrame`):
   1. status display
@@ -118,7 +119,7 @@ them.
   11. torches
   12. platforms
   13. static objects
-  14. *candles*
+  14. candles
   15. camera
 
   The steps in italics are not built yet. Their slots are marked by comments in
@@ -130,7 +131,7 @@ them.
   4. torches
   5. platforms
   6. static objects
-  7. *candles*
+  7. candles
   8. bullets
   9. enemies
   10. boss
@@ -278,6 +279,8 @@ original game: the dragon fight and the third-barrel heart.
 Fixed after stage 4, from the owner's play: the fence doors (`v` `w`) were built as metal fence
 pieces instead of the wooden gates, which made 1-2 unfinishable; now they stand and break as
 in the original. The shop (`S`, in 1-3, 1-6 and 1-9) is built; its screen waits for stage 6.
+The game now uses the original's light and lens and D3D7 normal scaling (0.2.2), and the wall
+candles (row flag `C`, `XCandle.cpp`) stand on the back wall with their flames.
 
 ### Next: stage 5, the whole game (worlds 2 to 4, every object, two-player co-op)
 
@@ -287,9 +290,8 @@ order:
 - the remaining enemies (`c`/`4` squid, `e` turtle, `f` kiwi, `g` ghost, `h`/`2` mushroom, `k`
   hammer, `q` `r` `s` fans, `t` floor fan, `u` stalactite, `x`/`y` needle ball, `z` jump
   needle) and their bullets (needle ball, rocket);
-- the remaining static objects (`M` `N` pots, `R` rocket launcher, `T` tree, `U` plant; `S`
-  shop waits for stage 6) and the candles (row flag `C`, `XCandleList`, with the candle
-  flames);
+- the remaining static objects (`M` `N` pots, `R` rocket launcher, `T` tree, `U` plant; the
+  shop's screen waits for stage 6);
 - the other bosses: the genie (`7`), the nest (`8`, with the bird) and the wizard (`9`, with its
   blade, wand and fire);
 - camera shake (`XCamera::StartShaking`, from the hammer and stalactite);

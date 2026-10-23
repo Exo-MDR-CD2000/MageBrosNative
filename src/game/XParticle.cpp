@@ -14,6 +14,7 @@ constexpr uint16_t kTexShotA = 0x15c, kTexShotB = 0x184;
 constexpr uint16_t kTexTorchFire1 = 0x187, kTexTorchFire2 = 0x188;
 constexpr uint16_t kTexWarpRing = 0x1a5, kTexCoin = 0x294, kTexLand = 0x295, kTexShadow = 0xa3;
 constexpr uint16_t kTexBulletExplode = 0x192;
+constexpr uint16_t kTexCandleFire1 = 0x187, kTexCandleFire2 = 0x188;
 constexpr uint16_t kSoundBulletExplode = 0x279;
 constexpr uint16_t kTexWaterWave = 0x18f, kSoundWaterWave = 0x278;
 constexpr float kDegree = 0.0174533f;
@@ -230,6 +231,59 @@ private:
     float prevScale_ = 1.0f;
 };
 
+// XParticle_CandleFire1: a candle's flame, the torch flame's texture at 70% alpha, re-sized to
+// 80 x (0.9 to 1.1) every 2 ticks; it stays
+class CandleFire1 : public XParticleBase {
+public:
+    CandleFire1(XParticleList* l, const D3DVECTOR& p) : XParticleBase(l, p) {
+        particle_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(1, 1));
+        particle_->SetTexture(kTexCandleFire1);
+        particle_->SetAlphaFactor(0.7f);
+        SetRandomSize();
+        state_ = NORMAL;
+    }
+    void ProcessFrame() override {
+        XParticleBase::ProcessFrame();
+        if (state_ == NORMAL && localCounter_ % 2 == 0) SetRandomSize();
+    }
+
+private:
+    void SetRandomSize() {  // _SetRandomSize
+        particle_->Scale(1.0f / prevScale_);
+        float s = RandomF(0.9f, 1.1f) * 80.0f;
+        particle_->Scale(s);
+        prevScale_ = s;
+    }
+    float prevScale_ = 1.0f;
+};
+
+// XParticle_CandleFire2: a flicker rising from a candle: 20 across, rising 0.8 a tick, x 0.965
+// a tick, alpha -0.05 a tick until 0.05
+class CandleFire2 : public XParticleBase {
+public:
+    CandleFire2(XParticleList* l, const D3DVECTOR& p) : XParticleBase(l, p) {
+        particle_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(1, 1));
+        particle_->SetTexture(kTexCandleFire2);
+        particle_->Scale(20);
+        state_ = NORMAL;
+    }
+    void ProcessFrame() override {
+        XParticleBase::ProcessFrame();
+        if (state_ != NORMAL) return;
+        pos_.y += 0.8f;
+        alpha_ -= 0.05f;
+        if (alpha_ > 0.05f) {
+            particle_->Scale(0.965f);
+            particle_->SetAlphaFactor(alpha_);
+        } else {
+            state_ = NON;
+        }
+    }
+
+private:
+    float alpha_ = 1.0f;
+};
+
 // XParticle_TorchFire2: a spark rising from a lit torch
 class TorchFire2 : public XParticleBase {
 public:
@@ -391,6 +445,8 @@ void XParticleList::CreateHeroFireFlash(const D3DVECTOR& pos, bool heroA, bool l
 void XParticleList::CreateHeroWarpPhoton(bool heroA) { Add(std::make_unique<HeroWarpPhoton>(this, heroA)); }
 void XParticleList::CreateTorchFire1(const D3DVECTOR& pos) { Add(std::make_unique<TorchFire1>(this, pos)); }
 void XParticleList::CreateTorchFire2(const D3DVECTOR& pos) { Add(std::make_unique<TorchFire2>(this, pos)); }
+void XParticleList::CreateCandleFire1(const D3DVECTOR& pos) { Add(std::make_unique<CandleFire1>(this, pos)); }
+void XParticleList::CreateCandleFire2(const D3DVECTOR& pos) { Add(std::make_unique<CandleFire2>(this, pos)); }
 void XParticleList::CreateWarpRing(const D3DVECTOR& pos) {
     // 15 units across, growing by 3 (x 0.985 a tick); fades (x 0.975) after 50 ticks
     Add(std::make_unique<FlatRing>(this, pos, kTexWarpRing, 15.0f, 3.0f, 0.985f, 50, 0.975f));

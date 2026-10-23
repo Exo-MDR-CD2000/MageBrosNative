@@ -16,6 +16,7 @@ class XEnemyBase;
 class XBulletList;
 class XPlatformList;
 class XBossBase;
+class XCandleList;
 class XParticleList;
 
 struct XGameContext {
@@ -26,6 +27,7 @@ struct XGameContext {
     XEnemyList* enemies = nullptr;
     XBulletList* bullets = nullptr;
     XPlatformList* platforms = nullptr;
+    XCandleList* candles = nullptr;
     XBossBase* boss = nullptr;  // XGameObject::boss (one per level at most)
     XParticleList* particles = nullptr;
     std::function<void(uint16_t waveId, float z)> playSound;  // XApplication::PlaySound

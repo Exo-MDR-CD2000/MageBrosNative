@@ -3,8 +3,8 @@
 // Reconstructed so far: input, walking and turning, gravity, jumping, landing, the map
 // collision, falling out of the level, the dying sequence, the animation frames and the wand,
 // shots and magic points, damage and knockback, the warp, standing on static objects (the torch
-// posts), riding platforms and sinking in water. Still to come: the other hero and candles
-// (stage 5).
+// posts and the wall candles), riding platforms and sinking in water. Still to come: the other
+// hero (stage 5).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -48,6 +48,10 @@ public:
     virtual bool PlatformCollisionX(float& newX, const XCollideBox& box) { return false; }
     virtual bool PlatformCollisionZ(float& newZ, const XCollideBox& box) { return false; }
     virtual bool PlatformCollisionY(float& newY, const XCollideBox& box) { return false; }
+    // XCandleList::CollisionCheckX / Z / Y for the hero's box; true on a hit
+    virtual bool CandleCollisionX(float& newX, const XCollideBox& box) { return false; }
+    virtual bool CandleCollisionZ(float& newZ, const XCollideBox& box) { return false; }
+    virtual bool CandleCollisionY(float& newY, const XCollideBox& box) { return false; }
     // XPlatformList::GetLastCollidePlatform()->SetHeroAAbove(1): the hero stands on that platform
     virtual void SetHeroAboveLastPlatform(bool heroA) {}
     // XHeroFireList::_CreateFire_Normal: one shot from the hero at an angle (Create8Way)

@@ -198,28 +198,33 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
     if (verticalSpeed_ < kMaxFallSpeed) verticalSpeed_ = kMaxFallSpeed;
     np.y += verticalSpeed_;
 
-    // X, then Z: (the other hero,) static objects, (candles,) platforms, then the map
+    // X, then Z: (the other hero,) static objects, candles, platforms, then the map
     world.StaticCollisionX(np.x, box_);
+    world.CandleCollisionX(np.x, box_);
     world.PlatformCollisionX(np.x, box_);
     map.CollisionCheckX(np.x, box_);
     SetPosX(np.x);
     world.StaticCollisionZ(np.z, box_);
+    world.CandleCollisionZ(np.z, box_);
     world.PlatformCollisionZ(np.z, box_);
     map.CollisionCheckZ(np.z, box_);
     SetPosZ(np.z);
 
-    // Y. Falling: (the other hero,) static objects, platforms, the map, (candles); landing on a
-    // platform marks it. Rising: (the other hero,) static objects, (candles); a platform's
+    // Y. Falling: (the other hero,) static objects, platforms, the map, candles; landing on a
+    // platform marks it. Rising: (the other hero,) static objects, candles; a platform's
     // underside does not stop a jump.
     bool landed = false, headHit = false;
     if (verticalSpeed_ < 0.0f) {
         bool onStatic = world.StaticCollisionY(np.y, box_);
         bool onPlatform = world.PlatformCollisionY(np.y, box_);
         bool onMap = map.CollisionCheckY(np.y, box_);
-        landed = onStatic || onPlatform || onMap;
+        bool onCandle = world.CandleCollisionY(np.y, box_);
+        landed = onStatic || onPlatform || onMap || onCandle;
         if (onPlatform) world.SetHeroAboveLastPlatform(true);  // (IsHeroA: player 1)
     } else {
-        headHit = world.StaticCollisionY(np.y, box_);
+        bool onStatic = world.StaticCollisionY(np.y, box_);
+        bool onCandle = world.CandleCollisionY(np.y, box_);
+        headHit = onStatic || onCandle;
     }
     SetPosY(np.y);
 

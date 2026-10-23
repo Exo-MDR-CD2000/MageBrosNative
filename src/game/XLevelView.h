@@ -39,6 +39,8 @@ public:
     int MusicTrack() const;
     // XMap::GetFloorLevel at a world position (ConvertPosXToMapX / Z with the floor flag set).
     int FloorAt(float x, float z) const;
+    // A row's flag: the first character of its line ('C' candle, 'W' water, '-' nothing)
+    char RowFlag(int z) const { return (z < 0 || z >= grid_.depth) ? '-' : grid_.Flag(z); }
     // XMap::UseWater: a row's flag is 'W' (XMap::_ConstructWallObjects)
     bool UseWater() const {
         for (char f : grid_.rowFlags)

@@ -559,6 +559,27 @@ clipped to the platform's 40 × 40 top (box centre ± 20); the visible part is d
 the box top, with the matching share of the texture (u from the left, v flipped) and scaled to
 it.
 
+## Wall candles (`XCandleList`, `XCandle`)
+
+`XMap::_ConstructWallObjects` walks the rows: a row flagged `C` gets a candle (made at
+(0, 0, row × 40 + 20)), `W` turns the water on, `-` nothing. `XCandleList` has 30 slots, filled in
+order; every loop stops at the first empty slot.
+
+**`XCandle`**: placed on the back wall at x 19.8, y 175; model 0x1f8 turned 90°; a 25-wide,
+12-tall box. Its flame point is 22 above; it makes a `CandleFire1` at the flame point + (6, 6, 0)
+and starts its counter at `Random(15)`. Each tick it counts up and, every 15, makes a
+`CandleFire2` within 2 of the flame point (`RandomPosXZ`). Drawn within the visible range. It
+runs after the static objects and is drawn after them, before the bullets.
+
+The heroes treat the candles like static objects: X and Z checks after the static objects, the
+falling Y check after the map, the rising check after the static objects. A hero's shot stops at
+a candle (after the bullets, before the boss).
+
+| Effect | Look | Life |
+|---|---|---|
+| CandleFire1 | particle, the torch flame 0x187, alpha 0.7, size 80 × (0.9–1.1) re-rolled every 2 ticks | stays |
+| CandleFire2 | particle 20, 0x188, rising 0.8 a tick, size × 0.965 | alpha −0.05 a tick, gone at ≤ 0.05 |
+
 ## Water and fish (`XWater`, `XEnemy_Fish`)
 
 **Which levels have water** (`XMap::_ConstructWallObjects`, `XMap::UseWater`): any level whose

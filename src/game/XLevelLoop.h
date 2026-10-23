@@ -4,7 +4,7 @@
 // "The level loop" and "Enemies and static objects".
 //
 // Also the enemies' bullets (XBulletList), the platforms (XPlatformList), the water (XWater) and
-// the boss (the dragon so far). Still to come: candles, the other bosses and the remaining objects and enemies; only the starting wand's shot pattern is
+// the boss (the dragon so far) and the wall candles (XCandleList). Still to come: the other bosses and the remaining objects and enemies; only the starting wand's shot pattern is
 // made (the others come with the shop).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
@@ -27,6 +27,7 @@ class XBulletList;
 class XPlatformList;
 class XWater;
 class XBossBase;
+class XCandleList;
 class XShadowSimple;
 struct XGameContext;
 
@@ -85,6 +86,9 @@ public:
     bool PlatformCollisionZ(float& newZ, const XCollideBox& box) override;
     bool PlatformCollisionY(float& newY, const XCollideBox& box) override;
     void SetHeroAboveLastPlatform(bool heroA) override;
+    bool CandleCollisionX(float& newX, const XCollideBox& box) override;
+    bool CandleCollisionZ(float& newZ, const XCollideBox& box) override;
+    bool CandleCollisionY(float& newY, const XCollideBox& box) override;
 
 private:
     struct Fire {
@@ -144,6 +148,7 @@ private:
     std::unique_ptr<XBulletList> bullets_;
     std::unique_ptr<XPlatformList> platforms_;
     std::unique_ptr<XWater> water_;
+    std::unique_ptr<XCandleList> candles_;
     std::unique_ptr<XBossBase> boss_;  // XGameObject::boss
     bool useWater_ = false;
     std::unique_ptr<JObject3DRect> fireSprite_;  // drawn at each live shot
