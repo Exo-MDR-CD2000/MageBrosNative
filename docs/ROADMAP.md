@@ -51,8 +51,8 @@ is done.
 | 8 | Pots `M` `N` and the kiwi `f` | 3-1 to 3-10 | | Done |
 | 9 | Jump needle `z` | 3-1 onward | 3-1 | Done |
 | 10 | Stalactite `u` (shakes the camera) | 3-2 onward | 3-2, 3-6, 3-9 | Done |
-| 11 | Rocket launcher `R` and its rocket | 3-3 onward | 3-3 | **Next** |
-| 12 | Floor fan `t` | 3-4, 3-5, 3-7 | 3-4 | |
+| 11 | Rocket launcher `R` and its rocket | 3-3 onward | 3-3 | Done |
+| 12 | Floor fan `t` | 3-4, 3-5, 3-7 | 3-4 | **Next** |
 | 13 | Ghost `g` | 3-5, 3-7, 3-8 | 3-5, 3-7, 3-8 | |
 | 14 | The nest and its bird, World 3's boss (`8`) | 3-10 | all of World 3 | |
 | 15 | The wizard, World 4's boss (`9`: blade, wand, fire); World 4 checked | 4-10 | all 40 levels | |

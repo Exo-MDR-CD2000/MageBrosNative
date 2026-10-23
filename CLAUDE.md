@@ -165,8 +165,9 @@ folder in Visual Studio / use `cmake -S . -B build -A x64`. SDL3 is fetched on f
 
 **GitHub releases.** `.github/workflows/release.yml` runs on every push to `main` (and by hand
 from the Actions tab): on a Windows runner it configures, builds, runs the no-game tests and
-`cpack`, then publishes the zip as release `v<version>` (from `CMakeLists.txt`) with the commit
-message as its notes. If that release already exists it does nothing, so a push only releases
+`cpack`, then publishes the zip as release `v<version>` (from `CMakeLists.txt`). Its notes are
+that version's section of `CHANGELOG.md` (the commit message if there is none) and a link to the
+full changelog. If that release already exists it does nothing, so a push only releases
 when the version was raised: keep running `make_release.bat` (patch bump) for each chunk and
 commit `CMakeLists.txt` with it. Pushing therefore publishes publicly; the zip holds no game
 content.
@@ -248,6 +249,9 @@ is no decompiled C. For each module:
    - Cross-build the Windows zip for the owner.
 6. **Update `docs/ROADMAP.md`**: mark the chunk done and the next one **Next**. Also update the
    README's "What works today" section.
+7. **Add the version to `CHANGELOG.md`**: a `## [x.y.z] - YYYY-MM-DD` section (that exact form:
+   the release workflow looks for it) at the top, in plain words for players, taking in anything
+   under `## [Unreleased]`. Commit it with the code so the release picks it up.
 
 Conventions:
 
@@ -321,13 +325,13 @@ genie and its lamp (`XBoss_Genie` without its shots, `XStaticObj_GenieLamp`, the
 (0.2.13): the pots `M` `N` (`XStaticObj.cpp`) and the kiwi `f` (`XEnemy.cpp`). Chunk 9 is done (0.2.14):
 the jump needle `z` (`XEnemy.cpp`), so 3-1 has nothing left unbuilt. Chunk 10 is done
 (0.2.15): the stalactite `u` (`XEnemy.cpp`), which shakes the camera when it lands; 3-2, 3-6 and
-3-9 now have nothing left unbuilt. Chunk 11 (the rocket launcher and its rocket) is next; wait
-for the owner to start it.
+3-9 now have nothing left unbuilt. Chunk 11 is done (0.2.16): the
+rocket launcher `R` (`XStaticObj.cpp`) and `XBullet_Rocket` (`XBullet.cpp`); 3-3 has nothing left
+unbuilt. Chunk 12 (the floor fan) is next; wait for the owner to start it.
 The pieces:
 
-- the remaining enemies (`g` ghost, `t` floor fan) and the rocket
-  launcher's rocket;
-- the remaining static object (`R` rocket launcher; the shop's screen waits for stage 6);
+- the remaining enemies (`g` ghost, `t` floor fan);
+- the shop's screen (stage 6);
 - the other bosses: the nest (`8`, with the bird) and the wizard (`9`, with its blade, wand
   and fire);
 - player 2 (`XHeroB`): its input, the camera midpoint, hero-on-hero collision and carrying, the

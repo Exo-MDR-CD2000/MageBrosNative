@@ -395,7 +395,9 @@ pillar `Q` 20 × 78 (0x1db), barrel `O` 27 × 42.8 (0x1f6, a 37 shadow), and in 
 `T` (0x1d6 turned −90°, a 35 × 5 box at its foot plus an invisible 12 × 134.4 trunk box, no
 shadow) and the plant `U` (0x1d7 turned −90°, 24 × 20, a 28 shadow); in World 3 the large
 pot `M` (0x1d4, 32 × 35, a 40 shadow, plus an invisible 17 × 80 box from
-`CreateExtraCollideBox`) and the pot `N` (0x1d5, 30 × 40, a 38 shadow). `CreateObject` calls each
+`CreateExtraCollideBox`) and the pot `N` (0x1d5, 30 × 40, a 38 shadow). The rocket launcher `R` (0x197, 34 × 40, no
+shadow) calls `XBulletList::CreateRocket(pos)` whenever its counter is a multiple of 1000
+(first at tick 1000). `CreateObject` calls each
 new object's `CreateExtraCollideBox` (a no-op except for the tree, the large pot and the turning cannon); fences
 get theirs from `CreateFence`. They stop heroes (heights
 counted) and enemies (heights ignored); enabled ones that block fire stop shots that are
@@ -618,6 +620,17 @@ the bullet carries on.
 A burst makes a `BulletExplode` where the bullet was before the tick's move, and ends the
 bullet. The point form of `XMap::CollisionCheckY(y, x, z)`: if the cell at (x, z) is blocked
 at the height of y, y becomes (cell level + 1) × 25.
+
+**Rocket** (`XBullet_Rocket`): model 0x196, pitch −90° (nose up), `XShadow` 19, radius 9
+(and a collide sphere), `SUBSTATE` MOVEUP / LAUNCH. MOVEUP: y + 0.085 a tick; the yaw turns at
+most 1.3° (0.0226893) towards `FindDirToCloserHero`; touching a hero bursts it where it is; at
+500 sound 0x262, smoke, speed 3 → LAUNCH (counter 0). LAUNCH: with c = the closer hero's
+`GetCenterPos`, before tick 450 the yaw turns at most 0.75° (0.01309) towards c, and from tick 11
+to 449 the pitch moves at most 1° (`MakeValueCloseTo_Constant`) towards −`FindPitch(pos, c)`; it
+moves speed along yaw and pitch (x/z by sin/cos(yaw) · speed · cos(−pitch), y by sin(−pitch) ·
+speed); speed − 0.017 (at least 0.9); smoke every 15 ticks. Then the map, objects, platforms or a
+hero burst it at the previous position; below −200 it is gone; at 3000 it bursts; on a water
+level below −38, a wave (above −43) and a burst.
 
 ## Platforms (`XPlatformList`, `XPlatformBase`, `XPlatform_*`, `XShadowOnPlatform`)
 

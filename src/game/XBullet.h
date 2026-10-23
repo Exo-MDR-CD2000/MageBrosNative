@@ -11,7 +11,8 @@
 //
 // Kinds so far: the cannon's straight ball (XBullet_Cannon) and its rolling ball
 // (XBullet_CannonRBall), the dragon's flame (XBullet_Flame) and the genie's needle ball
-// (XBullet_NeedleBall). The rocket and wizard fire come with their owners.
+// (XBullet_NeedleBall), and the rocket launcher's rocket (XBullet_Rocket). The wizard's fire comes
+// with the wizard.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -66,6 +67,8 @@ public:
     void CreateFlame(const D3DVECTOR& pos, float yaw, float pitch);
     // XBulletList::CreateNeedleBall: a spiked ball that rolls after the closer hero
     void CreateNeedleBall(const D3DVECTOR& pos, float yaw);
+    // XBulletList::CreateRocket: a homing rocket rising out of a launcher at `pos`
+    void CreateRocket(const D3DVECTOR& pos);
     void ProcessFrame();
     void Render(Device* d, const D3DMATRIX& view);
 

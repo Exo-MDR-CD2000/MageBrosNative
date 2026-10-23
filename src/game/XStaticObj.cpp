@@ -18,7 +18,7 @@ constexpr uint16_t kModelCannon = 0x18c, kModelCannonRBarrel = 0x1f4, kModelCann
 constexpr uint16_t kSoundCannon = 0x262;
 constexpr uint16_t kModelShop = 0x1ab, kTexShopSign = 0x1ac;
 constexpr uint16_t kModelTree = 0x1d6, kModelPlant = 0x1d7, kModelGenieLamp = 0x1ea;
-constexpr uint16_t kModelPotLarge = 0x1d4, kModelPot = 0x1d5;
+constexpr uint16_t kModelPotLarge = 0x1d4, kModelPot = 0x1d5, kModelRocketLauncher = 0x197;
 constexpr float kHalfPi = 1.5708f, kPi = 3.14159f, kQuarterPi = 0.785398f;
 
 // XStaticObj_Pillar: 27 wide; 146.5 tall (165 in world 3, model 0x292). Over a hole (the floor
@@ -120,6 +120,23 @@ public:
         shadow_->SetPosXZ(pos_);
         collideBox_ = std::make_unique<XCollideBox>(30.0f, 40.0f);
         collideBox_->SetPos(pos_);
+    }
+};
+
+// XStaticObj_RocketLauncher ('R', World 3, 4-1, 4-4, 4-7): 34 wide, 40 tall, no shadow. Every 1000
+// ticks it sends up a rocket from its own position.
+class RocketLauncher : public XStaticObjBase {
+public:
+    RocketLauncher(const XGameContext* g, const D3DVECTOR& p) : XStaticObjBase(g, p) {
+        model_ = std::make_unique<JObject3DX>(kModelRocketLauncher);
+        model_->SetPos(pos_);
+        model_->UpdateWorldMatrix();
+        collideBox_ = std::make_unique<XCollideBox>(34.0f, 40.0f);
+        collideBox_->SetPos(pos_);
+    }
+    void ProcessFrame() override {
+        XStaticObjBase::ProcessFrame();
+        if (localCounter_ % 1000 == 0) game_->bullets->CreateRocket(pos_);
     }
 };
 
@@ -424,11 +441,11 @@ XStaticObjBase* XStaticObjList::CreateObject(const D3DVECTOR& pos, char code) {
         case 'K': o = std::make_unique<CannonR>(game_, pos, this); break;
         case 'M': o = std::make_unique<PotLarge>(game_, pos, this); break;
         case 'N': o = std::make_unique<Pot>(game_, pos); break;
+        case 'R': o = std::make_unique<RocketLauncher>(game_, pos); break;
         case 'S': o = std::make_unique<Shop>(game_, pos); break;
         case 'T': o = std::make_unique<Tree>(game_, pos, this); break;
         case 'U': o = std::make_unique<Plant>(game_, pos); break;
         default:
-            // rocket launcher (R): stage 5
             return nullptr;
     }
     XStaticObjBase* s = Put(std::move(o));

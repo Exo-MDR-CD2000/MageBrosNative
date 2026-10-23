@@ -49,7 +49,9 @@ potted plants, hopping mushrooms, rolling needle balls, squids, hammers that sla
 the screen, fans that blow the mage along, turtles that hide in their shells, and in 2-10 the
 genie, who rises from its steaming lamp and fires spiked balls that roll after the mage. World 3
 has begun: its pots, the kiwis that run from the mage the spikes that jump up from the floor
-and the stalactites that drop and shake the screen are in (3-1, 3-2, 3-6 and 3-9 play through), and the objects still to come
+the stalactites that drop and shake the screen, and
+the rocket launchers whose rockets home in on the mage are in (3-1, 3-2, 3-3, 3-6 and 3-9 play
+through), and the objects still to come
 show as markers. N/B change level, Tab switches to the
 **level viewer**: every one of the 40 levels, built by the
 original's own map code with each world's textures. The goal, coins and torches use their real
@@ -102,7 +104,7 @@ writes `build\MageBrosNative-<version>-windows-x64.zip`. Run it as `make_release
 puts the version back. With `MageBros.exe` in the folder above the repository it also runs the map
 and hero tests.
 
-**Releases.** Every push to `main` runs the GitHub Actions workflow in
+**Releases.** What changed in each version is in [CHANGELOG.md](CHANGELOG.md). Every push to `main` runs the GitHub Actions workflow in
 `.github/workflows/release.yml`: it builds the same zip on a Windows runner, runs the tests that
 need no game files, and publishes it as the GitHub release `v<version>`, the version being the
 one in `CMakeLists.txt`. A push that leaves the version unchanged (docs only, say) makes no new

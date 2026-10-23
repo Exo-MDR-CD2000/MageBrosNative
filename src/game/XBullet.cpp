@@ -12,6 +12,7 @@
 
 namespace {
 constexpr uint16_t kModelCannonBall = 0x18d, kModelCannonRBall = 0x1f2, kModelNeedleBall = 0x1f0;
+constexpr uint16_t kModelRocket = 0x196, kSoundRocketLaunch = 0x262;
 constexpr uint16_t kTexFlame = 0x192;
 constexpr float kQuarterPi = 0.785398f;
 
@@ -167,6 +168,83 @@ private:
     XHero* targetHero_ = nullptr;
 };
 
+// XBullet_Rocket: the rocket launcher's rocket (radius 9, shadow 19), pointing straight up. MOVEUP:
+// it rises 0.085 a tick out of the launcher for 500 ticks, turning (1.3 degrees a tick) to face
+// the closer hero, bursting if it touches a hero. Then LAUNCH (sound 0x262, a puff of smoke): it
+// flies at 3, slowing by 0.017 a tick to 0.9, steering towards the closer hero's centre (yaw 0.75
+// degrees a tick for 450 ticks, pitch 1 degree a tick from tick 11 to 449), with smoke every 15
+// ticks. It bursts like the rolling cannonball, and on its own after 3000 ticks.
+class Rocket : public XBulletBase {
+public:
+    enum SubState { MOVEUP = 0, LAUNCH = 1 };
+    Rocket(const XGameContext* g, const D3DVECTOR& p) : XBulletBase(g, p) {
+        model_ = std::make_unique<JObject3DX>(kModelRocket);
+        pitch_ = -1.5708f;
+        UpdateWorldMatrix();
+        shadow_ = std::make_unique<XShadow>(19.0f);
+        radius_ = 9.0f;
+        liveState_ = NORMAL;
+    }
+    void ProcessFrame() override {
+        XBulletBase::ProcessFrame();
+        if (liveState_ != NORMAL) return;
+        if (subState_ == MOVEUP) MoveUp();
+        else if (subState_ == LAUNCH) Launch();
+        UpdateWorldMatrix();
+    }
+
+private:
+    void MoveUp() {
+        pos_.y += 0.085f;
+        yaw_ = MakeAngleCloseTo_Constant(yaw_, game_->DirToCloserHero(pos_), 0.0226893f);
+        if (CollisionCheck_Hero(game_->heroA)) {  // (and player 2: stage 5)
+            game_->particles->CreateBulletExplode(pos_);
+            liveState_ = NON;
+            return;
+        }
+        if (localCounter_ < 500) return;
+        game_->playSound(kSoundRocketLaunch, pos_.z);
+        game_->particles->CreateSmoke(pos_);
+        speed_ = 3.0f;
+        localCounter_ = 0;
+        subState_ = LAUNCH;
+    }
+    void Launch() {
+        const D3DVECTOR prev = pos_;
+        XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+        if (hero) {
+            const D3DVECTOR& hp = hero->GetPos();
+            D3DVECTOR c(hp.x, hp.y + 14.5f, hp.z);  // XHeroBase::GetCenterPos
+            if (localCounter_ < 450) yaw_ = MakeAngleCloseTo_Constant(yaw_, FindYaw(c.x - pos_.x, c.z - pos_.z), 0.01309f);
+            if (localCounter_ > 10 && localCounter_ < 450)
+                pitch_ = MakeValueCloseTo_Constant(pitch_, -FindPitch(pos_, c), 0.0174533f);
+        }
+        pos_.x += std::sin(yaw_) * speed_ * std::cos(-pitch_);
+        pos_.z += std::cos(yaw_) * speed_ * std::cos(-pitch_);
+        pos_.y += std::sin(-pitch_) * speed_;
+        speed_ -= 0.017f;
+        if (speed_ < 0.9f) speed_ = 0.9f;
+        if (localCounter_ % 15 == 0) game_->particles->CreateSmoke(pos_);
+        if (game_->level->Collision().IsBlockedFloat(pos_.x, pos_.z, pos_.y) || game_->statics->CollisionCheck(pos_) ||
+            game_->platforms->CollisionCheck(pos_) || CollisionCheck_Hero(game_->heroA)) {
+            game_->particles->CreateBulletExplode(prev);
+            liveState_ = NON;
+        } else if (pos_.y < -200.0f) {
+            liveState_ = NON;
+        } else if (localCounter_ >= 3000) {
+            game_->particles->CreateBulletExplode(prev);
+            liveState_ = NON;
+        } else if (game_->useWater && pos_.y < -38.0f) {
+            // a wave (unless already below -43) and a burst
+            if (pos_.y > -43.0f) game_->particles->CreateWaterWave(D3DVECTOR(pos_.x, -38.0f, pos_.z), false, true);
+            game_->particles->CreateBulletExplode(prev);
+            liveState_ = NON;
+        }
+    }
+    SubState subState_ = MOVEUP;
+    float speed_ = 0;
+};
+
 // XBullet_Flame: the dragon's fireball, a 50-unit sprite (the explosion sheet, 4 ticks a frame)
 // flying at 4.5 a tick along its yaw and pitch, slowing by 0.03 a tick. The map, an object or a
 // platform stops it where it was. It burns a hero during its first 9 frames and is gone after 64
@@ -291,6 +369,10 @@ void XBulletList::CreateFlame(const D3DVECTOR& pos, float yaw, float pitch) {
 void XBulletList::CreateNeedleBall(const D3DVECTOR& pos, float yaw) {
     int i = GetNullIndex();
     if (i >= 0) slots_[i] = std::make_unique<NeedleBall>(game_, pos, yaw);
+}
+void XBulletList::CreateRocket(const D3DVECTOR& pos) {
+    int i = GetNullIndex();
+    if (i >= 0) slots_[i] = std::make_unique<Rocket>(game_, pos);
 }
 
 void XBulletList::ProcessFrame() {
