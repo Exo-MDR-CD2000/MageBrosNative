@@ -481,6 +481,17 @@ and then straight at a hero within 120; the yaw eases to it at 0.05 (king 0.03).
 A walk that moved it less than 15 sets turnAround and jumps; otherwise `Random(2)` picks JUMP
 or WAIT.
 
+**Fan** (`q` `r` `s`: `dir` 4, 0, 2 eighths of a turn, so they blow along −Z, +Z and +X): model
+0x1ca, collision 0x1c9, box 70 × 85 and shadow 32 at the start; the fan itself sits 10.8 along
+the yaw (dir · 45°) and 44.5 up. Base model 0x1cb at the start with the same yaw, plus a static
+20 × 52 box. SMALL, not damagable, "no collision while the hero flashes" on, no `IsUpdatable`
+test; drawn with the visibility test, the shadow at the start. ROTATE: roll −9° a tick, then
+`_PushHero` for each hero. `_PushHero` (fan NORMAL, hero NORMAL): with c = the hero's centre
+(pos + 14.5 up), constants 30, 56, 320. `s`: |Δz| and |Δy| ≤ 56 and fan.x ≤ c.x ≤ fan.x + 320;
+then `IncreasePushX(1.0 · cos(min(|Δx|, 320)/320 · π/2) · k)` with d = `ExactDistanceZY` and
+k = 1 below 30, 1 − (d − 30)/26 below 56, else 0. `r` / `q`: the same across X and Y, the hero
+within 320 ahead along +Z / −Z, `ExactDistanceXY`, and `IncreasePushZ(±1.2 · …)`.
+
 **Hammer** (`k`): hammer model 0x17b (collision 0x17c, box 180 × 120 at the start, never moved)
 on a base, model 0x17a; the constructor also adds static boxes 60 × 7 and 35 × 35 at the start.
 SMALL, not damagable, yaw 90°, no `IsUpdatable` test and drawn without the visibility test

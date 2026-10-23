@@ -8,12 +8,13 @@
 #include "game/XParticle.h"
 #include "game/XPlatform.h"
 #include "game/XStaticObj.h"
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 
 namespace {
 constexpr uint16_t kSoundEnemyHurt = 0x270, kSoundEnemyDie = 0x27d, kSoundEnemyBurst = 0x26b;
-constexpr float kPi = 3.14159f, kHalfPi = 1.5708f;
+constexpr float kPi = 3.14159f, kHalfPi = 1.5708f, kQuarterPi = 0.785398f;
 
 // RandomI: lo..hi, including hi when `inclusive`
 long RandomI(long lo, long hi, bool inclusive) { return Random(hi - lo + (inclusive ? 1 : 0)) + lo; }
@@ -728,6 +729,83 @@ private:
     std::unique_ptr<JObject3DX> fanBase_;
 };
 
+// --------------------------------------------------------------------------------- XEnemy_Fan
+// 'q' 'r' 's' (directions 4, 0, 2 in eighths of a turn: blowing along -Z, +Z and +X): a fan
+// (model 0x1ca, collision 0x1c9, a 70 x 85 box, shadow 32) 10.8 out from its post (model 0x1cb,
+// a static 20 x 52 box) and 44.5 up, its blades turning 9 degrees a tick. It can't be hurt and
+// doesn't hurt a hero who is still flashing. Each tick it pushes a NORMAL hero whose centre is
+// within 56 of its axis (across and up) and up to 320 in front: full strength within 30 of the
+// axis, fading to nothing at 56, and falling off with cos(distance / 320 x 90 degrees). The push
+// is 1.0 along X, 1.2 along Z. No IsUpdatable test.
+class Fan : public XEnemyBase {
+public:
+    Fan(const XGameContext* g, int oid, const D3DVECTOR& p, int dir) : XEnemyBase(g, oid, p, SMALL), dir_(dir) {
+        model_ = std::make_unique<JObject3DX>(0x1ca);
+        model_->SetCollisionModel(0x1c9);
+        shadow_ = std::make_unique<XShadowSimple>(32.0f);
+        collideBox_ = std::make_unique<XCollideBox>(70.0f, 85.0f);
+        collideBox_->SetPos(startPos_);
+        yaw_ = dir_ * kQuarterPi;
+        pos_.x += std::sin(dir_ * kQuarterPi) * 10.8f;
+        pos_.z += std::cos(dir_ * kQuarterPi) * 10.8f;
+        pos_.y += 44.5f;
+        UpdateWorldMatrix();
+        fanBase_ = std::make_unique<JObject3DX>(0x1cb);
+        fanBase_->SetPos(startPos_);
+        fanBase_->SetYaw(dir_ * kQuarterPi);
+        fanBase_->UpdateWorldMatrix();
+        g->statics->CreateCollideBox(startPos_, 20.0f, 52.0f, 20.0f);
+        noCollisionWhenHeroDamaged_ = true;
+        damagable_ = false;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = ROTATE;
+    }
+    void ProcessFrame() override {
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        if (moveState_ == ROTATE) {
+            roll_ = NormaliseAngle(roll_ - 0.15708f);
+            PushHero(game_->heroA);
+        }
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);
+    }
+    void Render(Device* d) override {
+        if (liveState_ == XEnemyBase::NON || !game_->IsVisible(pos_)) return;
+        model_->Render(d);
+        fanBase_->Render(d);
+        shadow_->SetPosXZ(startPos_);
+        shadow_->Render(d);
+    }
+
+private:
+    enum MoveState { NON = 0, ROTATE = 1 };
+    // XEnemy_Fan::_PushHero
+    void PushHero(XHero* hero) {
+        if (!hero || hero->GetLiveState() != XHero::NORMAL) return;
+        const float kInner = 30.0f, kOuter = 56.0f, kRange = 320.0f;
+        const D3DVECTOR& hp = hero->GetPos();
+        D3DVECTOR c(hp.x, hp.y + 14.5f, hp.z);  // XHeroBase::GetCenterPos
+        // strength across the stream: ExactDistanceZY (blowing along X) or XY (along Z)
+        auto across = [&](float d) { return d < kInner ? 1.0f : d < kOuter ? 1.0f - (d - kInner) / 26.0f : 0.0f; };
+        auto along = [&](float d) { return std::cos(std::min(std::fabs(d), kRange) / kRange * kHalfPi); };
+        if (dir_ == 2) {
+            if (std::fabs(pos_.z - c.z) > kOuter || std::fabs(pos_.y - c.y) > kOuter) return;
+            if (pos_.x > c.x || c.x > pos_.x + kRange) return;
+            float dz = c.z - pos_.z, dy = c.y - pos_.y;
+            hero->IncreasePushX(1.0f * along(pos_.x - c.x) * across(std::sqrt(dz * dz + dy * dy)));
+        } else if (dir_ == 0 || dir_ == 4) {
+            if (std::fabs(pos_.x - c.x) > kOuter || std::fabs(pos_.y - c.y) > kOuter) return;
+            if (dir_ == 0 ? (pos_.z > c.z || c.z > pos_.z + kRange) : (pos_.z - kRange > c.z || c.z > pos_.z)) return;
+            float dx = c.x - pos_.x, dy = c.y - pos_.y;
+            hero->IncreasePushZ((dir_ == 0 ? 1.2f : -1.2f) * along(pos_.z - c.z) * across(std::sqrt(dx * dx + dy * dy)));
+        }
+    }
+    int dir_;
+    MoveState moveState_ = NON;
+    std::unique_ptr<JObject3DX> fanBase_;
+};
+
 // ------------------------------------------------------------------------------ XEnemy_Hammer
 // 'k': a hammer (model 0x17b, collision 0x17c, a 180 x 120 box) on a base (model 0x17a, static
 // boxes 60 x 7 and 35 x 35). It can't be hurt. When a hero comes within 160 it rises 30 over 60
@@ -1188,6 +1266,9 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case 'j': e = std::make_unique<BarrelEnemy>(game_, lastOID_, pos); break;
         case 'm': e = std::make_unique<NeedleFan>(game_, lastOID_, pos); break;
         case 'k': e = std::make_unique<Hammer>(game_, lastOID_, pos); break;
+        case 'q': e = std::make_unique<Fan>(game_, lastOID_, pos, 4); break;
+        case 'r': e = std::make_unique<Fan>(game_, lastOID_, pos, 0); break;
+        case 's': e = std::make_unique<Fan>(game_, lastOID_, pos, 2); break;
         case 'v': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, false); break;
         case 'w': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, true); break;
         case 'o': e = std::make_unique<Needle>(game_, lastOID_, pos, false); break;

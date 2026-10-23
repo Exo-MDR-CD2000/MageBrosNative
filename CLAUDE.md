@@ -300,10 +300,11 @@ The needle-ball bullet is fired only by the genie, so it moved to chunk 7. Chunk
 hammer `k` (`XEnemy.cpp`), camera shake (`XCamera::StartShaking`, reached through
 `XGameContext::startShaking`; the camera now always runs its tick and shake and only follows a
 hero that is alive), `XParticleList::CreateHammerEffect` and `AngleDifference` (`XMath`). Chunk
-5 (fans) is next; wait for the owner to start it.
+5 is done (0.2.9): the fans `q` `r` `s` (`XEnemy.cpp`), which push the hero through
+`XHero::IncreasePushX/Z`. Chunk 6 (turtle) is next; wait for the owner to start it.
 The pieces:
 
-- the remaining enemies (`e` turtle, `f` kiwi, `g` ghost, `q` `r` `s` fans, `t` floor fan, `u`
+- the remaining enemies (`e` turtle, `f` kiwi, `g` ghost, `t` floor fan, `u`
   stalactite, `z` jump needle) and the rocket launcher's rocket;
 - the remaining static objects (`M` `N` pots, `R` rocket launcher; the shop's screen waits for
   stage 6);

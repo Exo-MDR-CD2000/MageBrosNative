@@ -44,8 +44,8 @@ is done.
 | 2 | Needle balls `x` `y` | 2-1, 2-2, 2-4, 2-5 | 2-1 | Done |
 | 3 | Squid `c` / king squid `4` | 2-2 to 2-9 | 2-5 | Done |
 | 4 | Hammer `k` and camera shake (`XCamera::StartShaking`) | 2-2, 2-4, 2-6, 2-9 | 2-2 | Done |
-| 5 | Fans `q` `r` `s` | 2-3, 2-4, 2-6 to 2-9 | 2-3, 2-4 | **Next** |
-| 6 | Turtle `e` | 2-6 to 2-9 | 2-6 to 2-9 | |
+| 5 | Fans `q` `r` `s` | 2-3, 2-4, 2-6 to 2-9 | 2-3, 2-4 | Done |
+| 6 | Turtle `e` | 2-6 to 2-9 | 2-6 to 2-9 | **Next** |
 | 7 | The genie, World 2's boss (`7`), and its needle-ball bullets (`XBullet_NeedleBall`) | 2-10 | all of World 2 | |
 | 8 | Pots `M` `N` and the kiwi `f` | 3-1 to 3-10 | | |
 | 9 | Jump needle `z` | 3-1 onward | 3-1 | |
