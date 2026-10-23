@@ -45,7 +45,8 @@ platforms work: elevators that lift the mage while it stands on them, platforms 
 along the level carrying it, and fixed ones. The pits hold water: falling in ends a life with a
 splash, and fish leap out of it. In level 1-10 the dragon swims round its pools and crosses the
 floor breathing fire, its hearts on the status display; defeating it opens the goal. World 2 is
-coming in, one piece at a time: its trees, potted plants, hopping mushrooms, rolling needle balls, squids, the hammers that slam down and shake the screen, the fans that blow the mage along and the turtles that hide in their shells are in, so 2-1 to 2-9 play through, and the
+coming in, one piece at a time: its trees, potted plants, hopping mushrooms, rolling needle balls, squids, the hammers that slam down and shake the screen, the fans that blow the mage along and the turtles that hide in their shells are in, so 2-1 to 2-9 play through, and in 2-10 the genie rises from its steaming lamp and floats about
+(it can be fought and defeated, but doesn't shoot yet), and the
 objects still to come show as markers. N/B change level, Tab switches to the
 **level viewer**: every one of the 40 levels, built by the
 original's own map code with each world's textures. The goal, coins and torches use their real

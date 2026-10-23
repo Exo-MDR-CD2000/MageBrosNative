@@ -165,7 +165,7 @@ normals 1/s long, so the coins (scale 0.35 and 0.6) saturate to bright gold from
   carries over a level change): while it is above 0 the look-at y is
   120 + sin((localTime mod 8) / 8 · 2π) × m, and m falls by 0.02 a tick, clamped at 0. The
   last y is left as it is when it stops (within 0.02 of 120). The hammer and the stalactite call
-  it, and the genie and its lamp.
+  it. (The genie calls its lamp's own `StartShaking`, which rocks the lamp, not the camera.)
 - Music (`XGameObject::InitLevel`): Music06 when the level has a boss, otherwise Music02–05
   for worlds 1–4 (Music01 is the menus'). The test is `XGameObject::boss` (+0xcc, an
   `XBossBase*`), which `_ConstructObjects` sets for the boss codes `6` Dragon, `7` Genie, `8` Nest
@@ -782,6 +782,45 @@ end velocity), with POSITION_MIXER rows (1, 2, −2, 1), (−2, −3, 3, −1), 
 a frame), radius 10, flying at 4.5 along its yaw and pitch and slowing by 0.03 a tick (not below
 0); the map, an object or a platform stops it where it was before the move. It hurts a hero only
 while its frame is below 9, and ends after 64 ticks.
+
+## The genie (`XBoss_Genie`, `XStaticObj_GenieLamp`, `XParticle_LampSteam`)
+
+**Lamp** (`XStaticObjList::CreateGenieLamp`, made by the genie's constructor at its start; the
+list does not call `CreateExtraCollideBox` for it): model 0x1ea turned 180°, an `XShadowSimple`
+of 36 placed with `SetPos` (y + 0.2), a 30 × 24 box, and `holePos` (the spout) at (x, y + 28,
+z − 30). `MOVESTATE` NORMAL / SHAKE. `StartShaking` zeroes the counter and sets SHAKE; then each
+tick the pitch is sin(t/500 · 100 · π) · 4° (0.0698132), a `CreateLampSteam` at the spout every
+16 ticks (counter mod 16 = 0), and at 500 it goes back to NORMAL (the last pitch is left).
+
+**Lamp steam**: a billboard of the smoke texture (0x198) scaled 6, rising 1.3 a tick; alpha −
+0.007 and scaleIncr (from 0.1) × 0.962 a tick, the rect scaled by 1 + scaleIncr each tick while
+alpha > 0.05.
+
+**Genie** (`7`): frames 0x1ee (closed), 0x1ec, 0x1ed (open), collision 0x1eb, `XShadowSimple`
+140, box 200 × 200, scale 0, explodeRadius 80, healthSubMax = healthSub = 15, then 20 in World 4
+(set after healthSub, so the first heart there takes 15). NORMAL, `MOVESTATE` HIDE. Not drawn in
+HIDE. It runs no `IsUpdatable` test. `_Damage` is the base's, then in IDLE idleFrames − 50.
+`_UpdatePosY`: offsetCounter + 1, pos.y = refPosY + sin((offsetCounter mod 200)/200 · 2π + π)
+· 8. `_GetMouthPos`: 34 along the yaw and 62 up.
+
+- HIDE → STEAM when `FindDistanceToCloserHeroXZ` (NORMAL heroes, `ApproxDistanceXZ`) < 80.
+- STEAM: tick 1 sound 0x2a3 and the lamp's `StartShaking`; → APPEAR once the lamp is NORMAL.
+- APPEAR (500): tick 1 sound 0x2a1, yaw 0.654503, scale 0, `_SetPos(holePos)`; with t =
+  counter/500, scale = sin(t · π/2), pos.y = start.y + (h + (80 − h) · t) + sin(t · π) · 120
+  (h = hole.y − start.y), yaw += (1 − t) · 15°. At 500 refPosY = pos.y → IDLE.
+- IDLE: tick 1 idleFrames = `RandomI(4, 8)` · 100; bob; yaw eases to the closer hero (0.05,
+  at most 0.8°); when (signed) counter ≥ idleFrames → OPENMOUTH.
+- OPENMOUTH (60): frame 1 at 10, 2 at 40; bob; yaw (0.05, at most 1.6°) → ATTACK.
+- ATTACK: tick 1 fireCount 0, attackCounter 0, ROTATE. Each tick attackCounter + 1 and bob.
+  ROTATE: yaw (0.05, no limit); at 30 → FIRE. FIRE: at 5 sound 0x2a2,
+  `XBulletList::CreateNeedleBall(_GetMouthPos(), yaw)` and fireCount + 1; at 20 → ROTATE. Then
+  fireCount ≥ 30, or a hero within 80 (XZ) → CLOSEMOUTH.
+- CLOSEMOUTH (100): frame 1 at 10, 0 at 40; bob; yaw (0.05, at most 1.6°) → MOVE.
+- MOVE: tick 1 sound 0x2a4, moveDest = (moveDest + `Random(2)` + 1) mod 3 (CENTER, LEFT
+  z − 380, RIGHT z + 380 from the start), destYaw towards it; bob; pos.z eases
+  (`MakeValueCloseTo` 0.05, 0.1, 2.5) and the yaw (0.1); when pos.z equals the destination →
+  IDLE. Only pos changes: the box stays where `_SetPos` put it at the spout.
+- Defeat is the base boss's: 300 ticks of explosions within 80 of where it was, then gone.
 
 ## Particles and shadows (`XParticleList`, `XShadow`, `JObject3D`)
 

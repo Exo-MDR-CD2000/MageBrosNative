@@ -73,6 +73,7 @@ public:
     void CreateGetCoinEffect(const D3DVECTOR& pos);
     void CreateLandEffect(const D3DVECTOR& pos);
     void CreateHammerEffect(const D3DVECTOR& pos);
+    void CreateLampSteam(const D3DVECTOR& pos);
     // XParticleList::CreateWaterWave: a ring on the water at `pos`
     void CreateWaterWave(const D3DVECTOR& pos, bool large, bool sound);
 
@@ -92,6 +93,7 @@ class XShadowSimple {
 public:
     explicit XShadowSimple(float size);
     void SetPosXZ(const D3DVECTOR& p) { pos_.x = p.x, pos_.z = p.z; }
+    void SetPos(const D3DVECTOR& p) { pos_ = D3DVECTOR(p.x, p.y + 0.2f, p.z); }
     void SetFloorLevel(int level) { pos_.y = level * 25.0f + 0.2f; }
     void SetScale(float s);
     void Render(Device* d);

@@ -80,6 +80,17 @@ float ApproxDistance(const D3DVECTOR& a, const D3DVECTOR& b) {
     return d;
 }
 
+float ApproxDistanceXZ(const D3DVECTOR& a, const D3DVECTOR& b) {
+    float dx = std::fabs(b.x - a.x), dz = std::fabs(b.z - a.z);
+    float d = dx + dz;
+    if (d > 0.0f) {
+        float sq = dx * dx + dz * dz;
+        d = (sq / d + d) * 0.5f;
+        d = (sq / d + d) * 0.5f;
+    }
+    return d;
+}
+
 float UnitRand() { return (float)(std::rand() % 1000) / 1000.0f; }
 
 float RandomF(float lo, float hi) { return UnitRand() * (hi - lo) + lo; }

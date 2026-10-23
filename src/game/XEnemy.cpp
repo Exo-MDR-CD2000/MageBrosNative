@@ -1134,6 +1134,12 @@ float XGameContext::DistanceToCloserHero(const D3DVECTOR& p) const {
     return d;
 }
 
+float XGameContext::DistanceToCloserHeroXZ(const D3DVECTOR& p) const {
+    float d = FLT_MAX;
+    if (heroA && heroA->GetLiveState() == XHero::NORMAL) d = ApproxDistanceXZ(p, heroA->GetPos());
+    return d;
+}
+
 float XGameContext::DirToCloserHero(const D3DVECTOR& p) const {
     // GetCloserHero: player 1 unless player 2 is strictly closer
     return heroA ? FindDirectionXZ(p, heroA->GetPos()) : 0.0f;

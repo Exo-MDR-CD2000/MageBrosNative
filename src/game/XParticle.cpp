@@ -47,6 +47,34 @@ private:
     float scaleIncr_ = 0.12f, alpha_ = 1.0f;
 };
 
+// XParticle_LampSteam: the genie lamp's puff (the smoke texture, from 6 across) rising 1.3 a tick,
+// growing by a factor that shrinks x 0.962 a tick, fading 0.007 a tick
+class LampSteam : public XParticleBase {
+public:
+    LampSteam(XParticleList* l, const D3DVECTOR& p) : XParticleBase(l, p) {
+        particle_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(1, 1));
+        particle_->Scale(6);
+        particle_->SetTexture(kTexSmoke);
+        state_ = NORMAL;
+    }
+    void ProcessFrame() override {
+        XParticleBase::ProcessFrame();
+        if (state_ != NORMAL) return;
+        pos_.y += 1.3f;
+        alpha_ -= 0.007f;
+        scaleIncr_ *= 0.962f;
+        if (alpha_ > 0.05f) {
+            particle_->Scale(1.0f + scaleIncr_);
+            particle_->SetAlphaFactor(alpha_);
+        } else {
+            state_ = NON;
+        }
+    }
+
+private:
+    float scaleIncr_ = 0.1f, alpha_ = 1.0f;
+};
+
 // XParticle_EnemyExplode: a 16-frame explosion (4 x 4 sheet), 6 ticks a frame
 class EnemyExplode : public XParticleBase {
 public:
@@ -428,6 +456,7 @@ void XParticleList::Render(Device* d, const D3DMATRIX& view) {
 }
 
 void XParticleList::CreateSmoke(const D3DVECTOR& pos) { Add(std::make_unique<Smoke>(this, pos)); }
+void XParticleList::CreateLampSteam(const D3DVECTOR& pos) { Add(std::make_unique<LampSteam>(this, pos)); }
 void XParticleList::CreateBulletExplode(const D3DVECTOR& pos) {
     // (the sound plays as the particle is made, so not when every slot is busy, as the original)
     int i = GetNullIndex();

@@ -7,6 +7,7 @@
 #include "game/XLevelView.h"
 #include "game/XMath.h"
 #include "game/XParticle.h"
+#include "game/XStaticObj.h"
 #include <cfloat>
 #include <cmath>
 
@@ -14,6 +15,8 @@ namespace {
 constexpr uint16_t kSoundHurt = 0x270, kSoundBurst = 0x26b, kSoundFinalBurst = 0x27c, kSoundFlame = 0x27a;
 constexpr uint16_t kModelDragonHead = 0x1d2, kModelDragonBody = 0x1d3, kModelDragonTail = 0x1d1;
 constexpr uint16_t kColDragonHead = 0x20b, kColDragonBody = 0x20c, kColDragonTail = 0x209;
+constexpr uint16_t kModelGenie = 0x1ee, kColGenie = 0x1eb;
+constexpr uint16_t kSoundGenieAppear = 0x2a1, kSoundGenieSteam = 0x2a3, kSoundGenieMove = 0x2a4;
 
 // FindDirectionXZ: the yaw from `from` towards `to`
 float FindDirectionXZ(const D3DVECTOR& from, const D3DVECTOR& to) { return FindYaw(to.x - from.x, to.z - from.z); }
@@ -522,3 +525,164 @@ bool XBoss_Dragon::CollisionCheck_Fire(const D3DVECTOR& pos, float radius) {
     if (XBossBase::CollisionCheck_Fire(pos, radius)) return true;
     return firstBody_ && firstBody_->CollisionCheck_Fire(pos, radius);
 }
+
+// --------------------------------------------------------------------------------- XBoss_Genie
+
+XBoss_Genie::XBoss_Genie(const XGameContext* game, const D3DVECTOR& pos) : XBossBase(game, pos) {
+    model_ = std::make_unique<JObject3DX>(kModelGenie);
+    model_->AppendFrame(0x1ec);  // mouth half open
+    model_->AppendFrame(0x1ed);  // mouth open
+    model_->SetCollisionModel(kColGenie);
+    shadow_ = std::make_unique<XShadowSimple>(140.0f);
+    collideBox_ = std::make_unique<XCollideBox>(200.0f, 200.0f);
+    scale_ = 0;
+    UpdateWorldMatrix();
+    genieLamp_ = game->statics->CreateGenieLamp(startPos_);
+    explodeRadius_ = 80.0f;
+    healthSubMax_ = 15;
+    healthSub_ = healthSubMax_;
+    liveState_ = NORMAL;
+    moveState_ = HIDE;
+    if (game->world == 3) healthSubMax_ = 20;  // (after healthSub was set: the first heart takes 15)
+}
+
+void XBoss_Genie::Render(Device* d) {
+    if (moveState_ != HIDE) XBossBase::Render(d);
+}
+
+void XBoss_Genie::ProcessFrame() {
+    XBossBase::ProcessFrame();
+    if (liveState_ != NORMAL) return;
+    switch (moveState_) {
+        case HIDE: Hide(); break;
+        case STEAM: Steam(); break;
+        case APPEAR: Appear(); break;
+        case IDLE: Idle(); break;
+        case MOVE: Move(); break;
+        case OPENMOUTH: OpenMouth(); break;
+        case CLOSEMOUTH: CloseMouth(); break;
+        case ATTACK: Attack(); break;
+        default: break;
+    }
+    UpdateWorldMatrix();
+    CollisionCheck_Hero(game_->heroA);
+}
+
+void XBoss_Genie::Damage() {
+    XBossBase::Damage();
+    if (moveState_ == IDLE) idleFrames_ -= 50;  // each hit shortens the rest
+}
+
+D3DVECTOR XBoss_Genie::GetMouthPos() const {
+    return D3DVECTOR(pos_.x + std::sin(yaw_) * 34.0f, pos_.y + 62.0f, pos_.z + std::cos(yaw_) * 34.0f);
+}
+
+void XBoss_Genie::UpdatePosY() {
+    offsetCounter_++;
+    float t = (float)(offsetCounter_ % 200) / 200.0f;
+    pos_.y = refPosY_ + std::sin(t * 6.28319f + 3.14159f) * 8.0f;
+}
+
+void XBoss_Genie::Hide() {
+    if (game_->DistanceToCloserHeroXZ(pos_) < 80.0f) Next(STEAM);
+}
+
+void XBoss_Genie::Steam() {
+    if (localCounter_ == 1) {
+        game_->playSound(kSoundGenieSteam, pos_.z);
+        genieLamp_->StartShaking();
+    }
+    if (genieLamp_->GetMoveState() == XStaticObj_GenieLamp::NORMAL) Next(APPEAR);
+}
+
+// 500 ticks: from the spout, growing (sin of a quarter turn), rising to 80 above the start on an
+// arc 120 high, spinning from 15 degrees a tick to a stop. Only pos.y changes after the first tick.
+void XBoss_Genie::Appear() {
+    float holeY = genieLamp_->GetHolePos().y - startPos_.y;
+    if (localCounter_ == 1) {
+        game_->playSound(kSoundGenieAppear, pos_.z);
+        yaw_ = 0.654503f;
+        scale_ = 0;
+        SetPos(genieLamp_->GetHolePos());
+    }
+    float t = (float)localCounter_ / 500.0f;
+    scale_ = std::sin(t * 1.5708f);
+    pos_.y = startPos_.y + (holeY + (80.0f - holeY) * t) + std::sin(t * 3.14159f) * 120.0f;
+    yaw_ = NormaliseAngle(yaw_ + 0.0174533f * ((1.0f - t) * 15.0f));
+    if (localCounter_ >= 500) {
+        refPosY_ = pos_.y;
+        Next(IDLE);
+    }
+}
+
+void XBoss_Genie::Idle() {
+    if (localCounter_ == 1) idleFrames_ = (int)(Random(5) + 4) * 100;  // RandomI(4, 8) x 100
+    UpdatePosY();
+    yaw_ = MakeAngleCloseTo(yaw_, game_->DirToCloserHero(pos_), 0.05f, 0.0f, 0.0139626f);
+    if ((int)localCounter_ >= idleFrames_) Next(OPENMOUTH);
+}
+
+// It glides along Z only (pos.z directly: its box stays where it appeared) to the centre or 380
+// either side, never the same place twice running.
+void XBoss_Genie::Move() {
+    if (localCounter_ == 1) {
+        game_->playSound(kSoundGenieMove, pos_.z);
+        moveDest_ = (MoveDest)((moveDest_ + Random(2) + 1) % 3);
+        destPos_ = startPos_;
+        if (moveDest_ == LEFT) destPos_.z -= 380.0f;
+        else if (moveDest_ == RIGHT) destPos_.z += 380.0f;
+        destYaw_ = FindDirectionXZ(pos_, destPos_);
+    }
+    UpdatePosY();
+    pos_.z = MakeValueCloseTo(pos_.z, destPos_.z, 0.05f, 0.1f, 2.5f);
+    yaw_ = MakeAngleCloseTo(yaw_, destYaw_, 0.1f, 0.0f, FLT_MAX);
+    if (pos_.z == destPos_.z) Next(IDLE);
+}
+
+void XBoss_Genie::OpenMouth() {
+    if (localCounter_ == 10) frame_ = 1;
+    if (localCounter_ == 40) frame_ = 2;
+    UpdatePosY();
+    yaw_ = MakeAngleCloseTo(yaw_, game_->DirToCloserHero(pos_), 0.05f, 0.0f, 0.0279253f);
+    if (localCounter_ >= 60) Next(ATTACK);
+}
+
+void XBoss_Genie::CloseMouth() {
+    if (localCounter_ == 10) frame_ = 1;
+    if (localCounter_ == 40) frame_ = 0;
+    UpdatePosY();
+    yaw_ = MakeAngleCloseTo(yaw_, game_->DirToCloserHero(pos_), 0.05f, 0.0f, 0.0279253f);
+    if (localCounter_ >= 100) Next(MOVE);
+}
+
+// Rounds of ROTATE (30 ticks turning to the hero) and FIRE (20 ticks, a shot at 5), 30 shots in
+// all, or until a hero comes within 80 (XZ).
+void XBoss_Genie::Attack() {
+    if (localCounter_ == 1) {
+        fireCount_ = 0;
+        attackCounter_ = 0;
+        attackState_ = ATTACK_ROTATE;
+    }
+    attackCounter_++;
+    UpdatePosY();
+    if (attackState_ == ATTACK_ROTATE) {
+        yaw_ = MakeAngleCloseTo(yaw_, game_->DirToCloserHero(pos_), 0.05f, 0.0f, FLT_MAX);
+        if (attackCounter_ >= 30) {
+            attackCounter_ = 0;
+            attackState_ = ATTACK_FIRE;
+        }
+    } else if (attackState_ == ATTACK_FIRE) {
+        if (attackCounter_ == 5) {
+            // the shot (sound 0x2a2 and XBulletList::CreateNeedleBall from GetMouthPos() along the
+            // yaw) comes with stage 5 chunk 7b; the count keeps the attack's length
+            fireCount_++;
+        }
+        if (attackCounter_ >= 20) {
+            attackCounter_ = 0;
+            attackState_ = ATTACK_ROTATE;
+        }
+    }
+    if (fireCount_ >= 30) Next(CLOSEMOUTH);
+    else if (game_->DistanceToCloserHeroXZ(pos_) < 80.0f) Next(CLOSEMOUTH);
+}
+

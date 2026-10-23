@@ -17,7 +17,7 @@ constexpr uint16_t kModelFenceStraight = 0x1d9, kModelFenceCorner = 0x1d8, kMode
 constexpr uint16_t kModelCannon = 0x18c, kModelCannonRBarrel = 0x1f4, kModelCannonRBase = 0x1f3;
 constexpr uint16_t kSoundCannon = 0x262;
 constexpr uint16_t kModelShop = 0x1ab, kTexShopSign = 0x1ac;
-constexpr uint16_t kModelTree = 0x1d6, kModelPlant = 0x1d7;
+constexpr uint16_t kModelTree = 0x1d6, kModelPlant = 0x1d7, kModelGenieLamp = 0x1ea;
 constexpr float kHalfPi = 1.5708f, kPi = 3.14159f, kQuarterPi = 0.785398f;
 
 // XStaticObj_Pillar: 27 wide; 146.5 tall (165 in world 3, model 0x292). Over a hole (the floor
@@ -323,6 +323,37 @@ void XStaticObjBase::Render(Device* d) {
     if (shadow_) shadow_->Render(d);
 }
 
+// ------------------------------------------------------------------------ XStaticObj_GenieLamp
+// Model 0x1ea turned 180 degrees, a 30 x 24 box, a 36-unit shadow; the spout is 28 up and 30
+// back along Z.
+
+XStaticObj_GenieLamp::XStaticObj_GenieLamp(const XGameContext* game, const D3DVECTOR& pos) : XStaticObjBase(game, pos) {
+    model_ = std::make_unique<JObject3DX>(kModelGenieLamp);
+    model_->SetYaw(3.14159f);
+    model_->SetPos(pos_);
+    model_->UpdateWorldMatrix();
+    shadow_ = std::make_unique<XShadowSimple>(36.0f);
+    shadow_->SetPos(pos_);
+    collideBox_ = std::make_unique<XCollideBox>(30.0f, 24.0f);
+    collideBox_->SetPos(pos_);
+    holePos_ = D3DVECTOR(pos_.x, pos_.y + 28.0f, pos_.z - 30.0f);
+}
+
+// Shaking: it rocks up to 4 degrees (50 times over the 500 ticks) and puffs steam every 16 ticks.
+// (The last pitch, close to 0, is left when it stops.)
+void XStaticObj_GenieLamp::ProcessFrame() {
+    XStaticObjBase::ProcessFrame();
+    if (moveState_ != SHAKE) return;
+    float t = (float)localCounter_ / 500.0f;
+    model_->SetPitch(std::sin(t * 100.0f * 3.14159f) * 0.0698132f);
+    model_->UpdateWorldMatrix();
+    if (localCounter_ % 16 == 0) game_->particles->CreateLampSteam(holePos_);
+    if (localCounter_ >= 500) {
+        localCounter_ = 0;
+        moveState_ = NORMAL;
+    }
+}
+
 // ------------------------------------------------------------------------------ XStaticObjList
 
 XStaticObjList::~XStaticObjList() = default;
@@ -376,6 +407,10 @@ XStaticObjBase* XStaticObjList::CreateFence(const D3DVECTOR& pos, char shape) {
     XStaticObjBase* f = Put(std::make_unique<Fence>(game_, pos, type, this));
     if (f) f->CreateExtraCollideBox();
     return f;
+}
+
+XStaticObj_GenieLamp* XStaticObjList::CreateGenieLamp(const D3DVECTOR& pos) {
+    return static_cast<XStaticObj_GenieLamp*>(Put(std::make_unique<XStaticObj_GenieLamp>(game_, pos)));
 }
 
 XStaticObjBase* XStaticObjList::CreateCollideBox(const D3DVECTOR& pos, float wx, float h, float wz) {

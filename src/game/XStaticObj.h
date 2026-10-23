@@ -48,6 +48,25 @@ protected:
     std::unique_ptr<XCollideBox> collideBox_;
 };
 
+// XStaticObj_GenieLamp: the genie's lamp (World 2-10 and 4-5), made by the genie. Shaken, it rocks
+// and puffs steam from its spout for 500 ticks, then is still again (NORMAL).
+class XStaticObj_GenieLamp : public XStaticObjBase {
+public:
+    enum MoveState { NORMAL = 0, SHAKE = 1 };
+    XStaticObj_GenieLamp(const XGameContext* game, const D3DVECTOR& pos);
+    void ProcessFrame() override;
+    void StartShaking() {
+        localCounter_ = 0;
+        moveState_ = SHAKE;
+    }
+    MoveState GetMoveState() const { return moveState_; }
+    const D3DVECTOR& GetHolePos() const { return holePos_; }  // the spout
+
+private:
+    MoveState moveState_ = NORMAL;
+    D3DVECTOR holePos_{0, 0, 0};
+};
+
 class XStaticObjList {
 public:
     static constexpr int kSlots = 150;
@@ -61,6 +80,8 @@ public:
     XStaticObjBase* CreateFence(const D3DVECTOR& pos, char shape);
     // XStaticObjList::CreateCollideBox: an invisible box (x width, height, z width)
     XStaticObjBase* CreateCollideBox(const D3DVECTOR& pos, float widthX, float height, float widthZ);
+    // XStaticObjList::CreateGenieLamp (no extra collide box)
+    XStaticObj_GenieLamp* CreateGenieLamp(const D3DVECTOR& pos);
 
     void ProcessFrame();
     void Render(Device* d);

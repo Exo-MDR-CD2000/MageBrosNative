@@ -32,6 +32,7 @@ D3DVECTOR D3DVectorInterpolate(const D3DVECTOR& a, const D3DVECTOR& b, float t);
 float FindPitch(const D3DVECTOR& from, const D3DVECTOR& to);
 // Manhattan distance refined by two Newton steps of the square root (not exact, on purpose).
 float ApproxDistance(const D3DVECTOR& a, const D3DVECTOR& b);
+float ApproxDistanceXZ(const D3DVECTOR& a, const D3DVECTOR& b);  // the same, ignoring Y
 // JStandard's random helpers, on the C library's rand() like the original:
 // UnitRand = (rand() % 1000) / 1000; RandomF = lo + UnitRand * (hi - lo);
 // RandomPosXZ = a point at a random angle and a random distance up to `radius` around `centre`.

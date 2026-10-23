@@ -49,6 +49,7 @@ struct XGameContext {
     // XGameObject::FindDistanceToCloserHero / FindDirToCloserHero: heroes in the NORMAL state
     float DistanceToCloserHero(const D3DVECTOR& p) const;
     float DirToCloserHero(const D3DVECTOR& p) const;
+    float DistanceToCloserHeroXZ(const D3DVECTOR& p) const;  // FindDistanceToCloserHeroXZ
     // XMap::CollisionCheckX_Floor / Z_Floor: a box kept to cells of its own floor level and out
     // of '!' cells (the invisible blocks that fence enemies in)
     bool CollisionCheckX_Floor(float& newX, const class XCollideBox& box, int floorLevel) const;

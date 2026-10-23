@@ -4,7 +4,8 @@
 // display, each heart worth a number of hits (the sub health). When the last one goes the music
 // stops; once the boss has gone (NON) for 500 ticks the goal opens.
 //
-// Built so far: the dragon, World 1's boss (and World 4-2's).
+// Built so far: the dragon, World 1's boss (and World 4-2's), and the genie, World 2's (and
+// World 4-5's), without its needle-ball shots yet.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -18,6 +19,7 @@ class JObject3DX;
 class XHero;
 class XShadow;
 class XShadowSimple;
+class XStaticObj_GenieLamp;
 struct XGameContext;
 
 class XBossBase {
@@ -136,3 +138,49 @@ private:
     D3DVECTOR posRec_[kRecords];
     float yawRec_[kRecords] = {}, pitchRec_[kRecords] = {};
 };
+
+// XBoss_Genie ('7'): a genie in a lamp (XStaticObj_GenieLamp, made at its start). It hides until
+// a hero comes within 80 (XZ), the lamp shakes and steams for 500 ticks, then it grows out of the
+// spout over 500 ticks, rising to 80 up and spinning to a stop. Then it cycles: idle 400-800
+// ticks (50 fewer for each hit taken meanwhile) bobbing 8 and turning to the hero; opening its
+// mouth (60); attacking (rounds of turning 30 ticks then firing, 30 shots, or until a hero is
+// within 80); closing its mouth (100); gliding to the middle or 380 to either side. 10 hearts of
+// 15 hits (World 4: 20, but the first heart still holds 15).
+class XBoss_Genie : public XBossBase {
+public:
+    enum MoveState { NON = 0, HIDE, STEAM, APPEAR, IDLE, MOVE, OPENMOUTH, CLOSEMOUTH, ATTACK };
+    enum MoveDest { CENTER = 0, LEFT = 1, RIGHT = 2 };
+    enum AttackState { ATTACK_NON = 0, ATTACK_ROTATE = 1, ATTACK_FIRE = 2 };
+
+    XBoss_Genie(const XGameContext* game, const D3DVECTOR& pos);
+    void Render(Device* d) override;
+    void ProcessFrame() override;
+
+private:
+    void Damage() override;
+    D3DVECTOR GetMouthPos() const;  // _GetMouthPos
+    void UpdatePosY();              // _UpdatePosY: the bob about refPosY
+    void Hide();
+    void Steam();
+    void Appear();
+    void Idle();
+    void Move();
+    void OpenMouth();
+    void CloseMouth();
+    void Attack();
+    void Next(MoveState s) {
+        localCounter_ = 0;
+        moveState_ = s;
+    }
+
+    MoveState moveState_ = NON;
+    MoveDest moveDest_ = CENTER;
+    AttackState attackState_ = ATTACK_NON;
+    float refPosY_ = 0, destYaw_ = 0;
+    D3DVECTOR destPos_{0, 0, 0};
+    unsigned offsetCounter_ = 0, attackCounter_ = 0;
+    int idleFrames_ = 0;
+    unsigned fireCount_ = 0;
+    XStaticObj_GenieLamp* genieLamp_ = nullptr;  // owned by the static object list
+};
+

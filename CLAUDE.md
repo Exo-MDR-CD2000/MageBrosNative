@@ -290,7 +290,7 @@ keep their navy.
 
 ### Next: stage 5, the whole game (worlds 2 to 4, every object, two-player co-op)
 
-Split into 19 small chunks, in level order: the table is in `docs/ROADMAP.md`, "Stage 5, chunk
+Split into 20 small chunks (7 is 7a and 7b), in level order: the table is in `docs/ROADMAP.md`, "Stage 5, chunk
 by chunk". Chunk 1 is done (0.2.5): the tree `T` and plant `U` (`XStaticObj.cpp`; `CreateObject`
 now calls every object's `CreateExtraCollideBox`, as the original) and the mushroom `h` / `2`
 (`XEnemy.cpp`, a wallaby-style hopper). Checked by screenshot in 2-1; the king mushroom (2-4,
@@ -303,15 +303,21 @@ hero that is alive), `XParticleList::CreateHammerEffect` and `AngleDifference` (
 5 is done (0.2.9): the fans `q` `r` `s` (`XEnemy.cpp`), which push the hero through
 `XHero::IncreasePushX/Z`. Chunk 6 is done (0.2.10): the turtle `e`
 (`XEnemy.cpp`; it overrides `Damage` to hide in its shell). Levels 2-1 to 2-9 now have nothing
-left unbuilt. Chunk 7 (the genie) is next; it may need splitting: check its size with the
-owner first. Wait for the owner to start it.
+left unbuilt. Chunk 7 (the genie) was split, as the owner asked: 7a is the
+genie and its lamp (`XBoss_Genie` without its shots, `XStaticObj_GenieLamp`, the lamp steam,
+`XStaticObjList::CreateGenieLamp`), 7b its needle-ball attack (`_ProcessFrame_Attack`'s
+`XBulletList::CreateNeedleBall`, `XBullet_NeedleBall`). Chunk 7a is done (0.2.11): `XBoss_Genie`
+(`XBoss.cpp`), the lamp (`XStaticObj.cpp`), `CreateLampSteam`, `ApproxDistanceXZ` and
+`XGameContext::DistanceToCloserHeroXZ`. Its attack runs its rounds and counts its 30 shots, but
+the marked spot in `XBoss_Genie::Attack` fires nothing yet. Chunk 7b is next; wait for the owner
+to start it.
 The pieces:
 
 - the remaining enemies (`f` kiwi, `g` ghost, `t` floor fan, `u`
   stalactite, `z` jump needle) and the rocket launcher's rocket;
 - the remaining static objects (`M` `N` pots, `R` rocket launcher; the shop's screen waits for
   stage 6);
-- the other bosses: the genie (`7`, with its needle-ball bullets), the nest (`8`, with the bird)
+- the other bosses: the genie's needle-ball bullets (`7`), the nest (`8`, with the bird)
   and the wizard (`9`, with its blade, wand and fire);
 - player 2 (`XHeroB`): its input, the camera midpoint, hero-on-hero collision and carrying, the
   second HUD panel and the second platform shadow (the `heroB` slots marked in the code).

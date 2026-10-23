@@ -8,7 +8,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 2 | Engine: window, OpenGL renderer, sound, MIDI music, keyboard/gamepad, options menu | Done |
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
 | 4 | First playable: World 1 with player 1 | Done |
-| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **Next** (19 chunks, below) |
+| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **Next** (20 chunks, below) |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | |
 | 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | |
 
@@ -46,7 +46,8 @@ is done.
 | 4 | Hammer `k` and camera shake (`XCamera::StartShaking`) | 2-2, 2-4, 2-6, 2-9 | 2-2 | Done |
 | 5 | Fans `q` `r` `s` | 2-3, 2-4, 2-6 to 2-9 | 2-3, 2-4 | Done |
 | 6 | Turtle `e` | 2-6 to 2-9 | 2-6 to 2-9 | Done |
-| 7 | The genie, World 2's boss (`7`), and its needle-ball bullets (`XBullet_NeedleBall`) | 2-10 | all of World 2 | **Next** |
+| 7a | The genie, World 2's boss (`7`), and its lamp (`XStaticObj_GenieLamp`, the lamp steam): hiding, steaming, appearing, moving, opening its mouth, its hearts, taking damage and defeat; its attack state does not fire yet | 2-10 | | Done |
+| 7b | The genie's attack: needle-ball bullets (`XBullet_NeedleBall`) fired from its mouth | 2-10 | all of World 2 | **Next** |
 | 8 | Pots `M` `N` and the kiwi `f` | 3-1 to 3-10 | | |
 | 9 | Jump needle `z` | 3-1 onward | 3-1 | |
 | 10 | Stalactite `u` (shakes the camera) | 3-2 onward | 3-2, 3-6, 3-9 | |
@@ -60,7 +61,8 @@ is done.
 | 18 | Player 2's HUD panel and platform shadow | | | |
 | 19 | Checks and the whole-game zip, played start to finish by the owner | | | |
 
-World 4 reuses the earlier bosses (4-2 dragon, 4-5 genie, 4-8 nest) and only needs the wizard
+Chunk 7 was split in two (7a, 7b) because the genie is the largest piece of World 2. World 4
+reuses the earlier bosses (4-2 dragon, 4-5 genie, 4-8 nest) and only needs the wizard
 on top of what worlds 1–3 add. The split comes from counting each object code in the 40 shipped
 levels.
 
@@ -71,7 +73,7 @@ levels.
 | Which levels are boss levels | Settled: any level with a boss code (`6`–`9`); level 10 of each world and World 4's levels 2, 5, 8 |
 | Which way the mage faces at the start | Settled: yaw 0, along the level |
 | Two-player camera midpoint | Stage 5: player 2 |
-| Camera shake | Done (stage 5 chunk 4): `XCamera::StartShaking`, used by the hammer; the stalactite and the genie follow |
+| Camera shake | Done (stage 5 chunk 4): `XCamera::StartShaking`, used by the hammer; the stalactite follows |
 | Hero-on-hero collision and carrying | Stage 5 (player 2) |
 | Static objects' collision with the hero | Done (5a): `XStaticObjList` and `XCollideBox` as the original |
 | Colour under the pit water | Settled (0.2.4): black, the original's clear colour; nothing is drawn under the water sheets |
