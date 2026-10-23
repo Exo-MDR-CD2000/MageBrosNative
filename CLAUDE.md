@@ -308,17 +308,17 @@ genie and its lamp (`XBoss_Genie` without its shots, `XStaticObj_GenieLamp`, the
 `XStaticObjList::CreateGenieLamp`), 7b its needle-ball attack (`_ProcessFrame_Attack`'s
 `XBulletList::CreateNeedleBall`, `XBullet_NeedleBall`). Chunk 7a is done (0.2.11): `XBoss_Genie`
 (`XBoss.cpp`), the lamp (`XStaticObj.cpp`), `CreateLampSteam`, `ApproxDistanceXZ` and
-`XGameContext::DistanceToCloserHeroXZ`. Its attack runs its rounds and counts its 30 shots, but
-the marked spot in `XBoss_Genie::Attack` fires nothing yet. Chunk 7b is next; wait for the owner
-to start it.
+`XGameContext::DistanceToCloserHeroXZ`. Chunk 7b is done (0.2.12): the genie fires
+`XBullet_NeedleBall` (`XBullet.cpp`), so World 2 has nothing left unbuilt. Chunk 8 (pots and
+the kiwi, World 3) is next; wait for the owner to start it.
 The pieces:
 
 - the remaining enemies (`f` kiwi, `g` ghost, `t` floor fan, `u`
   stalactite, `z` jump needle) and the rocket launcher's rocket;
 - the remaining static objects (`M` `N` pots, `R` rocket launcher; the shop's screen waits for
   stage 6);
-- the other bosses: the genie's needle-ball bullets (`7`), the nest (`8`, with the bird)
-  and the wizard (`9`, with its blade, wand and fire);
+- the other bosses: the nest (`8`, with the bird) and the wizard (`9`, with its blade, wand
+  and fire);
 - player 2 (`XHeroB`): its input, the camera midpoint, hero-on-hero collision and carrying, the
   second HUD panel and the second platform shadow (the `heroB` slots marked in the code).
 

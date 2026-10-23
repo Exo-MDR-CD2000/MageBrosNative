@@ -47,8 +47,8 @@ is done.
 | 5 | Fans `q` `r` `s` | 2-3, 2-4, 2-6 to 2-9 | 2-3, 2-4 | Done |
 | 6 | Turtle `e` | 2-6 to 2-9 | 2-6 to 2-9 | Done |
 | 7a | The genie, World 2's boss (`7`), and its lamp (`XStaticObj_GenieLamp`, the lamp steam): hiding, steaming, appearing, moving, opening its mouth, its hearts, taking damage and defeat; its attack state does not fire yet | 2-10 | | Done |
-| 7b | The genie's attack: needle-ball bullets (`XBullet_NeedleBall`) fired from its mouth | 2-10 | all of World 2 | **Next** |
-| 8 | Pots `M` `N` and the kiwi `f` | 3-1 to 3-10 | | |
+| 7b | The genie's attack: needle-ball bullets (`XBullet_NeedleBall`) fired from its mouth | 2-10 | all of World 2 | Done |
+| 8 | Pots `M` `N` and the kiwi `f` | 3-1 to 3-10 | | **Next** |
 | 9 | Jump needle `z` | 3-1 onward | 3-1 | |
 | 10 | Stalactite `u` (shakes the camera) | 3-2 onward | 3-2, 3-6, 3-9 | |
 | 11 | Rocket launcher `R` and its rocket | 3-3 onward | 3-3 | |

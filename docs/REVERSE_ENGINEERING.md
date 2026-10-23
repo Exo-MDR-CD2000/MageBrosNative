@@ -822,6 +822,17 @@ HIDE. It runs no `IsUpdatable` test. `_Damage` is the base's, then in IDLE idleF
   IDLE. Only pos changes: the box stays where `_SetPos` put it at the spout.
 - Defeat is the base boss's: 300 ticks of explosions within 80 of where it was, then gone.
 
+**Needle-ball bullet** (`XBullet_NeedleBall`, from `XBulletList::CreateNeedleBall(pos, yaw)`):
+model 0x1f0, `XShadow` 19, radius 9 (and a collide sphere of 9), speedFactor 1, targetHero =
+`GetCloserHero` at the moment it is made. Each tick: verticalSpeed − 0.04 (at least −4); the
+bottom (y + verticalSpeed − radius) against `XMap::CollisionCheckY`, and on the floor
+verticalSpeed 0 and speedFactor + 0.01 (at most 5); y = bottom + radius. Before tick 500 the yaw
+turns at most 0.3° (0.00523599) towards the target's `GetCenterPos`. Pitch + 0.0331613 ·
+speedFactor; x/z + 0.5 · speedFactor along the yaw; smoke every 15 ticks. After 20 ticks the
+map (`IsBlockedFloat`), static objects, platforms or either hero burst it at the previous
+position; below −200 it is gone; on a water level below −38 a wave (if above −43) and a burst,
+as the rolling cannonball.
+
 ## Particles and shadows (`XParticleList`, `XShadow`, `JObject3D`)
 
 **`JObject3D_Rect`** is a w × h quad of lit vertices in the XZ plane (v0 −x+z, v1 +x+z, v2 −x−z,

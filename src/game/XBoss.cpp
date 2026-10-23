@@ -16,7 +16,8 @@ constexpr uint16_t kSoundHurt = 0x270, kSoundBurst = 0x26b, kSoundFinalBurst = 0
 constexpr uint16_t kModelDragonHead = 0x1d2, kModelDragonBody = 0x1d3, kModelDragonTail = 0x1d1;
 constexpr uint16_t kColDragonHead = 0x20b, kColDragonBody = 0x20c, kColDragonTail = 0x209;
 constexpr uint16_t kModelGenie = 0x1ee, kColGenie = 0x1eb;
-constexpr uint16_t kSoundGenieAppear = 0x2a1, kSoundGenieSteam = 0x2a3, kSoundGenieMove = 0x2a4;
+constexpr uint16_t kSoundGenieAppear = 0x2a1, kSoundGenieFire = 0x2a2, kSoundGenieSteam = 0x2a3,
+                   kSoundGenieMove = 0x2a4;
 
 // FindDirectionXZ: the yaw from `from` towards `to`
 float FindDirectionXZ(const D3DVECTOR& from, const D3DVECTOR& to) { return FindYaw(to.x - from.x, to.z - from.z); }
@@ -673,8 +674,8 @@ void XBoss_Genie::Attack() {
         }
     } else if (attackState_ == ATTACK_FIRE) {
         if (attackCounter_ == 5) {
-            // the shot (sound 0x2a2 and XBulletList::CreateNeedleBall from GetMouthPos() along the
-            // yaw) comes with stage 5 chunk 7b; the count keeps the attack's length
+            game_->playSound(kSoundGenieFire, pos_.z);
+            game_->bullets->CreateNeedleBall(GetMouthPos(), yaw_);
             fireCount_++;
         }
         if (attackCounter_ >= 20) {

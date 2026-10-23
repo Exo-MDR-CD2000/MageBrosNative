@@ -5,7 +5,7 @@
 // stops; once the boss has gone (NON) for 500 ticks the goal opens.
 //
 // Built so far: the dragon, World 1's boss (and World 4-2's), and the genie, World 2's (and
-// World 4-5's), without its needle-ball shots yet.
+// World 4-5's).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once

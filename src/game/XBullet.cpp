@@ -11,7 +11,7 @@
 #include <cmath>
 
 namespace {
-constexpr uint16_t kModelCannonBall = 0x18d, kModelCannonRBall = 0x1f2;
+constexpr uint16_t kModelCannonBall = 0x18d, kModelCannonRBall = 0x1f2, kModelNeedleBall = 0x1f0;
 constexpr uint16_t kTexFlame = 0x192;
 constexpr float kQuarterPi = 0.785398f;
 
@@ -101,6 +101,72 @@ private:
     }
     float verticalSpeed_ = 0;
 };
+// XBullet_NeedleBall: the genie's spiked ball (radius 9, shadow 19). It falls (0.04 a tick, at
+// most 4) onto the floor and rolls along its yaw at 0.5 x its speed factor, which grows by 0.01
+// a tick while it touches the floor (from 1, at most 5), spinning to match. For its first 500
+// ticks it turns towards the hero that was closer when it was fired (0.3 degrees a tick). Smoke
+// every 15 ticks. After 20 ticks it bursts like the rolling cannonball; below -200 it is gone.
+class NeedleBall : public XBulletBase {
+public:
+    NeedleBall(const XGameContext* g, const D3DVECTOR& p, float yaw) : XBulletBase(g, p) {
+        model_ = std::make_unique<JObject3DX>(kModelNeedleBall);
+        yaw_ = yaw;
+        UpdateWorldMatrix();
+        shadow_ = std::make_unique<XShadow>(19.0f);
+        radius_ = 9.0f;
+        targetHero_ = g->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+        liveState_ = NORMAL;
+    }
+    void ProcessFrame() override {
+        XBulletBase::ProcessFrame();
+        if (liveState_ != NORMAL) return;
+        const D3DVECTOR prev = pos_;
+        verticalSpeed_ -= 0.04f;
+        if (verticalSpeed_ < -4.0f) verticalSpeed_ = -4.0f;
+        float bottom = pos_.y + verticalSpeed_ - radius_;
+        if (game_->level->Collision().CollisionCheckY(bottom, pos_.x, pos_.z)) {
+            verticalSpeed_ = 0;
+            speedFactor_ += 0.01f;
+            if (speedFactor_ > 5.0f) speedFactor_ = 5.0f;
+        }
+        pos_.y = bottom + radius_;
+        if (localCounter_ < 500 && targetHero_) {
+            const D3DVECTOR& hp = targetHero_->GetPos();
+            D3DVECTOR c(hp.x, hp.y + 14.5f, hp.z);  // XHeroBase::GetCenterPos
+            yaw_ = MakeAngleCloseTo_Constant(yaw_, FindYaw(c.x - pos_.x, c.z - pos_.z), 0.00523599f);
+        }
+        pitch_ = NormaliseAngle(pitch_ + 0.0331613f * speedFactor_);
+        pos_.x += 0.5f * speedFactor_ * std::sin(yaw_);
+        pos_.z += 0.5f * speedFactor_ * std::cos(yaw_);
+        if (localCounter_ % 15 == 0) game_->particles->CreateSmoke(pos_);
+        if (localCounter_ > 20 && Hits()) {
+            game_->particles->CreateBulletExplode(prev);
+            liveState_ = NON;
+            return;
+        }
+        if (pos_.y < -200.0f) {
+            liveState_ = NON;
+            return;
+        }
+        // on a water level, below -38: a wave (unless already below -43) and a burst
+        if (game_->useWater && pos_.y < -38.0f) {
+            if (pos_.y > -43.0f) game_->particles->CreateWaterWave(D3DVECTOR(pos_.x, -38.0f, pos_.z), false, true);
+            game_->particles->CreateBulletExplode(prev);
+            liveState_ = NON;
+            return;
+        }
+        UpdateWorldMatrix();
+    }
+
+private:
+    bool Hits() {
+        return game_->level->Collision().IsBlockedFloat(pos_.x, pos_.z, pos_.y) || game_->statics->CollisionCheck(pos_) ||
+               game_->platforms->CollisionCheck(pos_) || CollisionCheck_Hero(game_->heroA);
+    }
+    float speedFactor_ = 1.0f, verticalSpeed_ = 0;
+    XHero* targetHero_ = nullptr;
+};
+
 // XBullet_Flame: the dragon's fireball, a 50-unit sprite (the explosion sheet, 4 ticks a frame)
 // flying at 4.5 a tick along its yaw and pitch, slowing by 0.03 a tick. The map, an object or a
 // platform stops it where it was. It burns a hero during its first 9 frames and is gone after 64
@@ -221,6 +287,10 @@ void XBulletList::CreateCannonRBall(const D3DVECTOR& pos, float yaw) {
 void XBulletList::CreateFlame(const D3DVECTOR& pos, float yaw, float pitch) {
     int i = GetNullIndex();
     if (i >= 0) slots_[i] = std::make_unique<Flame>(game_, pos, yaw, pitch);
+}
+void XBulletList::CreateNeedleBall(const D3DVECTOR& pos, float yaw) {
+    int i = GetNullIndex();
+    if (i >= 0) slots_[i] = std::make_unique<NeedleBall>(game_, pos, yaw);
 }
 
 void XBulletList::ProcessFrame() {
