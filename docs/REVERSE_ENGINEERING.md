@@ -553,6 +553,31 @@ where 4.8 · cos(h/320 · 90°) ≈ 4, about 120 up, bobbing between roughly 107
 (not on falling out or warping), and by `Reset`; its only reader is the falling check against the
 other hero: a hero lifted by a fan doesn't land on hero B.
 
+**Ghost** (`g`, 3-5, 3-7, 3-8 and 4-9): models 0x1de (frame 0) and 0x1df (frame 1, mouth open),
+collision 0x1e0, scaled 0.8 (set again every tick), box 27.2 × 36 at the start, and an `XShadow`
+27.2 (`ghostShadow`, the floor-following shadow, not `XShadowSimple`). SMALL, health 99999,
+chasable, not collidable (other enemies pass through it), random `dir` = yaw. `ghostPos` = the
+start + 80 up; `offsetCounter` = Random(120), `startAttackTimer` = RandomI(600, 1000). `IsUpdatable`
+test; drawn with the visibility test (`Render` also calls the box's debug draw). Each tick: the
+state, then in WALK `offsetY` = 5 · sin((++offsetCounter mod 120)/120 · 2π) (frozen in the other
+states); pos = ghostPos with y + offsetY, scale, world matrix, hero checks. `_UpdatePosX_Ghost` /
+`_UpdatePosZ_Ghost` just store ghostPos.x / z: no collision with anything.
+- WALK: at t = 1, dir = yaw, frame 0, prevPosForWalk = ghostPos, target = `_GenerateBehindPos`
+  if turnAround else `_GenerateRandomPos`. dir eases to `FindDirectionXZ(ghostPos, target)` by
+  0.6° (0.010472) a tick, yaw = dir, ghostPos moves 0.4 along dir. The timer counts down to 0.
+  Not turnAround, timer 0 and `FindDistanceToCloserHero(pos) < 120` → WARNING; else at t ≥ 120,
+  turnAround = `ApproxDistance(pos, prevPosForWalk) < 10` (pos includes the bob) and t = 0.
+- WARNING: dir = towards the closer hero, yaw eases (0.08); at t ≥ 80 → ATTACK.
+- ATTACK: at t = 1 sound 0x2b4, frame 1, dir = towards the closer hero (fixed from then on). Moves
+  0.75 a tick; ghostPos.y = (1 − sin(t/160 · π)) · 80, an absolute height (on a raised floor it
+  snaps to 80 and dips to 0); yaw eases (0.08). At t ≥ 160: timer = RandomI(600, 800), WALK.
+- `_Damage(heroPos)` (overrides the base: no sound, flash or health): damagePos = heroPos, t = 0,
+  FLINCH. A shot still stops on it.
+- FLINCH: at t = 1 frame 1, flinchSpeed 2.8, dir = away from damagePos. Speed −0.07 a tick (not
+  below 0), moves along dir; ghostPos.y = `MakeValueCloseTo(y, 80, 0.1, 0.5)`; yaw eases to face
+  the shooter (dir + π, 0.08). At t ≥ 40 with ghostPos.y exactly 80: timer = RandomI(400, 600),
+  WALK. It drifts about 55 back.
+
 **Hammer** (`k`): hammer model 0x17b (collision 0x17c, box 180 × 120 at the start, never moved)
 on a base, model 0x17a; the constructor also adds static boxes 60 × 7 and 35 × 35 at the start.
 SMALL, not damagable, yaw 90°, no `IsUpdatable` test and drawn without the visibility test

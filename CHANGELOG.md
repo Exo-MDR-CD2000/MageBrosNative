@@ -7,6 +7,13 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.2.18] - 2026-10-23
+
+- **Ghosts** (World 3, also 4-9): they drift about through walls, bobbing in the air. Get close
+  and one turns to face the mage, then swoops down at it with a wail. Shots can't kill a ghost,
+  but they knock it back.
+- **World 3 is playable up to 3-9**: only the boss level, 3-10, is left.
+
 ## [0.2.17] - 2026-10-23
 
 - **Floor fans** (World 3, also 4-9): fans set in the floor whose spinning blades blow upward.

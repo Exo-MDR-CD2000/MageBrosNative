@@ -1177,6 +1177,165 @@ private:
     std::unique_ptr<JObject3DX> fanBase_;
 };
 
+// ------------------------------------------------------------------------------ XEnemy_Ghost
+// 'g': a ghost (models 0x1de / 0x1df, collision 0x1e0, scaled 0.8, a 27.2 x 36 box, an XShadow
+// 27.2 that lies on the floors below) floating 80 above its floor and passing through everything.
+// It can't be killed: a shot stops on it and makes it flinch. WALK drifts at 0.4 for 120 ticks at
+// a time towards a random point (round behind itself after being stuck), turning 0.6 degrees a
+// tick and bobbing 5 over 120 ticks; once its attack timer (600..1000 ticks at the start) has run
+// out and a hero comes within 120, WARNING turns it to face the hero for 80 ticks, then ATTACK
+// (sound 0x2b4, mouth open) swoops at 0.75 straight towards the hero for 160 ticks, dipping from
+// height 80 to the floor and back. FLINCH (a shot) pushes it away from the shooter at 2.8, slowing
+// by 0.07, while it rises back to height 80. Heights in ATTACK and FLINCH are absolute, not above
+// its own floor, as the original.
+class Ghost : public XEnemyBase {
+public:
+    Ghost(const XGameContext* g, int oid, const D3DVECTOR& p) : XEnemyBase(g, oid, p, SMALL) {
+        model_ = std::make_unique<JObject3DX>(0x1de);
+        model_->AppendFrame(0x1df);
+        model_->SetCollisionModel(0x1e0);
+        ghostShadow_ = std::make_unique<XShadow>(27.2f);
+        collideBox_ = std::make_unique<XCollideBox>(27.2f, 36.0f);
+        collideBox_->SetPos(startPos_);
+        dir_ = UnitRand() * 6.28319f;
+        yaw_ = dir_;
+        ghostPos_ = pos_;
+        ghostPos_.y += 80.0f;
+        SetPos(ghostPos_);
+        model_->SetScale(0.8f);
+        UpdateWorldMatrix();
+        offsetCounter_ = (unsigned)Random(120);
+        startAttackTimer_ = (unsigned)RandomI(600, 1000, true);
+        health_ = 99999;
+        chasable_ = true;
+        collidable_ = false;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = WALK;
+    }
+    void ProcessFrame() override {
+        if (!game_->IsUpdatable(pos_)) return;
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        if (moveState_ == WALK) Walk();
+        else if (moveState_ == WARNING) Warning();
+        else if (moveState_ == ATTACK) Attack();
+        else if (moveState_ == FLINCH) Flinch();
+        if (moveState_ == WALK) {
+            offsetCounter_++;
+            offsetY_ = std::sin((float)(offsetCounter_ % 120) / 120.0f * 6.28319f) * 5.0f;
+        }
+        SetPosX(ghostPos_.x);
+        SetPosZ(ghostPos_.z);
+        SetPosY(ghostPos_.y + offsetY_);
+        model_->SetScale(0.8f);
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);  // (and hero B: player 2, stage 5)
+    }
+    void Render(Device* d) override {
+        if (liveState_ == XEnemyBase::NON || !game_->IsVisible(pos_)) return;
+        ghostShadow_->SetPos(pos_);
+        ghostShadow_->Render(d, game_->level->Collision());
+        model_->SetCurrentFrame(frame_);
+        model_->Render(d);
+        // (the original also calls the box's debug draw)
+    }
+
+protected:
+    // XEnemy_Ghost::_Damage: no sound, no flash, no health lost; it flinches away from the shooter
+    void Damage(const D3DVECTOR& heroPos) override {
+        damagePos_ = heroPos;
+        localCounter_ = 0;
+        moveState_ = FLINCH;
+    }
+
+private:
+    enum MoveState { NON = 0, WALK = 1, WARNING = 2, ATTACK = 3, FLINCH = 4 };
+    void SetPos(const D3DVECTOR& p) {  // XEnemyBase::_SetPos
+        pos_ = p;
+        collideBox_->SetPos(p);
+    }
+    // _UpdatePosX_Ghost / _UpdatePosZ_Ghost: no collision at all
+    void UpdatePosX_Ghost(float x) { ghostPos_.x = x; }
+    void UpdatePosZ_Ghost(float z) { ghostPos_.z = z; }
+    // XEnemy_Ghost::_ProcessFrame_Walk
+    void Walk() {
+        if (localCounter_ == 1) {
+            dir_ = yaw_;
+            frame_ = 0;
+            prevPosForWalk_ = ghostPos_;
+            targetPos_ = turnAround_ ? GenerateBehindPos() : GenerateRandomPos();
+        }
+        dir_ = MakeAngleCloseTo_Constant(dir_, FindDirectionXZ(ghostPos_, targetPos_), 0.010472f);
+        yaw_ = dir_;
+        UpdatePosX_Ghost(ghostPos_.x + std::sin(dir_) * 0.4f);
+        UpdatePosZ_Ghost(ghostPos_.z + std::cos(dir_) * 0.4f);
+        if (startAttackTimer_ > 0) startAttackTimer_--;
+        if (!turnAround_ && startAttackTimer_ == 0 && game_->DistanceToCloserHero(pos_) < 120.0f) {
+            localCounter_ = 0;
+            moveState_ = WARNING;
+        } else if (localCounter_ >= 120) {
+            // (pos includes the bob; prevPosForWalk does not)
+            turnAround_ = ApproxDistance(pos_, prevPosForWalk_) < 10.0f;
+            localCounter_ = 0;
+        }
+    }
+    // XEnemy_Ghost::_ProcessFrame_Warning
+    void Warning() {
+        XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+        dir_ = FindDirectionXZ(ghostPos_, hero->GetPos());
+        yaw_ = MakeAngleCloseTo(yaw_, dir_, 0.08f, 0.0f, kFloatMax);
+        if (localCounter_ >= 80) {
+            localCounter_ = 0;
+            moveState_ = ATTACK;
+        }
+    }
+    // XEnemy_Ghost::_ProcessFrame_Attack
+    void Attack() {
+        if (localCounter_ == 1) {
+            game_->playSound(0x2b4, pos_.z);
+            frame_ = 1;
+            XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+            dir_ = FindDirectionXZ(ghostPos_, hero->GetPos());
+        }
+        UpdatePosX_Ghost(ghostPos_.x + std::sin(dir_) * 0.75f);
+        UpdatePosZ_Ghost(ghostPos_.z + std::cos(dir_) * 0.75f);
+        ghostPos_.y = (1.0f - std::sin((float)localCounter_ / 160.0f * 3.14159f)) * 80.0f;
+        yaw_ = MakeAngleCloseTo(yaw_, dir_, 0.08f, 0.0f, kFloatMax);
+        if (localCounter_ >= 160) {
+            startAttackTimer_ = (unsigned)RandomI(600, 800, true);
+            localCounter_ = 0;
+            moveState_ = WALK;
+        }
+    }
+    // XEnemy_Ghost::_ProcessFrame_Flinch
+    void Flinch() {
+        if (localCounter_ == 1) {
+            frame_ = 1;
+            flinchSpeed_ = 2.8f;
+            dir_ = FindDirectionXZ(ghostPos_, damagePos_) + 3.14159f;
+        }
+        flinchSpeed_ -= 0.07f;
+        if (flinchSpeed_ < 0.0f) flinchSpeed_ = 0.0f;
+        UpdatePosX_Ghost(ghostPos_.x + std::sin(dir_) * flinchSpeed_);
+        UpdatePosZ_Ghost(ghostPos_.z + std::cos(dir_) * flinchSpeed_);
+        ghostPos_.y = MakeValueCloseTo(ghostPos_.y, 80.0f, 0.1f, 0.5f, kFloatMax);
+        yaw_ = MakeAngleCloseTo(yaw_, dir_ + 3.14159f, 0.08f, 0.0f, kFloatMax);
+        if (localCounter_ >= 40 && ghostPos_.y == 80.0f) {
+            startAttackTimer_ = (unsigned)RandomI(400, 600, true);
+            localCounter_ = 0;
+            moveState_ = WALK;
+        }
+    }
+    std::unique_ptr<XShadow> ghostShadow_;
+    MoveState moveState_ = NON;
+    D3DVECTOR ghostPos_{0, 0, 0}, damagePos_{0, 0, 0};
+    unsigned offsetCounter_ = 0, startAttackTimer_ = 0;
+    bool turnAround_ = false;
+    float offsetY_ = 0;
+    D3DVECTOR targetPos_{0, 0, 0}, prevPosForWalk_{0, 0, 0};
+    float flinchSpeed_ = 0;
+};
+
 // ------------------------------------------------------------------------------ XEnemy_Hammer
 // 'k': a hammer (model 0x17b, collision 0x17c, a 180 x 120 box) on a base (model 0x17a, static
 // boxes 60 x 7 and 35 x 35). It can't be hurt. When a hero comes within 160 it rises 30 over 60
@@ -1649,6 +1808,7 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case 'r': e = std::make_unique<Fan>(game_, lastOID_, pos, 0); break;
         case 's': e = std::make_unique<Fan>(game_, lastOID_, pos, 2); break;
         case 't': e = std::make_unique<FloorFan>(game_, lastOID_, pos); break;
+        case 'g': e = std::make_unique<Ghost>(game_, lastOID_, pos); break;
         case 'v': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, false); break;
         case 'w': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, true); break;
         case 'o': e = std::make_unique<Needle>(game_, lastOID_, pos, false); break;

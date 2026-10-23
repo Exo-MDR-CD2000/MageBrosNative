@@ -13,9 +13,9 @@
 // tick, then an explosion, a coin, sound 0x26b, gone.
 //
 // Codes so far: 'a' / '1' / '5' slime (small / king / queen), 'b' / '3' bee, 'd' / '0' wallaby,
-// 'h' / '2' mushroom, 'x' / 'y' needle ball, 'c' / '4' squid, 'e' turtle, 'f' kiwi, 'k' hammer,
-// 'q' 'r' 's' fan, 't' floor fan, 'j' barrel, 'm' needle fan, 'o' / 'p' needle (fixed / moving),
-// 'z' jump needle, 'u' stalactite, 'v' / 'w' fence door, 'i' fish.
+// 'h' / '2' mushroom, 'x' / 'y' needle ball, 'c' / '4' squid, 'e' turtle, 'f' kiwi, 'g' ghost,
+// 'k' hammer, 'q' 'r' 's' fan, 't' floor fan, 'j' barrel, 'm' needle fan, 'o' / 'p' needle (fixed
+// / moving), 'z' jump needle, 'u' stalactite, 'v' / 'w' fence door, 'i' fish.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
