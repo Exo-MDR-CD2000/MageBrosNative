@@ -53,7 +53,8 @@ MageBros-Project/                   (C:\Users\ExoJag\Documents\MageBros-Project)
   MageBros.exe, MageBros.pdb        the original game (with its debug symbols)
   Music01.mid ... Music06.mid
   MageBros-analysis-private.zip     private RE notes: never put these in the repo
-  MageBrosNative-0.1.0-windows-x64.zip   the last test build
+  MageBros-analysis/                the same notes, unzipped (listings, pdb dumps, tools)
+  MageBrosNative-0.1.0-windows-x64.zip   an early test build (releases are now on GitHub)
   MageBrosNative/                   this repository
 ```
 
@@ -260,93 +261,101 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: end of stage 4)
+## Where we are (last updated: 2026-10-23, version 0.2.16, stage 5 chunk 11 done)
 
-Stage 4 (first playable: World 1, player 1) is done. World 1 plays from 1-1 to 1-10 with:
+**Stage 5 (the whole game) is under way: chunks 1 to 11 are done; chunk 12, the floor fan `t`, is
+next.** Wait for the owner to say "start the next chunk". The chunk table, with the levels each
+chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
+in `CHANGELOG.md`.
 
-- movement, shots, magic, torches, coins, the goal and warp;
-- the HUD, stereo sound, the death sequence, shadows and particles;
-- pillars, barrels and fences;
-- slimes, needles, bees, wallabies, barrel enemies, fence doors and needle fans, all with coin
-  and heart drops;
-- cannons (`H` `I` `J` `K`) and their bullets (`XBullet.cpp`): rolling balls in worlds 1–2,
-  straight balls in worlds 3–4, with smoke and the BulletExplode burst;
-- all seven platform kinds (`XPlatform.cpp`, codes `A`–`G`): the hero lands on them, rides
-  them (push) and is lifted by elevators; enemies, shots and bullets stop on them; the hero's
-  shadow is drawn on them (`XShadowOnPlatform`);
-- water (`XWater.cpp`) in every level whose row flag is `W` (all of worlds 1, 3 and 4): the
-  hero dies with a splash below −58, shots, cannonballs and dropping platforms meet it with
-  waves (`XParticle_WaterWave`), and fish (`i`) swim and leap out of it;
-- the dragon (`6`, `XBoss.cpp`, `JSpline.cpp`): head and 16 body segments on spline paths, its
-  flames (`XBullet_Flame`), the boss hearts on the HUD, the music stopping and the goal opening
-  when it is defeated.
+Playable now, with nothing left unbuilt (no marker cubes):
 
-### Checked in chunk 6
+- **World 1**, 1-1 to 1-10 (stage 4): movement, shots, magic, torches, coins, goal and warp, the
+  HUD, sound, death, shadows and particles; pillars, barrels, fences, fence doors, the shop
+  building, wall candles; slimes, needles, bees, wallabies, barrel enemies, needle fans, fish;
+  cannons and their balls; all seven platform kinds; water; the dragon.
+- **World 2**, 2-1 to 2-10 (chunks 1 to 7b): trees, plants, mushrooms, needle balls, squids,
+  hammers, fans, turtles, the genie and its lamp, the genie's needle-ball shots.
+- **World 3** so far: 3-1, 3-2, 3-3, 3-6 and 3-9 (chunks 8 to 11: pots, kiwis, jump needles,
+  stalactites, rocket launchers and rockets).
 
-By screenshot: torch flames, coin sparks, warp rings and the goal's
-lights, the hit and damage flashes, the turning cannon `K` (2-5), the straight cannonball (3-1),
-the up-only elevator `B` (2-4) and the dropping platform `F` (4-10), and the water, splashes,
-fish and dragon again after the pit fix. The owner checked in play: barrels breaking with their
-coins, the dragon fight, and World 1 from start to finish. Still to compare against the
-original game: nothing; the owner has since confirmed the dragon fight and the third-barrel heart
-match the original.
+Still to build in stage 5 (the remaining chunks):
 
-Fixed after stage 4, from the owner's play: the fence doors (`v` `w`) were built as metal fence
-pieces instead of the wooden gates, which made 1-2 unfinishable; now they stand and break as
-in the original. The shop (`S`, in 1-3, 1-6 and 1-9) is built; its screen waits for stage 6.
-The game now uses the original's light and lens and D3D7 normal scaling (0.2.2), and the wall
-candles (row flag `C`, `XCandle.cpp`) stand on the back wall with their flames.
-The game view now clears to black, as `XApplication::Render` does (0.2.4): the pits show the
-cleared screen through the water, and the port's navy had made them look bright. The viewers
-keep their navy.
+| Chunk | What | Completes |
+|---|---|---|
+| 12 | Floor fan `t` (`XEnemy_FloorFan`) | 3-4 |
+| 13 | Ghost `g` (`XEnemy_Ghost`) | 3-5, 3-7, 3-8 |
+| 14 | The nest and its bird, World 3's boss (`8`: `XBoss_Nest`, `XBoss_Bird`) | World 3 (and 4-8) |
+| 15 | The wizard, World 4's boss (`9`: `XBoss_Wizard`, its blade, wand, `XBullet_WizardFire`); World 4 checked | all 40 levels |
+| 16 | Player 2 analysis; `XHeroB` input and the camera midpoint | |
+| 17 | Hero-on-hero collision and carrying | |
+| 18 | Player 2's HUD panel and platform shadow | |
+| 19 | Checks and the whole-game zip, played start to finish by the owner | |
 
-### Next: stage 5, the whole game (worlds 2 to 4, every object, two-player co-op)
+The nest and wizard are large (like the genie, which was split into 7a and 7b); check their size
+in the listings and offer the owner a split before starting.
 
-Split into 20 small chunks (7 is 7a and 7b), in level order: the table is in `docs/ROADMAP.md`, "Stage 5, chunk
-by chunk". Chunk 1 is done (0.2.5): the tree `T` and plant `U` (`XStaticObj.cpp`; `CreateObject`
-now calls every object's `CreateExtraCollideBox`, as the original) and the mushroom `h` / `2`
-(`XEnemy.cpp`, a wallaby-style hopper). Checked by screenshot in 2-1; the king mushroom (2-4,
-2-7) was not caught on screen. Chunk 2 is done (0.2.6): the needle balls `x` / `y` (`XEnemy.cpp`).
-The needle-ball bullet is fired only by the genie, so it moved to chunk 7. Chunk 3 is done
-(0.2.7): the squid `c` / king squid `4` (`XEnemy.cpp`). Chunk 4 is done (0.2.8): the
-hammer `k` (`XEnemy.cpp`), camera shake (`XCamera::StartShaking`, reached through
-`XGameContext::startShaking`; the camera now always runs its tick and shake and only follows a
-hero that is alive), `XParticleList::CreateHammerEffect` and `AngleDifference` (`XMath`). Chunk
-5 is done (0.2.9): the fans `q` `r` `s` (`XEnemy.cpp`), which push the hero through
-`XHero::IncreasePushX/Z`. Chunk 6 is done (0.2.10): the turtle `e`
-(`XEnemy.cpp`; it overrides `Damage` to hide in its shell). Levels 2-1 to 2-9 now have nothing
-left unbuilt. Chunk 7 (the genie) was split, as the owner asked: 7a is the
-genie and its lamp (`XBoss_Genie` without its shots, `XStaticObj_GenieLamp`, the lamp steam,
-`XStaticObjList::CreateGenieLamp`), 7b its needle-ball attack (`_ProcessFrame_Attack`'s
-`XBulletList::CreateNeedleBall`, `XBullet_NeedleBall`). Chunk 7a is done (0.2.11): `XBoss_Genie`
-(`XBoss.cpp`), the lamp (`XStaticObj.cpp`), `CreateLampSteam`, `ApproxDistanceXZ` and
-`XGameContext::DistanceToCloserHeroXZ`. Chunk 7b is done (0.2.12): the genie fires
-`XBullet_NeedleBall` (`XBullet.cpp`), so World 2 has nothing left unbuilt. Chunk 8 is done
-(0.2.13): the pots `M` `N` (`XStaticObj.cpp`) and the kiwi `f` (`XEnemy.cpp`). Chunk 9 is done (0.2.14):
-the jump needle `z` (`XEnemy.cpp`), so 3-1 has nothing left unbuilt. Chunk 10 is done
-(0.2.15): the stalactite `u` (`XEnemy.cpp`), which shakes the camera when it lands; 3-2, 3-6 and
-3-9 now have nothing left unbuilt. Chunk 11 is done (0.2.16): the
-rocket launcher `R` (`XStaticObj.cpp`) and `XBullet_Rocket` (`XBullet.cpp`); 3-3 has nothing left
-unbuilt. Chunk 12 (the floor fan) is next; wait for the owner to start it.
-The pieces:
+After stage 5: **stage 6**, the front end (title, save slots, level select, the shop's screen,
+the ending); **stage 7**, opt-in modern extras.
 
-- the remaining enemies (`g` ghost, `t` floor fan);
-- the shop's screen (stage 6);
-- the other bosses: the nest (`8`, with the bird) and the wizard (`9`, with its blade, wand
-  and fire);
-- player 2 (`XHeroB`): its input, the camera midpoint, hero-on-hero collision and carrying, the
-  second HUD panel and the second platform shadow (the `heroB` slots marked in the code).
+### Waiting for the owner to check in play
 
-After stage 5 come:
+Not caught by screenshot, so worth the owner's eye: the king mushroom (2-4, 2-7); the camera
+shake (hammers in World 2, stalactites in World 3); the genie opening its mouth before an attack,
+and whether it looks as pale as the original while it is small and rising; the jump needles
+springing up (3-1). Already confirmed by the owner: World 1 start to finish, the dragon fight,
+the third-barrel heart.
 
-- **Stage 6:** the front end: title, save slots, level select, shop, ending.
-- **Stage 7:** opt-in modern extras.
+### Notes from earlier stages
+
+- Fixed after stage 4, from the owner's play: the fence doors (`v` `w`) are the wooden gates of
+  the original (they had been built as metal fence pieces, which made 1-2 unfinishable); the
+  original's light and lens and D3D7 normal scaling (0.2.2); the game view clears to black, as
+  `XApplication::Render` does, so the pits show black through the water (0.2.4; the viewers keep
+  their navy).
+- `XStaticObjList::CreateObject` calls every new object's `CreateExtraCollideBox`, as the
+  original does (the tree, the large pot and the turning cannon add boxes that way).
+- `XCamera::ProcessFrame` always counts its tick and runs the shake; it follows only a hero that
+  is alive (not NON, DEAD or COMPLETED). `XCamera::StartShaking` is reached through
+  `XGameContext::startShaking`.
+- The genie's lamp has its own `StartShaking` (it rocks the lamp, not the camera).
+- Enemy bullets (cannonballs, flame, needle balls, rockets) never hit enemies: they check the map,
+  objects, platforms and heroes only. A hero's shot stops on a bullet; the bullet carries on.
+- Player 2 is not built: wherever the original checks hero B, the port checks `heroA` only and
+  says so in a comment ("player 2: stage 5"). `GetCloserHero` is `heroA` for now.
+
+### Working notes (tools and habits that worked)
+
+- **Building here**: CMake is not on the PATH; it is
+  `/c/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`
+  (and `ctest.exe` beside it), with the existing `build/` (Visual Studio 18 2026 generator,
+  `MBN_GAME_EXE` set). `make_release.bat` runs from PowerShell as
+  `"" | & cmd.exe /c "<full path>\make_release.bat"` (the empty input answers its final pause).
+  It prints a harmless "'vswhere.exe' is not recognized" line.
+- **Reading the listings**: `annotE.py E off=name ...` for enemies; for other classes a small
+  filter that labels `[reg + off]` from a field map works well (fields from `pdb/types.txt`:
+  find the class's `LF_FIELDLIST` by its destructor's name). Push order is reversed:
+  `XCollideBox(app, w, h)` pushes h first. `fields.py` needs the field-list type id, not the
+  class name.
+- **Finding objects in levels**: levels are PE resources (ids in `src/core/game_files.cpp`'s
+  `kLevelIds`); `pe_rsrc.load()` from the analysis tools gives the bytes. The object field is
+  columns 8 to 12 of each line, the last line is row 0, and a cell is at x = col · 40 + 20,
+  z = row · 40 + 20.
+- **Screenshots**: `--auto` times are milliseconds. After `level=` the mage drops for about 3 s;
+  after `place=` the camera eases at most 5 units a tick (500 a second), so a far `place`
+  needs several seconds before the shot. Shots are 1280 × 960 BMPs: shrink them to PNG (e.g.
+  with PowerShell's System.Drawing) to view, then delete them.
+- **Per chunk**: disassemble, write the code, build and test, screenshot the level, update
+  `docs/REVERSE_ENGINEERING.md`, `docs/ROADMAP.md`, `README.md`, `CLAUDE.md` and
+  `CHANGELOG.md`, run `make_release.bat`, then report and wait for "commit and push". Pushing
+  publishes the GitHub release; there is no need to watch the run unless the commit changed the
+  workflow or the build setup.
 
 ### Known stand-ins (replace them when their real code lands)
 
 - Death restarts the level, and finishing the last level of a world goes to the next world.
   Both wait for the level select in stage 6.
-- The shop's screen (the building stands; stage 6), the other bosses and the other unbuilt
-  objects (marker cubes).
+- The shop's screen (the building stands; stage 6), the nest and the wizard, and the other
+  unbuilt objects (marker cubes).
 - No player 2 (stage 5).
 - Only the starting wand's shot pattern exists. The others come with the shop.

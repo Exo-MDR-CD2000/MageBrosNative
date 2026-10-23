@@ -5,13 +5,13 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 4 of 7 done.** The engine runs (window, OpenGL renderer, sound, MIDI music, keyboard
-> and gamepad, options menu), all 40 levels can be explored in the level viewer, and World 1-1
-> onwards can be played with World 1's enemies (slimes, bees, wallabies, spikes, needle fans,
-> barrels, fence doors), cannons and platforms: movement, shots, torches, coins, the goal, the
-> status display, shadows and particles, water and fish, and the dragon, World 1's boss. Next:
-> the whole game, worlds 2 to 4 and two-player co-op (stage 5). The game logic is being reconstructed module by module; see
-> [docs/ROADMAP.md](docs/ROADMAP.md).
+> **Status: stage 5 of 7 in progress (version 0.2.16).** The engine runs (window, OpenGL
+> renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
+> explored in the level viewer. Worlds 1 and 2 play from start to finish with player 1, bosses
+> included, and World 3 is coming in: 3-1, 3-2, 3-3, 3-6 and 3-9 are complete. Next: the rest of
+> World 3, World 4 and two-player co-op (stage 5), then the title, save slots and level select
+> (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
+> for what changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
 > images, models, levels, sounds, music or text. Everything is read at runtime from the original
@@ -27,35 +27,35 @@ original game logic unchanged when every option is at its default.
 
 ## What works today
 
-**`MageBrosNative.exe`**: put it next to `MageBros.exe` (or pass `--game PATH`) and run it. Until
-the game logic lands, it opens a viewer for your copy of the game, drawn through the engine the
-game will use. It starts in the **game view** (stage 4 preview): World 1-1 with player 1's mage,
-who drops in from above and plays with the original controls (arrow keys; jump Right Shift or
-`]`; fire Right Ctrl or `[`; in a one-player game Left Shift and Left Ctrl too; or a gamepad).
-Shots cost magic, which refills over time; jump-fire over a torch post to light its torch; collect
-coins; once every torch is lit the goal opens: stand on it to warp to the next level. Lit torches
-burn if you stand in them, and the mage flashes white after a hit. Escape gives up the level
-(losing some gold, as in the original). The original status display shows the level, torches,
-life, gold and magic, sounds are panned left and right as the mage moves, and the original's
-shadow and particle effects are in (shot trails, torch flames, coin sparkles, warp rings,
-landing dust, explosions). World 1's enemies are in (slimes, bees, wallabies, spikes, needle
-fans, breakable barrels and fence doors) with the original pillars, barrels and fences;
-defeated enemies drop coins (fish excepted: they can't be hurt). Cannons fire rolling cannonballs that hurt the mage, and the
-platforms work: elevators that lift the mage while it stands on them, platforms that shuttle
-along the level carrying it, and fixed ones. The pits hold water: falling in ends a life with a
-splash, and fish leap out of it. In level 1-10 the dragon swims round its pools and crosses the
-floor breathing fire, its hearts on the status display; defeating it opens the goal. World 2 plays through as well: trees,
-potted plants, hopping mushrooms, rolling needle balls, squids, hammers that slam down and shake
-the screen, fans that blow the mage along, turtles that hide in their shells, and in 2-10 the
-genie, who rises from its steaming lamp and fires spiked balls that roll after the mage. World 3
-has begun: its pots, the kiwis that run from the mage the spikes that jump up from the floor
-the stalactites that drop and shake the screen, and
-the rocket launchers whose rockets home in on the mage are in (3-1, 3-2, 3-3, 3-6 and 3-9 play
-through), and the objects still to come
-show as markers. N/B change level, Tab switches to the
-**level viewer**: every one of the 40 levels, built by the
-original's own map code with each world's textures. The goal, coins and torches use their real
-models; other objects are colour-coded markers for now (blue platforms, brown objects, grey
+**`MageBrosNative.exe`**: put it next to `MageBros.exe` (or pass `--game PATH`) and run it. It
+starts in the **game view**: World 1-1 with player 1's mage, who drops in from above and plays
+with the original controls (arrow keys; jump Right Shift or `]`; fire Right Ctrl or `[`; in a
+one-player game Left Shift and Left Ctrl too; or a gamepad). Shots cost magic, which refills over
+time; jump-fire over a torch post to light its torch; collect coins; once every torch is lit the
+goal opens: stand on it to warp to the next level. Lit torches burn if you stand in them, and the
+mage flashes white after a hit. Escape gives up the level (losing some gold, as in the original).
+The original status display shows the level, torches, life, gold and magic (and a boss's
+hearts), sounds are panned left and right as the mage moves, and the original's shadow and
+particle effects are in.
+
+- **World 1** plays through: slimes, bees, wallabies, spikes, needle fans, breakable barrels and
+  fence doors, pillars and fences, cannons, moving platforms, water in the pits with leaping
+  fish, and in 1-10 the dragon, who swims round its pools and crosses the floor breathing fire.
+- **World 2** plays through: trees, potted plants, hopping mushrooms, rolling needle balls,
+  squids, hammers that slam down and shake the screen, fans that blow the mage along, turtles
+  that hide in their shells, and in 2-10 the genie, who rises from its steaming lamp and fires
+  spiked balls that roll after the mage.
+- **World 3** has begun: pots, kiwis that run from the mage, spikes that jump up from the floor,
+  stalactites that drop and shake the screen, and rocket launchers whose rockets home in on the
+  mage. 3-1, 3-2, 3-3, 3-6 and 3-9 play through.
+
+Defeated enemies drop coins. Objects still to come show as coloured markers. Dying restarts the
+level and finishing a world's last level goes on to the next world, until the level select of
+stage 6 exists.
+
+In the game view N / B change level. Tab switches to the **level viewer**: every one of the 40
+levels, built by the original's own map code with each world's textures. The goal, coins and
+torches use their real models; other objects are colour-coded markers (blue platforms, brown objects, grey
 fences, red enemies, large magenta bosses).
 
 | Key | Level viewer | Model viewer |

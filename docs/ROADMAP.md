@@ -8,7 +8,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 2 | Engine: window, OpenGL renderer, sound, MIDI music, keyboard/gamepad, options menu | Done |
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
 | 4 | First playable: World 1 with player 1 | Done |
-| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **Next** (20 chunks, below) |
+| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **In progress**: chunks 1–11 of 20 done (below) |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | |
 | 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | |
 
