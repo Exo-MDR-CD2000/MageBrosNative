@@ -5,8 +5,8 @@
 // XStaticObjList keeps 150 slots, filled in order; its loops stop at the first empty slot.
 // Object codes (XStaticObjList::CreateObject): 'H' 'I' 'J' cannon (facing 4, 0, 2 eighths of a
 // turn), 'K' turning cannon, 'O' barrel, 'P' pillar, 'Q' small pillar, 'S' shop (the building;
-// its screen comes with stage 6), 'T' tree, 'U' plant; the pots and rocket launcher arrive with
-// stage 5. Fences ('/', and
+// its screen comes with stage 6), 'T' tree, 'U' plant, 'M' large pot, 'N' pot; the rocket
+// launcher arrives with stage 5. Fences ('/', and
 // the fence doors 'v' 'w' as neighbours) are shaped by XMap::_ConstructObjects from their four
 // neighbours.
 //

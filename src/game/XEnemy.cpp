@@ -729,6 +729,101 @@ private:
     std::unique_ptr<JObject3DX> fanBase_;
 };
 
+// -------------------------------------------------------------------------------- XEnemy_Kiwi
+// 'f': a kiwi (frames 0x1ad 0x1b4 0x1ad 0x1af, collision 0x1b5, a 35 x 35 box, shadow 35, 4
+// health). It waits 100-200 ticks and walks 127-tick legs at 0.5 (turning at most 0.8 degrees a
+// tick) towards a random point, or behind itself after a stuck leg; after a leg it walks on, or
+// one time in three waits. When a hero comes within 80, or when it is shot, it runs away for 95
+// ticks at 1.3 (turning up to 3 degrees a tick); a run that leaves it stuck makes it run at the
+// hero instead next time. It keeps running while a hero is within 80.
+class Kiwi : public XEnemyBase {
+public:
+    Kiwi(const XGameContext* g, int oid, const D3DVECTOR& p) : XEnemyBase(g, oid, p, SMALL) {
+        static const uint16_t kFrames[4] = {0x1ad, 0x1b4, 0x1ad, 0x1af};
+        model_ = std::make_unique<JObject3DX>(kFrames[0]);
+        for (int i = 1; i < 4; i++) model_->AppendFrame(kFrames[i]);
+        model_->SetCollisionModel(0x1b5);
+        shadow_ = std::make_unique<XShadowSimple>(35.0f);
+        collideBox_ = std::make_unique<XCollideBox>(35.0f, 35.0f);
+        collideBox_->SetPos(startPos_);
+        dir_ = UnitRand() * 6.28319f;
+        yaw_ = dir_;
+        UpdateWorldMatrix();
+        health_ = 4;
+        chasable_ = true;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = WAIT;
+    }
+    void ProcessFrame() override {
+        if (!game_->IsUpdatable(pos_)) return;
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        if (moveState_ == WAIT) Wait();
+        else if (moveState_ == WALK) Walk();
+        else if (moveState_ == RUN) Run();
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);
+    }
+
+protected:
+    // XEnemy_Kiwi::_Damage: hurt as usual, then it runs
+    void Damage(const D3DVECTOR& heroPos) override {
+        XEnemyBase::Damage(heroPos);
+        Next(RUN);
+    }
+
+private:
+    enum MoveState { NON = 0, WAIT = 1, WALK = 2, RUN = 3 };
+    void Next(MoveState s) {
+        localCounter_ = 0;
+        moveState_ = s;
+    }
+    bool IsHeroClose() const { return game_->DistanceToCloserHero(pos_) < 80.0f; }
+    void Step(float speed) {
+        yaw_ = dir_;
+        UpdatePosX(pos_.x + std::sin(dir_) * speed);
+        UpdatePosZ(pos_.z + std::cos(dir_) * speed);
+    }
+    void Wait() {
+        if (localCounter_ == 1) {
+            frame_ = 0;
+            waitFrames_ = (unsigned)RandomI(100, 200, true);
+        }
+        if (IsHeroClose()) Next(RUN);
+        else if (localCounter_ >= waitFrames_) Next(WALK);
+    }
+    void Walk() {
+        if (localCounter_ == 1) {
+            prevPos_ = pos_;
+            targetPos_ = turnAround_ ? GenerateBehindPos() : GenerateRandomPos();
+        }
+        frame_ = (int)((localCounter_ / 16 + 1) % 4);
+        dir_ = MakeAngleCloseTo_Constant(dir_, FindDirectionXZ(pos_, targetPos_), 0.0139626f);
+        Step(0.5f);
+        if (IsHeroClose()) {
+            Next(RUN);
+        } else if (localCounter_ >= 127) {
+            turnAround_ = ApproxDistance(pos_, prevPos_) < 10.0f;
+            if (turnAround_) Next(WALK);
+            else Next(Random(3) == 0 ? WAIT : WALK);
+        }
+    }
+    void Run() {
+        if (localCounter_ == 1) prevPos_ = pos_;
+        frame_ = (int)((localCounter_ / 6 + 1) % 4);
+        float toHero = game_->DirToCloserHero(pos_);
+        dir_ = MakeAngleCloseTo_Constant(dir_, turnAround_ ? toHero : toHero + kPi, 0.0523599f);
+        Step(1.3f);
+        if (localCounter_ < 95) return;
+        turnAround_ = !turnAround_ && ApproxDistance(pos_, prevPos_) < 10.0f;  // stuck: run at the hero
+        Next(turnAround_ || IsHeroClose() ? RUN : WAIT);
+    }
+    MoveState moveState_ = NON;
+    unsigned waitFrames_ = 0;
+    bool turnAround_ = false;
+    D3DVECTOR targetPos_{0, 0, 0}, prevPos_{0, 0, 0};
+};
+
 // ------------------------------------------------------------------------------ XEnemy_Turtle
 // 'e': a turtle (frames 0x1b0 0x1b1 0x1b0 0x1b2 0x1b3 at 0.9 scale, collision 0x1b6, a 30.6 x 24.3
 // box, shadow 34, 99999 health). It walks for ever at 0.4 a tick, turning at most 0.8 degrees a
@@ -1354,6 +1449,7 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case 'j': e = std::make_unique<BarrelEnemy>(game_, lastOID_, pos); break;
         case 'm': e = std::make_unique<NeedleFan>(game_, lastOID_, pos); break;
         case 'e': e = std::make_unique<Turtle>(game_, lastOID_, pos); break;
+        case 'f': e = std::make_unique<Kiwi>(game_, lastOID_, pos); break;
         case 'k': e = std::make_unique<Hammer>(game_, lastOID_, pos); break;
         case 'q': e = std::make_unique<Fan>(game_, lastOID_, pos, 4); break;
         case 'r': e = std::make_unique<Fan>(game_, lastOID_, pos, 0); break;

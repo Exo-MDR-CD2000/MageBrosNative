@@ -309,14 +309,14 @@ genie and its lamp (`XBoss_Genie` without its shots, `XStaticObj_GenieLamp`, the
 `XBulletList::CreateNeedleBall`, `XBullet_NeedleBall`). Chunk 7a is done (0.2.11): `XBoss_Genie`
 (`XBoss.cpp`), the lamp (`XStaticObj.cpp`), `CreateLampSteam`, `ApproxDistanceXZ` and
 `XGameContext::DistanceToCloserHeroXZ`. Chunk 7b is done (0.2.12): the genie fires
-`XBullet_NeedleBall` (`XBullet.cpp`), so World 2 has nothing left unbuilt. Chunk 8 (pots and
-the kiwi, World 3) is next; wait for the owner to start it.
+`XBullet_NeedleBall` (`XBullet.cpp`), so World 2 has nothing left unbuilt. Chunk 8 is done
+(0.2.13): the pots `M` `N` (`XStaticObj.cpp`) and the kiwi `f` (`XEnemy.cpp`). Chunk 9 (the jump
+needle) is next; wait for the owner to start it.
 The pieces:
 
-- the remaining enemies (`f` kiwi, `g` ghost, `t` floor fan, `u`
+- the remaining enemies (`g` ghost, `t` floor fan, `u`
   stalactite, `z` jump needle) and the rocket launcher's rocket;
-- the remaining static objects (`M` `N` pots, `R` rocket launcher; the shop's screen waits for
-  stage 6);
+- the remaining static object (`R` rocket launcher; the shop's screen waits for stage 6);
 - the other bosses: the nest (`8`, with the bird) and the wizard (`9`, with its blade, wand
   and fire);
 - player 2 (`XHeroB`): its input, the camera midpoint, hero-on-hero collision and carrying, the

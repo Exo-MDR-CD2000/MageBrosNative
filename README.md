@@ -44,10 +44,12 @@ defeated enemies drop coins (fish excepted: they can't be hurt). Cannons fire ro
 platforms work: elevators that lift the mage while it stands on them, platforms that shuttle
 along the level carrying it, and fixed ones. The pits hold water: falling in ends a life with a
 splash, and fish leap out of it. In level 1-10 the dragon swims round its pools and crosses the
-floor breathing fire, its hearts on the status display; defeating it opens the goal. World 2 is
-coming in, one piece at a time: its trees, potted plants, hopping mushrooms, rolling needle balls, squids, the hammers that slam down and shake the screen, the fans that blow the mage along and the turtles that hide in their shells are in, and in 2-10 the genie rises from its steaming lamp and fires spiked balls that roll after the
-mage, so all of World 2 plays through, and the
-objects still to come show as markers. N/B change level, Tab switches to the
+floor breathing fire, its hearts on the status display; defeating it opens the goal. World 2 plays through as well: trees,
+potted plants, hopping mushrooms, rolling needle balls, squids, hammers that slam down and shake
+the screen, fans that blow the mage along, turtles that hide in their shells, and in 2-10 the
+genie, who rises from its steaming lamp and fires spiked balls that roll after the mage. World 3
+has begun: its pots and the kiwis that run from the mage are in, and the objects still to come
+show as markers. N/B change level, Tab switches to the
 **level viewer**: every one of the 40 levels, built by the
 original's own map code with each world's textures. The goal, coins and torches use their real
 models; other objects are colour-coded markers for now (blue platforms, brown objects, grey

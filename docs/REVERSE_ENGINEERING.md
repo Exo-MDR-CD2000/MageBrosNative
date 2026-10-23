@@ -393,8 +393,10 @@ plus one or two extra 30-long invisible boxes (`CreateExtraCollideBox`).
 (model 0x170; 165 and 0x292 in world 3; over a hole 180 tall from y = −38, model 0x1ef), small
 pillar `Q` 20 × 78 (0x1db), barrel `O` 27 × 42.8 (0x1f6, a 37 shadow), and in World 2 the tree
 `T` (0x1d6 turned −90°, a 35 × 5 box at its foot plus an invisible 12 × 134.4 trunk box, no
-shadow) and the plant `U` (0x1d7 turned −90°, 24 × 20, a 28 shadow). `CreateObject` calls each
-new object's `CreateExtraCollideBox` (a no-op except for the tree and turning cannon); fences
+shadow) and the plant `U` (0x1d7 turned −90°, 24 × 20, a 28 shadow); in World 3 the large
+pot `M` (0x1d4, 32 × 35, a 40 shadow, plus an invisible 17 × 80 box from
+`CreateExtraCollideBox`) and the pot `N` (0x1d5, 30 × 40, a 38 shadow). `CreateObject` calls each
+new object's `CreateExtraCollideBox` (a no-op except for the tree, the large pot and the turning cannon); fences
 get theirs from `CreateFence`. They stop heroes (heights
 counted) and enemies (heights ignored); enabled ones that block fire stop shots that are
 strictly inside the box.
@@ -480,6 +482,18 @@ and then straight at a hero within 120; the yaw eases to it at 0.05 (king 0.03).
 105 ticks at 0.9 (king × 1.2) along the direction, frame (t/15 + 1) mod 4, the yaw unchanged.
 A walk that moved it less than 15 sets turnAround and jumps; otherwise `Random(2)` picks JUMP
 or WAIT.
+
+**Kiwi** (`f`): frames 0x1ad 0x1b4 0x1ad 0x1af, collision 0x1b5, box 35 × 35, shadow 35, SMALL,
+4 health, chasable, a random direction. `MOVESTATE` NON / WAIT / WALK / RUN, starting in WAIT.
+`_IsHeroClose`: `FindDistanceToCloserHero` < 80. WAIT: tick 1 frame 0 and waitFrames =
+`RandomI(100, 200)`; a close hero → RUN, else after waitFrames → WALK. WALK (127 ticks): tick 1
+notes the position and a target (behind after a stuck leg, else random); frame (t/16 + 1) mod 4;
+the direction turns at most 0.8° towards the target; it moves 0.5. A close hero → RUN; at 127
+turnAround = (moved < 10) and then WALK if turning round, else `Random(3)` = 0 → WAIT, otherwise
+WALK. RUN (95 ticks): tick 1 notes the position; frame (t/6 + 1) mod 4; the direction turns at
+most 3° towards the closer hero's direction + π (away), or straight at it when turnAround; it
+moves 1.3. At 95 turnAround = (not turnAround and moved < 10); RUN again if turnAround or a hero
+is close, else WAIT. `_Damage`: the base's, then RUN from tick 0.
 
 **Turtle** (`e`): frames 0x1b0 0x1b1 0x1b0 0x1b2 0x1b3 with the model scaled 0.9, collision
 0x1b6, box 30.6 × 24.3, shadow 34, SMALL, health 99999, chasable. `MOVESTATE` NON / WALK / WAIT

@@ -18,6 +18,7 @@ constexpr uint16_t kModelCannon = 0x18c, kModelCannonRBarrel = 0x1f4, kModelCann
 constexpr uint16_t kSoundCannon = 0x262;
 constexpr uint16_t kModelShop = 0x1ab, kTexShopSign = 0x1ac;
 constexpr uint16_t kModelTree = 0x1d6, kModelPlant = 0x1d7, kModelGenieLamp = 0x1ea;
+constexpr uint16_t kModelPotLarge = 0x1d4, kModelPot = 0x1d5;
 constexpr float kHalfPi = 1.5708f, kPi = 3.14159f, kQuarterPi = 0.785398f;
 
 // XStaticObj_Pillar: 27 wide; 146.5 tall (165 in world 3, model 0x292). Over a hole (the floor
@@ -85,6 +86,39 @@ public:
         shadow_ = std::make_unique<XShadowSimple>(28.0f);
         shadow_->SetPosXZ(pos_);
         collideBox_ = std::make_unique<XCollideBox>(24.0f, 20.0f);
+        collideBox_->SetPos(pos_);
+    }
+};
+
+// XStaticObj_PotLarge ('M', World 3): 32 wide, 35 tall, with a 40-unit shadow, and a 17-wide,
+// 80-tall box for its neck (CreateExtraCollideBox)
+class PotLarge : public XStaticObjBase {
+public:
+    PotLarge(const XGameContext* g, const D3DVECTOR& p, XStaticObjList* list) : XStaticObjBase(g, p), list_(list) {
+        model_ = std::make_unique<JObject3DX>(kModelPotLarge);
+        model_->SetPos(pos_);
+        model_->UpdateWorldMatrix();
+        shadow_ = std::make_unique<XShadowSimple>(40.0f);
+        shadow_->SetPosXZ(pos_);
+        collideBox_ = std::make_unique<XCollideBox>(32.0f, 35.0f);
+        collideBox_->SetPos(pos_);
+    }
+    void CreateExtraCollideBox() override { list_->CreateCollideBox(pos_, 17.0f, 80.0f, 17.0f); }
+
+private:
+    XStaticObjList* list_;
+};
+
+// XStaticObj_Pot ('N', World 3 and 4-6): 30 wide, 40 tall, with a 38-unit shadow
+class Pot : public XStaticObjBase {
+public:
+    Pot(const XGameContext* g, const D3DVECTOR& p) : XStaticObjBase(g, p) {
+        model_ = std::make_unique<JObject3DX>(kModelPot);
+        model_->SetPos(pos_);
+        model_->UpdateWorldMatrix();
+        shadow_ = std::make_unique<XShadowSimple>(38.0f);
+        shadow_->SetPosXZ(pos_);
+        collideBox_ = std::make_unique<XCollideBox>(30.0f, 40.0f);
         collideBox_->SetPos(pos_);
     }
 };
@@ -388,11 +422,13 @@ XStaticObjBase* XStaticObjList::CreateObject(const D3DVECTOR& pos, char code) {
         case 'I': o = std::make_unique<Cannon>(game_, pos, 0); break;
         case 'J': o = std::make_unique<Cannon>(game_, pos, 2); break;
         case 'K': o = std::make_unique<CannonR>(game_, pos, this); break;
+        case 'M': o = std::make_unique<PotLarge>(game_, pos, this); break;
+        case 'N': o = std::make_unique<Pot>(game_, pos); break;
         case 'S': o = std::make_unique<Shop>(game_, pos); break;
         case 'T': o = std::make_unique<Tree>(game_, pos, this); break;
         case 'U': o = std::make_unique<Plant>(game_, pos); break;
         default:
-            // pots (M N), rocket launcher (R): stage 5
+            // rocket launcher (R): stage 5
             return nullptr;
     }
     XStaticObjBase* s = Put(std::move(o));
