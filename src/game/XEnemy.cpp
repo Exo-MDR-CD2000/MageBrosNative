@@ -384,6 +384,103 @@ private:
     D3DVECTOR targetPos_{0, 0, 0}, prevPosForHop_{0, 0, 0};
 };
 
+// ---------------------------------------------------------------------------- XEnemy_Mushroom
+// 'h' mushroom (37 x 44, 3 health), '2' king mushroom (74 x 88, 30 health). The wallaby's hop
+// with its own numbers: waits 50-200 ticks, then hops 3-5 times: 80 ticks in the air (up to 48
+// high, 0.65 forward; king 72 and 0.975) plus 5 on the ground, turning up to 40 degrees (king
+// 50) towards a random point (or behind itself after being stuck); if a hero was within 120 when
+// it set off, 1.5 times as fast towards the hero.
+class Mushroom : public XEnemyBase {
+public:
+    Mushroom(const XGameContext* g, int oid, const D3DVECTOR& p, SizeType size) : XEnemyBase(g, oid, p, size) {
+        bool king = size == KING;
+        static const uint16_t kSmall[3] = {0x25d, 0x25e, 0x25f}, kKing[3] = {0x285, 0x286, 0x287};
+        const uint16_t* f = king ? kKing : kSmall;
+        model_ = std::make_unique<JObject3DX>(f[0]);
+        for (int i = 1; i < 3; i++) model_->AppendFrame(f[i]);
+        model_->SetCollisionModel(king ? 0x288 : 0x260);
+        shadow_ = std::make_unique<XShadowSimple>(king ? 74.0f : 37.0f);
+        collideBox_ = king ? std::make_unique<XCollideBox>(74.0f, 88.0f) : std::make_unique<XCollideBox>(37.0f, 44.0f);
+        collideBox_->SetPos(startPos_);
+        health_ = king ? 30 : 3;
+        dir_ = UnitRand() * 6.28319f;
+        yaw_ = dir_;
+        UpdateWorldMatrix();
+        chasable_ = true;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = WAIT;
+    }
+    void ProcessFrame() override {
+        if (!game_->IsUpdatable(pos_)) return;
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        if (moveState_ == HOP) Hop();
+        else if (moveState_ == WAIT) Wait();
+        yaw_ = MakeAngleCloseTo(yaw_, dir_, 0.1f, 0.0f, FLT_MAX);
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);
+    }
+
+private:
+    enum MoveState { NON = 0, HOP = 1, WAIT = 2 };
+    void Wait() {
+        if (localCounter_ == 1) waitFrames_ = (unsigned)RandomI(50, 200, true);
+        if (localCounter_ < waitFrames_) return;
+        targetPos_ = turnAround_ ? GenerateBehindPos() : GenerateRandomPos();
+        chaseHero_ = game_->DistanceToCloserHero(pos_) < 120.0f;
+        countdownHop_ = (int)RandomI(3, 5, true);
+        localCounter_ = 0;
+        moveState_ = HOP;
+    }
+    void Hop() {
+        float height = 48.0f, speed = 0.65f, turn = 0.698132f;
+        if (sizeType_ == KING) height *= 1.5f, speed *= 1.5f, turn *= 1.25f;
+        if (localCounter_ == 1) {
+            prevPosForHop_ = pos_;
+            if (!turnAround_ && chaseHero_)
+                dir_ = MakeAngleCloseTo_Constant(dir_, game_->DirToCloserHero(pos_), turn * 1.5f);
+            else
+                dir_ = MakeAngleCloseTo_Constant(dir_, FindDirectionXZ(pos_, targetPos_), turn);
+        }
+        if (localCounter_ <= 80) {
+            if (localCounter_ < 40) {
+                frame_ = 1;
+                pitch_ = MakeAngleCloseTo(pitch_, 0.174533f, 0.1f, 0.0f, FLT_MAX);
+            } else {
+                frame_ = 2;
+                pitch_ = MakeAngleCloseTo(pitch_, -0.20944f, 0.1f, 0.0f, FLT_MAX);
+            }
+            float nx = pos_.x + std::sin(dir_) * speed, nz = pos_.z + std::cos(dir_) * speed;
+            float ny = floorLevel_ * 25.0f;
+            if (localCounter_ < 80) ny += std::sin((float)localCounter_ / 80.0f * kPi) * height;
+            UpdatePosX(nx);
+            UpdatePosZ(nz);
+            UpdatePosY(ny);
+        } else {
+            frame_ = 0;
+            pitch_ = MakeAngleCloseTo(pitch_, 0.0f, 0.2f, 0.0f, FLT_MAX);
+        }
+        if (localCounter_ < 85) return;
+        if (!turnAround_ && ApproxDistance(prevPosForHop_, pos_) < 10.0f) {
+            turnAround_ = true;  // stuck: wait, then turn round
+            localCounter_ = 0;
+            moveState_ = WAIT;
+        } else if (--countdownHop_ <= 0) {
+            turnAround_ = false;
+            localCounter_ = 0;
+            moveState_ = WAIT;
+        } else {
+            localCounter_ = 0;
+            moveState_ = HOP;
+        }
+    }
+    MoveState moveState_ = NON;
+    unsigned waitFrames_ = 0;
+    int countdownHop_ = 0;
+    bool chaseHero_ = false, turnAround_ = false;
+    D3DVECTOR targetPos_{0, 0, 0}, prevPosForHop_{0, 0, 0};
+};
+
 // ------------------------------------------------------------------------------ XEnemy_Barrel
 // 'j': a barrel to shoot open (10 health, model 0x1f6, a 27 x 42.8 box that also stops heroes and
 // enemies but not shots). It bursts at once: a medium coin, or a heart for every third barrel
@@ -830,6 +927,8 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case '3': e = std::make_unique<Bee>(game_, lastOID_, pos, XEnemyBase::KING); break;
         case 'd': e = std::make_unique<Wallaby>(game_, lastOID_, pos, XEnemyBase::SMALL); break;
         case '0': e = std::make_unique<Wallaby>(game_, lastOID_, pos, XEnemyBase::KING); break;
+        case 'h': e = std::make_unique<Mushroom>(game_, lastOID_, pos, XEnemyBase::SMALL); break;
+        case '2': e = std::make_unique<Mushroom>(game_, lastOID_, pos, XEnemyBase::KING); break;
         case 'j': e = std::make_unique<BarrelEnemy>(game_, lastOID_, pos); break;
         case 'm': e = std::make_unique<NeedleFan>(game_, lastOID_, pos); break;
         case 'v': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, false); break;

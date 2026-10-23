@@ -44,7 +44,9 @@ defeated enemies drop coins (fish excepted: they can't be hurt). Cannons fire ro
 platforms work: elevators that lift the mage while it stands on them, platforms that shuttle
 along the level carrying it, and fixed ones. The pits hold water: falling in ends a life with a
 splash, and fish leap out of it. In level 1-10 the dragon swims round its pools and crosses the
-floor breathing fire, its hearts on the status display; defeating it opens the goal. N/B change level, Tab switches to the
+floor breathing fire, its hearts on the status display; defeating it opens the goal. World 2 is
+coming in, one piece at a time: its trees, potted plants and hopping mushrooms are in, and the
+objects still to come show as markers. N/B change level, Tab switches to the
 **level viewer**: every one of the 40 levels, built by the
 original's own map code with each world's textures. The goal, coins and torches use their real
 models; other objects are colour-coded markers for now (blue platforms, brown objects, grey

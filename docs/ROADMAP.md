@@ -40,8 +40,8 @@ is done.
 
 | Chunk | What it covers | Levels | Playable | Status |
 |---|---|---|---|---|
-| 1 | World 2 scenery and the mushroom: tree `T`, plant `U`, mushroom `h` / king mushroom `2` | 2-1 to 2-10 | | **Next** |
-| 2 | Needle balls `x` `y` and their bullet | 2-1, 2-2, 2-4, 2-5 | 2-1 | |
+| 1 | World 2 scenery and the mushroom: tree `T`, plant `U`, mushroom `h` / king mushroom `2` | 2-1 to 2-10 | | Done |
+| 2 | Needle balls `x` `y` and their bullet | 2-1, 2-2, 2-4, 2-5 | 2-1 | **Next** |
 | 3 | Squid `c` / king squid `4` | 2-2 to 2-9 | 2-5 | |
 | 4 | Hammer `k` and camera shake (`XCamera::StartShaking`) | 2-2, 2-4, 2-6, 2-9 | 2-2 | |
 | 5 | Fans `q` `r` `s` | 2-3, 2-4, 2-6 to 2-9 | 2-3, 2-4 | |

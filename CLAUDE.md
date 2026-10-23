@@ -183,7 +183,9 @@ SDL_AUDIO_DRIVER=dummy xvfb-run -a -s "-screen 0 1280x1024x24" \
 
 ### Automation (`--auto`, for test runs and screenshots)
 
-The argument is a `;`-separated list of `tick:action=arg` entries, handled in
+The argument is a `;`-separated list of `ms:action=arg` entries. The times are milliseconds since
+start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds after `level=` or
+`place=`, so take screenshots 4000+ ms later. They are handled in
 `AssetViewerApp::OnAutomation` in `src/main.cpp`:
 
 - `key=<SDL key name>`: press a key. `down=` and `up=` hold and release one.
@@ -289,13 +291,17 @@ keep their navy.
 ### Next: stage 5, the whole game (worlds 2 to 4, every object, two-player co-op)
 
 Split into 19 small chunks, in level order: the table is in `docs/ROADMAP.md`, "Stage 5, chunk
-by chunk". Chunk 1 (tree, plant, mushroom) is next; wait for the owner to start it. The pieces:
+by chunk". Chunk 1 is done (0.2.5): the tree `T` and plant `U` (`XStaticObj.cpp`; `CreateObject`
+now calls every object's `CreateExtraCollideBox`, as the original) and the mushroom `h` / `2`
+(`XEnemy.cpp`, a wallaby-style hopper). Checked by screenshot in 2-1; the king mushroom (2-4,
+2-7) was not caught on screen. Chunk 2 (needle balls) is next; wait for the owner to start it.
+The pieces:
 
-- the remaining enemies (`c`/`4` squid, `e` turtle, `f` kiwi, `g` ghost, `h`/`2` mushroom, `k`
-  hammer, `q` `r` `s` fans, `t` floor fan, `u` stalactite, `x`/`y` needle ball, `z` jump
+- the remaining enemies (`c`/`4` squid, `e` turtle, `f` kiwi, `g` ghost, `k` hammer,
+  `q` `r` `s` fans, `t` floor fan, `u` stalactite, `x`/`y` needle ball, `z` jump
   needle) and their bullets (needle ball, rocket);
-- the remaining static objects (`M` `N` pots, `R` rocket launcher, `T` tree, `U` plant; the
-  shop's screen waits for stage 6);
+- the remaining static objects (`M` `N` pots, `R` rocket launcher; the shop's screen
+  waits for stage 6);
 - the other bosses: the genie (`7`), the nest (`8`, with the bird) and the wizard (`9`, with its
   blade, wand and fire);
 - camera shake (`XCamera::StartShaking`, from the hammer and stalactite);

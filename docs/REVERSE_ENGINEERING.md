@@ -384,7 +384,11 @@ plus one or two extra 30-long invisible boxes (`CreateExtraCollideBox`).
 
 **Static objects** (150 slots, loops stop at the first empty one): pillar `P` 27 × 146.5
 (model 0x170; 165 and 0x292 in world 3; over a hole 180 tall from y = −38, model 0x1ef), small
-pillar `Q` 20 × 78 (0x1db), barrel `O` 27 × 42.8 (0x1f6, a 37 shadow). They stop heroes (heights
+pillar `Q` 20 × 78 (0x1db), barrel `O` 27 × 42.8 (0x1f6, a 37 shadow), and in World 2 the tree
+`T` (0x1d6 turned −90°, a 35 × 5 box at its foot plus an invisible 12 × 134.4 trunk box, no
+shadow) and the plant `U` (0x1d7 turned −90°, 24 × 20, a 28 shadow). `CreateObject` calls each
+new object's `CreateExtraCollideBox` (a no-op except for the tree and turning cannon); fences
+get theirs from `CreateFence`. They stop heroes (heights
 counted) and enemies (heights ignored); enabled ones that block fire stop shots that are
 strictly inside the box.
 
@@ -449,6 +453,15 @@ target, or 60° (72°) towards the hero; for 70 ticks it moves 0.65 (king 0.975)
 direction at floor + sin(t/70 · π) × 44 (king 66), frame 1 tilting to +10° then frame 2 to
 −12°; then 10 ticks on the ground (frame 0, pitch easing back). A hop that moved it less than 10
 makes it wait and turn round. The yaw eases towards the direction (0.1).
+
+**Mushroom** (`h` 37 × 44, 3 health, frames 0x25d..0x25f, collision 0x260, shadow 37; `2` king
+74 × 88, 30 health, 0x285..0x287, 0x288, shadow 74). The wallaby's hop with its own numbers
+(same `MOVESTATE`, NON / HOP / WAIT): waits `RandomI(50, 200)`, then `RandomI(3, 5)` hops of 85
+ticks: 80 in the air at floor + sin(t/80 · π) × 48 (king 72) moving 0.65 (king 0.975), frame 1
+tilting to +10° for the first 40 then frame 2 to −12°, and 5 on the ground. The first tick turns
+it up to 40° (king 50°: × 1.25, where the wallaby uses × 1.2) towards the target, or 1.5 times
+that towards a hero who was within 120. Stuck hops (< 10) turn it round as for the wallaby. It
+checks contact with both heroes.
 
 **Barrel** (`j`): model 0x1f6, collision 0x204, shadow 37, box 27 × 42.8, plus a static box of
 the same size that stops heroes and enemies but not shots. 10 health, KING size, never hurts.

@@ -17,6 +17,7 @@ constexpr uint16_t kModelFenceStraight = 0x1d9, kModelFenceCorner = 0x1d8, kMode
 constexpr uint16_t kModelCannon = 0x18c, kModelCannonRBarrel = 0x1f4, kModelCannonRBase = 0x1f3;
 constexpr uint16_t kSoundCannon = 0x262;
 constexpr uint16_t kModelShop = 0x1ab, kTexShopSign = 0x1ac;
+constexpr uint16_t kModelTree = 0x1d6, kModelPlant = 0x1d7;
 constexpr float kHalfPi = 1.5708f, kPi = 3.14159f, kQuarterPi = 0.785398f;
 
 // XStaticObj_Pillar: 27 wide; 146.5 tall (165 in world 3, model 0x292). Over a hole (the floor
@@ -51,6 +52,39 @@ public:
         model_->SetPos(pos_);
         model_->UpdateWorldMatrix();
         collideBox_ = std::make_unique<XCollideBox>(20.0f, 78.0f);
+        collideBox_->SetPos(pos_);
+    }
+};
+
+// XStaticObj_Tree ('T', World 2): turned -90 degrees; a 35-wide, 5-tall box at its foot plus a
+// 12-wide, 134.4-tall box for the trunk (CreateExtraCollideBox). No shadow.
+class Tree : public XStaticObjBase {
+public:
+    Tree(const XGameContext* g, const D3DVECTOR& p, XStaticObjList* list) : XStaticObjBase(g, p), list_(list) {
+        model_ = std::make_unique<JObject3DX>(kModelTree);
+        model_->SetYaw(-kHalfPi);
+        model_->SetPos(pos_);
+        model_->UpdateWorldMatrix();
+        collideBox_ = std::make_unique<XCollideBox>(35.0f, 5.0f);
+        collideBox_->SetPos(pos_);
+    }
+    void CreateExtraCollideBox() override { list_->CreateCollideBox(pos_, 12.0f, 134.4f, 12.0f); }
+
+private:
+    XStaticObjList* list_;
+};
+
+// XStaticObj_Plant ('U', World 2): turned -90 degrees, 24 wide, 20 tall, with a 28-unit shadow
+class Plant : public XStaticObjBase {
+public:
+    Plant(const XGameContext* g, const D3DVECTOR& p) : XStaticObjBase(g, p) {
+        model_ = std::make_unique<JObject3DX>(kModelPlant);
+        model_->SetYaw(-kHalfPi);
+        model_->SetPos(pos_);
+        model_->UpdateWorldMatrix();
+        shadow_ = std::make_unique<XShadowSimple>(28.0f);
+        shadow_->SetPosXZ(pos_);
+        collideBox_ = std::make_unique<XCollideBox>(24.0f, 20.0f);
         collideBox_->SetPos(pos_);
     }
 };
@@ -310,25 +344,29 @@ XStaticObjBase* XStaticObjList::Put(std::unique_ptr<XStaticObjBase> o) {
     return slots_[i].get();
 }
 
+// XStaticObjList::CreateObject: makes the object, then calls its CreateExtraCollideBox (a no-op
+// for most), as the original does for every code.
 XStaticObjBase* XStaticObjList::CreateObject(const D3DVECTOR& pos, char code) {
     if (GetNullIndex() < 0) return nullptr;
+    std::unique_ptr<XStaticObjBase> o;
     switch (code) {
-        case 'O': return Put(std::make_unique<Barrel>(game_, pos));
-        case 'P': return Put(std::make_unique<Pillar>(game_, pos));
-        case 'Q': return Put(std::make_unique<PillarSmall>(game_, pos));
-        case 'H': return Put(std::make_unique<Cannon>(game_, pos, 4));
-        case 'I': return Put(std::make_unique<Cannon>(game_, pos, 0));
-        case 'J': return Put(std::make_unique<Cannon>(game_, pos, 2));
-        case 'K': {
-            XStaticObjBase* c = Put(std::make_unique<CannonR>(game_, pos, this));
-            if (c) c->CreateExtraCollideBox();
-            return c;
-        }
-        case 'S': return Put(std::make_unique<Shop>(game_, pos));
+        case 'O': o = std::make_unique<Barrel>(game_, pos); break;
+        case 'P': o = std::make_unique<Pillar>(game_, pos); break;
+        case 'Q': o = std::make_unique<PillarSmall>(game_, pos); break;
+        case 'H': o = std::make_unique<Cannon>(game_, pos, 4); break;
+        case 'I': o = std::make_unique<Cannon>(game_, pos, 0); break;
+        case 'J': o = std::make_unique<Cannon>(game_, pos, 2); break;
+        case 'K': o = std::make_unique<CannonR>(game_, pos, this); break;
+        case 'S': o = std::make_unique<Shop>(game_, pos); break;
+        case 'T': o = std::make_unique<Tree>(game_, pos, this); break;
+        case 'U': o = std::make_unique<Plant>(game_, pos); break;
         default:
-            // pots (M N), rocket launcher (R), tree (T), plant (U): stage 5
+            // pots (M N), rocket launcher (R): stage 5
             return nullptr;
     }
+    XStaticObjBase* s = Put(std::move(o));
+    if (s) s->CreateExtraCollideBox();
+    return s;
 }
 
 XStaticObjBase* XStaticObjList::CreateFence(const D3DVECTOR& pos, char shape) {
