@@ -150,7 +150,10 @@ protected:
 
     HRESULT Render() override {
         Device* d = GetD3DDevice();
-        d->Clear(0, nullptr, 3, 0x1a2a44, 1.f, 0);
+        // XApplication::Render clears to its background colour, which XApplication::XApplication
+        // sets to 0 (black) and nothing changes: it is what shows through the water in the pits.
+        // The viewers keep their own navy.
+        d->Clear(0, nullptr, 3, mode_ == Mode::Game ? 0x000000 : 0x1a2a44, 1.f, 0);
         d->BeginScene();
         if (mode_ == Mode::Game) {
             XGameScene::SetDeviceState(d);

@@ -594,6 +594,10 @@ alpha 0.6), texture 0x1a6 (World 3: 0x290). Both use perspective and linear filt
 the texture offsets drift: water1 by (0.0006, 0.0014), water2 by (0.0003, 0.0007), wrapping at
 1. `XGameObject::InitLevel` calls `Deinit`, then `Init` on a water level. It runs right after
 the map and is drawn after the enemies, before the particles: water2 first, then water1.
+Nothing is drawn under the sheets: the pit shows the cleared back buffer, which
+`XApplication::Render` clears to its background colour (`+0x1b0`), set to 0 (black) by the
+constructor and never changed (`SetBackgroundColor` has no callers). That black is what makes
+the pits look deep.
 
 **On a water level**:
 
