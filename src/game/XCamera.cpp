@@ -8,6 +8,7 @@ void XCamera::ResetForGame(int rows) {
     distance_ = 340.0f;
     vAngle_ = 0.610865f;
     hAngle_ = 1.5707964f;
+    localTime_ = 0;
     minZ_ = 160.0f;
     maxZ_ = (rows - 4) * 40.0f;
     lookAt_ = D3DVECTOR(140.0f, 120.0f, minZ_);
@@ -16,9 +17,21 @@ void XCamera::ResetForGame(int rows) {
     UpdateViewMatrix();
 }
 
-void XCamera::ProcessFrame(float heroZ) {
-    UpdateLookAtPos(heroZ);
+void XCamera::ProcessFrame(float heroZ, bool follow) {
+    localTime_++;
+    if (follow) UpdateLookAtPos(heroZ);
+    UpdateShake();
     UpdateViewMatrix();
+}
+
+// The look-at point's height is 120 + sin(tick mod 8 / 8 turns) x magnitude, the magnitude
+// falling 0.02 a tick to 0. (Its last value stays when the shaking ends, within 0.02 of 120.)
+void XCamera::UpdateShake() {
+    if (shakeMagnitude_ <= 0) return;
+    float t = (float)(localTime_ % 8) / 8.0f;
+    lookAt_.y = 120.0f + std::sin(t * 6.28319f) * shakeMagnitude_;
+    shakeMagnitude_ -= 0.02f;
+    if (shakeMagnitude_ < 0) shakeMagnitude_ = 0;
 }
 
 void XCamera::UpdateLookAtPos(float z) {

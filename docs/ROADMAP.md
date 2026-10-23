@@ -43,8 +43,8 @@ is done.
 | 1 | World 2 scenery and the mushroom: tree `T`, plant `U`, mushroom `h` / king mushroom `2` | 2-1 to 2-10 | | Done |
 | 2 | Needle balls `x` `y` | 2-1, 2-2, 2-4, 2-5 | 2-1 | Done |
 | 3 | Squid `c` / king squid `4` | 2-2 to 2-9 | 2-5 | Done |
-| 4 | Hammer `k` and camera shake (`XCamera::StartShaking`) | 2-2, 2-4, 2-6, 2-9 | 2-2 | **Next** |
-| 5 | Fans `q` `r` `s` | 2-3, 2-4, 2-6 to 2-9 | 2-3, 2-4 | |
+| 4 | Hammer `k` and camera shake (`XCamera::StartShaking`) | 2-2, 2-4, 2-6, 2-9 | 2-2 | Done |
+| 5 | Fans `q` `r` `s` | 2-3, 2-4, 2-6 to 2-9 | 2-3, 2-4 | **Next** |
 | 6 | Turtle `e` | 2-6 to 2-9 | 2-6 to 2-9 | |
 | 7 | The genie, World 2's boss (`7`), and its needle-ball bullets (`XBullet_NeedleBall`) | 2-10 | all of World 2 | |
 | 8 | Pots `M` `N` and the kiwi `f` | 3-1 to 3-10 | | |
@@ -70,7 +70,8 @@ levels.
 |---|---|
 | Which levels are boss levels | Settled: any level with a boss code (`6`–`9`); level 10 of each world and World 4's levels 2, 5, 8 |
 | Which way the mage faces at the start | Settled: yaw 0, along the level |
-| Two-player camera midpoint, camera shake | Stage 5: player 2, and the hammer and stalactite enemies (the only callers of `XCamera::StartShaking`) |
+| Two-player camera midpoint | Stage 5: player 2 |
+| Camera shake | Done (stage 5 chunk 4): `XCamera::StartShaking`, used by the hammer; the stalactite and the genie follow |
 | Hero-on-hero collision and carrying | Stage 5 (player 2) |
 | Static objects' collision with the hero | Done (5a): `XStaticObjList` and `XCollideBox` as the original |
 | Colour under the pit water | Settled (0.2.4): black, the original's clear colour; nothing is drawn under the water sheets |

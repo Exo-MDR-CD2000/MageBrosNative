@@ -728,6 +728,129 @@ private:
     std::unique_ptr<JObject3DX> fanBase_;
 };
 
+// ------------------------------------------------------------------------------ XEnemy_Hammer
+// 'k': a hammer (model 0x17b, collision 0x17c, a 180 x 120 box) on a base (model 0x17a, static
+// boxes 60 x 7 and 35 x 35). It can't be hurt. When a hero comes within 160 it rises 30 over 60
+// ticks and tracks the closer hero (1.5 degrees a tick); within 100 and lined up (6 degrees) it
+// swings down in front over 50 ticks (sound 0x277 at 20, the thud 0x276, camera shake 2.4 and a
+// dust ring 60 ahead), lies there 150 ticks and lifts back over 120. If the hero gets behind it
+// (12 degrees) while it lies there, it swings over backwards the same way (80 ticks). Out of
+// range it sinks back and waits. No visibility or IsUpdatable test.
+class Hammer : public XEnemyBase {
+public:
+    Hammer(const XGameContext* g, int oid, const D3DVECTOR& p) : XEnemyBase(g, oid, p, SMALL) {
+        model_ = std::make_unique<JObject3DX>(0x17b);
+        model_->SetCollisionModel(0x17c);
+        collideBox_ = std::make_unique<XCollideBox>(180.0f, 120.0f);
+        collideBox_->SetPos(startPos_);
+        hammerBase_ = std::make_unique<JObject3DX>(0x17a);
+        hammerBase_->SetPos(startPos_);
+        hammerBase_->UpdateWorldMatrix();
+        g->statics->CreateCollideBox(startPos_, 60.0f, 7.0f, 60.0f);
+        g->statics->CreateCollideBox(startPos_, 35.0f, 35.0f, 35.0f);
+        yaw_ = kHalfPi;
+        UpdateWorldMatrix();
+        damagable_ = false;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = WAIT;
+    }
+    void ProcessFrame() override {
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        switch (moveState_) {
+            case WAIT: Wait(); break;
+            case MOVEUP: MoveUp(); break;
+            case MOVEDOWN: MoveDown(); break;
+            case ALERT: Alert(); break;
+            case ATTACK_START: AttackStart(); break;
+            case ATTACK_WAIT: AttackWait(); break;
+            case ATTACK_END: AttackEnd(); break;
+            case BEHIND_START: BehindStart(); break;
+            case BEHIND_WAIT: BehindWait(); break;
+            case BEHIND_END: BehindEnd(); break;
+            default: break;
+        }
+        UpdateWorldMatrix();
+        hammerBase_->SetYaw(yaw_);
+        hammerBase_->UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);
+    }
+    void Render(Device* d) override {
+        // (drawn wherever it is: no visibility test)
+        if (liveState_ == XEnemyBase::NON) return;
+        model_->Render(d);
+        hammerBase_->Render(d);
+    }
+
+private:
+    enum MoveState {
+        NON = 0, WAIT, MOVEUP, MOVEDOWN, ALERT, ATTACK_START, ATTACK_WAIT, ATTACK_END,
+        BEHIND_START, BEHIND_WAIT, BEHIND_END
+    };
+    void Next(MoveState s) {
+        localCounter_ = 0;
+        moveState_ = s;
+    }
+    void Wait() {
+        if (game_->DistanceToCloserHero(pos_) < 160.0f) Next(MOVEUP);
+    }
+    // the hammer itself moves (its box stays put)
+    void MoveUp() {
+        pos_.y += 0.5f;
+        if (localCounter_ >= 60) Next(ALERT);
+    }
+    void MoveDown() {
+        pos_.y -= 0.5f;
+        if (localCounter_ >= 60) Next(WAIT);
+    }
+    void Alert() {
+        float dir = game_->DirToCloserHero(pos_);
+        yaw_ = MakeAngleCloseTo_Constant(yaw_, dir, 0.0261799f);
+        float dist = game_->DistanceToCloserHero(pos_);
+        if (dist > 160.0f) Next(MOVEDOWN);
+        else if (dist < 100.0f && AngleDifference(yaw_, dir) < 0.10472f) Next(ATTACK_START);
+    }
+    // the thud: sound, shake and a dust ring 60 from the base along `side` (1 ahead, -1 behind)
+    void Slam(float side) {
+        game_->playSound(0x276, pos_.z);
+        game_->startShaking(2.4f);
+        D3DVECTOR at(startPos_.x + side * std::sin(yaw_) * 60.0f, startPos_.y + 0.5f,
+                     startPos_.z + side * std::cos(yaw_) * 60.0f);
+        game_->particles->CreateHammerEffect(at);
+    }
+    void AttackStart() {
+        pitch_ = (1.0f - std::cos((float)localCounter_ / 50.0f * kHalfPi)) * kHalfPi;
+        if (localCounter_ == 20) game_->playSound(0x277, pos_.z);
+        if (localCounter_ < 50) return;
+        Slam(1.0f);
+        Next(ATTACK_WAIT);
+    }
+    void AttackWait() {
+        if (AngleDifference(yaw_ + kPi, game_->DirToCloserHero(pos_)) < 0.20944f) Next(BEHIND_START);
+        else if (localCounter_ >= 150) Next(ATTACK_END);
+    }
+    void AttackEnd() {
+        pitch_ = (1.0f - (float)localCounter_ / 120.0f) * kHalfPi;
+        if (localCounter_ >= 120) Next(ALERT);
+    }
+    void BehindStart() {
+        pitch_ = std::cos((float)localCounter_ / 80.0f * kHalfPi) * kPi - kHalfPi;
+        if (localCounter_ == 20) game_->playSound(0x277, pos_.z);
+        if (localCounter_ < 80) return;
+        Slam(-1.0f);
+        Next(BEHIND_WAIT);
+    }
+    void BehindWait() {
+        if (localCounter_ >= 150) Next(BEHIND_END);
+    }
+    void BehindEnd() {
+        pitch_ = (1.0f - (float)localCounter_ / 120.0f) * -kHalfPi;
+        if (localCounter_ >= 120) Next(ALERT);
+    }
+    MoveState moveState_ = NON;
+    std::unique_ptr<JObject3DX> hammerBase_;
+};
+
 // -------------------------------------------------------------------------------- XEnemy_Fish
 // 'i': a fish swimming round a circle of radius 80 about (100, -62, cell z) under the water, a
 // half turn at a time (1 degree a tick, the way picked at random), and after a few half turns
@@ -1064,6 +1187,7 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case 'y': e = std::make_unique<NeedleBall>(game_, lastOID_, pos, NeedleBall::Z_AXIS); break;
         case 'j': e = std::make_unique<BarrelEnemy>(game_, lastOID_, pos); break;
         case 'm': e = std::make_unique<NeedleFan>(game_, lastOID_, pos); break;
+        case 'k': e = std::make_unique<Hammer>(game_, lastOID_, pos); break;
         case 'v': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, false); break;
         case 'w': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, true); break;
         case 'o': e = std::make_unique<Needle>(game_, lastOID_, pos, false); break;

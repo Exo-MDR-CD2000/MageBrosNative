@@ -72,6 +72,7 @@ public:
     void CreateWarpRing(const D3DVECTOR& pos);
     void CreateGetCoinEffect(const D3DVECTOR& pos);
     void CreateLandEffect(const D3DVECTOR& pos);
+    void CreateHammerEffect(const D3DVECTOR& pos);
     // XParticleList::CreateWaterWave: a ring on the water at `pos`
     void CreateWaterWave(const D3DVECTOR& pos, bool large, bool sound);
 

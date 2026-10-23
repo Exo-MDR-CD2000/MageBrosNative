@@ -20,6 +20,8 @@ float MakeAngleCloseTo(float cur, float target, float factor, float minStep, flo
 // angle the short way round).
 float MakeValueCloseTo_Constant(float cur, float target, float step);
 float MakeAngleCloseTo_Constant(float cur, float target, float step);
+// AngleDifference: the unsigned angle between two angles, 0..pi (both normalised first)
+float AngleDifference(float a, float b);
 // atan2(a, b), normalised: the yaw of a stick direction is FindYaw(y, x).
 float FindYaw(float a, float b);
 // Interpolate: a + (b - a) * t, and D3DVectorInterpolate on each coordinate.

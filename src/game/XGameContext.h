@@ -33,6 +33,7 @@ struct XGameContext {
     std::function<void(uint16_t waveId, float z)> playSound;  // XApplication::PlaySound
     std::function<void(uint16_t waveId, float volume)> playMono;  // JSoundList::PlayMono (unpanned)
     std::function<void()> stopMusic;  // JMidiList::Stop ("close all")
+    std::function<void(float magnitude)> startShaking;  // XCamera::StartShaking
     std::function<void(const XEnemyBase& e)> createEnemyCoin;  // XCoinList::CreateEnemyCoin
     std::function<void(const XEnemyBase& e)> createHeart;      // XCoinList::CreateHeart
     int* barrelCounter = nullptr;  // XGameObject's count of barrels broken (every third gives a heart)

@@ -158,7 +158,14 @@ normals 1/s long, so the coins (scale 0.35 and 0.6) saturate to bright gold from
   horizontal, horizontal angle π/2, so the eye is on the +x side. The look-at z starts at 160 and
   stays within [160, (rows − 4) × 40]; it eases toward its target (`MakeValueCloseTo`, factor 0.1,
   step 5). In play the target is the hero's z, or with two heroes alive their midpoint, with at
-  most 240 units of separation taken into account.
+  most 240 units of separation taken into account. `XCamera::ProcessFrame` (game state) counts
+  `localTime` every tick, follows only heroes whose live state is not NON, DEAD or COMPLETED, then
+  runs `_UpdateShake` and the view matrix whether it followed or not.
+- Shake (`StartShaking(m)` sets `shakeMagnitude`; only the constructor zeroes it, so a shake
+  carries over a level change): while it is above 0 the look-at y is
+  120 + sin((localTime mod 8) / 8 · 2π) × m, and m falls by 0.02 a tick, clamped at 0. The
+  last y is left as it is when it stops (within 0.02 of 120). The hammer and the stalactite call
+  it, and the genie and its lamp.
 - Music (`XGameObject::InitLevel`): Music06 when the level has a boss, otherwise Music02–05
   for worlds 1–4 (Music01 is the menus'). The test is `XGameObject::boss` (+0xcc, an
   `XBossBase*`), which `_ConstructObjects` sets for the boss codes `6` Dragon, `7` Genie, `8` Nest
@@ -473,6 +480,25 @@ and then straight at a hero within 120; the yaw eases to it at 0.05 (king 0.03).
 105 ticks at 0.9 (king × 1.2) along the direction, frame (t/15 + 1) mod 4, the yaw unchanged.
 A walk that moved it less than 15 sets turnAround and jumps; otherwise `Random(2)` picks JUMP
 or WAIT.
+
+**Hammer** (`k`): hammer model 0x17b (collision 0x17c, box 180 × 120 at the start, never moved)
+on a base, model 0x17a; the constructor also adds static boxes 60 × 7 and 35 × 35 at the start.
+SMALL, not damagable, yaw 90°, no `IsUpdatable` test and drawn without the visibility test
+(`Render` also calls the box's debug draw). `MOVESTATE`: WAIT → MOVEUP when a hero is within 160;
+MOVEUP / MOVEDOWN move pos.y (not the box) 0.5 a tick for 60 ticks, to ALERT / WAIT. ALERT turns
+the yaw towards the closer hero 1.5° a tick; beyond 160 → MOVEDOWN; within 100 and
+`AngleDifference` under 6° → ATTACK_START: pitch = (1 − cos(t/50 · π/2)) · π/2, sound 0x277 at
+t = 20, and at 50 sound 0x276, `StartShaking(2.4)` and `CreateHammerEffect` at the start + 60
+along the yaw (y + 0.5) → ATTACK_WAIT. There a hero within 12° of straight behind (yaw + π) →
+BEHIND_START, else after 150 → ATTACK_END: pitch eases linearly from π/2 to 0 over 120 →
+ALERT. BEHIND_START: pitch = cos(t/80 · π/2) · π − π/2 (π/2 to −π/2), the same sounds, the thud
+at 80 with the effect 60 behind → BEHIND_WAIT (150) → BEHIND_END (−π/2 to 0 over 120) →
+ALERT. The base turns with the yaw. `AngleDifference(a, b)`: both normalised, |a − b|, taking
+2π off the larger if that is over π.
+
+**Hammer effect** (`XParticle_HammerEffect`): the landing dust's flat ring (texture 0x295, not
+billboarded) at 60, growing by 4 × 0.92 a tick, alpha × 0.92 a tick after 15 ticks, gone at
+0.03.
 
 **Needle ball** (`x` X_AXIS, yaw 90°; `y` Z_AXIS, yaw 0): model 0x1f1, collision 0x1f5, box
 40 × 40, shadow 38, SMALL size, not damagable. It rolls 0.75 a tick along its axis, pitch

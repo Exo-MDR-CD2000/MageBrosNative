@@ -37,6 +37,7 @@ public:
     using LostGoldFn = std::function<void(bool heroA, int amount)>;
     using MonoSoundFn = std::function<void(uint16_t waveId, float volume)>;
     using StopMusicFn = std::function<void()>;
+    using ShakeFn = std::function<void(float magnitude)>;
 
     XLevelLoop();
     ~XLevelLoop() override;
@@ -58,6 +59,7 @@ public:
     void SetLostGoldHandler(LostGoldFn f) { lostGold_ = std::move(f); }
     void SetMonoSoundHandler(MonoSoundFn f) { playMono_ = std::move(f); }
     void SetStopMusicHandler(StopMusicFn f) { stopMusic_ = std::move(f); }
+    void SetShakeHandler(ShakeFn f) { shake_ = std::move(f); }
     // XBossBase::GetHealthMain for the status display (0 without a boss)
     int BossHealth() const;
     int NumTorches() const { return (int)torches_.size(); }
@@ -131,6 +133,7 @@ private:
     LostGoldFn lostGold_;
     MonoSoundFn playMono_;
     StopMusicFn stopMusic_;
+    ShakeFn shake_;
     std::vector<Fire> fires_;  // 30 slots
     std::vector<Torch> torches_;
     std::vector<Coin> coins_;

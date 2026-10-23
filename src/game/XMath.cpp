@@ -11,6 +11,13 @@ float MakeValueCloseTo(float cur, float target, float factor, float minStep, flo
     return target > cur ? cur + step : cur - step;
 }
 
+float AngleDifference(float a, float b) {
+    a = NormaliseAngle(a);
+    b = NormaliseAngle(b);
+    if (std::fabs(a - b) > 3.14159f) a += b > a ? 6.28319f : -6.28319f;
+    return std::fabs(a - b);
+}
+
 float NormaliseAngle(float a) {
     if (a >= kTwoPi) {
         int turns = (int)(a / kTwoPi);

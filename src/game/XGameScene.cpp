@@ -52,6 +52,7 @@ bool XGameScene::Load(int world, int level) {
     loop_.SetLostGoldHandler([this](bool heroA, int amount) { statusDisplay_->ShowLostGoldMessage(heroA, amount); });
     loop_.SetMonoSoundHandler([this](uint16_t id, float volume) { PlayStereo(id, 0.0f, volume); });  // JSoundList::PlayMono
     loop_.SetStopMusicHandler([] { Midi::Close(); });  // JMidiList::Stop: "close all"
+    loop_.SetShakeHandler([this](float magnitude) { camera_.StartShaking(magnitude); });
     camera_.ResetForGame(level_.Depth());
     processTicks_ = 0;
     return true;
@@ -160,7 +161,9 @@ void XGameScene::ProcessFrame() {
     hero_->ProcessFrame(input_, level_.Collision(), loop_);
     loop_.ProcessAfterHero();
     XHero::LiveState s = hero_->GetLiveState();
-    if (s != XHero::DEAD && s != XHero::COMPLETED) camera_.ProcessFrame(hero_->GetPos().z);
+    // XCamera::ProcessFrame always runs in the game (its tick and the shake); it follows only a
+    // hero that is alive
+    camera_.ProcessFrame(hero_->GetPos().z, s != XHero::NON && s != XHero::DEAD && s != XHero::COMPLETED);
 
     if (s == XHero::COMPLETED && ++processTicks_ > 200) {
         // the next level of the world; after the last one, the next world (level select later)

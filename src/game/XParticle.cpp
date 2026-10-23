@@ -463,6 +463,11 @@ void XParticleList::CreateLandEffect(const D3DVECTOR& pos) {
     // 30 units across, growing by 3.5 (x 0.92 a tick); fades (x 0.92) after 10 ticks
     Add(std::make_unique<FlatRing>(this, pos, kTexLand, 30.0f, 3.5f, 0.92f, 10, 0.92f));
 }
+void XParticleList::CreateHammerEffect(const D3DVECTOR& pos) {
+    // XParticle_HammerEffect: the landing dust's ring, 60 across, growing by 4 (x 0.92 a tick);
+    // fades (x 0.92) after 15 ticks
+    Add(std::make_unique<FlatRing>(this, pos, kTexLand, 60.0f, 4.0f, 0.92f, 15, 0.92f));
+}
 void XParticleList::CreateGetCoinEffect(const D3DVECTOR& pos) {
     // three sparks, 120 degrees apart, starting away from the camera, rising 3 for each 1 out
     float angle = -1.5708f;
