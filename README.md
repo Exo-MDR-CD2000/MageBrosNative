@@ -101,13 +101,21 @@ writes `build\MageBrosNative-<version>-windows-x64.zip`. Run it as `make_release
 `major` or `none` (rebuild at the current version) to choose the version step; a failed build
 puts the version back. With `MageBros.exe` in the folder above the repository it also runs the map
 and hero tests.
+
+**Releases.** Every push to `main` runs the GitHub Actions workflow in
+`.github/workflows/release.yml`: it builds the same zip on a Windows runner, runs the tests that
+need no game files, and publishes it as the GitHub release `v<version>`, the version being the
+one in `CMakeLists.txt`. A push that leaves the version unchanged (docs only, say) makes no new
+release, so raise the version (`make_release.bat` does) when a push should produce one. The map
+and hero tests can't run there, since `MageBros.exe` is never uploaded; run them locally.
+
 From Linux or macOS, cross-compile with llvm-mingw or MinGW-w64:
 `cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`.
 SDL3 is downloaded and built automatically the first time. To build only the tools and tests (no
 SDL), configure with `-DMBN_BUILD_GAME=OFF`. Add `-DMBN_GAME_EXE=/path/to/MageBros.exe` to also run
 the map and hero tests on all 40 levels of your copy.
 
-For scripted test runs the game takes `--auto "tick:action=arg;..."` (keys, screenshots, level and
+For scripted test runs the game takes `--auto "ms:action=arg;..."` (times in milliseconds) (keys, screenshots, level and
 position jumps); see [CLAUDE.md](CLAUDE.md) for the actions and for building and running the game
 headless on Linux.
 

@@ -163,6 +163,14 @@ raises the version in `CMakeLists.txt` first: patch by default, or pass `minor`,
 runs the map and hero tests when `..\MageBros.exe` exists, and pauses at the end. Or open the
 folder in Visual Studio / use `cmake -S . -B build -A x64`. SDL3 is fetched on first configure.
 
+**GitHub releases.** `.github/workflows/release.yml` runs on every push to `main` (and by hand
+from the Actions tab): on a Windows runner it configures, builds, runs the no-game tests and
+`cpack`, then publishes the zip as release `v<version>` (from `CMakeLists.txt`) with the commit
+message as its notes. If that release already exists it does nothing, so a push only releases
+when the version was raised: keep running `make_release.bat` (patch bump) for each chunk and
+commit `CMakeLists.txt` with it. Pushing therefore publishes publicly; the zip holds no game
+content.
+
 **Cross-compile for Windows from Linux** (llvm-mingw):
 
 ```sh
