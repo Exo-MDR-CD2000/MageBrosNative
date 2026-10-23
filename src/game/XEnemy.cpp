@@ -1102,6 +1102,81 @@ private:
     std::unique_ptr<JObject3DX> fanBase_;
 };
 
+// ---------------------------------------------------------------------------- XEnemy_FloorFan
+// 't': a fan lying in the floor (model 0x1cd, collision 0x1cc, an 80 x 20 box, shadow 28) over its
+// housing (model 0x1ce, a static 16 x 16 box), its blades turning 10 degrees a tick about the
+// vertical. It can't be hurt and doesn't hurt a hero who is still flashing. Each tick it lifts a
+// NORMAL hero whose feet are within 58 of it along X and Z and at least 10 above it: full strength
+// within 30 (straight-line distance across the floor), fading to nothing at 58, and falling off
+// with cos(height / 320 x 90 degrees). The lift breathes, 4.8 +- 0.8 over 120 ticks, and marks
+// the hero as pushed by a fan. No IsUpdatable test.
+class FloorFan : public XEnemyBase {
+public:
+    FloorFan(const XGameContext* g, int oid, const D3DVECTOR& p) : XEnemyBase(g, oid, p, SMALL) {
+        model_ = std::make_unique<JObject3DX>(0x1cd);
+        model_->SetCollisionModel(0x1cc);
+        UpdateWorldMatrix();
+        shadow_ = std::make_unique<XShadowSimple>(28.0f);
+        collideBox_ = std::make_unique<XCollideBox>(80.0f, 20.0f);
+        collideBox_->SetPos(startPos_);
+        fanBase_ = std::make_unique<JObject3DX>(0x1ce);
+        fanBase_->SetPos(startPos_);
+        fanBase_->UpdateWorldMatrix();
+        g->statics->CreateCollideBox(startPos_, 16.0f, 16.0f, 16.0f);
+        noCollisionWhenHeroDamaged_ = true;
+        damagable_ = false;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = ROTATE;
+    }
+    void ProcessFrame() override {
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        if (moveState_ == ROTATE) Rotate();
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);  // (and hero B: player 2, stage 5)
+    }
+    void Render(Device* d) override {
+        if (liveState_ == XEnemyBase::NON || !game_->IsVisible(pos_)) return;
+        model_->Render(d);
+        fanBase_->Render(d);
+        shadow_->SetPosXZ(startPos_);
+        shadow_->Render(d);
+    }
+
+private:
+    enum MoveState { NON = 0, ROTATE = 1 };
+    // XEnemy_FloorFan::_ProcessFrame_Rotate
+    void Rotate() {
+        yaw_ = NormaliseAngle(yaw_ - 0.174533f);
+        PushHero(game_->heroA);  // (and hero B: player 2, stage 5)
+    }
+    // XEnemy_FloorFan::_PushHero
+    void PushHero(XHero* hero) {
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        if (!hero || hero->GetLiveState() != XHero::NORMAL) return;
+        const float kInner = 30.0f, kOuter = 58.0f, kRange = 320.0f;
+        const D3DVECTOR& hp = hero->GetPos();
+        if (std::fabs(pos_.z - hp.z) > kOuter) return;
+        if (std::fabs(pos_.x - hp.x) > kOuter) return;
+        if (pos_.y + 10.0f > hp.y) return;
+        float height = std::min(std::fabs(pos_.y - hp.y), kRange);
+        float along = std::cos(height / kRange * kHalfPi);
+        float dx = hp.x - pos_.x, dz = hp.z - pos_.z;
+        float d = std::sqrt(dx * dx + dz * dz);  // ExactDistanceXZ
+        float across = 0;
+        if (d < kInner) across = 1.0f;
+        else if (d < kOuter) across = 1.0f - (d - kInner) / 28.0f;
+        float wave = std::sin(static_cast<float>(localCounter_ % 120) / 120.0f * 6.28319f);
+        float push = (wave * 0.8f + 4.8f) * along * across;
+        if (push > 0) {
+            hero->IncreasePushY(push);
+            hero->SetPushedByFan();
+        }
+    }
+    MoveState moveState_ = NON;
+    std::unique_ptr<JObject3DX> fanBase_;
+};
+
 // ------------------------------------------------------------------------------ XEnemy_Hammer
 // 'k': a hammer (model 0x17b, collision 0x17c, a 180 x 120 box) on a base (model 0x17a, static
 // boxes 60 x 7 and 35 x 35). It can't be hurt. When a hero comes within 160 it rises 30 over 60
@@ -1573,6 +1648,7 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case 'q': e = std::make_unique<Fan>(game_, lastOID_, pos, 4); break;
         case 'r': e = std::make_unique<Fan>(game_, lastOID_, pos, 0); break;
         case 's': e = std::make_unique<Fan>(game_, lastOID_, pos, 2); break;
+        case 't': e = std::make_unique<FloorFan>(game_, lastOID_, pos); break;
         case 'v': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, false); break;
         case 'w': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, true); break;
         case 'o': e = std::make_unique<Needle>(game_, lastOID_, pos, false); break;

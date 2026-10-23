@@ -535,6 +535,24 @@ then `IncreasePushX(1.0 · cos(min(|Δx|, 320)/320 · π/2) · k)` with d = `Exa
 k = 1 below 30, 1 − (d − 30)/26 below 56, else 0. `r` / `q`: the same across X and Y, the hero
 within 320 ahead along +Z / −Z, `ExactDistanceXY`, and `IncreasePushZ(±1.2 · …)`.
 
+**Floor fan** (`t`, 3-4, 3-5, 3-7 and 4-9): model 0x1cd, collision 0x1cc, box 80 × 20 and shadow
+28 at the start, the fan not offset; base model 0x1ce at the start plus a static 16 × 16 box (the
+hero can stand on it, inside the blades). SMALL, not damagable, "no collision while the hero
+flashes" on, no `IsUpdatable` test; drawn with the visibility test, the shadow at the start.
+ROTATE: yaw −10° (0.174533) a tick, then `_PushHero` for each hero; then the world matrix and
+the hero collision checks. `_PushHero` (fan NORMAL, hero NORMAL), using the hero's feet (`GetPos`,
+not the centre): |Δz| and |Δx| ≤ 58 and hero.y ≥ fan.y + 10; along = cos(min(|Δy|, 320)/320 ·
+π/2); d = `ExactDistanceXZ`, k = 1 below 30, 1 − (d − 30)/28 below 58, else 0; the push is
+(4.8 + 0.8 · sin((localCounter mod 120)/120 · 2π)) · along · k, and when it is above 0
+`IncreasePushY(push)` and the hero's `pushedByFan` (offset 0x4) is set. (`_PushHero` also
+loads 30, 58, 320 into locals the code never reads.) Against gravity's −4 cap the hero floats
+where 4.8 · cos(h/320 · 90°) ≈ 4, about 120 up, bobbing between roughly 107 and 130 over the
+120-tick cycle; standing on the floor beside the fan (y = fan.y) it isn't lifted.
+
+`XHeroBase::pushedByFan` is cleared at the end of each NORMAL tick that leaves the hero NORMAL
+(not on falling out or warping), and by `Reset`; its only reader is the falling check against the
+other hero: a hero lifted by a fan doesn't land on hero B.
+
 **Hammer** (`k`): hammer model 0x17b (collision 0x17c, box 180 × 120 at the start, never moved)
 on a base, model 0x17a; the constructor also adds static boxes 60 × 7 and 35 × 35 at the start.
 SMALL, not damagable, yaw 90°, no `IsUpdatable` test and drawn without the visibility test

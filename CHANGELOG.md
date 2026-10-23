@@ -7,6 +7,13 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.2.17] - 2026-10-23
+
+- **Floor fans** (World 3, also 4-9): fans set in the floor whose spinning blades blow upward.
+  Jump over one and the mage floats up on the air, bobbing about two body heights above it; its
+  blades still hurt if you walk into them.
+- Level 3-4 now has nothing left to build.
+
 ## [0.2.16] - 2026-10-23
 
 - **Rocket launchers** (World 3, also 4-1, 4-4 and 4-7): every 10 seconds a rocket rises slowly

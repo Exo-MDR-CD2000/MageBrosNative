@@ -46,8 +46,9 @@ particle effects are in.
   that hide in their shells, and in 2-10 the genie, who rises from its steaming lamp and fires
   spiked balls that roll after the mage.
 - **World 3** has begun: pots, kiwis that run from the mage, spikes that jump up from the floor,
-  stalactites that drop and shake the screen, and rocket launchers whose rockets home in on the
-  mage. 3-1, 3-2, 3-3, 3-6 and 3-9 play through.
+  stalactites that drop and shake the screen, rocket launchers whose rockets home in on the
+  mage, and floor fans that float the mage up to higher ledges. 3-1, 3-2, 3-3, 3-4, 3-6 and 3-9
+  play through.
 
 Defeated enemies drop coins. Objects still to come show as coloured markers. Dying restarts the
 level and finishing a world's last level goes on to the next world, until the level select of

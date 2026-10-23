@@ -261,9 +261,9 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-23, version 0.2.16, stage 5 chunk 11 done)
+## Where we are (last updated: 2026-10-23, version 0.2.17, stage 5 chunk 12 done)
 
-**Stage 5 (the whole game) is under way: chunks 1 to 11 are done; chunk 12, the floor fan `t`, is
+**Stage 5 (the whole game) is under way: chunks 1 to 12 are done; chunk 13, the ghost `g`, is
 next.** Wait for the owner to say "start the next chunk". The chunk table, with the levels each
 chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
@@ -276,14 +276,13 @@ Playable now, with nothing left unbuilt (no marker cubes):
   cannons and their balls; all seven platform kinds; water; the dragon.
 - **World 2**, 2-1 to 2-10 (chunks 1 to 7b): trees, plants, mushrooms, needle balls, squids,
   hammers, fans, turtles, the genie and its lamp, the genie's needle-ball shots.
-- **World 3** so far: 3-1, 3-2, 3-3, 3-6 and 3-9 (chunks 8 to 11: pots, kiwis, jump needles,
-  stalactites, rocket launchers and rockets).
+- **World 3** so far: 3-1, 3-2, 3-3, 3-4, 3-6 and 3-9 (chunks 8 to 12: pots, kiwis, jump
+  needles, stalactites, rocket launchers and rockets, floor fans).
 
 Still to build in stage 5 (the remaining chunks):
 
 | Chunk | What | Completes |
 |---|---|---|
-| 12 | Floor fan `t` (`XEnemy_FloorFan`) | 3-4 |
 | 13 | Ghost `g` (`XEnemy_Ghost`) | 3-5, 3-7, 3-8 |
 | 14 | The nest and its bird, World 3's boss (`8`: `XBoss_Nest`, `XBoss_Bird`) | World 3 (and 4-8) |
 | 15 | The wizard, World 4's boss (`9`: `XBoss_Wizard`, its blade, wand, `XBullet_WizardFire`); World 4 checked | all 40 levels |
@@ -303,8 +302,9 @@ the ending); **stage 7**, opt-in modern extras.
 Not caught by screenshot, so worth the owner's eye: the king mushroom (2-4, 2-7); the camera
 shake (hammers in World 2, stalactites in World 3); the genie opening its mouth before an attack,
 and whether it looks as pale as the original while it is small and rising; the jump needles
-springing up (3-1). Already confirmed by the owner: World 1 start to finish, the dragon fight,
-the third-barrel heart.
+springing up (3-1); how the floor fan floats the mage (3-4: it bobs about 120 above the fan,
+and touching the blades from beside it hurts). Already confirmed by the owner: World 1 start to
+finish, the dragon fight, the third-barrel heart.
 
 ### Notes from earlier stages
 
@@ -321,6 +321,9 @@ the third-barrel heart.
 - The genie's lamp has its own `StartShaking` (it rocks the lamp, not the camera).
 - Enemy bullets (cannonballs, flame, needle balls, rockets) never hit enemies: they check the map,
   objects, platforms and heroes only. A hero's shot stops on a bullet; the bullet carries on.
+- `XHero::pushedByFan_` (the original's `pushedByFan`) is set by the floor fan and cleared at the
+  end of each NORMAL tick; nothing reads it until player 2 lands on hero A (a lifted hero
+  doesn't).
 - Player 2 is not built: wherever the original checks hero B, the port checks `heroA` only and
   says so in a comment ("player 2: stage 5"). `GetCloserHero` is `heroA` for now.
 
@@ -338,9 +341,10 @@ the third-barrel heart.
   `XCollideBox(app, w, h)` pushes h first. `fields.py` needs the field-list type id, not the
   class name.
 - **Finding objects in levels**: levels are PE resources (ids in `src/core/game_files.cpp`'s
-  `kLevelIds`); `pe_rsrc.load()` from the analysis tools gives the bytes. The object field is
-  columns 8 to 12 of each line, the last line is row 0, and a cell is at x = col · 40 + 20,
-  z = row · 40 + 20.
+  `kLevelIds`); `pe_rsrc.load()` from the analysis tools gives the bytes. (Counting rows over
+  the non-blank lines put 3-4's floor fan at z 1140; it is at 1100, so check a position with a
+  short log or screenshot before relying on it.) The object field is columns 8 to 12 of each
+  line, the last line is row 0, and a cell is at x = col · 40 + 20, z = row · 40 + 20.
 - **Screenshots**: `--auto` times are milliseconds. After `level=` the mage drops for about 3 s;
   after `place=` the camera eases at most 5 units a tick (500 a second), so a far `place`
   needs several seconds before the shot. Shots are 1280 × 960 BMPs: shrink them to PNG (e.g.

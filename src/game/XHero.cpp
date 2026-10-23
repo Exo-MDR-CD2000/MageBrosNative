@@ -75,6 +75,7 @@ void XHero::Reset() {
     knockBackDir_ = 0;
     knockBackSpeed_ = 0;
     push_ = D3DVECTOR(0, 0, 0);
+    pushedByFan_ = false;
     verticalSpeed_ = 0;
     warpRotSpeed_ = 0;
     body_->SetCurrentFrame(0);
@@ -293,7 +294,9 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
         world.CloseWarpZone();
         localCounter_ = 0;
         liveState_ = WARP;
+        return;
     }
+    pushedByFan_ = false;
 }
 
 void XHero::ProcessWarp(XHeroWorld& world) {

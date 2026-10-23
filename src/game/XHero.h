@@ -99,6 +99,9 @@ public:
     void IncreasePushX(float v) { push_.x += v; }
     void IncreasePushY(float v) { push_.y += v; }
     void IncreasePushZ(float v) { push_.z += v; }
+    // XHeroBase::pushedByFan, set by a floor fan lifting the hero and cleared at the end of each
+    // NORMAL tick; a hero being lifted doesn't land on the other hero (player 2: stage 5)
+    void SetPushedByFan() { pushedByFan_ = true; }
     void SetPosY(float y);  // XHeroBase::SetPosY (a rising platform lifts the hero)
     // XHeroBase::CollisionCheckX / Z: another box (a moving platform) stopped by this hero's box
     // while the hero is in the NORMAL state
@@ -133,6 +136,7 @@ private:
     float yaw_ = 0, pitch_ = 0;
     bool wandOut_ = false;
     D3DVECTOR push_{0, 0, 0};
+    bool pushedByFan_ = false;
     float verticalSpeed_ = 0;
     float warpRotSpeed_ = 0;
     bool beingKnockBack_ = false;
