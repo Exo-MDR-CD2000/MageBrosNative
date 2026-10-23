@@ -294,15 +294,18 @@ Split into 19 small chunks, in level order: the table is in `docs/ROADMAP.md`, "
 by chunk". Chunk 1 is done (0.2.5): the tree `T` and plant `U` (`XStaticObj.cpp`; `CreateObject`
 now calls every object's `CreateExtraCollideBox`, as the original) and the mushroom `h` / `2`
 (`XEnemy.cpp`, a wallaby-style hopper). Checked by screenshot in 2-1; the king mushroom (2-4,
-2-7) was not caught on screen. Chunk 2 (needle balls) is next; wait for the owner to start it.
+2-7) was not caught on screen. Chunk 2 is done (0.2.6): the needle balls `x` / `y` (`XEnemy.cpp`).
+The needle-ball bullet is fired only by the genie, so it moved to chunk 7. Chunk 3 is done
+(0.2.7): the squid `c` / king squid `4` (`XEnemy.cpp`). Chunk 4 (hammer and camera shake) is
+next; wait for the owner to start it.
 The pieces:
 
-- the remaining enemies (`c`/`4` squid, `e` turtle, `f` kiwi, `g` ghost, `k` hammer,
-  `q` `r` `s` fans, `t` floor fan, `u` stalactite, `x`/`y` needle ball, `z` jump
-  needle) and their bullets (needle ball, rocket);
+- the remaining enemies (`e` turtle, `f` kiwi, `g` ghost, `k` hammer,
+  `q` `r` `s` fans, `t` floor fan, `u` stalactite, `z` jump needle) and the
+  rocket launcher's rocket;
 - the remaining static objects (`M` `N` pots, `R` rocket launcher; the shop's screen
   waits for stage 6);
-- the other bosses: the genie (`7`), the nest (`8`, with the bird) and the wizard (`9`, with its
+- the other bosses: the genie (`7`, with its needle-ball bullets), the nest (`8`, with the bird) and the wizard (`9`, with its
   blade, wand and fire);
 - camera shake (`XCamera::StartShaking`, from the hammer and stalactite);
 - player 2 (`XHeroB`): its input, the camera midpoint, hero-on-hero collision and carrying, the

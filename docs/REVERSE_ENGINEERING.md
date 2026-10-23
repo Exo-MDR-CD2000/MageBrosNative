@@ -463,6 +463,25 @@ it up to 40° (king 50°: × 1.25, where the wallaby uses × 1.2) towards the ta
 that towards a hero who was within 120. Stuck hops (< 10) turn it round as for the wallaby. It
 checks contact with both heroes.
 
+**Squid** (`c` 40 × 60, 4 health, frames 0x162 0x161 0x162 0x160 0x175, collision 0x176, shadow
+40; `4` king 80 × 120, 60 health, 0x2ba 0x2bb 0x2ba 0x2bc 0x2bd, 0x2be, shadow 80). `MOVESTATE`
+NON / WALK / JUMP / WAIT, starting in WAIT. Wait: `Random(150) + 100` ticks, frame 4 (crouched)
+once the counter passes waitFrames − 40, then JUMP. Jump: 90 ticks (king 110) in place at
+floor + sin(t/n · π) × 55 (king × 1.7), frame 0 for the first half then 4; on the first tick
+the direction turns 120–240° round after a stuck walk, else up to 120° towards a random point
+and then straight at a hero within 120; the yaw eases to it at 0.05 (king 0.03). Then WALK:
+105 ticks at 0.9 (king × 1.2) along the direction, frame (t/15 + 1) mod 4, the yaw unchanged.
+A walk that moved it less than 15 sets turnAround and jumps; otherwise `Random(2)` picks JUMP
+or WAIT.
+
+**Needle ball** (`x` X_AXIS, yaw 90°; `y` Z_AXIS, yaw 0): model 0x1f1, collision 0x1f5, box
+40 × 40, shadow 38, SMALL size, not damagable. It rolls 0.75 a tick along its axis, pitch
+turning 0.0453786 (2.6°) a tick, and when `_UpdatePosX/Z` reports a hit both speeds flip sign.
+No `IsUpdatable` test: it moves everywhere. The box is placed at the start position, then pos.y
+is raised 20, so the ball's centre is 20 up while its box stands on the floor. The
+`XBullet_NeedleBall` class is not this enemy's: only `XBoss_Genie` calls
+`XBulletList::CreateNeedleBall`.
+
 **Barrel** (`j`): model 0x1f6, collision 0x204, shadow 37, box 27 × 42.8, plus a static box of
 the same size that stops heroes and enemies but not shots. 10 health, KING size, never hurts.
 At 0 it bursts at once: explosion, the box disabled, XGameObject's barrel count + 1 (kept for

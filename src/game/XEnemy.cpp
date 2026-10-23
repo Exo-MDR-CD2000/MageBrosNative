@@ -481,6 +481,135 @@ private:
     D3DVECTOR targetPos_{0, 0, 0}, prevPosForHop_{0, 0, 0};
 };
 
+// ------------------------------------------------------------------------------- XEnemy_Squid
+// 'c' squid (40 x 60, 4 health), '4' king squid (80 x 120, 60 health). Waits 100-249 ticks
+// (crouched for the last 40), then jumps in place for 90 ticks (king 110, up to 55 high, king
+// 93.5) while its yaw eases round to a new direction: up to 120 degrees towards a random point,
+// straight at a hero within 120, or 120-240 degrees round after a stuck walk. Then it walks 105
+// ticks at 0.9 (king 1.08) along that direction; a walk that covered less than 15 makes it jump
+// and turn round, otherwise it jumps again or waits, half and half.
+class Squid : public XEnemyBase {
+public:
+    Squid(const XGameContext* g, int oid, const D3DVECTOR& p, SizeType size) : XEnemyBase(g, oid, p, size) {
+        bool king = size == KING;
+        static const uint16_t kSmall[5] = {0x162, 0x161, 0x162, 0x160, 0x175},
+                              kKing[5] = {0x2ba, 0x2bb, 0x2ba, 0x2bc, 0x2bd};
+        const uint16_t* f = king ? kKing : kSmall;
+        model_ = std::make_unique<JObject3DX>(f[0]);
+        for (int i = 1; i < 5; i++) model_->AppendFrame(f[i]);
+        model_->SetCollisionModel(king ? 0x2be : 0x176);
+        shadow_ = std::make_unique<XShadowSimple>(king ? 80.0f : 40.0f);
+        collideBox_ = king ? std::make_unique<XCollideBox>(80.0f, 120.0f) : std::make_unique<XCollideBox>(40.0f, 60.0f);
+        collideBox_->SetPos(startPos_);
+        health_ = king ? 60 : 4;
+        dir_ = UnitRand() * 6.28319f;
+        yaw_ = dir_;
+        UpdateWorldMatrix();
+        chasable_ = true;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = WAIT;
+    }
+    void ProcessFrame() override {
+        if (!game_->IsUpdatable(pos_)) return;
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        if (moveState_ == WALK) Walk();
+        else if (moveState_ == JUMP) Jump();
+        else if (moveState_ == WAIT) Wait();
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);
+    }
+
+private:
+    enum MoveState { NON = 0, WALK = 1, JUMP = 2, WAIT = 3 };
+    void Walk() {
+        float speed = 0.9f;
+        if (sizeType_ == KING) speed *= 1.2f;
+        if (localCounter_ == 1) prevPosForWalk_ = pos_;
+        frame_ = (int)((localCounter_ / 15 + 1) % 4);
+        UpdatePosX(pos_.x + std::sin(dir_) * speed);
+        UpdatePosZ(pos_.z + std::cos(dir_) * speed);
+        if (localCounter_ < 105) return;
+        localCounter_ = 0;
+        if (ApproxDistance(pos_, prevPosForWalk_) < 15.0f) {
+            turnAround_ = true;  // stuck: jump and turn round
+            moveState_ = JUMP;
+        } else {
+            moveState_ = Random(2) == 0 ? JUMP : WAIT;
+        }
+    }
+    void Jump() {
+        unsigned frames = 90;
+        float height = 55.0f;
+        if (sizeType_ == KING) frames = 110, height *= 1.7f;
+        if (localCounter_ == 1) {
+            if (turnAround_) {
+                dir_ = NormaliseAngle(dir_ + 0.0174533f * (UnitRand() * 120.0f + 120.0f));
+            } else {
+                dir_ = MakeAngleCloseTo_Constant(dir_, FindDirectionXZ(pos_, GenerateRandomPos()), 2.0944f);
+                if (game_->DistanceToCloserHero(pos_) < 120.0f) dir_ = game_->DirToCloserHero(pos_);
+            }
+        }
+        frame_ = localCounter_ < frames / 2 ? 0 : 4;
+        UpdatePosY(floorLevel_ * 25.0f + std::sin((float)localCounter_ / (float)frames * kPi) * height);
+        yaw_ = MakeAngleCloseTo(yaw_, dir_, sizeType_ == KING ? 0.03f : 0.05f, 0.0f, FLT_MAX);
+        if (localCounter_ < frames) return;
+        turnAround_ = false;
+        localCounter_ = 0;
+        moveState_ = WALK;
+    }
+    void Wait() {
+        if (localCounter_ == 1) waitFrames_ = (unsigned)Random(150) + 100;
+        if (localCounter_ > waitFrames_ - 40) frame_ = 4;  // crouching to jump
+        if (localCounter_ < waitFrames_) return;
+        localCounter_ = 0;
+        moveState_ = JUMP;
+    }
+    MoveState moveState_ = NON;
+    D3DVECTOR prevPosForWalk_{0, 0, 0};
+    bool turnAround_ = false;
+    unsigned waitFrames_ = 0;
+};
+
+// -------------------------------------------------------------------------- XEnemy_NeedleBall
+// 'x' (X_AXIS, across the level) / 'y' (Z_AXIS, along it): a spiked ball (model 0x1f1, collision
+// 0x1f5, a 40 x 40 box, shadow 38) rolling at 0.75 a tick and spinning 2.6 degrees a tick; when
+// it hits something it reverses both. It can't be hurt, and moves even off camera (no
+// IsUpdatable test). Its centre is 20 above the floor; the box stays at the floor (the original
+// sets pos.y after placing the box).
+class NeedleBall : public XEnemyBase {
+public:
+    enum Type { X_AXIS = 0, Z_AXIS = 1 };
+    NeedleBall(const XGameContext* g, int oid, const D3DVECTOR& p, Type type) : XEnemyBase(g, oid, p, SMALL), type_(type) {
+        model_ = std::make_unique<JObject3DX>(0x1f1);
+        model_->SetCollisionModel(0x1f5);
+        shadow_ = std::make_unique<XShadowSimple>(38.0f);
+        collideBox_ = std::make_unique<XCollideBox>(40.0f, 40.0f);
+        collideBox_->SetPos(startPos_);
+        yaw_ = type_ == X_AXIS ? kHalfPi : 0.0f;
+        pos_.y = startPos_.y + 20.0f;
+        UpdateWorldMatrix();
+        damagable_ = false;
+        liveState_ = XEnemyBase::NORMAL;
+    }
+    void ProcessFrame() override {
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        pitch_ = NormaliseAngle(pitch_ + rotSpeed_);
+        bool hit = type_ == X_AXIS ? UpdatePosX(pos_.x + moveSpeed_) : UpdatePosZ(pos_.z + moveSpeed_);
+        if (hit) {
+            moveSpeed_ *= -1.0f;
+            rotSpeed_ *= -1.0f;
+        }
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);
+    }
+
+private:
+    Type type_;
+    float moveSpeed_ = 0.75f, rotSpeed_ = 0.0453786f;
+};
+
 // ------------------------------------------------------------------------------ XEnemy_Barrel
 // 'j': a barrel to shoot open (10 health, model 0x1f6, a 27 x 42.8 box that also stops heroes and
 // enemies but not shots). It bursts at once: a medium coin, or a heart for every third barrel
@@ -929,6 +1058,10 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case '0': e = std::make_unique<Wallaby>(game_, lastOID_, pos, XEnemyBase::KING); break;
         case 'h': e = std::make_unique<Mushroom>(game_, lastOID_, pos, XEnemyBase::SMALL); break;
         case '2': e = std::make_unique<Mushroom>(game_, lastOID_, pos, XEnemyBase::KING); break;
+        case 'c': e = std::make_unique<Squid>(game_, lastOID_, pos, XEnemyBase::SMALL); break;
+        case '4': e = std::make_unique<Squid>(game_, lastOID_, pos, XEnemyBase::KING); break;
+        case 'x': e = std::make_unique<NeedleBall>(game_, lastOID_, pos, NeedleBall::X_AXIS); break;
+        case 'y': e = std::make_unique<NeedleBall>(game_, lastOID_, pos, NeedleBall::Z_AXIS); break;
         case 'j': e = std::make_unique<BarrelEnemy>(game_, lastOID_, pos); break;
         case 'm': e = std::make_unique<NeedleFan>(game_, lastOID_, pos); break;
         case 'v': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, false); break;
