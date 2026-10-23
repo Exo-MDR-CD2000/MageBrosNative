@@ -446,6 +446,15 @@ place), tilting −20° then +20°. Its yaw eases towards the direction (0.06; q
 moving one sinks 30 over 50 ticks (sine), waits 200 − 20 × world ticks, rises over 50, waits
 again. It can't be hurt, and doesn't hurt a hero who is still flashing.
 
+**Stalactite** (`u`): model 0x1cf, collision 0x1d0, box 40 × 120 at the start, shadow 40, SMALL,
+not damagable, a random yaw, `_SetPosY(220)` (an absolute height). No `IsUpdatable` test.
+`MOVESTATE` NON / WAIT / DROP / STAY, starting in WAIT. WAIT: with the closer hero (whatever its
+live state), |Δz| ≤ 60, |Δx| ≤ 60 and `ApproxDistanceXZ(start, hero)` ≤ 60 → DROP. DROP: tick 1
+its own verticalSpeed 0; the yaw + 4° every tick; after tick 80 verticalSpeed − 0.08 (at least
+−4) and `_SetPosY(y + verticalSpeed)`, sound 0x277 at tick 100; below start.y − 45: sound 0x276,
+`XCamera::StartShaking(2)`, `CreateLandEffect` at (x, start.y + 0.5, z) → STAY, which does
+nothing (it stays in the floor and still hurts).
+
 **Jump needle** (`z`): model 0x293, collision 0x1c8 (the needle's), box 34 × 70 at the start, no
 shadow, SMALL, not damagable, "no collision while the hero flashes" on, no `IsUpdatable` test;
 checkPos = its start. `_SetPosY(y − 40)`: sunk. `MOVESTATE` NON / WAIT / WAIT2 / MOVEUP /

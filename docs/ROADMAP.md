@@ -50,8 +50,8 @@ is done.
 | 7b | The genie's attack: needle-ball bullets (`XBullet_NeedleBall`) fired from its mouth | 2-10 | all of World 2 | Done |
 | 8 | Pots `M` `N` and the kiwi `f` | 3-1 to 3-10 | | Done |
 | 9 | Jump needle `z` | 3-1 onward | 3-1 | Done |
-| 10 | Stalactite `u` (shakes the camera) | 3-2 onward | 3-2, 3-6, 3-9 | **Next** |
-| 11 | Rocket launcher `R` and its rocket | 3-3 onward | 3-3 | |
+| 10 | Stalactite `u` (shakes the camera) | 3-2 onward | 3-2, 3-6, 3-9 | Done |
+| 11 | Rocket launcher `R` and its rocket | 3-3 onward | 3-3 | **Next** |
 | 12 | Floor fan `t` | 3-4, 3-5, 3-7 | 3-4 | |
 | 13 | Ghost `g` | 3-5, 3-7, 3-8 | 3-5, 3-7, 3-8 | |
 | 14 | The nest and its bird, World 3's boss (`8`) | 3-10 | all of World 3 | |
@@ -73,7 +73,7 @@ levels.
 | Which levels are boss levels | Settled: any level with a boss code (`6`–`9`); level 10 of each world and World 4's levels 2, 5, 8 |
 | Which way the mage faces at the start | Settled: yaw 0, along the level |
 | Two-player camera midpoint | Stage 5: player 2 |
-| Camera shake | Done (stage 5 chunk 4): `XCamera::StartShaking`, used by the hammer; the stalactite follows |
+| Camera shake | Done (stage 5 chunk 4): `XCamera::StartShaking`, used by the hammer and the stalactite |
 | Hero-on-hero collision and carrying | Stage 5 (player 2) |
 | Static objects' collision with the hero | Done (5a): `XStaticObjList` and `XCollideBox` as the original |
 | Colour under the pit water | Settled (0.2.4): black, the original's clear colour; nothing is drawn under the water sheets |

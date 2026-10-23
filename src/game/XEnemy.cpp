@@ -223,6 +223,67 @@ private:
     bool movable_;
     MoveState moveState_ = NON;
 };
+// ------------------------------------------------------------------------- XEnemy_Stalactite
+// 'u': a stalactite (model 0x1cf, collision 0x1d0, a 40 x 120 box, shadow 40) hanging at y = 220
+// at a random yaw. When the closer hero is within 60 of it (in X, in Z and ApproxDistanceXZ from
+// its start) it spins 4 degrees a tick; after 80 ticks it falls (gravity 0.08, at most 4; sound
+// 0x277 at tick 100), and once 45 below its floor it lands: sound 0x276, camera shake 2, landing
+// dust, and it stays there, still dangerous. It can't be hurt. No IsUpdatable test.
+class Stalactite : public XEnemyBase {
+public:
+    Stalactite(const XGameContext* g, int oid, const D3DVECTOR& p) : XEnemyBase(g, oid, p, SMALL) {
+        model_ = std::make_unique<JObject3DX>(0x1cf);
+        model_->SetCollisionModel(0x1d0);
+        shadow_ = std::make_unique<XShadowSimple>(40.0f);
+        collideBox_ = std::make_unique<XCollideBox>(40.0f, 120.0f);
+        collideBox_->SetPos(startPos_);
+        yaw_ = UnitRand() * 6.28319f;
+        SetPosY(220.0f);
+        UpdateWorldMatrix();
+        damagable_ = false;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = WAIT;
+    }
+    void ProcessFrame() override {
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        if (moveState_ == WAIT) Wait();
+        else if (moveState_ == DROP) Drop();
+        // (STAY: nothing)
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);
+    }
+
+private:
+    enum MoveState { NON = 0, WAIT = 1, DROP = 2, STAY = 3 };
+    void Wait() {
+        XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5); any live state
+        if (!hero) return;
+        const D3DVECTOR& hp = hero->GetPos();
+        if (std::fabs(pos_.z - hp.z) > 60.0f || std::fabs(pos_.x - hp.x) > 60.0f) return;
+        if (ApproxDistanceXZ(startPos_, hp) > 60.0f) return;
+        localCounter_ = 0;
+        moveState_ = DROP;
+    }
+    void Drop() {
+        if (localCounter_ == 1) verticalSpeed_ = 0;
+        yaw_ = NormaliseAngle(yaw_ + 0.0698132f);
+        if (localCounter_ <= 80) return;
+        verticalSpeed_ -= 0.08f;
+        if (verticalSpeed_ < -4.0f) verticalSpeed_ = -4.0f;
+        SetPosY(pos_.y + verticalSpeed_);
+        if (localCounter_ == 100) game_->playSound(0x277, pos_.z);
+        if (pos_.y < startPos_.y - 45.0f) {
+            game_->playSound(0x276, pos_.z);
+            game_->startShaking(2.0f);
+            game_->particles->CreateLandEffect(D3DVECTOR(pos_.x, startPos_.y + 0.5f, pos_.z));
+            localCounter_ = 0;
+            moveState_ = STAY;
+        }
+    }
+    MoveState moveState_ = NON;
+};
+
 // -------------------------------------------------------------------------- XEnemy_JumpNeedle
 // 'z': spikes (model 0x293, the needle's collision 0x1c8, a 34 x 70 box, no shadow) sunk 40 into
 // the floor. Once they have waited 150 ticks, a NORMAL hero (the closer one) within 64 of them
@@ -1517,6 +1578,7 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case 'o': e = std::make_unique<Needle>(game_, lastOID_, pos, false); break;
         case 'p': e = std::make_unique<Needle>(game_, lastOID_, pos, true); break;
         case 'z': e = std::make_unique<JumpNeedle>(game_, lastOID_, pos); break;
+        case 'u': e = std::make_unique<Stalactite>(game_, lastOID_, pos); break;
         case 'i': e = std::make_unique<Fish>(game_, lastOID_, pos, game_->world < 2); break;
         default: break;  // the other enemies: stage 5
     }
