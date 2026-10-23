@@ -446,6 +446,14 @@ place), tilting −20° then +20°. Its yaw eases towards the direction (0.06; q
 moving one sinks 30 over 50 ticks (sine), waits 200 − 20 × world ticks, rises over 50, waits
 again. It can't be hurt, and doesn't hurt a hero who is still flashing.
 
+**Jump needle** (`z`): model 0x293, collision 0x1c8 (the needle's), box 34 × 70 at the start, no
+shadow, SMALL, not damagable, "no collision while the hero flashes" on, no `IsUpdatable` test;
+checkPos = its start. `_SetPosY(y − 40)`: sunk. `MOVESTATE` NON / WAIT / WAIT2 / MOVEUP /
+MOVEDOWN, starting in WAIT. WAIT: once the counter passes 150, if the closer hero is within 64
+of checkPos along Z and NORMAL → MOVEUP. MOVEUP (30): y = start + sin(t/30 · π/2) · 40 − 40,
+sound 0x2ae at 10 → WAIT2 (200) → MOVEDOWN (150): y = start − 40 · t/150 → WAIT. (`movable`
+is never used.)
+
 **Bee** (`b` 31 × 55, 2 health, frames 0x171 0x174 0x173 0x174, collision 0x178, shadow 31;
 `3` king 62 × 110, 51 health, 0x2b8 0x2b7 0x2b6 0x2b7, 0x2b9, shadow 62). Hovers 5 above the
 floor, bobbing ±4 over 80 ticks (its own counter, started at a random 0–79; frame = counter / 4

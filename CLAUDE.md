@@ -310,12 +310,13 @@ genie and its lamp (`XBoss_Genie` without its shots, `XStaticObj_GenieLamp`, the
 (`XBoss.cpp`), the lamp (`XStaticObj.cpp`), `CreateLampSteam`, `ApproxDistanceXZ` and
 `XGameContext::DistanceToCloserHeroXZ`. Chunk 7b is done (0.2.12): the genie fires
 `XBullet_NeedleBall` (`XBullet.cpp`), so World 2 has nothing left unbuilt. Chunk 8 is done
-(0.2.13): the pots `M` `N` (`XStaticObj.cpp`) and the kiwi `f` (`XEnemy.cpp`). Chunk 9 (the jump
-needle) is next; wait for the owner to start it.
+(0.2.13): the pots `M` `N` (`XStaticObj.cpp`) and the kiwi `f` (`XEnemy.cpp`). Chunk 9 is done (0.2.14):
+the jump needle `z` (`XEnemy.cpp`), so 3-1 has nothing left unbuilt. Chunk 10 (the stalactite)
+is next; wait for the owner to start it.
 The pieces:
 
 - the remaining enemies (`g` ghost, `t` floor fan, `u`
-  stalactite, `z` jump needle) and the rocket launcher's rocket;
+  stalactite) and the rocket launcher's rocket;
 - the remaining static object (`R` rocket launcher; the shop's screen waits for stage 6);
 - the other bosses: the nest (`8`, with the bird) and the wizard (`9`, with its blade, wand
   and fire);

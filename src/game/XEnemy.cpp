@@ -223,6 +223,64 @@ private:
     bool movable_;
     MoveState moveState_ = NON;
 };
+// -------------------------------------------------------------------------- XEnemy_JumpNeedle
+// 'z': spikes (model 0x293, the needle's collision 0x1c8, a 34 x 70 box, no shadow) sunk 40 into
+// the floor. Once they have waited 150 ticks, a NORMAL hero (the closer one) within 64 of them
+// along Z makes them shoot up over 30 ticks (sound 0x2ae at 10); they stay up 200 ticks and sink
+// back over 150. They can't be hurt, and don't hurt a hero who is still flashing. No
+// IsUpdatable test.
+class JumpNeedle : public XEnemyBase {
+public:
+    JumpNeedle(const XGameContext* g, int oid, const D3DVECTOR& p) : XEnemyBase(g, oid, p, SMALL), checkPos_(p) {
+        model_ = std::make_unique<JObject3DX>(0x293);
+        model_->SetCollisionModel(0x1c8);
+        collideBox_ = std::make_unique<XCollideBox>(34.0f, 70.0f);
+        collideBox_->SetPos(startPos_);
+        SetPosY(pos_.y - 40.0f);
+        UpdateWorldMatrix();
+        noCollisionWhenHeroDamaged_ = true;
+        damagable_ = false;
+        liveState_ = XEnemyBase::NORMAL;
+        moveState_ = WAIT;
+    }
+    void ProcessFrame() override {
+        XEnemyBase::ProcessFrame();
+        if (liveState_ != XEnemyBase::NORMAL) return;
+        if (moveState_ == WAIT) Wait();
+        else if (moveState_ == WAIT2) Wait2();
+        else if (moveState_ == MOVEUP) MoveUp();
+        else if (moveState_ == MOVEDOWN) MoveDown();
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);
+    }
+
+private:
+    enum MoveState { NON = 0, WAIT = 1, WAIT2 = 2, MOVEUP = 3, MOVEDOWN = 4 };
+    void Next(MoveState s) {
+        localCounter_ = 0;
+        moveState_ = s;
+    }
+    void Wait() {
+        if (localCounter_ <= 150) return;
+        XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+        if (hero && std::fabs(hero->GetPos().z - checkPos_.z) < 64.0f && hero->GetLiveState() == XHero::NORMAL) Next(MOVEUP);
+    }
+    void MoveUp() {
+        SetPosY(startPos_.y + std::sin((float)localCounter_ / 30.0f * kHalfPi) * 40.0f - 40.0f);
+        if (localCounter_ == 10) game_->playSound(0x2ae, pos_.z);
+        if (localCounter_ >= 30) Next(WAIT2);
+    }
+    void Wait2() {
+        if (localCounter_ >= 200) Next(MOVEDOWN);
+    }
+    void MoveDown() {
+        SetPosY(startPos_.y - 40.0f * ((float)localCounter_ / 150.0f));
+        if (localCounter_ >= 150) Next(WAIT);
+    }
+    MoveState moveState_ = NON;
+    D3DVECTOR checkPos_;
+};
+
 // --------------------------------------------------------------------------------- XEnemy_Bee
 // 'b' bee (31 x 55, 2 health), '3' king bee (62 x 110, 51 health). Hovers 5 above its floor,
 // bobbing 4 up and down over 80 ticks, and drifts at 0.5 (king 0.6) for 120 ticks at a time
@@ -1458,6 +1516,7 @@ XEnemyBase* XEnemyList::CreateEnemy(const D3DVECTOR& pos, char code) {
         case 'w': e = std::make_unique<FenceDoor>(game_, lastOID_, pos, true); break;
         case 'o': e = std::make_unique<Needle>(game_, lastOID_, pos, false); break;
         case 'p': e = std::make_unique<Needle>(game_, lastOID_, pos, true); break;
+        case 'z': e = std::make_unique<JumpNeedle>(game_, lastOID_, pos); break;
         case 'i': e = std::make_unique<Fish>(game_, lastOID_, pos, game_->world < 2); break;
         default: break;  // the other enemies: stage 5
     }
