@@ -8,7 +8,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 2 | Engine: window, OpenGL renderer, sound, MIDI music, keyboard/gamepad, options menu | Done |
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
 | 4 | First playable: World 1 with player 1 | Done |
-| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **Next** |
+| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **Next** (19 chunks, below) |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | |
 | 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | |
 
@@ -31,7 +31,38 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 5e | The dragon, World 1's boss (`XBossBase`, `XBoss_Dragon`, its 16 body segments, `JSpline`, `XBullet_Flame`) | level 1-10: the dragon swims, crosses the floor breathing fire, shows its hearts on the status display; defeating it stops the music and opens the goal | Done |
 | 6 | Checks and the playable World 1 zip | the remaining effects and the objects World 1 doesn't use (the turning cannon, the straight cannonball, platforms `B` and `F`) checked by screenshot; World 1 played start to finish by the owner | Done |
 
-Stage 5 is planned in [CLAUDE.md](../CLAUDE.md), "Where we are".
+## Stage 5, chunk by chunk
+
+Small chunks, in level order: each one makes the next levels playable. Each chunk is analysis,
+code, the RE notes, checks by screenshot and a Windows zip. "Levels" lists where the new
+objects first appear; "Playable" lists the levels that have nothing left unbuilt once the chunk
+is done.
+
+| Chunk | What it covers | Levels | Playable | Status |
+|---|---|---|---|---|
+| 1 | World 2 scenery and the mushroom: tree `T`, plant `U`, mushroom `h` / king mushroom `2` | 2-1 to 2-10 | | **Next** |
+| 2 | Needle balls `x` `y` and their bullet | 2-1, 2-2, 2-4, 2-5 | 2-1 | |
+| 3 | Squid `c` / king squid `4` | 2-2 to 2-9 | 2-5 | |
+| 4 | Hammer `k` and camera shake (`XCamera::StartShaking`) | 2-2, 2-4, 2-6, 2-9 | 2-2 | |
+| 5 | Fans `q` `r` `s` | 2-3, 2-4, 2-6 to 2-9 | 2-3, 2-4 | |
+| 6 | Turtle `e` | 2-6 to 2-9 | 2-6 to 2-9 | |
+| 7 | The genie, World 2's boss (`7`) | 2-10 | all of World 2 | |
+| 8 | Pots `M` `N` and the kiwi `f` | 3-1 to 3-10 | | |
+| 9 | Jump needle `z` | 3-1 onward | 3-1 | |
+| 10 | Stalactite `u` (shakes the camera) | 3-2 onward | 3-2, 3-6, 3-9 | |
+| 11 | Rocket launcher `R` and its rocket | 3-3 onward | 3-3 | |
+| 12 | Floor fan `t` | 3-4, 3-5, 3-7 | 3-4 | |
+| 13 | Ghost `g` | 3-5, 3-7, 3-8 | 3-5, 3-7, 3-8 | |
+| 14 | The nest and its bird, World 3's boss (`8`) | 3-10 | all of World 3 | |
+| 15 | The wizard, World 4's boss (`9`: blade, wand, fire); World 4 checked | 4-10 | all 40 levels | |
+| 16 | Player 2 analysis; `XHeroB` input and the camera midpoint | | | |
+| 17 | Hero-on-hero collision and carrying | | | |
+| 18 | Player 2's HUD panel and platform shadow | | | |
+| 19 | Checks and the whole-game zip, played start to finish by the owner | | | |
+
+World 4 reuses the earlier bosses (4-2 dragon, 4-5 genie, 4-8 nest) and only needs the wizard
+on top of what worlds 1–3 add. The split comes from counting each object code in the 40 shipped
+levels.
 
 ## Open items
 

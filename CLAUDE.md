@@ -49,7 +49,7 @@ repository contains no game content.
 ## Folder layout on the owner's machine
 
 ```
-mage bros project/                  (C:\Users\ExoJag\Desktop\mage bros project)
+MageBros-Project/                   (C:\Users\ExoJag\Documents\MageBros-Project)
   MageBros.exe, MageBros.pdb        the original game (with its debug symbols)
   Music01.mid ... Music06.mid
   MageBros-analysis-private.zip     private RE notes: never put these in the repo
@@ -58,7 +58,7 @@ mage bros project/                  (C:\Users\ExoJag\Desktop\mage bros project)
 ```
 
 Unzip the analysis notes next to the repo, not inside it, giving
-`mage bros project/MageBros-analysis/`. Its tools then find `../MageBros.exe` on their own, or
+`MageBros-Project/MageBros-analysis/`. Its tools then find `../MageBros.exe` on their own, or
 you can set `MAGEBROS_EXE` and `MAGEBROS_PDB_DIR`.
 
 ## Source layout
@@ -274,7 +274,8 @@ lights, the hit and damage flashes, the turning cannon `K` (2-5), the straight c
 the up-only elevator `B` (2-4) and the dropping platform `F` (4-10), and the water, splashes,
 fish and dragon again after the pit fix. The owner checked in play: barrels breaking with their
 coins, the dragon fight, and World 1 from start to finish. Still to compare against the
-original game: the dragon fight and the third-barrel heart.
+original game: nothing; the owner has since confirmed the dragon fight and the third-barrel heart
+match the original.
 
 Fixed after stage 4, from the owner's play: the fence doors (`v` `w`) were built as metal fence
 pieces instead of the wooden gates, which made 1-2 unfinishable; now they stand and break as
@@ -287,8 +288,8 @@ keep their navy.
 
 ### Next: stage 5, the whole game (worlds 2 to 4, every object, two-player co-op)
 
-Not split into chunks yet: agree the chunks with the owner first. The pieces, roughly in level
-order:
+Split into 19 small chunks, in level order: the table is in `docs/ROADMAP.md`, "Stage 5, chunk
+by chunk". Chunk 1 (tree, plant, mushroom) is next; wait for the owner to start it. The pieces:
 
 - the remaining enemies (`c`/`4` squid, `e` turtle, `f` kiwi, `g` ghost, `h`/`2` mushroom, `k`
   hammer, `q` `r` `s` fans, `t` floor fan, `u` stalactite, `x`/`y` needle ball, `z` jump
