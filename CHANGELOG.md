@@ -7,6 +7,14 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.2.23] - 2026-10-24
+
+- **The mages bump into each other** and no longer pass through each other.
+- **Standing on each other**: a mage can land on the other's head and stand there, jump off it,
+  and bump its head on the mage above when jumping underneath. The mage underneath carries the
+  one on top as it walks, and on a lift both go up and down together.
+- A mage floated by a floor fan doesn't land on the other one.
+
 ## [0.2.22] - 2026-10-24
 
 - **Two players**: press F2 in the game (it restarts the level) or start with `--two-player`.

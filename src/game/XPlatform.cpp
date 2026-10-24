@@ -325,12 +325,20 @@ bool XPlatformBase::UpdatePosZ(float newZ) {
 }
 
 void XPlatformBase::CollisionCheckY_Hero() {
-    // each hero in the NORMAL state lifted out of the platform's box (then the other hero out of
-    // that hero's box: chunk 17)
-    for (XHero* h : {game_->heroA, game_->heroB}) {
+    // each hero in the NORMAL state lifted out of the platform's box, then the other hero lifted
+    // out of that hero's box (the boxes directly, whatever the other hero's state)
+    XHero* a = game_->heroA;
+    XHero* b = game_->heroB;
+    for (int i = 0; i < 2; i++) {
+        XHero* h = i == 0 ? a : b;
+        XHero* o = i == 0 ? b : a;
         if (!h || h->GetLiveState() != XHero::NORMAL) continue;
         float y = h->GetPos().y;
-        if (collideBox_->CollisionCheckY(y, h->GetCollideBox())) h->SetPosY(y);
+        if (!collideBox_->CollisionCheckY(y, h->GetCollideBox())) continue;
+        h->SetPosY(y);
+        if (!o) continue;
+        float oy = o->GetPos().y;
+        if (h->GetCollideBox().CollisionCheckY(oy, o->GetCollideBox())) o->SetPosY(oy);
     }
 }
 
@@ -339,9 +347,17 @@ void XPlatformBase::PushHeroX(float dx) {
     if (heroBAbove_ && game_->heroB) game_->heroB->IncreasePushX(dx);
 }
 void XPlatformBase::PushHeroY(float dy) {
-    // (a hero standing on the one being carried goes too: chunk 17)
-    if (heroAAbove_ && game_->heroA) game_->heroA->IncreasePushY(dy);
-    if (heroBAbove_ && game_->heroB) game_->heroB->IncreasePushY(dy);
+    // a hero standing on the one being carried goes up or down too
+    XHero* a = game_->heroA;
+    XHero* b = game_->heroB;
+    if (heroAAbove_ && a) {
+        a->IncreasePushY(dy);
+        if (a->HeroAbove() && b) b->IncreasePushY(dy);
+    }
+    if (heroBAbove_ && b) {
+        b->IncreasePushY(dy);
+        if (b->HeroAbove() && a) a->IncreasePushY(dy);
+    }
 }
 void XPlatformBase::PushHeroZ(float dz) {
     if (heroAAbove_ && game_->heroA) game_->heroA->IncreasePushZ(dz);

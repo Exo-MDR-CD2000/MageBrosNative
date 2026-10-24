@@ -262,10 +262,11 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.2.22, stage 5 chunk 16 done)
+## Where we are (last updated: 2026-10-24, version 0.2.23, stage 5 chunk 17 done)
 
-**Stage 5 (the whole game) is under way: chunks 1 to 16 are done, so every object of the 40
-levels is built and player 2 plays; chunk 17, hero-on-hero collision and carrying, is next.** Wait for the owner to say "start the next chunk". The chunk table, with the
+**Stage 5 (the whole game) is under way: chunks 1 to 17 are done, so every object of the 40
+levels is built and two-player co-op plays, the mages standing on and carrying each other;
+chunk 18, player 2's platform shadow, is next.** Wait for the owner to say "start the next chunk". The chunk table, with the
 levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
 
@@ -289,7 +290,6 @@ Still to build in stage 5 (the remaining chunks):
 
 | Chunk | What | Completes |
 |---|---|---|
-| 17 | Hero-on-hero collision and carrying | |
 | 18 | Player 2's platform shadow; HUD panel checked against the original | |
 | 19 | Checks and the whole-game zip, played start to finish by the owner | |
 
@@ -300,12 +300,13 @@ the object code tests A then B; `XGameContext::GetCloserHero` picks the closer h
 camera takes both heroes; the two-player start, end and Escape are as `XGameObject`. See
 "Player 2 (`XHeroB`)" in `docs/REVERSE_ENGINEERING.md`.
 
-Chunk 17 (hero-on-hero): `XHeroBase::ProcessFrame(otherHero)` checks the other hero's box first
-on X, Z and Y (`XHeroBase::CollisionCheckX` / `Y` / `Z`, `SetHeroAbove`, `HeroAbove`); the port's
-`XHero::ProcessFrame` doesn't take the other hero yet. Also waiting for it:
-`XHero::pushedByFan_`, `XPlatformBase::_PushHeroY`'s carry of a hero standing on the carried one,
-and `_CollisionCheckY_Hero`'s lifting of the other hero out of the lifted one's box (comments say
-"chunk 17"). Chunk 18: `XShadowOnPlatform::Render`'s `shadow_[1]` for hero B. Before
+Hero on hero (chunk 17, 0.2.23) is in: `XHero::ProcessFrame(in, map, world, other)` tests the
+other hero's box first on X and Z, lands on it (`other->SetHeroAbove`, not while
+`pushedByFan_`), and a hero with `HeroAbove()` pushes the rider by its own move; platforms carry
+and lift a stacked pair. See "Hero on hero" in `docs/REVERSE_ENGINEERING.md`. Testing tip: drop
+the second hero in only after the first has landed (`placeB`, then `place` 3+ s later), or the two
+falling boxes overlap and one is pushed aside. Chunk 18: `XShadowOnPlatform::Render`'s
+`shadow_[1]` for hero B, and checking player 2's HUD panel against the original. Before
 splitting any future large piece, read every state's transitions first: the nest's bird turned out to be one loop sharing its steering, so a split
 proposed before reading it didn't fit; the wizard waits for each attack, so it split cleanly.
 
@@ -320,7 +321,9 @@ and whether it looks as pale as the original while it is small and rising; the j
 springing up (3-1); how the floor fan floats the mage (3-4: it bobs about 120 above the fan,
 and touching the blades from beside it hurts); the ghost (3-5: its warning, swoop and flinch,
 and how it looks); two players (0.2.22: player 2's keys and second gamepad, the camera between
-the mages, enemies turning to the closer one, the level ending when both are done). Already confirmed by the owner: World 1 start to
+the mages, enemies turning to the closer one, the level ending when both are done); standing on
+and carrying each other (0.2.23: on a lift in 1-4 to 1-9, over a floor fan in 3-4, jumping off
+the other's head and bumping into it from below). Already confirmed by the owner: World 1 start to
 finish, the dragon fight, the third-barrel heart.
 
 ### Notes from earlier stages
@@ -339,8 +342,7 @@ finish, the dragon fight, the third-barrel heart.
 - Enemy bullets (cannonballs, flame, needle balls, rockets) never hit enemies: they check the map,
   objects, platforms and heroes only. A hero's shot stops on a bullet; the bullet carries on.
 - `XHero::pushedByFan_` (the original's `pushedByFan`) is set by the floor fan and cleared at the
-  end of each NORMAL tick; nothing reads it until player 2 lands on hero A (a lifted hero
-  doesn't).
+  end of each NORMAL tick; a hero lifted by a fan doesn't count as landing on the other hero.
 - The nest's 40 birds are `XBossBase` objects owned by the nest (not in any list); shots only
   test the nest, and the waiting birds are drawn at its centre, as the original.
 - 4-10 is an arena (floor at z 860..1020, x 40..160) surrounded by bottomless pit; the wizard
@@ -393,6 +395,5 @@ finish, the dragon fight, the third-barrel heart.
 - Death restarts the level, and finishing the last level of a world goes to the next world.
   Both wait for the level select in stage 6.
 - The shop's screen (the building stands; stage 6).
-- The hero-on-hero collision and carrying (chunk 17): the two mages pass through each other.
 - One or two players is chosen with F2 or `--two-player` until the front end (stage 6) asks.
 - Only the starting wand's shot pattern exists. The others come with the shop.

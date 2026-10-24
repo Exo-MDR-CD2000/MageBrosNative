@@ -79,6 +79,7 @@ void XHero::Reset() {
     knockBackSpeed_ = 0;
     push_ = D3DVECTOR(0, 0, 0);
     pushedByFan_ = false;
+    heroAbove_ = false;
     verticalSpeed_ = 0;
     warpRotSpeed_ = 0;
     body_->SetCurrentFrame(0);
@@ -145,7 +146,7 @@ void XHero::StartDying() {
     liveState_ = DYING;
 }
 
-void XHero::ProcessFrame(const XHeroInput& in, const MapCollision& map, XHeroWorld& world) {
+void XHero::ProcessFrame(const XHeroInput& in, const MapCollision& map, XHeroWorld& world, XHero* other) {
     if (liveState_ == NON || liveState_ == DEAD || liveState_ == COMPLETED) return;
     localCounter_++;
     if (damageCounter_ > 0) {
@@ -155,13 +156,14 @@ void XHero::ProcessFrame(const XHeroInput& in, const MapCollision& map, XHeroWor
         body_->UseWhiteMaterial(white);
         wand_->UseWhiteMaterial(white);
     }
-    if (liveState_ == NORMAL) ProcessNormal(in, map, world);
+    if (liveState_ == NORMAL) ProcessNormal(in, map, world, other);
     else if (liveState_ == WARP) ProcessWarp(world);
     else if (liveState_ == DYING) ProcessDying(world);
 }
 
-void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWorld& world) {
-    // new position = old + push (cleared once used)
+void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWorld& world, XHero* other) {
+    // new position = old + push (cleared once used); the old one is kept to carry the other hero
+    const D3DVECTOR oldPos = pos_;
     D3DVECTOR np(pos_.x + push_.x, pos_.y + push_.y, pos_.z + push_.z);
     push_ = D3DVECTOR(0, 0, 0);
 
@@ -202,33 +204,46 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
     if (verticalSpeed_ < kMaxFallSpeed) verticalSpeed_ = kMaxFallSpeed;
     np.y += verticalSpeed_;
 
-    // X, then Z: (the other hero,) static objects, candles, platforms, then the map
+    // X, then Z: the other hero, static objects, candles, platforms, then the map
+    if (other) other->CollisionCheckX(np.x, box_);
     world.StaticCollisionX(np.x, box_);
     world.CandleCollisionX(np.x, box_);
     world.PlatformCollisionX(np.x, box_);
     map.CollisionCheckX(np.x, box_);
     SetPosX(np.x);
+    if (other) other->CollisionCheckZ(np.z, box_);
     world.StaticCollisionZ(np.z, box_);
     world.CandleCollisionZ(np.z, box_);
     world.PlatformCollisionZ(np.z, box_);
     map.CollisionCheckZ(np.z, box_);
     SetPosZ(np.z);
+    // a hero standing on this one moves with it, next tick (everything this one moved, its own
+    // push included; the X and Z only)
+    if (heroAbove_ && other) {
+        other->IncreasePushX(pos_.x - oldPos.x);
+        other->IncreasePushZ(pos_.z - oldPos.z);
+    }
 
-    // Y. Falling: (the other hero,) static objects, platforms, the map, candles; landing on a
-    // platform marks it. Rising: (the other hero,) static objects, candles; a platform's
-    // underside does not stop a jump.
+    // Y. Falling: the other hero, static objects, platforms, the map, candles; landing on a
+    // platform marks it, and the other hero learns whether this one stands on it (not while a
+    // floor fan lifts this one: the box still stops it, but it doesn't count as standing).
+    // Rising: the other hero, static objects, candles; a platform's underside does not stop a jump.
     bool landed = false, headHit = false;
     if (verticalSpeed_ < 0.0f) {
+        bool onHero = other && other->CollisionCheckY(np.y, box_) && !pushedByFan_;
         bool onStatic = world.StaticCollisionY(np.y, box_);
         bool onPlatform = world.PlatformCollisionY(np.y, box_);
         bool onMap = map.CollisionCheckY(np.y, box_);
         bool onCandle = world.CandleCollisionY(np.y, box_);
-        landed = onStatic || onPlatform || onMap || onCandle;
+        landed = onHero || onStatic || onPlatform || onMap || onCandle;
+        if (other) other->SetHeroAbove(onHero);
         if (onPlatform) world.SetHeroAboveLastPlatform(heroA_);  // SetHeroAAbove / SetHeroBAbove
     } else {
+        bool onHero = other && other->CollisionCheckY(np.y, box_);
         bool onStatic = world.StaticCollisionY(np.y, box_);
         bool onCandle = world.CandleCollisionY(np.y, box_);
-        headHit = onStatic || onCandle;
+        headHit = onHero || onStatic || onCandle;
+        if (other) other->SetHeroAbove(false);
     }
     SetPosY(np.y);
 

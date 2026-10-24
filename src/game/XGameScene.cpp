@@ -187,9 +187,9 @@ void XGameScene::ProcessFrame() {
     UpdateInput();
     statusDisplay_->ProcessFrame();  // XGameObject::ProcessFrame: the status display first
     loop_.ProcessBeforeHero(camera_.LookAt().z);
-    // hero A, then hero B (each gets the other for the hero-on-hero checks: chunk 17)
-    heroA_->ProcessFrame(inputA_, level_.Collision(), loop_);
-    heroB_->ProcessFrame(inputB_, level_.Collision(), loop_);
+    // hero A, then hero B, each with the other (the hero-on-hero collision and carrying)
+    heroA_->ProcessFrame(inputA_, level_.Collision(), loop_, heroB_.get());
+    heroB_->ProcessFrame(inputB_, level_.Collision(), loop_, heroA_.get());
     loop_.ProcessAfterHero();
     // XCamera::ProcessFrame always runs in the game (its tick and the shake); it follows the
     // heroes that are alive

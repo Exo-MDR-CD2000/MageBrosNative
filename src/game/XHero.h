@@ -5,8 +5,8 @@
 // Reconstructed so far: input, walking and turning, gravity, jumping, landing, the map
 // collision, falling out of the level, the dying sequence, the animation frames and the wand,
 // shots and magic points, damage and knockback, the warp, standing on static objects (the torch
-// posts and the wall candles), riding platforms and sinking in water. Still to come: the other
-// hero's box: standing on it and carrying it (chunk 17).
+// posts and the wall candles), riding platforms, sinking in water, and the other hero's box:
+// blocked by it, standing on it and carrying a hero who stands on this one.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -93,7 +93,8 @@ public:
     XHeroStatus& Status() const { return *status_; }
     void SetStartPos(const D3DVECTOR& p) { startPos_ = p; }
     void Reset();  // XHeroBase::Reset
-    void ProcessFrame(const XHeroInput& in, const MapCollision& map, XHeroWorld& world);
+    // XHeroBase::ProcessFrame(otherHero): `other` is the other player's hero (none in the tests)
+    void ProcessFrame(const XHeroInput& in, const MapCollision& map, XHeroWorld& world, XHero* other = nullptr);
     void Render(Device* d);
 
     void Damage(XHeroWorld& world);              // XHeroBase::Damage
@@ -105,8 +106,12 @@ public:
     void IncreasePushY(float v) { push_.y += v; }
     void IncreasePushZ(float v) { push_.z += v; }
     // XHeroBase::pushedByFan, set by a floor fan lifting the hero and cleared at the end of each
-    // NORMAL tick; a hero being lifted doesn't land on the other hero (chunk 17)
+    // NORMAL tick; a hero being lifted doesn't land on the other hero
     void SetPushedByFan() { pushedByFan_ = true; }
+    // XHeroBase::SetHeroAbove / HeroAbove: the other hero is standing on this one (set by the
+    // other hero each tick it falls onto this one, cleared when it falls elsewhere or rises)
+    void SetHeroAbove(bool above) { heroAbove_ = above; }
+    bool HeroAbove() const { return heroAbove_; }
     void SetPosY(float y);  // XHeroBase::SetPosY (a rising platform lifts the hero)
     // XHeroBase::CollisionCheckX / Z: another box (a moving platform) stopped by this hero's box
     // while the hero is in the NORMAL state
@@ -118,6 +123,11 @@ public:
     bool CollisionCheckZ(float& newZ, const XCollideBox& box) const {
         return liveState_ == NORMAL && box_.CollisionCheckZ(newZ, box, false);
     }
+    // XHeroBase::CollisionCheckY: another box moving up or down (the other hero, a platform
+    // lifting a hero) stopped by this hero's box while this hero is in the NORMAL state
+    bool CollisionCheckY(float& newY, const XCollideBox& box) const {
+        return liveState_ == NORMAL && box_.CollisionCheckY(newY, box);
+    }
 
     const D3DVECTOR& GetPos() const { return pos_; }
     float GetYaw() const { return yaw_; }
@@ -128,7 +138,7 @@ public:
     JumpState GetJumpState() const { return jumpState_; }
 
 private:
-    void ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWorld& world);
+    void ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWorld& world, XHero* other);
     void ProcessWarp(XHeroWorld& world);
     void ProcessDying(XHeroWorld& world);
     int GetKeyDir(const XHeroInput& in) const;  // _GetKeyDir: 0..7, in 45 degree steps
@@ -145,6 +155,7 @@ private:
     bool wandOut_ = false;
     D3DVECTOR push_{0, 0, 0};
     bool pushedByFan_ = false;
+    bool heroAbove_ = false;  // heroAbove: the other hero stands on this one
     float verticalSpeed_ = 0;
     float warpRotSpeed_ = 0;
     bool beingKnockBack_ = false;

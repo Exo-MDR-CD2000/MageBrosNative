@@ -295,9 +295,28 @@ Everything that looks for a hero checks both, A first:
   burn either hero;
 - a shot stops on either hero's box (`XHeroBase::CollisionCheck`, NORMAL only);
 - platforms: `_UpdatePosX` / `Z` are stopped by either hero's box; `_PushHeroX` / `Y` / `Z`
-  carry each hero whose flag is set; `_CollisionCheckY_Hero` lifts each hero in NORMAL out of the
-  platform's box. (The hero-on-hero parts of these, a hero standing on the other being carried
-  and lifted with it, are chunk 17.)
+  carry each hero whose flag is set, and `_PushHeroY` also moves the other hero up or down when
+  the carried one's `HeroAbove()` is set; `_CollisionCheckY_Hero` lifts each hero in NORMAL out
+  of the platform's box and then lifts the other hero out of that hero's box (the boxes' own
+  `CollisionCheckY`, with no state test on the other hero).
+
+#### Hero on hero (`XHeroBase::ProcessFrame(otherHero)`)
+
+`XGameObject::ProcessFrame` runs `heroA->ProcessFrame(heroB)`, then `heroB->ProcessFrame(heroA)`.
+The other hero's box is a solid like any other, through `XHeroBase::CollisionCheckX` / `Y` / `Z`,
+which test only while that hero is NORMAL (X and Z with heights counted):
+
+- X and Z: the other hero is tested first, before static objects, candles, platforms and the map.
+- `heroAbove` (+0x40) on a hero means "the other hero stands on me". After its own X and Z move,
+  a hero with `heroAbove` set calls `other->IncreasePushX` / `Z` with how far it moved this tick
+  (from its position at the start of the NORMAL tick, so its own push, a platform's carry, is
+  passed on too). The rider moves by that amount on its next tick.
+- Falling: `onHero = other->CollisionCheckY(newY, myBox) && !pushedByFan`; the box snaps newY
+  even while a floor fan lifts this hero, but that does not count as landing. `onHero` counts as
+  landed like the other solids, and `other->SetHeroAbove(onHero)`. Rising: the other hero's box
+  stops the head like the others, and `other->SetHeroAbove(0)`.
+- A hero standing on the other is falling each tick (speed −0.08 after gravity), so it renews
+  `heroAbove` every tick; walking or jumping off clears it. `Reset` clears `heroAbove`.
 
 The status display draws player 2's panel (face, LIFE, GOLD, MP at x 260) in two-player games.
 
