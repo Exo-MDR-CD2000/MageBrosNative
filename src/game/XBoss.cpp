@@ -18,6 +18,9 @@ constexpr uint16_t kColDragonHead = 0x20b, kColDragonBody = 0x20c, kColDragonTai
 constexpr uint16_t kModelGenie = 0x1ee, kColGenie = 0x1eb;
 constexpr uint16_t kSoundGenieAppear = 0x2a1, kSoundGenieFire = 0x2a2, kSoundGenieSteam = 0x2a3,
                    kSoundGenieMove = 0x2a4;
+constexpr uint16_t kModelNest = 0x28d, kColNest = 0x28e;
+constexpr uint16_t kModelBird1 = 0x289, kModelBird2 = 0x28a, kModelBird3 = 0x28b, kColBird = 0x28c;
+constexpr uint16_t kSoundBirdChirp = 0x2a5, kSoundNestHit = 0x2a6;
 
 // FindDirectionXZ: the yaw from `from` towards `to`
 float FindDirectionXZ(const D3DVECTOR& from, const D3DVECTOR& to) { return FindYaw(to.x - from.x, to.z - from.z); }
@@ -685,5 +688,298 @@ void XBoss_Genie::Attack() {
     }
     if (fireCount_ >= 30) Next(CLOSEMOUTH);
     else if (game_->DistanceToCloserHeroXZ(pos_) < 80.0f) Next(CLOSEMOUTH);
+}
+
+// ---------------------------------------------------------------------------------- XBoss_Bird
+
+XBoss_Bird::XBoss_Bird(const XGameContext* game, XBoss_Nest* nest) : XBossBase(game, nest->GetPos()), nest_(nest) {
+    model_ = std::make_unique<JObject3DX>(kModelBird1);
+    model_->AppendFrame(kModelBird2);
+    model_->AppendFrame(kModelBird3);
+    model_->AppendFrame(kModelBird2);
+    model_->SetCollisionModel(kColBird);
+    bodyShadow_ = std::make_unique<XShadow>(12.0f);
+    collideBox_ = std::make_unique<XCollideBox>(20.0f, 20.0f);
+    damagable_ = false;
+    liveState_ = NORMAL;
+    moveState_ = WAIT;
+}
+XBoss_Bird::~XBoss_Bird() = default;
+
+void XBoss_Bird::Render(Device* d) {
+    // (drawn in the nest too, with no visibility test)
+    if (liveState_ == NON) return;
+    model_->SetCurrentFrame(frame_);
+    model_->Render(d);
+    bodyShadow_->SetPos(pos_);
+    bodyShadow_->Render(d, game_->level->Collision());
+    // (the original also calls the box's debug draw)
+}
+
+void XBoss_Bird::ProcessFrame() {
+    // (not XBossBase::ProcessFrame: no flash, no battle start, its own death)
+    localCounter_++;
+    if (liveState_ == NON) return;
+    if (liveState_ == NORMAL) {
+        birdCounter_++;
+        switch (moveState_) {
+            case WAIT: Wait(); break;
+            case GO: Go(); break;
+            case ATTACK_HERO: AttackHero(); break;
+            case FLY_ABOVE_NEST: FlyAboveNest(); break;
+            case BACK_TO_NEST: BackToNest(); break;
+        }
+        frame_ = (int)(birdCounter_ / 3 % 4);
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);  // (and hero B: player 2, stage 5)
+    } else if (liveState_ == DEAD) {
+        game_->particles->CreateEnemyExplode(pos_, false);
+        localCounter_ = 0;
+        liveState_ = NON;
+    }
+}
+
+// XBoss_Bird::StartAttack: only a bird sitting in the nest goes
+void XBoss_Bird::StartAttack() {
+    if (moveState_ != WAIT) return;
+    localCounter_ = 0;
+    moveState_ = GO;
+}
+
+// XBoss_Bird::StartDead: a bird in the nest just goes; one out of it bursts
+void XBoss_Bird::StartDead() {
+    localCounter_ = 0;
+    liveState_ = moveState_ == WAIT ? NON : DEAD;
+}
+
+void XBoss_Bird::LimitPosition_Wall(D3DVECTOR& p, float margin) {
+    if (margin > p.x) p.x = margin;
+    else if (p.x > 200.0f - margin) p.x = 200.0f - margin;
+    if (margin > p.z) p.z = margin;  // (no limit at the far end)
+}
+
+void XBoss_Bird::LimitPosition_Floor(D3DVECTOR& p, float margin) {
+    if (margin > p.y) p.y = margin;
+}
+
+// _UpdateTargetPos_Hero: a random point 50 from the closer hero's centre
+void XBoss_Bird::UpdateTargetPos_Hero() {
+    float a = UnitRand() * 6.28319f;
+    float b = UnitRand() * 3.14159f - 1.5708f;
+    XHero* hero = game_->heroA;  // XGameObject::GetCloserHero(nest) (player 2: stage 5)
+    const D3DVECTOR& hp = hero->GetPos();
+    targetPos_ = D3DVECTOR(hp.x, hp.y + 14.5f, hp.z);  // XHeroBase::GetCenterPos
+    targetPos_.x += std::sin(a) * 50.0f * std::cos(b);
+    targetPos_.z += std::cos(a) * 50.0f * std::cos(b);
+    targetPos_.y += std::sin(b) * 50.0f;
+    LimitPosition_Wall(targetPos_, 30.0f);
+    LimitPosition_Floor(targetPos_, 5.0f);
+}
+
+// _UpdateTargetPos_Nest: a random point 60 from the spot 80 above the nest, in its upper half
+void XBoss_Bird::UpdateTargetPos_Nest() {
+    float a = UnitRand() * 6.28319f;
+    float b = RandomF(0.2f, 1.0f) * 1.5708f;
+    targetPos_ = nest_->GetPos();
+    targetPos_.x += std::sin(a) * 60.0f * std::cos(b);
+    targetPos_.z += std::cos(a) * 60.0f * std::cos(b);
+    targetPos_.y += std::sin(b) * 60.0f + 80.0f;
+    LimitPosition_Wall(targetPos_, 30.0f);
+}
+
+// The flight of _ProcessFrame_AttackHero and _ProcessFrame_FlyAboveNest: turn 2 degrees a tick
+// towards the target, pitch 1 degree a tick towards it (within 45 degrees), and fly along the
+// facing at 0.8 to 1.8, faster the further the target is (full speed from 160 away).
+void XBoss_Bird::Fly(float limitFloor) {
+    yaw_ = MakeAngleCloseTo_Constant(yaw_, FindDirectionXZ(pos_, targetPos_), 0.0349066f);
+    float p = -FindPitch(pos_, targetPos_);
+    if (-0.785398f > p) p = -0.785398f;
+    else if (p > 0.785398f) p = 0.785398f;
+    pitch_ = MakeValueCloseTo_Constant(pitch_, p, 0.0174533f);
+    float k = ApproxDistanceXZ(pos_, targetPos_) / 160.0f;
+    if (k > 1.0f) k = 1.0f;
+    float speed = 1.0f * k + 0.8f;
+    D3DVECTOR np = pos_;
+    np.x += std::sin(yaw_) * speed * std::cos(-pitch_);
+    np.z += std::cos(yaw_) * speed * std::cos(-pitch_);
+    np.y += std::sin(-pitch_) * speed;
+    LimitPosition_Wall(np, 5.0f);
+    LimitPosition_Floor(np, limitFloor);
+    SetPos(np);
+}
+
+// A step along the spline (travel clamped at 1), turning to face the way it moved
+void XBoss_Bird::FollowSplineTurning() {
+    travel_ += travelSpeed_;
+    if (travel_ > 1.0f) travel_ = 1.0f;
+    D3DVECTOR prev = pos_;
+    D3DVECTOR np = spline_.GetPosition(travel_);
+    if (moveState_ == BACK_TO_NEST) {
+        LimitPosition_Wall(np, 5.0f);
+        LimitPosition_Floor(np, 5.0f);
+    }
+    SetPos(np);
+    yaw_ = MakeAngleCloseTo(yaw_, FindDirectionXZ(prev, pos_), 0.16f, 0.0f, FLT_MAX);
+    pitch_ = MakeAngleCloseTo(pitch_, -FindPitch(prev, pos_), 0.08f, 0.0f, FLT_MAX);
+}
+
+// XBoss_Bird::_ProcessFrame_Go: up out of the nest (60, 120) and off to a random side, 100 up,
+// at 1.8 a tick along the spline
+void XBoss_Bird::Go() {
+    if (localCounter_ == 1) {
+        const D3DVECTOR& n = nest_->GetPos();
+        D3DVECTOR p1 = n, p2 = n, p3 = n;
+        p1.y += 60.0f;
+        p2.y += 120.0f;
+        float a = UnitRand() * 6.28319f;
+        p3.x += std::sin(a) * 60.0f;
+        p3.z += std::cos(a) * 60.0f;
+        p3.y += 100.0f;
+        spline_.Init(4);
+        spline_.AddNode(n);
+        spline_.AddNode(p1);
+        spline_.AddNode(p2);
+        spline_.AddNode(p3);
+        travel_ = 0;
+        travelSpeed_ = 1.8f / spline_.GetTotalDistance();
+    }
+    FollowSplineTurning();
+    if (travel_ >= 1.0f) {
+        spline_.Deinit();
+        localCounter_ = 0;
+        moveState_ = ATTACK_HERO;
+    }
+}
+
+// XBoss_Bird::_ProcessFrame_AttackHero: 1800 ticks after the hero, a new target every 130 ticks,
+// chirping (sound 0x2a5) every 100 to 300 ticks
+void XBoss_Bird::AttackHero() {
+    if (localCounter_ == 1) {
+        chirpTimer_ = (int)Random(201) + 100;  // RandomI(100, 300, inclusive)
+        UpdateTargetPos_Hero();
+    }
+    Fly(5.0f);
+    if (--chirpTimer_ <= 0) {
+        game_->playSound(kSoundBirdChirp, pos_.z);
+        chirpTimer_ = (int)Random(201) + 100;
+    }
+    if (localCounter_ % 130 == 0) UpdateTargetPos_Hero();
+    if (localCounter_ >= 1800) {
+        localCounter_ = 0;
+        moveState_ = FLY_ABOVE_NEST;
+    }
+}
+
+// XBoss_Bird::_ProcessFrame_FlyAboveNest: 400 ticks round points above the nest, a new one
+// every 130 ticks
+void XBoss_Bird::FlyAboveNest() {
+    if (localCounter_ == 1) UpdateTargetPos_Nest();
+    Fly(5.0f);
+    if (localCounter_ % 130 == 0) UpdateTargetPos_Nest();
+    if (localCounter_ >= 400) {
+        localCounter_ = 0;
+        moveState_ = BACK_TO_NEST;
+    }
+}
+
+// XBoss_Bird::_ProcessFrame_BackToNest: a spline from 30 ahead, down through 100 and 60 above the
+// nest and into it, at 1.2 a tick; then it waits to be sent out again
+void XBoss_Bird::BackToNest() {
+    if (localCounter_ == 1) {
+        D3DVECTOR ahead = pos_;
+        ahead.x += std::sin(yaw_) * 30.0f * std::cos(-pitch_);
+        ahead.z += std::cos(yaw_) * 30.0f * std::cos(-pitch_);
+        ahead.y += std::sin(-pitch_) * 30.0f;
+        const D3DVECTOR& n = nest_->GetPos();
+        D3DVECTOR p100 = n, p60 = n;
+        p100.y += 100.0f;
+        p60.y += 60.0f;
+        spline_.Init(5);
+        spline_.AddNode(pos_);
+        spline_.AddNode(ahead);
+        spline_.AddNode(p100);
+        spline_.AddNode(p60);
+        spline_.AddNode(n);
+        travel_ = 0;
+        travelSpeed_ = 1.2f / spline_.GetTotalDistance();
+    }
+    FollowSplineTurning();
+    if (travel_ >= 1.0f) {
+        spline_.Deinit();
+        localCounter_ = 0;
+        moveState_ = WAIT;
+    }
+}
+
+// ---------------------------------------------------------------------------------- XBoss_Nest
+
+XBoss_Nest::XBoss_Nest(const XGameContext* game, const D3DVECTOR& pos) : XBossBase(game, pos) {
+    rotSpeed_ = 0.00174533f;
+    model_ = std::make_unique<JObject3DX>(kModelNest);
+    model_->SetCollisionModel(kColNest);
+    collideBox_ = std::make_unique<XCollideBox>(140.0f, 60.0f);
+    pos_.y += 12.0f;
+    SetPos(pos_);
+    UpdateWorldMatrix();
+    refPosY_ = pos_.y;
+    for (auto& b : birdArray_) b = std::make_unique<XBoss_Bird>(game, this);
+    explodeRadius_ = 85.0f;
+    healthSubMax_ = 15;
+    healthSub_ = healthSubMax_;
+    liveState_ = NORMAL;
+    moveState_ = WAIT;
+    if (game->world == 3) healthSubMax_ = 20;  // (after healthSub was set: the first heart takes 15)
+}
+XBoss_Nest::~XBoss_Nest() = default;
+
+void XBoss_Nest::Render(Device* d) {
+    for (auto& b : birdArray_) b->Render(d);
+    XBossBase::Render(d);
+}
+
+void XBoss_Nest::ProcessFrame() {
+    XBossBase::ProcessFrame();
+    if (liveState_ == NORMAL) {
+        if (moveState_ == SHAKE) Shake();
+        yaw_ = NormaliseAngle(yaw_ - rotSpeed_);
+        UpdateWorldMatrix();
+        CollisionCheck_Hero(game_->heroA);  // (and hero B: player 2, stage 5)
+    }
+    for (auto& b : birdArray_) b->ProcessFrame();
+}
+
+// XBoss_Nest::_Damage: after the base's hit, the next bird goes after the hero (sound 0x2a6) and
+// the nest turns 0.02 degrees a tick faster; on the last hit every bird dies instead
+void XBoss_Nest::Damage() {
+    XBossBase::Damage();
+    if (liveState_ == DEAD) {
+        for (auto& b : birdArray_) b->StartDead();
+        return;
+    }
+    game_->playSound(kSoundNestHit, pos_.z);
+    birdArray_[currentBirdIndex_]->StartAttack();
+    currentBirdIndex_ = (currentBirdIndex_ + 1) % kBirds;
+    rotSpeed_ += 0.000349066f;
+    localCounter_ = 0;
+    moveState_ = SHAKE;
+}
+
+// XBoss_Nest::_ProcessFrame_Shake: three large rings on the water 40 out at random angles, then
+// 100 ticks bobbing 10 times, 3.5 at first and dying away
+void XBoss_Nest::Shake() {
+    if (localCounter_ == 1) {
+        for (int i = 0; i < 3; i++) {
+            float a = UnitRand() * 6.28319f;
+            D3DVECTOR p(std::sin(a) * 40.0f + pos_.x, -38.0f, std::cos(a) * 40.0f + pos_.z);
+            game_->particles->CreateWaterWave(p, true, false);
+        }
+    }
+    float t = (float)localCounter_ / 100.0f;
+    pos_.y = refPosY_ + std::sin(6.28319f * t * 10.0f) * ((1.0f - t) * 3.5f);
+    SetPos(pos_);
+    if (localCounter_ >= 100) {
+        localCounter_ = 0;
+        moveState_ = WAIT;
+    }
 }
 

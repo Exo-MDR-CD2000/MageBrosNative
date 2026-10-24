@@ -163,10 +163,11 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
             case XLevelView::Kind::Enemy:
                 if (XEnemyBase* e = enemies_->CreateEnemy(at, o.code)) e->SetFloorLevel(o.floor);
                 break;
-            case XLevelView::Kind::Boss:  // XMap::_ConstructObjects: '6' Dragon, '7' Genie (the Nest and Wizard: stage 5)
+            case XLevelView::Kind::Boss:  // XMap::_ConstructObjects: '6' Dragon, '7' Genie, '8' Nest (the Wizard: stage 5)
                 hasBoss_ = true;
                 if (o.code == '6') boss_ = std::make_unique<XBoss_Dragon>(game_.get(), at);
                 else if (o.code == '7') boss_ = std::make_unique<XBoss_Genie>(game_.get(), at);
+                else if (o.code == '8') boss_ = std::make_unique<XBoss_Nest>(game_.get(), at);
                 g.boss = boss_.get();
                 break;
             case XLevelView::Kind::Platform:  // XPlatformList::CreatePlatform
@@ -181,7 +182,7 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
 int XLevelLoop::BossHealth() const { return boss_ ? boss_->GetHealthMain() : 0; }
 
 bool XLevelLoop::IsReconstructed(char code) {
-    static const char kDone[] = "#$*+/OPQSa15opb3d0jmvwHIJKABCDEFGi6TUh2xyc4kqrse7MNfzuRtg";
+    static const char kDone[] = "#$*+/OPQSa15opb3d0jmvwHIJKABCDEFGi6TUh2xyc4kqrse7MNfzuRtg8";
     for (const char* c = kDone; *c; c++)
         if (*c == code) return true;
     return false;

@@ -920,6 +920,60 @@ map (`IsBlockedFloat`), static objects, platforms or either hero burst it at the
 position; below −200 it is gone; on a water level below −38 a wave (if above −43) and a burst,
 as the rolling cannonball.
 
+## The nest and its birds (`XBoss_Nest`, `XBoss_Bird`)
+
+World 3's boss (3-10 at (100, 1580), over the water; also 4-8). The nest is the boss: it has the
+hearts and takes the shots. Its 40 birds are `XBossBase` objects the nest owns (`birdArray[40]`),
+updated and drawn by the nest; they aren't in any list, so shots never meet them.
+
+**Nest** (`8`): model 0x28d, collision 0x28e, box 140 × 60, no shadow. pos.y + 12, `refPosY` =
+that. `rotSpeed` 0.1° (0.00174533) a tick. Makes all 40 birds at once. `explodeRadius` 85,
+`healthSubMax` 15 (= healthSub), then 20 in World 4 (`GetLevelStatus` world 3), set after
+healthSub, so the first heart takes 15, as the genie. NORMAL, WAIT.
+- `ProcessFrame`: the base's (flash, dying); if NORMAL: SHAKE if shaking, yaw −= rotSpeed, world
+  matrix, the hero checks. Then every bird's `ProcessFrame`, whatever the nest's state.
+- `Render`: every bird, then the base's (the nest itself, not while DEAD or NON).
+- `_Damage`: the base's hit (sound 0x270, flash, health). If that killed it, every bird's
+  `StartDead` and nothing else. Otherwise sound 0x2a6, `birdArray[currentBirdIndex]->StartAttack()`,
+  currentBirdIndex = (index + 1) mod 40, rotSpeed += 0.02° (0.000349066), t = 0, SHAKE.
+- SHAKE: at t = 1 three large water rings (`CreateWaterWave(p, true, false)`) at y −38, 40 from
+  the nest at random angles. pos.y = refPosY + sin(2π · (t/100) · 10) · (1 − t/100) · 3.5 for 100
+  ticks, then WAIT.
+
+**Bird**: made with the nest's pos (after the +12). Models 0x289 / 0x28a / 0x28b / 0x28a (a wing
+beat), collision 0x28c, an `XShadow` 12 (`bodyShadow`), box 20 × 20, not damagable, NORMAL, WAIT.
+- `ProcessFrame` (not the base's): t++; NON: nothing. NORMAL: birdCounter++, the state, frame =
+  (birdCounter / 3) mod 4, world matrix, the hero checks (also while it sits in the nest). DEAD:
+  a small `CreateEnemyExplode` at pos, then NON.
+- `Render`: whenever not NON, with no visibility test: model, shadow at pos (the box's debug
+  draw too). So the waiting birds are drawn at the nest's centre.
+- `StartAttack`: only from WAIT: t = 0, GO. `StartDead`: from WAIT, NON at once; otherwise DEAD.
+- WAIT: nothing.
+- GO: at t = 1 a 4-node `JSpline`: the nest, nest + 60 up, nest + 120 up, and a point 60 from the
+  nest at a random angle, 100 up; travel 0, travelSpeed = 1.8 / total length. Each tick travel +=
+  speed (capped at 1), pos = the spline point; yaw eases to the direction moved (0.16), pitch to
+  −`FindPitch`(previous, new) (0.08). At travel 1: `Deinit`, ATTACK_HERO.
+- ATTACK_HERO: at t = 1 chirpTimer = RandomI(100, 300) and the hero target. Then the flight (below);
+  chirpTimer counts down to 0: sound 0x2a5 and a new RandomI(100, 300). A new hero target when
+  t mod 130 = 0. At t ≥ 1800: FLY_ABOVE_NEST.
+- FLY_ABOVE_NEST: at t = 1 the nest target; the flight; a new nest target when t mod 130 = 0; at
+  t ≥ 400: BACK_TO_NEST.
+- BACK_TO_NEST: at t = 1 a 5-node spline: pos, 30 ahead along yaw and −pitch, nest + 100 up, nest
+  + 60 up, the nest; travelSpeed = 1.2 / length. As GO, but each spline point goes through
+  `_LimitPosition_Wall(5)` and `_LimitPosition_Floor(5)` before `_SetPos`. At travel 1: WAIT.
+- The flight (written out in both ATTACK_HERO and FLY_ABOVE_NEST): yaw steps 2° (0.0349066) a
+  tick towards `FindDirectionXZ(pos, target)`; pitch steps 1° (`MakeValueCloseTo_Constant`, not
+  an angle) towards −`FindPitch(pos, target)` clamped to ±45°; speed = 0.8 + 1.0 · min(XZ distance
+  / 160, 1); the new pos = pos + speed · (sin yaw · cos(−pitch), sin(−pitch), cos yaw · cos(−pitch)),
+  then `_LimitPosition_Wall(5)`, `_LimitPosition_Floor(5)`, `_SetPos`.
+- `_UpdateTargetPos_Hero`: the closer hero's (to the nest) `GetCenterPos` (pos + 14.5 up) plus 50
+  along a random direction (a = rand · 2π, b = rand · π − π/2: 50 · (sin a cos b, sin b, cos a
+  cos b)); then wall limit 30 and floor limit 5.
+- `_UpdateTargetPos_Nest`: the nest's pos plus 60 along a random direction in the upper half (b =
+  RandomF(0.2, 1) · π/2) plus 80 up; wall limit 30 only.
+- `_LimitPosition_Wall(p, m)`: x kept within m .. 200 − m, and z ≥ m (no limit at the far end).
+  `_LimitPosition_Floor(p, m)`: y ≥ m. Both ignore the level's real floors and walls.
+
 ## Particles and shadows (`XParticleList`, `XShadow`, `JObject3D`)
 
 **`JObject3D_Rect`** is a w × h quad of lit vertices in the XZ plane (v0 −x+z, v1 +x+z, v2 −x−z,

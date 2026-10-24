@@ -261,11 +261,11 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-23, version 0.2.18, stage 5 chunk 13 done)
+## Where we are (last updated: 2026-10-24, version 0.2.19, stage 5 chunk 14 done)
 
-**Stage 5 (the whole game) is under way: chunks 1 to 13 are done; chunk 14, the nest and its bird
-(World 3's boss), is next.** Wait for the owner to say "start the next chunk". The chunk table, with the levels each
-chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
+**Stage 5 (the whole game) is under way: chunks 1 to 14 are done; chunk 15, the wizard (World 4's
+boss), is next.** Wait for the owner to say "start the next chunk". The chunk table, with the
+levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
 
 Playable now, with nothing left unbuilt (no marker cubes):
@@ -276,22 +276,24 @@ Playable now, with nothing left unbuilt (no marker cubes):
   cannons and their balls; all seven platform kinds; water; the dragon.
 - **World 2**, 2-1 to 2-10 (chunks 1 to 7b): trees, plants, mushrooms, needle balls, squids,
   hammers, fans, turtles, the genie and its lamp, the genie's needle-ball shots.
-- **World 3** so far: 3-1 to 3-9 (chunks 8 to 13: pots, kiwis, jump needles, stalactites,
-  rocket launchers and rockets, floor fans, ghosts).
+- **World 3**, 3-1 to 3-10 (chunks 8 to 14): pots, kiwis, jump needles, stalactites, rocket
+  launchers and rockets, floor fans, ghosts, the nest and its 40 birds (the boss confirmed by the
+  owner).
 
 Still to build in stage 5 (the remaining chunks):
 
 | Chunk | What | Completes |
 |---|---|---|
-| 14 | The nest and its bird, World 3's boss (`8`: `XBoss_Nest`, `XBoss_Bird`) | World 3 (and 4-8) |
 | 15 | The wizard, World 4's boss (`9`: `XBoss_Wizard`, its blade, wand, `XBullet_WizardFire`); World 4 checked | all 40 levels |
 | 16 | Player 2 analysis; `XHeroB` input and the camera midpoint | |
 | 17 | Hero-on-hero collision and carrying | |
 | 18 | Player 2's HUD panel and platform shadow | |
 | 19 | Checks and the whole-game zip, played start to finish by the owner | |
 
-The nest and wizard are large (like the genie, which was split into 7a and 7b); check their size
-in the listings and offer the owner a split before starting.
+The wizard is large (like the genie, split into 7a and 7b, and the nest, planned as 14a and 14b):
+check its size in the listings and offer the owner a split before starting. Read every state's
+transitions first: the nest's bird turned out to be one loop of states sharing its steering, so
+the split proposed before reading it didn't fit and it was built whole.
 
 After stage 5: **stage 6**, the front end (title, save slots, level select, the shop's screen,
 the ending); **stage 7**, opt-in modern extras.
@@ -324,6 +326,10 @@ finish, the dragon fight, the third-barrel heart.
 - `XHero::pushedByFan_` (the original's `pushedByFan`) is set by the floor fan and cleared at the
   end of each NORMAL tick; nothing reads it until player 2 lands on hero A (a lifted hero
   doesn't).
+- The nest's 40 birds are `XBossBase` objects owned by the nest (not in any list); shots only
+  test the nest, and the waiting birds are drawn at its centre, as the original.
+- SDL reads gamepads even in a window without focus: a test run while the owner plays another
+  copy picks up their controller (it fired shots in a 3-10 test). Close other copies first.
 - Player 2 is not built: wherever the original checks hero B, the port checks `heroA` only and
   says so in a comment ("player 2: stage 5"). `GetCloserHero` is `heroA` for now.
 
@@ -364,7 +370,7 @@ finish, the dragon fight, the third-barrel heart.
 
 - Death restarts the level, and finishing the last level of a world goes to the next world.
   Both wait for the level select in stage 6.
-- The shop's screen (the building stands; stage 6), the nest and the wizard, and the other
+- The shop's screen (the building stands; stage 6), the wizard, and the other
   unbuilt objects (marker cubes).
 - No player 2 (stage 5).
 - Only the starting wand's shot pattern exists. The others come with the shop.

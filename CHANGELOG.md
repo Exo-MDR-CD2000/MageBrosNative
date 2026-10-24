@@ -7,6 +7,14 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.2.19] - 2026-10-24
+
+- **The nest**, World 3's boss (also in 4-8): a great nest floating in the water, turning slowly,
+  with 10 hearts. Every hit makes it bob and splash and sends one of its 40 birds after the mage;
+  each bird chases the mage for a while, circles the nest and flies back in. When the nest falls,
+  every bird out of it bursts.
+- **All of World 3 is playable**, 3-1 to 3-10.
+
 ## [0.2.18] - 2026-10-23
 
 - **Ghosts** (World 3, also 4-9): they drift about through walls, bobbing in the air. Get close

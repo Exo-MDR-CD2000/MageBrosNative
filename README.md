@@ -5,11 +5,11 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 5 of 7 in progress (version 0.2.18).** The engine runs (window, OpenGL
+> **Status: stage 5 of 7 in progress (version 0.2.19).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
-> explored in the level viewer. Worlds 1 and 2 play from start to finish with player 1, bosses
-> included, and World 3 is coming in: 3-1 to 3-9 are complete. Next: World 3's boss, World 4 and two-player co-op (stage 5), then the title, save slots and level select
-> (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
+> explored in the level viewer. Worlds 1, 2 and 3 play from start to finish with player 1,
+> bosses included. Next: World 4's wizard and two-player co-op (stage 5), then the title, save
+> slots and level select (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
@@ -44,10 +44,10 @@ particle effects are in.
   squids, hammers that slam down and shake the screen, fans that blow the mage along, turtles
   that hide in their shells, and in 2-10 the genie, who rises from its steaming lamp and fires
   spiked balls that roll after the mage.
-- **World 3** has begun: pots, kiwis that run from the mage, spikes that jump up from the floor,
-  stalactites that drop and shake the screen, rocket launchers whose rockets home in on the
-  mage, floor fans that float the mage up to higher ledges, and ghosts that drift through walls
-  and swoop at the mage. 3-1 to 3-9 play through.
+- **World 3** plays through: pots, kiwis that run from the mage, spikes that jump up from the
+  floor, stalactites that drop and shake the screen, rocket launchers whose rockets home in on
+  the mage, floor fans that float the mage up to higher ledges, ghosts that drift through walls
+  and swoop at the mage, and in 3-10 the nest, which sends a bird after the mage with every hit.
 
 Defeated enemies drop coins. Objects still to come show as coloured markers. Dying restarts the
 level and finishing a world's last level goes on to the next world, until the level select of

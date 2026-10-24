@@ -4,8 +4,8 @@
 // display, each heart worth a number of hits (the sub health). When the last one goes the music
 // stops; once the boss has gone (NON) for 500 ticks the goal opens.
 //
-// Built so far: the dragon, World 1's boss (and World 4-2's), and the genie, World 2's (and
-// World 4-5's).
+// Built so far: the dragon, World 1's boss (and World 4-2's), the genie, World 2's (and World
+// 4-5's), and the nest and its birds, World 3's (and World 4-8's).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -182,5 +182,69 @@ private:
     int idleFrames_ = 0;
     unsigned fireCount_ = 0;
     XStaticObj_GenieLamp* genieLamp_ = nullptr;  // owned by the static object list
+};
+
+class XBoss_Nest;
+
+// XBoss_Bird: one of the nest's 40 birds. It sits in the nest (WAIT) until the nest sends it out
+// (StartAttack): GO rises out of the nest along a spline, ATTACK_HERO chases a point near the
+// closer hero for 1800 ticks, FLY_ABOVE_NEST circles points above the nest for 400, BACK_TO_NEST
+// glides back in along a spline, and it waits again. It can't be hurt and doesn't stop shots.
+class XBoss_Bird : public XBossBase {
+public:
+    enum MoveState { WAIT = 0, GO = 1, ATTACK_HERO = 2, FLY_ABOVE_NEST = 3, BACK_TO_NEST = 4 };
+
+    XBoss_Bird(const XGameContext* game, XBoss_Nest* nest);
+    ~XBoss_Bird() override;
+    void Render(Device* d) override;
+    void ProcessFrame() override;
+    void StartAttack();
+    void StartDead();
+
+private:
+    void Wait() {}
+    void Go();
+    void AttackHero();
+    void FlyAboveNest();
+    void BackToNest();
+    void Fly(float limitFloor);       // the steering ATTACK_HERO and FLY_ABOVE_NEST share
+    void FollowSplineTurning();       // a step along the spline, facing the way it moves
+    void UpdateTargetPos_Hero();      // _UpdateTargetPos_Hero
+    void UpdateTargetPos_Nest();      // _UpdateTargetPos_Nest
+    static void LimitPosition_Wall(D3DVECTOR& p, float margin);   // _LimitPosition_Wall
+    static void LimitPosition_Floor(D3DVECTOR& p, float margin);  // _LimitPosition_Floor
+
+    MoveState moveState_ = WAIT;
+    XBoss_Nest* nest_;
+    std::unique_ptr<XShadow> bodyShadow_;
+    JSpline spline_;
+    unsigned birdCounter_ = 0;
+    float travel_ = 0, travelSpeed_ = 0;
+    D3DVECTOR targetPos_{0, 0, 0};
+    int chirpTimer_ = 0;
+};
+
+// XBoss_Nest ('8'): a nest floating in the water, turning slowly, with 40 birds in it. Each hit
+// bobs it (SHAKE, with three water rings), sends the next bird out after the hero and turns it a
+// little faster. 10 hearts of 15 hits (World 4: 20, but the first heart still holds 15); when it
+// dies every bird out of the nest bursts and the ones still in it vanish.
+class XBoss_Nest : public XBossBase {
+public:
+    static constexpr int kBirds = 40;
+    enum MoveState { WAIT = 0, SHAKE = 1 };
+
+    XBoss_Nest(const XGameContext* game, const D3DVECTOR& pos);
+    ~XBoss_Nest() override;
+    void Render(Device* d) override;
+    void ProcessFrame() override;
+
+private:
+    void Damage() override;
+    void Shake();  // _ProcessFrame_Shake
+
+    MoveState moveState_ = WAIT;
+    int currentBirdIndex_ = 0;
+    float refPosY_ = 0, rotSpeed_ = 0;
+    std::unique_ptr<XBoss_Bird> birdArray_[kBirds];
 };
 
