@@ -7,6 +7,13 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.2.24] - 2026-10-24
+
+- **Player 2's shadow on platforms**: player 2 now casts its shadow on the platform under it, as
+  player 1 does.
+- Player 2's status panel was checked against the original's drawing code: it is drawn exactly as
+  player 1's.
+
 ## [0.2.23] - 2026-10-24
 
 - **The mages bump into each other** and no longer pass through each other.

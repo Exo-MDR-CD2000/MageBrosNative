@@ -318,7 +318,13 @@ which test only while that hero is NORMAL (X and Z with heights counted):
 - A hero standing on the other is falling each tick (speed −0.08 after gravity), so it renews
   `heroAbove` every tick; walking or jumping off clears it. `Reset` clears `heroAbove`.
 
-The status display draws player 2's panel (face, LIFE, GOLD, MP at x 260) in two-player games.
+The status display draws player 2's panel (face, LIFE, GOLD, MP at x 260) when the one-player
+flag (`XApplication` + 0x1a4) is clear. `XStatusDisplay::Render`'s code for it is player 1's,
+instruction for instruction, with player 2's sprites, `GetHeroStatus(0)` and hero B's DEAD test
+(no hearts while dead; the magic lights all off).
+
+`XShadowOnPlatform::Render` draws `RenderShadow(heroA, shadow[0])`, then
+`RenderShadow(heroB, shadow[1])`: each hero's own clipped shadow on every platform top under it.
 
 ### Helpers
 

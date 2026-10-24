@@ -262,11 +262,12 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.2.23, stage 5 chunk 17 done)
+## Where we are (last updated: 2026-10-24, version 0.2.24, stage 5 chunk 18 done)
 
-**Stage 5 (the whole game) is under way: chunks 1 to 17 are done, so every object of the 40
-levels is built and two-player co-op plays, the mages standing on and carrying each other;
-chunk 18, player 2's platform shadow, is next.** Wait for the owner to say "start the next chunk". The chunk table, with the
+**Stage 5 (the whole game) is under way: chunks 1 to 18 are done, so every object of the 40
+levels is built and two-player co-op is complete (player 2, hero on hero, player 2's platform
+shadow and HUD panel); chunk 19, the checks and the whole-game zip played start to finish by the
+owner, is the last of stage 5.** Wait for the owner to say "start the next chunk". The chunk table, with the
 levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
 
@@ -290,7 +291,6 @@ Still to build in stage 5 (the remaining chunks):
 
 | Chunk | What | Completes |
 |---|---|---|
-| 18 | Player 2's platform shadow; HUD panel checked against the original | |
 | 19 | Checks and the whole-game zip, played start to finish by the owner | |
 
 Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
@@ -305,8 +305,11 @@ other hero's box first on X and Z, lands on it (`other->SetHeroAbove`, not while
 `pushedByFan_`), and a hero with `HeroAbove()` pushes the rider by its own move; platforms carry
 and lift a stacked pair. See "Hero on hero" in `docs/REVERSE_ENGINEERING.md`. Testing tip: drop
 the second hero in only after the first has landed (`placeB`, then `place` 3+ s later), or the two
-falling boxes overlap and one is pushed aside. Chunk 18: `XShadowOnPlatform::Render`'s
-`shadow_[1]` for hero B, and checking player 2's HUD panel against the original. Before
+falling boxes overlap and one is pushed aside. Chunk 18 (0.2.24): `XShadowOnPlatform::Render`
+draws hero B's shadow on `shadow_[1]`; player 2's HUD panel matched the original instruction for
+instruction, so it needed no change. A good place to test platforms with both heroes: the
+elevator `A` in 1-6 at (100, 3100), with solid floor at (20, 3100) beside it (the `C`
+platforms of 1-5 move, so a `place` onto them drops into the pit). Before
 splitting any future large piece, read every state's transitions first: the nest's bird turned out to be one loop sharing its steering, so a split
 proposed before reading it didn't fit; the wizard waits for each attack, so it split cleanly.
 

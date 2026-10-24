@@ -247,7 +247,7 @@ XShadowOnPlatform::~XShadowOnPlatform() = default;
 
 void XShadowOnPlatform::Render(Device* d) {
     RenderShadow(d, game_->heroA, *shadow_[0]);
-    // (player 2's shadow on shadow_[1]: chunk 18)
+    RenderShadow(d, game_->heroB, *shadow_[1]);
 }
 
 void XShadowOnPlatform::RenderShadow(Device* d, const XHero* hero, JObject3DRect& shadow) {

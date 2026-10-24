@@ -5,11 +5,10 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 5 of 7 in progress (version 0.2.23).** The engine runs (window, OpenGL
+> **Status: stage 5 of 7 in progress (version 0.2.24).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
 > explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
-> boss included, by one player or two (F2 or `--two-player`). Next: player 2's shadow on
-> platforms and the checks that finish
+> boss included, by one player or two (F2 or `--two-player`). Next: the checks that finish
 > stage 5, then the title, save slots and level select (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 

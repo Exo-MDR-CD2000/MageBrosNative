@@ -8,7 +8,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 2 | Engine: window, OpenGL renderer, sound, MIDI music, keyboard/gamepad, options menu | Done |
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
 | 4 | First playable: World 1 with player 1 | Done |
-| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **In progress**: chunks 1–17 of 21 done (below) |
+| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **In progress**: chunks 1–18 of 21 done (below) |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | |
 | 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | |
 
@@ -59,8 +59,8 @@ is done.
 | 15b | The wizard's wand and its fireballs (`XBoss_WizardWand`, `XBullet_WizardFire`, `XParticle_WizardFireFlash`; `XCollideSphere` is the bullets' radius); every object code in the 40 levels built; World 4 played level by level by the owner | 4-10 | all 40 levels | Done |
 | 16 | Player 2 (`XHeroB`): its models, keys and gamepad, its own status, the camera midpoint, the two-player start and level end; every enemy, boss, bullet, coin, torch, platform and the shop check both heroes; each player's shot colour; player 2's HUD panel; F2 / `--two-player` | all | | Done |
 | 17 | Hero-on-hero collision and carrying: each hero's box blocks the other, standing on the other (`heroAbove`, not while a floor fan lifts), the lower hero carrying the upper, platforms lifting and carrying a stacked pair | all | | Done |
-| 18 | Player 2's platform shadow; HUD panel checked against the original | | | **Next** |
-| 19 | Checks and the whole-game zip, played start to finish by the owner | | | |
+| 18 | Player 2's platform shadow (`XShadowOnPlatform`'s second shadow); player 2's HUD panel checked against `XStatusDisplay::Render` (identical to player 1's) | all | | Done |
+| 19 | Checks and the whole-game zip, played start to finish by the owner | | | **Next** |
 
 Chunk 7 was split in two (7a, 7b) because the genie is the largest piece of World 2. Chunk 14 was
 planned as two halves too, but the bird's five states form one loop that shares its steering, so
