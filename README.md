@@ -5,12 +5,12 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 6 of 7 in progress (version 0.3.0).** The engine runs (window, OpenGL
+> **Status: stage 6 of 7 in progress (version 0.3.1).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
 > explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
-> boss included, by one player or two (F2 or `--two-player`). The front end has begun: the game
-> opens on the original's logo, and levels fade in and out. Next: the title screen, then saving,
-> save slots, level select, the shop and the ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
+> boss included, by one player or two. The front end has begun: the game opens on the
+> original's logo and title screen, and levels fade in and out. Next: saving, then save slots,
+> level select, the shop and the ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
@@ -28,8 +28,10 @@ original game logic unchanged when every option is at its default.
 ## What works today
 
 **`MageBrosNative.exe`**: put it next to `MageBros.exe` (or pass `--game PATH`) and run it. It
-opens on the original's **logo** with its jingle; about ten seconds later (the title screen comes
-next) it goes into the **game view**: World 1-1 with player 1's mage, who drops in from above and plays
+opens on the original's **logo** with its jingle, then the **title screen**: choose 1 PLAYER,
+2 PLAYERS or EXIT with the arrow keys (or W / S, or a gamepad) and Enter (or Shift, Ctrl, a
+gamepad button); Escape picks EXIT. Until the save slots and level select exist, either game
+goes straight into the **game view**: World 1-1 with player 1's mage, who drops in from above and plays
 with the original controls (arrow keys; jump Right Shift or `]`; fire Right Ctrl or `[`; in a
 one-player game Left Shift and Left Ctrl too; or a gamepad). Shots cost magic, which refills over
 time; jump-fire over a torch post to light its torch; collect coins; once every torch is lit the
@@ -41,8 +43,8 @@ The original status display shows the level, torches, life, gold and magic (and 
 hearts), sounds are panned left and right as the mage moves, and the original's shadow and
 particle effects are in.
 
-**Two players**: press F2 in the game view (it restarts the level), or start with
-`--two-player`. Player 2 is the second mage: D, A, W, S move, Left Ctrl or `1` fires, Left Shift
+**Two players**: choose 2 PLAYERS on the title screen (or, as test shortcuts, press F2 in the
+game view, which restarts the level, or start with `--two-player`). Player 2 is the second mage: D, A, W, S move, Left Ctrl or `1` fires, Left Shift
 or `2` jumps, or the second gamepad. Each player has their own life, gold and magic, shown in two
 panels; the camera follows the point between the mages. The level is cleared once one mage has
 warped and the other has warped or died, and lost only when both have died. (In two-player games

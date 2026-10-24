@@ -236,6 +236,47 @@ correction, texture 0x13c; then `StartProcess(0)`. Each tick it counts; at tick 
 backdrop, then the logo centred on the 640 × 480 screen (`DrawScale(1)`). It has no fade and
 takes no keys.
 
+**`XTitleObject`**: plays Music01 (`JMidiList::Play(0)`), makes its bitmaps (all colour-keyed
+but the background tile 0x1fc), an `XCamera` with `ResetForTitle`, and:
+
+| Field | What | Bitmap / texture |
+|---|---|---|
+| +0x94, +0x98 | the left and right arrows, 2 frames (blink) | 0xd0, 0xd1 |
+| +0x9c[3] | the menu items 1 PLAYER, 2 PLAYERS, EXIT, 2 frames (chosen, not) | 0x233, 0x232, 0xc9 |
+| +0xa8 | a caption centred at (320, 100) | 0x1fa |
+| +0xac | the 120 × 120 background tile | 0x1fc |
+| +0xb0 | the copyright line, centred at (320, 180) | 0xf8 |
+| +0xb4 | the "unregistered" line at (1, 462), drawn only when `RegInfo_Registered` is 0: never | 0xf7 |
+| +0xb8 | the title logo, a 555 × 208.125 particle (555 × 0.375) at (0, 120, 0), perspective-correct, linear filter | 0x1fb |
+| +0xbc, +0xc0 | the two mages, 240 × 240 particles at (−140, −50, 0) and (140, −50, 0), alpha 0 | 0x208, 0x207 |
+| +0xc4 | the chosen item, −1 until the fade-in ends, then 0 | |
+| +0xc8 | a counter of every tick since the screen opened | |
+
+Then `StartFadeIn(0)`. `ProcessFrame(n)`: tick and counter += n, `JDInput::UpdateInputState`;
+FADEIN: at tick 254 the choice becomes 0 and `StartProcess(0)`; FADEOUT: at tick 254, type 0
+sets the one-player flag (+0x1a4 = 1) and state 5, type 1 clears it and state 5, type 2 state 1
+(quit); PROCESS: both arrows show frame (tick mod 50 < 25 ? 0 : 1); Escape makes the choice 2
+and counts as the button; then up (`CheckUpPressed`) moves the choice up if it is above 0, else
+down moves it down if below 2 (both with sound 0xec, unpanned), else the button plays 0xed and
+`StartFadeOut(choice)`.
+
+`Render`: the camera; the background tile in a 7 × 5 grid at (120x − s, 120y − s), s =
+(int)(counter × 0.25) mod 120 (DirectDraw dropped the tiles crossing the screen edge; the port
+clips them, as all its blits); the mages' alpha 0 up to counter 200, (counter − 200) / 500 up
+to 700, then 1, times 0.8, each drawn facing the camera (`Render2`); the logo's alpha
+(sin((counter mod 300) / 300 · 2π) × 0.5 + 0.5) × 0.4 + 0.5; the two captions; the items
+centred at x 320 from y 386, each the next item's centre after its height + 4, on frame 0 when
+chosen; while PROCESS with a choice, the left arrow at (item x − arrow width / 2 − 2, item y)
+and the right at (item x + item width + 2, item y); then `RenderFade`.
+
+**Menu input** (`CheckUpPressed`, `CheckDownPressed`, `CheckButtonPressed`, from
+`JDInput`'s state updated once a frame; "pressed" = held now, not at the last update): up is the
+Up arrow or W, or gamepad 1 or 2 pushed up; down the Down arrow or S, or a gamepad pushed down;
+the button Enter, keypad Enter, either Shift, either Ctrl, or button 1 or 2 of either gamepad.
+The gamepads are skipped when the joystick is disabled in the settings (`RegInfo`). A stick
+direction (`GetJoyDirState`) is the axis beyond 800 of 1000: up Y < −800, right X > 800, down
+Y > 800, left X < −800.
+
 **`JSprite`**: `Draw` blits the current frame stretched to the draw size (`SetDrawSize`, −1 for
 the bitmap's own); `DrawScaleXY(sx, sy)` blits it scaled about the sprite's centre
 (`GetCenterIntX` = position + width / 2), sizes rounded half away from zero.

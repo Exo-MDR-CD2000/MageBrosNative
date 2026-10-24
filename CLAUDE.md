@@ -90,10 +90,12 @@ them.
   `app_`) is the original's screen state machine: `FrameMove(n)` runs the current
   `XProcessObject` screen and makes the next one when a screen calls `SetState`. It keeps what
   the original application keeps: both `XHeroStatus`es, the `XLevelStatus` (world, level,
-  progress), the one-player flag (`SetTwoPlayer`; F2 or `--two-player` until the title exists),
-  the `XStatusDisplay` and the `JSoundList`. Screens built: `XLogoObject` and the game
-  (`XGameScene`, kept and restarted with `Start()` on each entry). Stand-ins: title, save slots
-  and level select go straight into the game at the level status; the ending goes to the logo.
+  progress), the one-player flag (`SetTwoPlayer`: the title sets it; F2 and `--two-player` are
+  test hooks), the `XStatusDisplay`, the `JSoundList`, the menus' `JDInput` (`GetDInput`) and a
+  music request (`PlayMusic(track)`, which `main.cpp` takes with `TakeMusicRequest`). Screens
+  built: `XLogoObject`, `XTitleObject` and the game (`XGameScene`, kept and restarted with
+  `Start()` on each entry). Stand-ins: the save slots and level select go straight into the game
+  at the level status; the ending goes to the logo.
 - **`XProcessObject`** is every screen's base: its state (NON, FADEIN, FADEOUT, PROCESS),
   `tick_`, `processType_` and the venetian-blind fade (`StartFadeIn` / `Out`, `ProcessFadeIn` /
   `Out`, `RenderFade`).
@@ -213,7 +215,10 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
 - `shot=<file.bmp>`: write a screenshot.
 - `quit`: exit.
 - `level=<world>,<level>`: start that level (1-based), from any screen (the logo included).
-  The game opens on the logo for 9.5 s, so every test run starts with `level=`.
+  The game opens on the logo for 9.5 s, then the title (which waits for a choice), so every
+  test run starts with `level=`. To test the title itself: it opens at about 9.6 s and its menu
+  answers from about 12.2 s (after the fade-in). `key=Down` and `key=Return` drive it;
+  `key=Escape` alone picks EXIT and quits the program after the fade (about 2.5 s).
 - `place=<x>,<z>`: move hero A there with `XGameScene::TestPlaceHero`, which calls
   `SetStartPos` then `Reset`. `placeB=<x>,<z>` does the same for hero B (two-player games only).
 - `players=1` or `players=2`: the number of players for the next `level=`.
@@ -275,10 +280,10 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.3.0, stage 6 chunk 1 done)
+## Where we are (last updated: 2026-10-24, version 0.3.1, stage 6 chunk 2 done)
 
-**Stage 6 (the front end) is under way: chunk 1, the screen framework, the fades and the logo,
-is done; chunk 2, the title, is next.** Stage 5 built every object of the 40 levels and
+**Stage 6 (the front end) is under way: chunks 1 (the screen framework, fades and logo) and 2
+(the title) are done; chunk 3, saving, is next.** Stage 5 built every object of the 40 levels and
 two-player co-op (player 2, hero on hero, player 2's platform shadow and HUD panel). Wait for the owner to say "start the next chunk". The chunk table, with the
 levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
@@ -302,13 +307,14 @@ Playable now, with nothing left unbuilt (no marker cubes):
 Stage 5's code is complete (chunks 1 to 18). Chunk 19, the owner playing the whole game, is
 deferred: the owner will test once the front end is in, so stage 6 goes ahead first.
 
-**Stage 6 (the front end) has 9 chunks; chunk 1 is done (0.3.0), chunk 2 is next.** The table,
+**Stage 6 (the front end) has 9 chunks; chunks 1 (0.3.0) and 2 (0.3.1) are done, chunk 3 is
+next.** The table,
 with the original's screen states, is in `docs/ROADMAP.md`, "Stage 6, chunk by chunk":
 
 | Chunk | What |
 |---|---|
 | 1 | Screen framework: `XApplication` states, `XProcessObject` fades, the logo (done, 0.3.0) |
-| 2 | Title (`XTitleObject`): one / two players, quit |
+| 2 | Title (`XTitleObject`): one / two players, quit (done, 0.3.1) |
 | 3 | Saving: `XSaveData`, `XLevelStatus`, `DoSaveData`; own save file, import of registry saves |
 | 4 | Save slots (`XSelectSlot`) |
 | 5 | Level select (`XSelectLevelObject`) and the game's real level ends |
@@ -427,7 +433,7 @@ finish, the dragon fight, the third-barrel heart.
 
 ### Known stand-ins (replace them when their real code lands)
 
-- The title, save slots and level select go straight into the game at the level status, so
+- The save slots and level select go straight into the game at the level status, so
   death replays the level and finishing a world starts the next one (`XLevelStatus::IncreaseWorld`:
   world 3 leads back to world 1 until worlds 1–3 are cleared). The ending goes back to the logo.
   Each waits for its stage 6 chunk.

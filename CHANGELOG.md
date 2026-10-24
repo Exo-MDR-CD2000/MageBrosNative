@@ -7,6 +7,14 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.3.1] - 2026-10-24
+
+- **The title screen**: after the logo comes the original's title, with its scrolling
+  background, the pulsing Mage Bros. logo, the two mages fading in and the menu music. Choose
+  1 PLAYER, 2 PLAYERS or EXIT with the arrow keys, W / S or a gamepad, and Enter, Shift, Ctrl or
+  a gamepad button; Escape picks EXIT. Until the save slots and level select arrive, both games
+  start at World 1-1.
+
 ## [0.3.0] - 2026-10-24
 
 The front end begins (stage 6).

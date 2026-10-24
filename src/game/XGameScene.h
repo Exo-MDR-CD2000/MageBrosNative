@@ -40,7 +40,7 @@ public:
 
     const XLevelView& Level() const { return level_; }
     const XHero& Hero() const { return *heroA_; }
-    // True when a level was loaded since the last call (its music should start)
+    // True when a level was loaded since the last call
     bool TakeLevelChanged() {
         bool c = levelChanged_;
         levelChanged_ = false;

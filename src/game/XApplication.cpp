@@ -1,6 +1,7 @@
 #include "XApplication.h"
 #include "game/JSprite.h"
 #include "game/XLogoObject.h"
+#include "game/XTitleObject.h"
 #include "game/XStatusDisplay.h"
 
 namespace {
@@ -24,13 +25,19 @@ void XApplication::FrameMove(unsigned n) {
     if (state_ == RUNNING && current_) current_->ProcessFrame(n);
     switch (state_) {
         case LOGO:
+            DropScreens();
             logo_ = std::make_unique<XLogoObject>(this);
             current_ = logo_.get();
             state_ = RUNNING;
             break;
+        case TITLE:
+            DropScreens();
+            title_ = std::make_unique<XTitleObject>(this);
+            current_ = title_.get();
+            state_ = RUNNING;
+            break;
         case GAME:
         // stand-ins until their screens exist: the game at the current level status
-        case TITLE:
         case SELECT_SLOT:
         case SELECT_LEVEL:
         case REGISTER_INFO:
@@ -48,8 +55,15 @@ void XApplication::FrameMove(unsigned n) {
     }
 }
 
-void XApplication::EnterGame() {
+void XApplication::DropScreens() {
+    // the original deletes the old screen when it makes the next one
+    current_ = nullptr;
     logo_.reset();
+    title_.reset();
+}
+
+void XApplication::EnterGame() {
+    DropScreens();
     current_ = game_.get();
     game_->Start();  // XGameObject::XGameObject
     state_ = RUNNING;

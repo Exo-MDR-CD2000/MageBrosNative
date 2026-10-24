@@ -9,13 +9,14 @@
 // It also keeps what the original application keeps for the screens: both players' status, the
 // level status, the one-player flag, the status display and the sound list.
 //
-// Built so far (stage 6 chunk 1): the logo and the game. Stand-ins until their screens exist:
-// the title, the save slots and level select go straight into the game at the current level
+// Built so far: the logo, the title (stage 6 chunk 2) and the game. Stand-ins until their
+// screens exist: the save slots and level select go straight into the game at the current level
 // status (so a death replays the level and a cleared world starts the next one), and the ending
 // goes back to the logo.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
+#include "game/JDInput.h"
 #include "game/JSoundList.h"
 #include "game/XGameScene.h"
 #include "game/XHero.h"
@@ -25,6 +26,7 @@
 class BackBuffer;
 class Device;
 class XLogoObject;
+class XTitleObject;
 class XProcessObject;
 class XStatusDisplay;
 
@@ -48,12 +50,19 @@ public:
     bool QuitRequested() const { return quit_; }
 
     JSoundList& Sounds() { return sounds_; }
+    JDInput& GetDInput() { return dinput_; }  // the menus' input, updated by each screen
+    // JMidiList::Play: Music01..06 (1-based here); the caller plays it (TakeMusicRequest)
+    void PlayMusic(int track) { musicRequest_ = track; }
+    int TakeMusicRequest() {
+        int t = musicRequest_;
+        musicRequest_ = 0;
+        return t;
+    }
     XStatusDisplay& StatusDisplay() { return *statusDisplay_; }
     XHeroStatus& HeroStatus(bool heroA) { return heroA ? statusA_ : statusB_; }  // GetHeroStatus
     XLevelStatus& LevelStatus() { return levelStatus_; }
     bool OnePlayer() const { return onePlayer_; }
-    // the one-player flag (+0x1a4), which the title sets (stage 6 chunk 2); here also F2 and
-    // --two-player
+    // the one-player flag (+0x1a4), which the title sets; F2 and --two-player are test hooks
     void SetTwoPlayer(bool twoPlayer) { onePlayer_ = !twoPlayer; }
 
     XGameScene& Game() { return *game_; }
@@ -63,13 +72,17 @@ public:
 
 private:
     void EnterGame();
+    void DropScreens();
 
     State state_ = NON;  // +0x1ac
     bool quit_ = false;
     XProcessObject* current_ = nullptr;  // +0x1c8
     std::unique_ptr<XLogoObject> logo_;
+    std::unique_ptr<XTitleObject> title_;
     std::unique_ptr<XGameScene> game_;  // kept, and restarted on each entry (the original remakes it)
     JSoundList sounds_;
+    JDInput dinput_;
+    int musicRequest_ = 0;
     std::unique_ptr<XStatusDisplay> statusDisplay_;
     XHeroStatus statusA_, statusB_;
     XLevelStatus levelStatus_;

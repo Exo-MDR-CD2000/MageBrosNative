@@ -130,9 +130,8 @@ protected:
             bool inGame = app_.InGame();
             app_.FrameMove(n);  // n ticks of 10 ms (the original takes at most 10 a frame)
             if (app_.QuitRequested()) RequestQuit();
-            bool levelChanged = app_.Game().TakeLevelChanged();
-            if (levelChanged) PlayMusic(app_.Game().Level().MusicTrack());
-            if (levelChanged || inGame != app_.InGame()) UpdateTitle();
+            if (int track = app_.TakeMusicRequest()) PlayMusic(track);
+            if (app_.Game().TakeLevelChanged() || inGame != app_.InGame()) UpdateTitle();
             return S_OK;
         }
         if (levelMode_) {
@@ -362,7 +361,7 @@ private:
     float angle_ = 0, zoom_ = 1.f, radius_ = 10.f;
     D3DVECTOR center_{0, 0, 0};
     XLevelView levelView_;
-    XApplication app_;  // the original's screens: the logo, the game (the rest come with stage 6)
+    XApplication app_;  // the original's screens: the logo, the title, the game (the rest: stage 6)
     enum class Mode { Game, LevelViewer, ModelViewer };
     Mode mode_ = Mode::Game;  // Tab cycles game -> level viewer -> model viewer
     bool levelMode_ = false;

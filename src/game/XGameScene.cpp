@@ -76,7 +76,8 @@ bool XGameScene::InitLevel() {
     loop_.SetShakeHandler([this](float magnitude) { camera_.StartShaking(magnitude); });
     camera_.ResetForGame(level_.Depth());
     sd.InitForGame();  // XStatusDisplay::Reset: the counter and the lost-gold messages
-    levelChanged_ = true;  // (the level's music: Music06 with a boss, else the world's)
+    levelChanged_ = true;
+    app_->PlayMusic(level_.MusicTrack());  // JMidiList::Play: Music06 with a boss, else the world's
     StartFadeIn(PLAYING);
     return true;
 }
