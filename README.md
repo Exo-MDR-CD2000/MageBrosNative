@@ -5,12 +5,12 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 6 of 7 in progress (version 0.3.2).** The engine runs (window, OpenGL
+> **Status: stage 6 of 7 in progress (version 0.3.3).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
 > explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
 > boss included, by one player or two. The front end has begun: the game opens on the
-> original's logo and title screen, levels fade in and out, and progress is saved. Next: the
-> save slots, level select, the shop and the ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
+> original's logo, title screen and save slots, levels fade in and out, and progress is saved.
+> Next: level select, the shop and the ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
@@ -30,9 +30,10 @@ original game logic unchanged when every option is at its default.
 **`MageBrosNative.exe`**: put it next to `MageBros.exe` (or pass `--game PATH`) and run it. It
 opens on the original's **logo** with its jingle, then the **title screen**: choose 1 PLAYER,
 2 PLAYERS or EXIT with the arrow keys (or W / S, or a gamepad) and Enter (or Shift, Ctrl, a
-gamepad button); Escape picks EXIT. Until the save slots and level select exist, either game
-continues the first save slot of its kind (a new game the first time) and goes straight into
-the **game view**, at the level you reached: World 1-1 to start, with player 1's mage, who drops
+gamepad button); Escape picks EXIT. Then the **save slots**: 8 for each game mode, each showing
+the date it was saved and the level reached; choose one (an empty one starts a new game), or
+press Delete to delete a saved game. Until level select exists, the slot goes straight into the
+**game view**, at the level you reached: World 1-1 to start, with player 1's mage, who drops
 in from above and plays
 with the original controls (arrow keys; jump Right Shift or `]`; fire Right Ctrl or `[`; in a
 one-player game Left Shift and Left Ctrl too; or a gamepad). Shots cost magic, which refills over

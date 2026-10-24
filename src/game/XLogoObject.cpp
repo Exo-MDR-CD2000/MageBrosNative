@@ -1,5 +1,4 @@
 #include "XLogoObject.h"
-#include "audio/midi.h"
 #include "game/JObject3D.h"
 #include "game/JSoundList.h"
 #include "game/JSprite.h"
@@ -15,7 +14,7 @@ constexpr unsigned kTitleTick = 950;   // 0x3b6
 }  // namespace
 
 XLogoObject::XLogoObject(XApplication* app) : XProcessObject(app) {
-    Midi::Close();  // JMidiList::Stop
+    app_->StopMusic();  // JMidiList::Stop
     JSurfaceList::Create(kBitmapLogo, false);
     camera_ = std::make_unique<XCamera>();
     camera_->ResetForTitle();

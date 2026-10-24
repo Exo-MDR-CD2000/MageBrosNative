@@ -10,11 +10,10 @@
 // (XSaveData: the level status and both players' status) and its slot, the one-player flag, the
 // status display and the sound list. DoSaveData writes the save back to its slot after each level.
 //
-// Built so far: the logo, the title (stage 6 chunk 2) and the game. Stand-ins until their
-// screens exist: the save slots load slot 0 of the chosen game mode (a new game when it is
-// empty); the save slots and level select then go straight into the game at the save's level
-// status (so a death replays the level and a cleared world starts the next one), and the ending
-// goes back to the logo.
+// Built so far: the logo, the title, the save slots (stage 6 chunk 4) and the game. Stand-ins
+// until their screens exist: level select goes straight into the game at the save's level status
+// (so a death replays the level and a cleared world starts the next one), and the ending goes
+// back to the logo.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -30,6 +29,7 @@ class BackBuffer;
 class Device;
 class XLogoObject;
 class XTitleObject;
+class XSelectSlot;
 class XProcessObject;
 class XStatusDisplay;
 
@@ -54,8 +54,15 @@ public:
 
     JSoundList& Sounds() { return sounds_; }
     JDInput& GetDInput() { return dinput_; }  // the menus' input, updated by each screen
-    // JMidiList::Play: Music01..06 (1-based here); the caller plays it (TakeMusicRequest)
-    void PlayMusic(int track) { musicRequest_ = track; }
+    // JMidiList::Play: Music01..06 (1-based here), unless that track is already the one playing;
+    // the caller plays it (TakeMusicRequest)
+    void PlayMusic(int track) {
+        if (track == currentMusic_) return;
+        currentMusic_ = track;
+        musicRequest_ = track;
+    }
+    // JMidiList::Stop: the music stops, and the next PlayMusic starts its track again
+    void StopMusic();
     int TakeMusicRequest() {
         int t = musicRequest_;
         musicRequest_ = 0;
@@ -79,7 +86,8 @@ public:
 
     XGameScene& Game() { return *game_; }
     bool InGame() const { return current_ == game_.get() && state_ == RUNNING; }
-    // Test hook (N / B, --auto level=): straight into the game at that level, now
+    // Test hook (N / B, F2, --auto level=): straight into the game at that level, now, without a
+    // save slot (so nothing it does is saved)
     void StartGameAt(int world, int level);
 
 private:
@@ -91,10 +99,12 @@ private:
     XProcessObject* current_ = nullptr;  // +0x1c8
     std::unique_ptr<XLogoObject> logo_;
     std::unique_ptr<XTitleObject> title_;
+    std::unique_ptr<XSelectSlot> selectSlot_;
     std::unique_ptr<XGameScene> game_;  // kept, and restarted on each entry (the original remakes it)
     JSoundList sounds_;
     JDInput dinput_;
     int musicRequest_ = 0;
+    int currentMusic_ = 0;  // JMidiList's current track (0: none)
     std::unique_ptr<XStatusDisplay> statusDisplay_;
     XSaveData saveData_;  // +0x1d4
     int slot_ = -1;       // +0x1a8: the slot of the save being played, -1 for none

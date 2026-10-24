@@ -311,6 +311,52 @@ in, the previous version kept as `progress.bak`, a damaged file replaced by its 
 The port does not save while no slot is chosen (the original would write a slot named `-1`), so
 the test hooks that start a level directly never touch the save file.
 
+### The save slots (`XSelectSlot`)
+
+Fields: +0x108 the choice (0–7 a slot, 8 "back"), +0x10c the delete answer (0 yes, 1 no),
++0x110 a counter of every tick, +0x114 the delete question open, +0x118[8] each slot empty (1)
+or holding a save (0), +0x138[8] the slots' `XSaveData`.
+
+The constructor plays Music01, makes its bitmaps (all colour-keyed but the background tile 0x1fc
+and the slot bar 0x23b), an `XCamera` with `ResetForTitle`, and lays out, centred on x 320: the
+heading (0x23d one player, 0x23c two players) at y 36; then, from 24 below it, the 8 slot bars
+(0x23b, 2 frames) each 2 below the last; "back" (0xc8, 2 frames) 2 further; the keys help (0x23a)
+at y 464. The delete question (0x27f) is centred at (320, 427), OKAY (0x281) at (264, 457) and
+CANCEL (0x280) at (376, 457), over a 600 × 70 bar (texture 0x218, alpha state 3, alpha 0.9) at
+(0, −177, 0). Also: the month names (0x239, 12 frames), the slot numbers (0x23e, 8 frames), the
+labels EMPTY (0x238), DATE (0x237), LEVEL (0xb9) and the dash (0x1a3), and three numbers on the
+digits 0xba (the day, 2 digits; the world, 1; the level, 2). Then `_LoadSlots` and `StartFadeIn`.
+
+`ProcessFrame`: input, tick and counter += n. FADEIN: at 254 the choice is 0, `StartProcess`.
+FADEOUT: at 254, type 0 sets the application's slot (+0x1a8) and `SetSaveData(slot's save)` and
+goes to state 6 (level select); type 1 to state 4 (the title). PROCESS: the arrows blink as on the
+title; then
+
+- while the question is open: Escape answers CANCEL and counts as the button; left moves to OKAY,
+  right to CANCEL (sound 0xec when it changes); the button deletes the slot on OKAY (sound 0x284,
+  `_DeleteSlot`) or plays 0xed on CANCEL, and closes the question;
+- otherwise Escape chooses "back" and counts as the button; Delete on "back" or an empty slot
+  plays 0x283, on a saved one plays 0x282 and opens the question with CANCEL chosen; else up and
+  down (sound 0xec) move the choice round 0–8, and the button plays 0xed and fades out with type
+  0 (a slot, saved or empty) or 1 ("back").
+
+`_DeleteSlot` deletes the slot's registry value, resets its save and marks it empty. `_LoadSlots`
+marks every slot empty and reset, then reads each value: a slot read and `Valid` holds a save,
+one read but not valid is reset and empty.
+
+`Render`: the camera, the scrolling background as on the title, the heading of the game mode,
+then each slot: its bar (frame 0 when chosen); the slot number (frame i) at (bar x + 8, bar y −
+5); from 8 right of the number and 8 below the bar's top, EMPTY, or DATE, the month (frame month
+− 1), the day, 10 right of it LEVEL, 4 right the world + 1, the dash (advancing a third of its
+width), the level + 1. Then "back" (frame 0 when chosen) and the keys help. While PROCESS: with
+the question open, the bar (facing the camera), the question, OKAY and CANCEL (frame 0 the one
+chosen) and the arrows 2 either side of it; else the arrows 6 either side and 6 below the top of
+the chosen slot, or 2 either side of "back". Then `RenderFade`.
+
+**Music** (`JMidiList`): `Play(i)` does nothing when track i is already the current one, so
+Music01 carries on from the title into the slots, and a level replayed after a death keeps its
+music going; `Stop` clears the current track, so the next `Play` starts again.
+
 **`JSprite`**: `Draw` blits the current frame stretched to the draw size (`SetDrawSize`, −1 for
 the bitmap's own); `DrawScaleXY(sx, sy)` blits it scaled about the sprite's centre
 (`GetCenterIntX` = position + width / 2), sizes rounded half away from zero.

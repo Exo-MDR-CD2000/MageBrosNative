@@ -7,6 +7,17 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.3.3] - 2026-10-24
+
+- **The save slots**: after the title comes the original's slot screen, with 8 slots for
+  one-player games and 8 for two-player games. Each saved slot shows when it was saved and the
+  level reached. Choose a slot to continue it (an empty one starts a new game), or press Delete
+  to delete a saved game, answering OKAY or CANCEL. Until level select arrives, a slot starts
+  straight at the level reached.
+- The menu music carries on from the title into the save slots, and a level replayed after a
+  death keeps its music playing, as in the original.
+- Jumping between levels with the test keys (N / B, F2) no longer saves progress.
+
 ## [0.3.2] - 2026-10-24
 
 - **Saving**: progress is saved after every level, as in the original: the level you have

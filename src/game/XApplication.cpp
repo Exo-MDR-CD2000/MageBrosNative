@@ -4,7 +4,9 @@
 #include <ctime>
 #include "game/JSprite.h"
 #include "game/XLogoObject.h"
+#include "game/XSelectSlot.h"
 #include "game/XTitleObject.h"
+#include "audio/midi.h"
 #include "game/XStatusDisplay.h"
 
 namespace {
@@ -39,15 +41,12 @@ void XApplication::FrameMove(unsigned n) {
             current_ = title_.get();
             state_ = RUNNING;
             break;
-        case SELECT_SLOT: {
-            // stand-in until the save slots exist: slot 0 of this game mode, or a new game
-            Saves::PackSave file;
-            XSaveData data;
-            if (!Saves::Load("original", &file) || !data.ReadSlot(file, onePlayer_, 0)) data.Reset();
-            SetSaveData(data, 0);
-            EnterGame();  // (and level select's stand-in: the save's own level)
+        case SELECT_SLOT:
+            DropScreens();
+            selectSlot_ = std::make_unique<XSelectSlot>(this);
+            current_ = selectSlot_.get();
+            state_ = RUNNING;
             break;
-        }
         case GAME:
         // stand-ins until their screens exist: the game at the save's level status
         case SELECT_LEVEL:
@@ -71,6 +70,13 @@ void XApplication::DropScreens() {
     current_ = nullptr;
     logo_.reset();
     title_.reset();
+    selectSlot_.reset();
+}
+
+void XApplication::StopMusic() {
+    currentMusic_ = 0;
+    musicRequest_ = 0;
+    Midi::Close();  // "close all"
 }
 
 void XApplication::EnterGame() {
@@ -96,6 +102,7 @@ void XApplication::DoSaveData() {
 void XApplication::StartGameAt(int world, int level) {
     saveData_.levelStatus.currentWorld = (int8_t)world;
     saveData_.levelStatus.currentLevel = (int8_t)level;
+    slot_ = -1;  // a test hook's game is never saved
     EnterGame();
 }
 

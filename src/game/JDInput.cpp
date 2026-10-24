@@ -49,6 +49,16 @@ bool CheckDownPressed(const JDInput& in) {
            in.GetJoyDirPressed(1, 2);
 }
 
+bool CheckLeftPressed(const JDInput& in) {
+    return in.GetKeyboardPressed(DIK_LEFT) || in.GetKeyboardPressed(DIK_A) || in.GetJoyDirPressed(0, 3) ||
+           in.GetJoyDirPressed(1, 3);
+}
+
+bool CheckRightPressed(const JDInput& in) {
+    return in.GetKeyboardPressed(DIK_RIGHT) || in.GetKeyboardPressed(DIK_D) || in.GetJoyDirPressed(0, 1) ||
+           in.GetJoyDirPressed(1, 1);
+}
+
 bool CheckButtonPressed(const JDInput& in) {
     return in.GetKeyboardPressed(DIK_NUMPADENTER_) || in.GetKeyboardPressed(DIK_RETURN_) ||
            in.GetKeyboardPressed(DIK_LSHIFT) || in.GetKeyboardPressed(DIK_RSHIFT) ||

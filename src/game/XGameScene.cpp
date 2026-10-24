@@ -72,7 +72,7 @@ bool XGameScene::InitLevel() {
     XStatusDisplay& sd = app_->StatusDisplay();
     loop_.SetLostGoldHandler([&sd](bool heroA, int amount) { sd.ShowLostGoldMessage(heroA, amount); });
     loop_.SetMonoSoundHandler([this](uint16_t id, float volume) { app_->Sounds().PlayMono(id, volume); });
-    loop_.SetStopMusicHandler([] { Midi::Close(); });  // JMidiList::Stop: "close all"
+    loop_.SetStopMusicHandler([this] { app_->StopMusic(); });  // JMidiList::Stop
     loop_.SetShakeHandler([this](float magnitude) { camera_.StartShaking(magnitude); });
     camera_.ResetForGame(level_.Depth());
     sd.InitForGame();  // XStatusDisplay::Reset: the counter and the lost-gold messages
