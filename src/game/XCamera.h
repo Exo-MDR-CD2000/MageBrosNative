@@ -2,8 +2,7 @@
 //
 // It looks at a point that slides along the level (Z) following the heroes, from a fixed
 // distance and angles. See docs/REVERSE_ENGINEERING.md, "Level start, camera and music".
-// Not yet reconstructed: the two-hero midpoint, the title/ending set-ups and the vertical-angle
-// controls.
+// Not yet reconstructed: the title/ending set-ups and the vertical-angle controls.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -15,9 +14,10 @@ class XCamera {
 public:
     // XCamera::ResetForGame, for a map `rows` long.
     void ResetForGame(int rows);
-    // XCamera::ProcessFrame (game state) for one hero at `heroZ`: count the tick, ease the
-    // look-at point toward the hero if it is alive (`follow`), then shake.
-    void ProcessFrame(float heroZ, bool follow);
+    // XCamera::ProcessFrame (game state): count the tick, ease the look-at point toward the heroes
+    // that are alive (not NON, DEAD or COMPLETED), then shake. With one alive it follows that one;
+    // with both, their midpoint, but never more than 120 behind the one further along.
+    void ProcessFrame(float zA, bool aliveA, float zB, bool aliveB);
     // XCamera::StartShaking: bob the look-at point up and down by `magnitude`, fading out
     void StartShaking(float magnitude) { shakeMagnitude_ = magnitude; }
     void DoSetTransform(Device* d) const;  // XCamera::DoSetTransform: the view matrix

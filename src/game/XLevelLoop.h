@@ -41,10 +41,11 @@ public:
 
     XLevelLoop();
     ~XLevelLoop() override;
-    // Builds the level's objects. `onePlayer` sets the coin values.
-    void Load(const XLevelView& level, XHero* hero, XHeroStatus* status, bool onePlayer, SoundFn sound);
+    // Builds the level's objects. Hero B is always there (NON in a one-player game);
+    // `onePlayer` sets the coin values.
+    void Load(const XLevelView& level, XHero* heroA, XHero* heroB, bool onePlayer, SoundFn sound);
 
-    // In the original's order: the map (goal), particles, shots and bullets come before the hero;
+    // In the original's order: the map (goal), particles, shots and bullets come before the heroes;
     // the enemies, coins, torches, platforms and static objects after it. `cameraZ` is the camera's look-at Z
     // (what is near enough to move and to draw).
     void ProcessBeforeHero(float cameraZ);
@@ -93,8 +94,9 @@ public:
     bool CandleCollisionY(float& newY, const XCollideBox& box) override;
 
 private:
-    struct Fire {
+    struct Fire {  // XHeroFire
         bool live = false;
+        const XHero* owner = nullptr;  // ownerHero: picks the colour and where enemies flinch from
         unsigned localTime = 0;
         D3DVECTOR pos{0, 0, 0};
         float angle = 0, verticalSpeed = 0, radius = 8.0f;
@@ -121,14 +123,16 @@ private:
 
     void ProcessFire(Fire& f);
     bool TorchCollisionCheckFire(const Fire& f);  // XTorchList::CollisionCheck_Fire
-    bool CoinTouchesHero(const Coin& c);          // XCoin::CollisionCheck_Hero
+    bool CoinTouchesHero(const Coin& c, const XHero* hero);  // XCoin::CollisionCheck_Hero's test
+    void CoinCollisionCheckHero(Coin& c, XHero* hero);       // XCoin::CollisionCheck_Hero
+    void TorchCollisionCheckHero(const Torch& t, XHero* hero);  // XTorch::_CollisionCheck_Hero
     Coin& CreateCoin(const D3DVECTOR& pos, int type);  // XCoin::XCoin
     void CreateEnemyCoin(const XEnemyBase& e, int type);  // XCoinList::CreateEnemyCoin / CreateHeart
     void ProcessCoin(Coin& c);
 
     const XLevelView* level_ = nullptr;
-    XHero* hero_ = nullptr;
-    XHeroStatus* status_ = nullptr;
+    XHero* heroA_ = nullptr;
+    XHero* heroB_ = nullptr;
     SoundFn sound_;
     LostGoldFn lostGold_;
     MonoSoundFn playMono_;
@@ -154,5 +158,5 @@ private:
     std::unique_ptr<XCandleList> candles_;
     std::unique_ptr<XBossBase> boss_;  // XGameObject::boss
     bool useWater_ = false;
-    std::unique_ptr<JObject3DRect> fireSprite_;  // drawn at each live shot
+    std::unique_ptr<JObject3DRect> fireSpriteA_, fireSpriteB_;  // drawn at each live shot, by its owner
 };

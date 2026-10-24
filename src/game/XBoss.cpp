@@ -189,6 +189,7 @@ void XBoss_DragonBody::ProcessFrame() {
     head_->CheckSplash(prev, pos_, false);
     UpdateWorldMatrix();
     CollisionCheck_Hero(game_->heroA);
+    CollisionCheck_Hero(game_->heroB);
 }
 
 void XBoss_DragonBody::Render(Device* d) {
@@ -282,7 +283,8 @@ void XBoss_Dragon::CheckBattleStarted() {
     if (battleStarted_) return;
     XHero* a = game_->heroA;
     if (a && a->GetLiveState() == XHero::NORMAL && a->GetPos().z > swimRefPos1_[4].z) battleStarted_ = true;
-    // (or player 2: stage 5)
+    XHero* b = game_->heroB;
+    if (b && b->GetLiveState() == XHero::NORMAL && b->GetPos().z > swimRefPos1_[4].z) battleStarted_ = true;
 }
 
 void XBoss_Dragon::CheckSplash(const D3DVECTOR& a, const D3DVECTOR& b, bool sound) const {
@@ -479,6 +481,7 @@ void XBoss_Dragon::ProcessFrame() {
     CheckSplash(prevPos_, pos_, true);
     UpdateWorldMatrix();
     CollisionCheck_Hero(game_->heroA);
+    CollisionCheck_Hero(game_->heroB);
     // record this tick for the body
     posRec_[recIndex_] = pos_;
     yawRec_[recIndex_] = yaw_;
@@ -574,6 +577,7 @@ void XBoss_Genie::ProcessFrame() {
     }
     UpdateWorldMatrix();
     CollisionCheck_Hero(game_->heroA);
+    CollisionCheck_Hero(game_->heroB);
 }
 
 void XBoss_Genie::Damage() {
@@ -735,7 +739,8 @@ void XBoss_Bird::ProcessFrame() {
         }
         frame_ = (int)(birdCounter_ / 3 % 4);
         UpdateWorldMatrix();
-        CollisionCheck_Hero(game_->heroA);  // (and hero B: player 2, stage 5)
+        CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     } else if (liveState_ == DEAD) {
         game_->particles->CreateEnemyExplode(pos_, false);
         localCounter_ = 0;
@@ -770,7 +775,7 @@ void XBoss_Bird::LimitPosition_Floor(D3DVECTOR& p, float margin) {
 void XBoss_Bird::UpdateTargetPos_Hero() {
     float a = UnitRand() * 6.28319f;
     float b = UnitRand() * 3.14159f - 1.5708f;
-    XHero* hero = game_->heroA;  // XGameObject::GetCloserHero(nest) (player 2: stage 5)
+    XHero* hero = game_->GetCloserHero(nest_->GetPos());  // the hero closer to the nest
     const D3DVECTOR& hp = hero->GetPos();
     targetPos_ = D3DVECTOR(hp.x, hp.y + 14.5f, hp.z);  // XHeroBase::GetCenterPos
     targetPos_.x += std::sin(a) * 50.0f * std::cos(b);
@@ -947,7 +952,8 @@ void XBoss_Nest::ProcessFrame() {
         if (moveState_ == SHAKE) Shake();
         yaw_ = NormaliseAngle(yaw_ - rotSpeed_);
         UpdateWorldMatrix();
-        CollisionCheck_Hero(game_->heroA);  // (and hero B: player 2, stage 5)
+        CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
     for (auto& b : birdArray_) b->ProcessFrame();
 }
@@ -1017,7 +1023,8 @@ void XBoss_WizardBlade::ProcessFrame() {
         default: break;
     }
     UpdatePosAndYaw();
-    PushHero(game_->heroA);  // (and hero B: player 2, stage 5)
+    PushHero(game_->heroA);
+    PushHero(game_->heroB);
     UpdateWorldMatrix();
 }
 
@@ -1160,7 +1167,8 @@ void XBoss_Wizard::ProcessFrame() {
     }
     if (moveState_ != HIDE && moveState_ != APPEAR) UpdatePosY();
     UpdateWorldMatrix();
-    CollisionCheck_Hero(game_->heroA);  // (and hero B: player 2, stage 5)
+    CollisionCheck_Hero(game_->heroA);
+    CollisionCheck_Hero(game_->heroB);
 }
 
 // _UpdatePosY: 87.5 up, bobbing 4.5 over 100 ticks (pos only: the box keeps its height)

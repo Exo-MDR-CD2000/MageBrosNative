@@ -21,7 +21,8 @@ class XParticleList;
 
 struct XGameContext {
     const XLevelView* level = nullptr;
-    XHero* heroA = nullptr;  // player 1 (player 2 comes with stage 5)
+    XHero* heroA = nullptr;  // player 1
+    XHero* heroB = nullptr;  // player 2 (always there; NON for the whole level in a one-player game)
     XHeroWorld* heroWorld = nullptr;  // what XHero::Damage reports to
     XStaticObjList* statics = nullptr;
     XEnemyList* enemies = nullptr;
@@ -46,6 +47,9 @@ struct XGameContext {
     bool IsVisible(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < 400.0f; }
     bool IsUpdatable(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < 480.0f; }
 
+    // XGameObject::GetCloserHero: hero A unless hero B is strictly closer; only heroes in the
+    // NORMAL state count, and with neither, hero A
+    XHero* GetCloserHero(const D3DVECTOR& p) const;
     // XGameObject::FindDistanceToCloserHero / FindDirToCloserHero: heroes in the NORMAL state
     float DistanceToCloserHero(const D3DVECTOR& p) const;
     float DirToCloserHero(const D3DVECTOR& p) const;

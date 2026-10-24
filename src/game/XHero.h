@@ -1,10 +1,12 @@
-// XHeroBase / XHeroA (XHero.cpp of the original): player 1's mage.
+// XHeroBase / XHeroA / XHeroB (XHero.cpp of the original): the two players' mages. XHeroA and
+// XHeroB differ only in their models (MageA and MageB) and their input (read by
+// XGameScene); `IsHeroA` picks the status, the shot's colour and the status-display panel.
 //
 // Reconstructed so far: input, walking and turning, gravity, jumping, landing, the map
 // collision, falling out of the level, the dying sequence, the animation frames and the wand,
 // shots and magic points, damage and knockback, the warp, standing on static objects (the torch
 // posts and the wall candles), riding platforms and sinking in water. Still to come: the other
-// hero (stage 5).
+// hero's box: standing on it and carrying it (chunk 17).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -84,8 +86,11 @@ public:
     enum LiveState { NON = 0, NORMAL = 1, WARP = 2, DYING = 3, DEAD = 4, COMPLETED = 5 };
     enum JumpState { LAND = 0, JUMP = 1, FALL = 2 };
 
-    XHero();
+    explicit XHero(bool heroA = true);  // XHeroA::XHeroA / XHeroB::XHeroB
+    bool IsHeroA() const { return heroA_; }
     void SetStatus(XHeroStatus* status) { status_ = status; }
+    // XApplication::GetHeroStatus(IsHeroA()): what IncreaseGold, IncreaseLife and Damage change
+    XHeroStatus& Status() const { return *status_; }
     void SetStartPos(const D3DVECTOR& p) { startPos_ = p; }
     void Reset();  // XHeroBase::Reset
     void ProcessFrame(const XHeroInput& in, const MapCollision& map, XHeroWorld& world);
@@ -100,11 +105,13 @@ public:
     void IncreasePushY(float v) { push_.y += v; }
     void IncreasePushZ(float v) { push_.z += v; }
     // XHeroBase::pushedByFan, set by a floor fan lifting the hero and cleared at the end of each
-    // NORMAL tick; a hero being lifted doesn't land on the other hero (player 2: stage 5)
+    // NORMAL tick; a hero being lifted doesn't land on the other hero (chunk 17)
     void SetPushedByFan() { pushedByFan_ = true; }
     void SetPosY(float y);  // XHeroBase::SetPosY (a rising platform lifts the hero)
     // XHeroBase::CollisionCheckX / Z: another box (a moving platform) stopped by this hero's box
     // while the hero is in the NORMAL state
+    // XHeroBase::CollisionCheck: a point (a shot) inside the box of a hero in the NORMAL state
+    bool CollisionCheck(const D3DVECTOR& p) const { return liveState_ == NORMAL && box_.CollisionCheck(p); }
     bool CollisionCheckX(float& newX, const XCollideBox& box) const {
         return liveState_ == NORMAL && box_.CollisionCheckX(newX, box, false);
     }
@@ -129,7 +136,8 @@ private:
     void SetPosZ(float z);
     void UpdateWorldMatrix();  // _UpdateWorldMatrix
 
-    LiveState liveState_ = NON;
+    bool heroA_ = true;
+    LiveState liveState_ = NON;  // NON until Reset: hero B stays so in a one-player game
     JumpState jumpState_ = LAND;
     unsigned localCounter_ = 0, walkCounter_ = 0;
     D3DVECTOR startPos_{0, 0, 0}, pos_{0, 0, 0};

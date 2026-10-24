@@ -88,11 +88,13 @@ them.
 
 - **`XGameScene`** owns:
   - `XLevelView` (map data, object codes),
-  - `XHero` (player 1),
+  - two `XHero`s (`heroA_`, `heroB_`; B is `XHero(false)`, always made, reset only in a
+    two-player game, so NON for the whole level in a one-player one),
   - `XLevelLoop`,
   - `XCamera`,
   - `XStatusDisplay` (the HUD),
-  - the hero's `XShadow`.
+  - each hero's `XShadow`,
+  - both players' `XHeroStatus` and the one-player flag (`SetTwoPlayer`; F2 or `--two-player`).
 - **`XLevelLoop`** stands in for the original's `XGameObject` and implements `XHeroWorld`, the
   callbacks XHero uses. It owns:
   - an `XGameContext`, the shared pointers that objects reach through `XGameObject` in the
@@ -113,7 +115,7 @@ them.
   4. particles
   5. hero shots
   6. enemy bullets
-  7. hero A (*hero B*)
+  7. hero A, hero B
   8. enemies
   9. boss
   10. coins
@@ -122,9 +124,6 @@ them.
   13. static objects
   14. candles
   15. camera
-
-  The steps in italics are not built yet. Their slots are marked by comments in
-  `XLevelLoop.cpp`.
 - **Render order:**
   1. map
   2. hero and shadow
@@ -202,10 +201,12 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
 - `shot=<file.bmp>`: write a screenshot.
 - `quit`: exit.
 - `level=<world>,<level>`: start that level (1-based).
-- `place=<x>,<z>`: move the hero there with `XGameScene::TestPlaceHero`, which calls
-  `SetStartPos` then `Reset`.
+- `place=<x>,<z>`: move hero A there with `XGameScene::TestPlaceHero`, which calls
+  `SetStartPos` then `Reset`. `placeB=<x>,<z>` does the same for hero B (two-player games only).
+- `players=1` or `players=2`: the number of players for the next `level=`.
 
-`level` and `place` are test hooks only.
+`level`, `place`, `placeB` and `players` are test hooks only. Key names are SDL's (`Left Ctrl`,
+`Right Ctrl`, `Left Shift`, `D`, `1`); a wrong name does nothing, silently.
 
 Screenshots are game images: view them, then delete them. Never commit them.
 
@@ -261,10 +262,10 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.2.21, stage 5 chunk 15b done)
+## Where we are (last updated: 2026-10-24, version 0.2.22, stage 5 chunk 16 done)
 
-**Stage 5 (the whole game) is under way: chunks 1 to 15b are done, so every object of the 40
-levels is built; chunk 16, player 2, is next.** Wait for the owner to say "start the next chunk". The chunk table, with the
+**Stage 5 (the whole game) is under way: chunks 1 to 16 are done, so every object of the 40
+levels is built and player 2 plays; chunk 17, hero-on-hero collision and carrying, is next.** Wait for the owner to say "start the next chunk". The chunk table, with the
 levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
 
@@ -288,13 +289,23 @@ Still to build in stage 5 (the remaining chunks):
 
 | Chunk | What | Completes |
 |---|---|---|
-| 16 | Player 2 analysis; `XHeroB` input and the camera midpoint | |
 | 17 | Hero-on-hero collision and carrying | |
-| 18 | Player 2's HUD panel and platform shadow | |
+| 18 | Player 2's platform shadow; HUD panel checked against the original | |
 | 19 | Checks and the whole-game zip, played start to finish by the owner | |
 
-Player 2 (chunks 16 to 18): every place that checks only hero A says "player 2: stage 5" in a
-comment (grep for it); `XHero::pushedByFan_` is waiting for the landing-on-hero check. Before
+Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
+status, shot colour, warp photons, lost-gold line and platform mark; `XGameScene::UpdateInput`
+reads both players (XHeroB: D A W S, Left Ctrl / 1, Left Shift / 2, pad 1); every hero check in
+the object code tests A then B; `XGameContext::GetCloserHero` picks the closer hero in NORMAL; the
+camera takes both heroes; the two-player start, end and Escape are as `XGameObject`. See
+"Player 2 (`XHeroB`)" in `docs/REVERSE_ENGINEERING.md`.
+
+Chunk 17 (hero-on-hero): `XHeroBase::ProcessFrame(otherHero)` checks the other hero's box first
+on X, Z and Y (`XHeroBase::CollisionCheckX` / `Y` / `Z`, `SetHeroAbove`, `HeroAbove`); the port's
+`XHero::ProcessFrame` doesn't take the other hero yet. Also waiting for it:
+`XHero::pushedByFan_`, `XPlatformBase::_PushHeroY`'s carry of a hero standing on the carried one,
+and `_CollisionCheckY_Hero`'s lifting of the other hero out of the lifted one's box (comments say
+"chunk 17"). Chunk 18: `XShadowOnPlatform::Render`'s `shadow_[1]` for hero B. Before
 splitting any future large piece, read every state's transitions first: the nest's bird turned out to be one loop sharing its steering, so a split
 proposed before reading it didn't fit; the wizard waits for each attack, so it split cleanly.
 
@@ -308,7 +319,8 @@ shake (hammers in World 2, stalactites in World 3); the genie opening its mouth 
 and whether it looks as pale as the original while it is small and rising; the jump needles
 springing up (3-1); how the floor fan floats the mage (3-4: it bobs about 120 above the fan,
 and touching the blades from beside it hurts); the ghost (3-5: its warning, swoop and flinch,
-and how it looks). Already confirmed by the owner: World 1 start to
+and how it looks); two players (0.2.22: player 2's keys and second gamepad, the camera between
+the mages, enemies turning to the closer one, the level ending when both are done). Already confirmed by the owner: World 1 start to
 finish, the dragon fight, the third-barrel heart.
 
 ### Notes from earlier stages
@@ -337,8 +349,11 @@ finish, the dragon fight, the third-barrel heart.
   floor, `.` pit) before choosing a `place`.
 - SDL reads gamepads even in a window without focus: a test run while the owner plays another
   copy picks up their controller (it fired shots in a 3-10 test). Close other copies first.
-- Player 2 is not built: wherever the original checks hero B, the port checks `heroA` only and
-  says so in a comment ("player 2: stage 5"). `GetCloserHero` is `heroA` for now.
+- Player 2's keys clash with the game view's music keys (1, 2), so those are off in two-player
+  games. Player 1's shots in a two-player test once went the wrong way in a screenshot and never
+  again: most likely a gamepad of the owner's (see the note above), not the code.
+- A shot stops on a hero's box only in NORMAL (`XHeroBase::CollisionCheck`); before 0.2.22 the
+  port tested the box in any state.
 
 ### Working notes (tools and habits that worked)
 
@@ -378,5 +393,6 @@ finish, the dragon fight, the third-barrel heart.
 - Death restarts the level, and finishing the last level of a world goes to the next world.
   Both wait for the level select in stage 6.
 - The shop's screen (the building stands; stage 6).
-- No player 2 (stage 5).
+- The hero-on-hero collision and carrying (chunk 17): the two mages pass through each other.
+- One or two players is chosen with F2 or `--two-player` until the front end (stage 6) asks.
 - Only the starting wand's shot pattern exists. The others come with the shop.

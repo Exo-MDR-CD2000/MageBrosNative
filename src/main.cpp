@@ -54,7 +54,10 @@ bool WaveData(const std::vector<uint8_t>& w, const uint8_t** pcm, size_t* len, i
 
 class AssetViewerApp : public CD3DApplication {
 public:
-    AssetViewerApp() { m_strWindowTitle = "Mage Bros. Native"; }
+    explicit AssetViewerApp(bool twoPlayer) {
+        m_strWindowTitle = "Mage Bros. Native";
+        scene_.SetTwoPlayer(twoPlayer);
+    }
 
 protected:
     HRESULT OneTimeSceneInit() override {
@@ -105,11 +108,18 @@ protected:
         d->SetRenderState(D3DRENDERSTATE_AMBIENT, 0xff808080);
     }
 
-    // test automation (--auto): "place=x,z" drops the hero there, "level=w,l" loads a level
+    // test automation (--auto): "place=x,z" drops hero A there ("placeB=x,z" hero B),
+    // "level=w,l" loads a level, "players=1" or "players=2" sets the number of players for the
+    // next level loaded
     void OnAutomation(const std::string& action, const std::string& arg) override {
+        if (action == "players") {
+            scene_.SetTwoPlayer(arg == "2");
+            return;
+        }
         float a = 0, b = 0;
         if (std::sscanf(arg.c_str(), "%f,%f", &a, &b) != 2) return;
         if (action == "place") scene_.TestPlaceHero(a, b);
+        else if (action == "placeB") scene_.TestPlaceHero(a, b, false);
         else if (action == "level" && scene_.Load((int)a - 1, (int)b - 1)) PlayMusic(scene_.Level().MusicTrack());
     }
 
@@ -207,8 +217,13 @@ protected:
                 if (scene_.Load(i / GameFiles::kLevelsPerWorld, i % GameFiles::kLevelsPerWorld))
                     PlayMusic(scene_.Level().MusicTrack());
                 UpdateTitle();
-            } else if (dik >= DIK_1 && dik < DIK_1 + GameFiles::kMusicTrackCount) {
-                PlayMusic(dik - DIK_1 + 1);
+            } else if (dik == DIK_F2) {
+                // one or two players (the front end's choice, until it exists): restarts the level
+                scene_.SetTwoPlayer(!scene_.TwoPlayer());
+                if (scene_.Load(scene_.Level().World(), scene_.Level().Level())) PlayMusic(scene_.Level().MusicTrack());
+                UpdateTitle();
+            } else if (!scene_.TwoPlayer() && dik >= DIK_1 && dik < DIK_1 + GameFiles::kMusicTrackCount) {
+                PlayMusic(dik - DIK_1 + 1);  // (1 and 2 are player 2's fire and jump keys)
             }
             return;
         }
@@ -301,10 +316,17 @@ private:
             }
         char title[512];
         if (mode_ == Mode::Game) {
-            std::snprintf(title, sizeof title,
-                          "Mage Bros. Native %s - World %d-%d   [arrows move, Shift / ] jump, Ctrl / [ fire, "
-                          "Esc give up, N/B level, Tab viewer, F10 options]",
-                          MBN_VERSION_STRING, scene_.Level().World() + 1, scene_.Level().Level() + 1);
+            if (scene_.TwoPlayer())
+                std::snprintf(title, sizeof title,
+                              "Mage Bros. Native %s - World %d-%d, 2 players   [P1: arrows, R.Shift / ] jump, "
+                              "R.Ctrl / [ fire; P2: WASD, L.Shift / 2 jump, L.Ctrl / 1 fire; Esc give up, "
+                              "N/B level, F2 one player, Tab viewer, F10 options]",
+                              MBN_VERSION_STRING, scene_.Level().World() + 1, scene_.Level().Level() + 1);
+            else
+                std::snprintf(title, sizeof title,
+                              "Mage Bros. Native %s - World %d-%d   [arrows move, Shift / ] jump, Ctrl / [ fire, "
+                              "Esc give up, N/B level, F2 two players, Tab viewer, F10 options]",
+                              MBN_VERSION_STRING, scene_.Level().World() + 1, scene_.Level().Level() + 1);
             SDL_SetWindowTitle(GetWindow(), title);
             return;
         }
@@ -359,10 +381,11 @@ int main(int argc, char** argv) {
         cfg.Save();  // rewrite older files with the current comments, keeping their values
     }
     std::string gamePath = cfg.gamePath;
-    bool allowUnverified = false;
+    bool allowUnverified = false, twoPlayer = false;
     for (size_t i = 0; i < args.size(); i++) {
         if (args[i] == "--game" && i + 1 < args.size()) gamePath = args[++i];
         else if (args[i] == "--allow-unverified") allowUnverified = true;
+        else if (args[i] == "--two-player") twoPlayer = true;
         else if (args[i] == "--windowed") cfg.fullscreen = FullscreenMode::Windowed;
         else if (args[i] == "--fullscreen") cfg.fullscreen = FullscreenMode::Borderless;
         else if (args[i] == "--size" && i + 2 < args.size()) {
@@ -391,7 +414,7 @@ int main(int argc, char** argv) {
 
     int res = 0;
     {
-        AssetViewerApp app;
+        AssetViewerApp app(twoPlayer);
         if (FAILED(app.Create(args)))
             FatalError("Mage Bros. Native", "Could not create the game window (OpenGL 3.3 is required).");
         res = app.Run();

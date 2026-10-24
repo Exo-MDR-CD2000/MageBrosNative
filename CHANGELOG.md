@@ -7,6 +7,18 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.2.22] - 2026-10-24
+
+- **Two players**: press F2 in the game (it restarts the level) or start with `--two-player`.
+  Player 2 is the second mage, with D, A, W, S to move, Left Ctrl or `1` to fire, Left Shift or
+  `2` to jump, or the second gamepad. Each player has their own life, gold and magic and their
+  own colour of shot, and the status display shows both. The camera follows the point between
+  the two mages. Enemies chase whichever mage is closer, and coins go to whoever picks them up.
+- In a two-player game the level is cleared once one mage has warped and the other has warped or
+  died, and lost only when both have died.
+- Not yet: the mages can't stand on or carry each other (they pass through each other), and
+  player 2 casts no shadow on platforms. Both come next.
+
 ## [0.2.21] - 2026-10-24
 
 - **The wizard's wand**: it holds out its wand, glowing at the tip, and fires fireballs that grow

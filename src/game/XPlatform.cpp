@@ -247,7 +247,7 @@ XShadowOnPlatform::~XShadowOnPlatform() = default;
 
 void XShadowOnPlatform::Render(Device* d) {
     RenderShadow(d, game_->heroA, *shadow_[0]);
-    // (player 2's shadow on shadow_[1]: stage 5)
+    // (player 2's shadow on shadow_[1]: chunk 18)
 }
 
 void XShadowOnPlatform::RenderShadow(Device* d, const XHero* hero, JObject3DRect& shadow) {
@@ -309,7 +309,7 @@ bool XPlatformBase::UpdatePosX(float newX) {
     game_->platforms->CollisionCheckX(newX, *this);
     game_->statics->CollisionCheckX(newX, *collideBox_, true);
     if (game_->heroA) game_->heroA->CollisionCheckX(newX, *collideBox_);
-    // (and player 2: stage 5)
+    if (game_->heroB) game_->heroB->CollisionCheckX(newX, *collideBox_);
     SetPosX(newX);
     return hit;
 }
@@ -319,28 +319,33 @@ bool XPlatformBase::UpdatePosZ(float newZ) {
     game_->platforms->CollisionCheckZ(newZ, *this);
     game_->statics->CollisionCheckZ(newZ, *collideBox_, true);
     if (game_->heroA) game_->heroA->CollisionCheckZ(newZ, *collideBox_);
+    if (game_->heroB) game_->heroB->CollisionCheckZ(newZ, *collideBox_);
     SetPosZ(newZ);
     return hit;
 }
 
 void XPlatformBase::CollisionCheckY_Hero() {
-    XHero* a = game_->heroA;
-    if (a && a->GetLiveState() == XHero::NORMAL) {
-        float y = a->GetPos().y;
-        if (collideBox_->CollisionCheckY(y, a->GetCollideBox())) a->SetPosY(y);
-        // (then player 2 out of player 1's box, and the same for player 2: stage 5)
+    // each hero in the NORMAL state lifted out of the platform's box (then the other hero out of
+    // that hero's box: chunk 17)
+    for (XHero* h : {game_->heroA, game_->heroB}) {
+        if (!h || h->GetLiveState() != XHero::NORMAL) continue;
+        float y = h->GetPos().y;
+        if (collideBox_->CollisionCheckY(y, h->GetCollideBox())) h->SetPosY(y);
     }
 }
 
 void XPlatformBase::PushHeroX(float dx) {
     if (heroAAbove_ && game_->heroA) game_->heroA->IncreasePushX(dx);
+    if (heroBAbove_ && game_->heroB) game_->heroB->IncreasePushX(dx);
 }
 void XPlatformBase::PushHeroY(float dy) {
-    // (a hero standing on the one being carried goes too: stage 5)
+    // (a hero standing on the one being carried goes too: chunk 17)
     if (heroAAbove_ && game_->heroA) game_->heroA->IncreasePushY(dy);
+    if (heroBAbove_ && game_->heroB) game_->heroB->IncreasePushY(dy);
 }
 void XPlatformBase::PushHeroZ(float dz) {
     if (heroAAbove_ && game_->heroA) game_->heroA->IncreasePushZ(dz);
+    if (heroBAbove_ && game_->heroB) game_->heroB->IncreasePushZ(dz);
 }
 
 // ------------------------------------------------------------------------------- XPlatformList

@@ -17,9 +17,19 @@ void XCamera::ResetForGame(int rows) {
     UpdateViewMatrix();
 }
 
-void XCamera::ProcessFrame(float heroZ, bool follow) {
+void XCamera::ProcessFrame(float zA, bool aliveA, float zB, bool aliveB) {
     localTime_++;
-    if (follow) UpdateLookAtPos(heroZ);
+    if (aliveA && !aliveB) {
+        UpdateLookAtPos(zA);
+    } else if (!aliveA && aliveB) {
+        UpdateLookAtPos(zB);
+    } else if (aliveA && aliveB) {
+        // the further hero's Z less half their gap, the gap counted up to 240
+        float front = zB > zA ? zB : zA;
+        float gap = std::fabs(zA - zB);
+        if (gap > 240.0f) gap = 240.0f;
+        UpdateLookAtPos(front - gap * 0.5f);
+    }
     UpdateShake();
     UpdateViewMatrix();
 }

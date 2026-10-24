@@ -4,9 +4,12 @@
 #include <cmath>
 
 namespace {
-// XHeroA::XHeroA: MageA01, then frames MageA02, MageA01, MageA03, MageAJump, MageAFall
-const uint16_t kBodyFirst = 0x163;
-const uint16_t kBodyFrames[] = {0x164, 0x163, 0x165, 0x167, 0x166};
+// XHeroA::XHeroA: MageA01, then frames MageA02, MageA01, MageA03, MageAJump, MageAFall;
+// XHeroB::XHeroB: the same frames of MageB
+const uint16_t kBodyFirstA = 0x163;
+const uint16_t kBodyFramesA[] = {0x164, 0x163, 0x165, 0x167, 0x166};
+const uint16_t kBodyFirstB = 0x168;
+const uint16_t kBodyFramesB[] = {0x169, 0x168, 0x16a, 0x16c, 0x16b};
 // XHeroBase::XHeroBase: the wand, two frames (down, raised) per wand type
 const uint16_t kWandFirst = 0x1b7;
 const uint16_t kWandFrames[] = {0x1b8, 0x1bf, 0x1c3, 0x1c1, 0x1c2, 0x1bd, 0x1be, 0x1c4, 0x1c5, 0x1c6, 0x1c7};
@@ -35,9 +38,9 @@ constexpr float kDegree = 0.0174533f;
 const int kRecoveryFrames[8] = {80, 70, 60, 50, 40, 32, 24, 16};
 }  // namespace
 
-XHero::XHero() : box_(26.0f, 29.0f) {
-    body_ = std::make_unique<JObject3DX>(kBodyFirst);
-    for (uint16_t f : kBodyFrames) body_->AppendFrame(f);
+XHero::XHero(bool heroA) : heroA_(heroA), box_(26.0f, 29.0f) {
+    body_ = std::make_unique<JObject3DX>(heroA ? kBodyFirstA : kBodyFirstB);
+    for (uint16_t f : heroA ? kBodyFramesA : kBodyFramesB) body_->AppendFrame(f);
     body_->SetCollisionModel(0x179);  // MageCOL: what enemies and coins touch
     wand_ = std::make_unique<JObject3DX>(kWandFirst);
     for (uint16_t f : kWandFrames) wand_->AppendFrame(f);
@@ -221,7 +224,7 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
         bool onMap = map.CollisionCheckY(np.y, box_);
         bool onCandle = world.CandleCollisionY(np.y, box_);
         landed = onStatic || onPlatform || onMap || onCandle;
-        if (onPlatform) world.SetHeroAboveLastPlatform(true);  // (IsHeroA: player 1)
+        if (onPlatform) world.SetHeroAboveLastPlatform(heroA_);  // SetHeroAAbove / SetHeroBAbove
     } else {
         bool onStatic = world.StaticCollisionY(np.y, box_);
         bool onCandle = world.CandleCollisionY(np.y, box_);
@@ -310,7 +313,7 @@ void XHero::ProcessWarp(XHeroWorld& world) {
     yaw_ = NormaliseAngle(yaw_ - kDegree * warpRotSpeed_);
     SetPosY(pos_.y + verticalSpeed_);
     UpdateWorldMatrix();
-    if (localCounter_ % 25 == 1) world.CreateHeroWarpPhoton(true);  // player 1 (IsHeroA)
+    if (localCounter_ % 25 == 1) world.CreateHeroWarpPhoton(heroA_);
     if (pos_.y > 320.0f) {
         localCounter_ = 0;
         liveState_ = COMPLETED;
@@ -338,7 +341,7 @@ void XHero::ProcessDying(XHeroWorld& world) {
         int lost = status_->gold <= base ? status_->gold : (int)((status_->gold - base) * 0.1f) + base;
         int gold = status_->gold - lost;  // XHeroBase::DecreaseGold
         status_->gold = (int16_t)(gold < 0 ? 0 : gold);
-        world.ShowLostGoldMessage(true, lost);  // player 1 (player 2 comes with stage 5)
+        world.ShowLostGoldMessage(heroA_, lost);
         status_->life = 5;
         status_->magicPoint = 10;
         localCounter_ = 0;

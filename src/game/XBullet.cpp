@@ -48,9 +48,10 @@ public:
 
 private:
     bool Hits() {
-        // the map, objects, platforms, then player 1 (and player 2: stage 5)
+        // the map, objects, platforms, then player 1 and player 2
         return game_->level->Collision().IsBlockedFloat(pos_.x, pos_.z, pos_.y) || game_->statics->CollisionCheck(pos_) ||
-               game_->platforms->CollisionCheck(pos_) || CollisionCheck_Hero(game_->heroA);
+               game_->platforms->CollisionCheck(pos_) || CollisionCheck_Hero(game_->heroA) ||
+               CollisionCheck_Hero(game_->heroB);
     }
     int dir_;
 };
@@ -99,7 +100,8 @@ public:
 private:
     bool Hits() {
         return game_->level->Collision().IsBlockedFloat(pos_.x, pos_.z, pos_.y) || game_->statics->CollisionCheck(pos_) ||
-               game_->platforms->CollisionCheck(pos_) || CollisionCheck_Hero(game_->heroA);
+               game_->platforms->CollisionCheck(pos_) || CollisionCheck_Hero(game_->heroA) ||
+               CollisionCheck_Hero(game_->heroB);
     }
     float verticalSpeed_ = 0;
 };
@@ -116,7 +118,7 @@ public:
         UpdateWorldMatrix();
         shadow_ = std::make_unique<XShadow>(19.0f);
         radius_ = 9.0f;
-        targetHero_ = g->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+        targetHero_ = g->GetCloserHero(pos_);  // XGameObject::GetCloserHero
         liveState_ = NORMAL;
     }
     void ProcessFrame() override {
@@ -163,7 +165,8 @@ public:
 private:
     bool Hits() {
         return game_->level->Collision().IsBlockedFloat(pos_.x, pos_.z, pos_.y) || game_->statics->CollisionCheck(pos_) ||
-               game_->platforms->CollisionCheck(pos_) || CollisionCheck_Hero(game_->heroA);
+               game_->platforms->CollisionCheck(pos_) || CollisionCheck_Hero(game_->heroA) ||
+               CollisionCheck_Hero(game_->heroB);
     }
     float speedFactor_ = 1.0f, verticalSpeed_ = 0;
     XHero* targetHero_ = nullptr;
@@ -198,7 +201,7 @@ private:
     void MoveUp() {
         pos_.y += 0.085f;
         yaw_ = MakeAngleCloseTo_Constant(yaw_, game_->DirToCloserHero(pos_), 0.0226893f);
-        if (CollisionCheck_Hero(game_->heroA)) {  // (and player 2: stage 5)
+        if (CollisionCheck_Hero(game_->heroA) || CollisionCheck_Hero(game_->heroB)) {
             game_->particles->CreateBulletExplode(pos_);
             liveState_ = NON;
             return;
@@ -212,7 +215,7 @@ private:
     }
     void Launch() {
         const D3DVECTOR prev = pos_;
-        XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+        XHero* hero = game_->GetCloserHero(pos_);
         if (hero) {
             const D3DVECTOR& hp = hero->GetPos();
             D3DVECTOR c(hp.x, hp.y + 14.5f, hp.z);  // XHeroBase::GetCenterPos
@@ -227,7 +230,8 @@ private:
         if (speed_ < 0.9f) speed_ = 0.9f;
         if (localCounter_ % 15 == 0) game_->particles->CreateSmoke(pos_);
         if (game_->level->Collision().IsBlockedFloat(pos_.x, pos_.z, pos_.y) || game_->statics->CollisionCheck(pos_) ||
-            game_->platforms->CollisionCheck(pos_) || CollisionCheck_Hero(game_->heroA)) {
+            game_->platforms->CollisionCheck(pos_) || CollisionCheck_Hero(game_->heroA) ||
+               CollisionCheck_Hero(game_->heroB)) {
             game_->particles->CreateBulletExplode(prev);
             liveState_ = NON;
         } else if (pos_.y < -200.0f) {
@@ -283,7 +287,10 @@ public:
         frame_ = (int)((localCounter_ / 4) % 16);
         float u = (frame_ % 4) * 0.25f, v = (frame_ / 4) * 0.25f;
         particle_->SetUV(u, u + 0.25f, v, v + 0.25f, 0);
-        if (frame_ < 9) CollisionCheck_Hero(game_->heroA);  // (and player 2: stage 5)
+        if (frame_ < 9) {
+            CollisionCheck_Hero(game_->heroA);
+            CollisionCheck_Hero(game_->heroB);
+        }
         if (localCounter_ >= 64) liveState_ = NON;
     }
     void Render(Device* d, const D3DMATRIX& view) override {
@@ -321,7 +328,7 @@ public:
         XBulletBase::ProcessFrame();
         if (liveState_ != NORMAL) return;
         const D3DVECTOR prev = pos_;
-        XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+        XHero* hero = game_->GetCloserHero(pos_);
         if (localCounter_ > 40) {
             speed_ += 0.008f;
             if (speed_ > 3.0f) speed_ = 3.0f;
@@ -339,7 +346,7 @@ public:
         model_->SetScale(scale_);
         UpdateWorldMatrix();
         if (game_->level->Collision().IsBlockedFloat(pos_.x, pos_.z, pos_.y) || game_->statics->CollisionCheck(pos_) ||
-            CollisionCheck_Hero(game_->heroA)) {  // (and hero B: player 2, stage 5)
+            CollisionCheck_Hero(game_->heroA) || CollisionCheck_Hero(game_->heroB)) {
             game_->particles->CreateBulletExplode(prev);
             liveState_ = NON;
         } else if (pos_.y < -200.0f) {

@@ -277,16 +277,8 @@ public:
     }
     void ProcessFrame() override {
         XStaticObjBase::ProcessFrame();
-        XHero* a = game_->heroA;
-        if (!heroAFinished_) {
-            if (a && a->GetLiveState() == XHero::NORMAL && 15.0f > ApproxDistance(a->GetPos(), checkPos_)) {
-                // (XShop::Start: the shop screen comes with stage 6)
-                heroAFinished_ = true;
-            }
-        } else if (a && ApproxDistance(a->GetPos(), checkPos_) > 25.0f) {
-            heroAFinished_ = false;
-        }
-        // (and player 2: stage 5)
+        CheckHero(game_->heroA, heroAFinished_);
+        CheckHero(game_->heroB, heroBFinished_);
     }
     void Render(Device* d) override {
         if (!game_->IsVisible(pos_)) return;
@@ -295,9 +287,22 @@ public:
     }
 
 private:
+    // a hero in the NORMAL state within 15 of the door opens the shop; it opens again for that hero
+    // only once it has gone 25 away
+    void CheckHero(const XHero* h, bool& finished) {
+        if (!finished) {
+            if (h && h->GetLiveState() == XHero::NORMAL && 15.0f > ApproxDistance(h->GetPos(), checkPos_)) {
+                // (XShop::Start(hero): the shop screen comes with stage 6)
+                finished = true;
+            }
+        } else if (h && ApproxDistance(h->GetPos(), checkPos_) > 25.0f) {
+            finished = false;
+        }
+    }
+
     std::unique_ptr<JObject3DRect> logo_;
     D3DVECTOR checkPos_;
-    bool heroAFinished_ = false;
+    bool heroAFinished_ = false, heroBFinished_ = false;
 };
 
 // XStaticObj_CollideBox: no model, just the box

@@ -76,6 +76,7 @@ public:
         yaw_ = MakeAngleCloseTo(yaw_, dir_, sizeType_ == QUEEN ? 0.02f : 0.06f, 0.0f, FLT_MAX);
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 private:
@@ -217,6 +218,7 @@ public:
         }
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 private:
@@ -252,12 +254,13 @@ public:
         // (STAY: nothing)
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 private:
     enum MoveState { NON = 0, WAIT = 1, DROP = 2, STAY = 3 };
     void Wait() {
-        XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5); any live state
+        XHero* hero = game_->GetCloserHero(startPos_);  // any live state
         if (!hero) return;
         const D3DVECTOR& hp = hero->GetPos();
         if (std::fabs(pos_.z - hp.z) > 60.0f || std::fabs(pos_.x - hp.x) > 60.0f) return;
@@ -313,6 +316,7 @@ public:
         else if (moveState_ == MOVEDOWN) MoveDown();
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 private:
@@ -323,7 +327,7 @@ private:
     }
     void Wait() {
         if (localCounter_ <= 150) return;
-        XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+        XHero* hero = game_->GetCloserHero(checkPos_);
         if (hero && std::fabs(hero->GetPos().z - checkPos_.z) < 64.0f && hero->GetLiveState() == XHero::NORMAL) Next(MOVEUP);
     }
     void MoveUp() {
@@ -379,6 +383,7 @@ public:
         Walk();
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 private:
@@ -442,6 +447,7 @@ public:
         yaw_ = MakeAngleCloseTo(yaw_, dir_, 0.1f, 0.0f, FLT_MAX);
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 private:
@@ -539,6 +545,7 @@ public:
         yaw_ = MakeAngleCloseTo(yaw_, dir_, 0.1f, 0.0f, FLT_MAX);
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 private:
@@ -638,6 +645,7 @@ public:
         else if (moveState_ == WAIT) Wait();
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 private:
@@ -723,6 +731,7 @@ public:
         }
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 private:
@@ -834,6 +843,7 @@ public:
         yaw_ = NormaliseAngle(yaw_ + (0.6f + game_->world * 0.1f) * 0.0174533f);
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
     void Render(Device* d) override {
         // (drawn wherever it is: no visibility test)
@@ -882,6 +892,7 @@ public:
         else if (moveState_ == RUN) Run();
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 protected:
@@ -977,6 +988,7 @@ public:
         else if (moveState_ == SHIELD) Shield();
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 protected:
@@ -1062,9 +1074,11 @@ public:
         if (moveState_ == ROTATE) {
             roll_ = NormaliseAngle(roll_ - 0.15708f);
             PushHero(game_->heroA);
+            PushHero(game_->heroB);
         }
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
     void Render(Device* d) override {
         if (liveState_ == XEnemyBase::NON || !game_->IsVisible(pos_)) return;
@@ -1133,7 +1147,8 @@ public:
         if (liveState_ != XEnemyBase::NORMAL) return;
         if (moveState_ == ROTATE) Rotate();
         UpdateWorldMatrix();
-        CollisionCheck_Hero(game_->heroA);  // (and hero B: player 2, stage 5)
+        CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
     void Render(Device* d) override {
         if (liveState_ == XEnemyBase::NON || !game_->IsVisible(pos_)) return;
@@ -1148,7 +1163,8 @@ private:
     // XEnemy_FloorFan::_ProcessFrame_Rotate
     void Rotate() {
         yaw_ = NormaliseAngle(yaw_ - 0.174533f);
-        PushHero(game_->heroA);  // (and hero B: player 2, stage 5)
+        PushHero(game_->heroA);
+        PushHero(game_->heroB);
     }
     // XEnemy_FloorFan::_PushHero
     void PushHero(XHero* hero) {
@@ -1229,7 +1245,8 @@ public:
         SetPosY(ghostPos_.y + offsetY_);
         model_->SetScale(0.8f);
         UpdateWorldMatrix();
-        CollisionCheck_Hero(game_->heroA);  // (and hero B: player 2, stage 5)
+        CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
     void Render(Device* d) override {
         if (liveState_ == XEnemyBase::NON || !game_->IsVisible(pos_)) return;
@@ -1281,7 +1298,7 @@ private:
     }
     // XEnemy_Ghost::_ProcessFrame_Warning
     void Warning() {
-        XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+        XHero* hero = game_->GetCloserHero(pos_);
         dir_ = FindDirectionXZ(ghostPos_, hero->GetPos());
         yaw_ = MakeAngleCloseTo(yaw_, dir_, 0.08f, 0.0f, kFloatMax);
         if (localCounter_ >= 80) {
@@ -1294,7 +1311,7 @@ private:
         if (localCounter_ == 1) {
             game_->playSound(0x2b4, pos_.z);
             frame_ = 1;
-            XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+            XHero* hero = game_->GetCloserHero(pos_);
             dir_ = FindDirectionXZ(ghostPos_, hero->GetPos());
         }
         UpdatePosX_Ghost(ghostPos_.x + std::sin(dir_) * 0.75f);
@@ -1382,6 +1399,7 @@ public:
         hammerBase_->SetYaw(yaw_);
         hammerBase_->UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
     void Render(Device* d) override {
         // (drawn wherever it is: no visibility test)
@@ -1501,6 +1519,7 @@ public:
         else if (moveState_ == JUMP1 || moveState_ == JUMP2) Jump();
         UpdateWorldMatrix();
         CollisionCheck_Hero(game_->heroA);
+        CollisionCheck_Hero(game_->heroB);
     }
 
 private:
@@ -1576,21 +1595,30 @@ private:
 
 // ---------------------------------------------------------------------------------- XGameContext
 
+XHero* XGameContext::GetCloserHero(const D3DVECTOR& p) const {
+    float a = FLT_MAX, b = FLT_MAX;
+    if (heroA && heroA->GetLiveState() == XHero::NORMAL) a = ApproxDistance(p, heroA->GetPos());
+    if (heroB && heroB->GetLiveState() == XHero::NORMAL) b = ApproxDistance(p, heroB->GetPos());
+    return a > b ? heroB : heroA;
+}
+
 float XGameContext::DistanceToCloserHero(const D3DVECTOR& p) const {
-    float d = FLT_MAX;
-    if (heroA && heroA->GetLiveState() == XHero::NORMAL) d = ApproxDistance(p, heroA->GetPos());
-    return d;
+    float a = FLT_MAX, b = FLT_MAX;
+    if (heroA && heroA->GetLiveState() == XHero::NORMAL) a = ApproxDistance(p, heroA->GetPos());
+    if (heroB && heroB->GetLiveState() == XHero::NORMAL) b = ApproxDistance(p, heroB->GetPos());
+    return a > b ? b : a;
 }
 
 float XGameContext::DistanceToCloserHeroXZ(const D3DVECTOR& p) const {
-    float d = FLT_MAX;
-    if (heroA && heroA->GetLiveState() == XHero::NORMAL) d = ApproxDistanceXZ(p, heroA->GetPos());
-    return d;
+    float a = FLT_MAX, b = FLT_MAX;
+    if (heroA && heroA->GetLiveState() == XHero::NORMAL) a = ApproxDistanceXZ(p, heroA->GetPos());
+    if (heroB && heroB->GetLiveState() == XHero::NORMAL) b = ApproxDistanceXZ(p, heroB->GetPos());
+    return a > b ? b : a;
 }
 
 float XGameContext::DirToCloserHero(const D3DVECTOR& p) const {
-    // GetCloserHero: player 1 unless player 2 is strictly closer
-    return heroA ? FindDirectionXZ(p, heroA->GetPos()) : 0.0f;
+    XHero* h = GetCloserHero(p);
+    return h ? FindDirectionXZ(p, h->GetPos()) : 0.0f;
 }
 
 namespace {

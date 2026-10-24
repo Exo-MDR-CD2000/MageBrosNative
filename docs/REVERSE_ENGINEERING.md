@@ -157,8 +157,10 @@ normals 1/s long, so the coins (scale 0.35 and 0.6) saturate to bright gold from
 - Camera (`XCamera`): looks at (140, 120, z) from 340 units away, 35° (0.610865 rad) above the
   horizontal, horizontal angle π/2, so the eye is on the +x side. The look-at z starts at 160 and
   stays within [160, (rows − 4) × 40]; it eases toward its target (`MakeValueCloseTo`, factor 0.1,
-  step 5). In play the target is the hero's z, or with two heroes alive their midpoint, with at
-  most 240 units of separation taken into account. `XCamera::ProcessFrame` (game state) counts
+  step 5). In play the target is the z of the one hero alive, or with both alive
+  max(zA, zB) − min(|zA − zB|, 240) / 2: their midpoint while they are within 240 of each
+  other, and 120 behind the one further along beyond that (the other can leave the screen).
+  "Alive" is a live state other than NON, DEAD or COMPLETED. `XCamera::ProcessFrame` (game state) counts
   `localTime` every tick, follows only heroes whose live state is not NON, DEAD or COMPLETED, then
   runs `_UpdateShake` and the view matrix whether it followed or not.
 - Shake (`StartShaking(m)` sets `shakeMagnitude`; only the constructor zeroes it, so a shake
@@ -180,7 +182,7 @@ version newer: texture and UVs are set by separate calls (`SetTexture`, `SetUV`)
 
 - Fixed-step game logic (tick rate to be confirmed from `XApplication::FrameMove`), with any
   random-number generator reproduced exactly.
-- Two-player co-op: `XHeroA` and `XHeroB` read separate inputs (`_UpdateInput`).
+- Two-player co-op: `XHeroA` and `XHeroB` read separate inputs (`_UpdateInput`); see "Player 2".
 - Save slots (`XSelectSlot`, `XSaveData`) and settings via the registry (`JWinReg`). The port
   will keep its own saves and import the original's, as Hopmon Native does.
 
@@ -247,11 +249,57 @@ Body frames: 0 standing; walking cycles frames 1, 2, 3, 0, changing every 9 tick
 5 falling. The wand uses frame 2 × wandType, or 2 × wandType + 1 while raised. Both models get
 the hero's pitch, yaw and position.
 
-### Controls (player 1, `XHeroA::_UpdateInput`)
+### Controls (`XHeroA::_UpdateInput`, `XHeroB::_UpdateInput`)
 
-Arrow keys move. Fire: Right Ctrl, `[` or joystick button 1, plus Left Ctrl in one-player games.
-Jump: Right Shift, `]` or joystick button 2, plus Left Shift in one-player games. The stick is
-only read while no arrow key is held, and not at all when the joystick is disabled in settings.
+Player 1: arrow keys move. Fire: Right Ctrl, `[` or joystick 1's button 1, plus Left Ctrl in
+one-player games. Jump: Right Shift, `]` or joystick 1's button 2, plus Left Shift in one-player
+games (the one-player flag is `XApplication` + 0x1a4).
+
+Player 2: D, A, W, S move (right, left, up, down: the same directions as the arrows). Fire: Left
+Ctrl, `1` or joystick 2's button 1. Jump: Left Shift, `2` or joystick 2's button 2.
+
+For both, the stick (joystick 1 or 2) is only read while no direction key is held, and not at all
+when the joystick is disabled in settings.
+
+### Player 2 (`XHeroB`)
+
+`XHeroB` is `XHeroA` with other models and keys: body MageB (0x168, then frames 0x169, 0x168,
+0x16a, 0x16c, 0x16b), the same MageCOL (0x179) collision mesh and the same wand. `IsHeroA` (a
+virtual returning 1 or 0) picks everything else that differs:
+
+- the status (`XApplication::GetHeroStatus(IsHeroA())`): each player has their own gold, life
+  and magic, kept across levels; `Damage`, `IncreaseGold`, `IncreaseLife` and the gold lost on
+  death change the hero's own;
+- the shot (`XHeroFire` keeps its `ownerHero`): texture 348 / 388, smoke 0x15d / 0x185, the
+  flash likewise; an enemy hit by a shot flinches away from the shot's owner;
+- the warp photons (they circle their own hero), the lost-gold message (top or bottom line) and
+  the platform mark (`SetHeroAAbove` / `SetHeroBAbove`).
+
+`XGameObject::XGameObject` always makes both heroes. In a one-player game it sets only hero A's
+start (100, 0, 60) and `InitLevel` never resets hero B, so B stays NON for the whole game: not
+processed, not drawn, and skipped by every check below (they all require NORMAL, or skip NON).
+
+Everything that looks for a hero checks both, A first:
+
+- every enemy, boss, bullet and the wizard's blade test A, then B (`_CollisionCheck_Hero`,
+  `_PushHero`, the fans' `_PushHero`); bullets that stop on a hit stop on whichever hero they hit
+  first;
+- `XGameObject::GetCloserHero(pos)`: the distances to each hero in NORMAL (others count as
+  `FLT_MAX`); B only when strictly closer, so with neither in NORMAL it returns A.
+  `FindDistanceToCloserHero` / `XZ` return the smaller distance, `FindDirToCloserHero` the
+  direction to `GetCloserHero`. The positions passed are the enemy's own (the stalactite: its
+  start; the jump needle: its trigger point; the bird: the nest's);
+- the dragon's battle starts when either hero passes the line; the shop door opens for each hero
+  separately (each has its own "finished" flag);
+- coins: `XCoin::ProcessFrame` tests A, then B, so a coin both touch goes to player 1; torches
+  burn either hero;
+- a shot stops on either hero's box (`XHeroBase::CollisionCheck`, NORMAL only);
+- platforms: `_UpdatePosX` / `Z` are stopped by either hero's box; `_PushHeroX` / `Y` / `Z`
+  carry each hero whose flag is set; `_CollisionCheckY_Hero` lifts each hero in NORMAL out of the
+  platform's box. (The hero-on-hero parts of these, a hero standing on the other being carried
+  and lifted with it, are chunk 17.)
+
+The status display draws player 2's panel (face, LIFE, GOLD, MP at x 260) in two-player games.
 
 ### Helpers
 
@@ -285,7 +333,8 @@ Cell tests: `IsBlocked(x, z, level)` is true outside the map or where the floor 
 
 Order of updates each tick: status display, map, water, particles, hero shots, enemy bullets,
 hero A, hero B, enemies, boss, coins, torches, platforms, static objects, candles, camera.
-Escape makes a hero in NORMAL give up (`StartDying`).
+Escape makes each hero in NORMAL give up (`StartDying`). Each hero's `ProcessFrame` gets the
+other hero (for the hero-on-hero collision).
 
 A level runs as a process with a type:
 
@@ -295,6 +344,10 @@ A level runs as a process with a type:
   ending).
 - A hero DEAD: type 4 (after 300 ticks fade out and return to level select). There are no lives;
   the player picks a level again.
+
+With two players the level is cleared (types 1 to 3 as above) when A and B are both COMPLETED, or
+one COMPLETED and the other DEAD; it is lost (type 4) only when both are DEAD. A hero who dies
+stays out until the next level while the other plays on.
 
 ### The goal (`XMap::ProcessFrame`)
 

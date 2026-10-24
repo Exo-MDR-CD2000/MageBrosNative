@@ -5,10 +5,11 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 5 of 7 in progress (version 0.2.21).** The engine runs (window, OpenGL
+> **Status: stage 5 of 7 in progress (version 0.2.22).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
-> explored in the level viewer. All four worlds and all 40 levels can be played with player 1,
-> every enemy and boss included. Next: two-player co-op
+> explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
+> boss included, by one player or two (F2 or `--two-player`). Next: the mages standing on and
+> carrying each other, the last of two-player co-op
 > (stage 5), then the title, save slots and level select (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 
@@ -37,6 +38,14 @@ The original status display shows the level, torches, life, gold and magic (and 
 hearts), sounds are panned left and right as the mage moves, and the original's shadow and
 particle effects are in.
 
+**Two players**: press F2 in the game view (it restarts the level), or start with
+`--two-player`. Player 2 is the second mage: D, A, W, S move, Left Ctrl or `1` fires, Left Shift
+or `2` jumps, or the second gamepad. Each player has their own life, gold and magic, shown in two
+panels; the camera follows the point between the mages. The level is cleared once one mage has
+warped and the other has warped or died, and lost only when both have died. (In two-player games
+the 1 to 6 music keys are off, since 1 and 2 belong to player 2.) The mages can't stand on or
+carry each other yet; they pass through each other.
+
 - **World 1** plays through: slimes, bees, wallabies, spikes, needle fans, breakable barrels and
   fence doors, pillars and fences, cannons, moving platforms, water in the pits with leaping
   fish, and in 1-10 the dragon, who swims round its pools and crosses the floor breathing fire.
@@ -56,7 +65,7 @@ Defeated enemies drop coins. Dying restarts the
 level and finishing a world's last level goes on to the next world, until the level select of
 stage 6 exists.
 
-In the game view N / B change level. Tab switches to the **level viewer**: every one of the 40
+In the game view N / B change level and F2 switches between one and two players. Tab switches to the **level viewer**: every one of the 40
 levels, built by the original's own map code with each world's textures. The goal, coins and
 torches use their real models; other objects are colour-coded markers (blue platforms, brown objects, grey
 fences, red enemies, large magenta bosses).

@@ -21,6 +21,7 @@ const uint16_t kSoundGoal = 0xea;       // the open goal's hum
 const uint16_t kSoundCoin = 0x268;
 const uint16_t kSoundTorchOn = 0x26c;
 const uint16_t kTextureFireA = 0x15c;   // player 1's shot
+const uint16_t kTextureFireB = 0x184;   // player 2's
 const uint16_t kModelTorchLarge = 0x186;
 const uint16_t kModelTorchSmall = 0x18b;
 const uint16_t kModelCoin = 0x180, kModelHeart = 0x2ac;
@@ -38,19 +39,24 @@ XLevelLoop::XLevelLoop()
     water_ = std::make_unique<XWater>();
     candles_ = std::make_unique<XCandleList>(game_.get());
     // XHeroFire's look: an 18-unit particle (0.8 of that for the small shots of some wands)
-    fireSprite_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(18.0f, 18.0f));
-    fireSprite_->SetTexture(kTextureFireA);
-    particles_->SetHeroPos([this](bool) { return hero_ ? hero_->GetPos() : D3DVECTOR(0, 0, 0); });
+    fireSpriteA_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(18.0f, 18.0f));
+    fireSpriteA_->SetTexture(kTextureFireA);
+    fireSpriteB_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(18.0f, 18.0f));
+    fireSpriteB_->SetTexture(kTextureFireB);
+    particles_->SetHeroPos([this](bool heroA) {
+        const XHero* h = heroA ? heroA_ : heroB_;
+        return h ? h->GetPos() : D3DVECTOR(0, 0, 0);
+    });
     particles_->SetPlaySound([this](uint16_t id, float z) {
         if (sound_) sound_(id, z);
     });
 }
 XLevelLoop::~XLevelLoop() = default;
 
-void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status, bool onePlayer, SoundFn sound) {
+void XLevelLoop::Load(const XLevelView& level, XHero* heroA, XHero* heroB, bool onePlayer, SoundFn sound) {
     level_ = &level;
-    hero_ = hero;
-    status_ = status;
+    heroA_ = heroA;
+    heroB_ = heroB;
     onePlayer_ = onePlayer;
     sound_ = std::move(sound);
     fires_.assign(kMaxFires, Fire());
@@ -76,7 +82,8 @@ void XLevelLoop::Load(const XLevelView& level, XHero* hero, XHeroStatus* status,
 
     XGameContext& g = *game_;
     g.level = &level;
-    g.heroA = hero;
+    g.heroA = heroA;
+    g.heroB = heroB;
     g.heroWorld = this;
     g.statics = statics_.get();
     g.enemies = enemies_.get();
@@ -210,6 +217,7 @@ void XLevelLoop::CreateFireAt(const XHero& hero, float angle) {
         const D3DVECTOR& p = hero.GetPos();
         f = Fire();
         f.live = true;
+        f.owner = &hero;
         f.angle = angle;
         f.pos = D3DVECTOR(p.x + std::sin(angle) * 20.0f, p.y + 12.0f, p.z + std::cos(angle) * 20.0f);
         return;
@@ -248,14 +256,15 @@ void XLevelLoop::ProcessFire(Fire& f) {
         f.verticalSpeed -= 0.06f;
         f.pos.y += f.verticalSpeed;
     }
-    if (f.localTime % 2 == 0) particles_->CreateHeroFireSmoke(f.pos, true, true);  // player 1, normal size
-    // XHeroFire::ProcessFrame: the map, the heroes, objects, platforms, enemies, bullets,
+    bool ownerA = f.owner->IsHeroA();
+    if (f.localTime % 2 == 0) particles_->CreateHeroFireSmoke(f.pos, ownerA, true);  // normal size
+    // XHeroFire::ProcessFrame: the map, either hero, objects, platforms, enemies, bullets,
     // candles, the boss stop the shot with a flash
-    if (level_->Collision().IsBlockedFloat(f.pos.x, f.pos.z, f.pos.y) ||
-        (hero_ && hero_->GetCollideBox().CollisionCheck(f.pos)) || statics_->CollisionCheck_Fire(f.pos) ||
-        platforms_->CollisionCheck(f.pos) || enemies_->CollisionCheck_Fire(f.pos, f.radius, hero_ ? hero_->GetPos() : f.pos) ||
+    if (level_->Collision().IsBlockedFloat(f.pos.x, f.pos.z, f.pos.y) || (heroA_ && heroA_->CollisionCheck(f.pos)) ||
+        (heroB_ && heroB_->CollisionCheck(f.pos)) || statics_->CollisionCheck_Fire(f.pos) ||
+        platforms_->CollisionCheck(f.pos) || enemies_->CollisionCheck_Fire(f.pos, f.radius, f.owner->GetPos()) ||
         bullets_->CollisionCheck_Fire(f.pos, f.radius) || candles_->CollisionCheck(f.pos) || (boss_ && boss_->CollisionCheck_Fire(f.pos, f.radius))) {
-        particles_->CreateHeroFireFlash(prev, true, true);
+        particles_->CreateHeroFireFlash(prev, ownerA, true);
         f.live = false;
     } else if (TorchCollisionCheckFire(f)) {
         f.live = false;
@@ -295,14 +304,14 @@ void XLevelLoop::ProcessBeforeHero(float cameraZ) {
     bullets_->ProcessFrame();  // XBulletList::ProcessFrame
 }
 
-bool XLevelLoop::CoinTouchesHero(const Coin& c) {
-    if (!hero_ || hero_->GetLiveState() != XHero::NORMAL) return false;
-    const D3DVECTOR& hp = hero_->GetPos();
-    const XCollideBox& box = hero_->GetCollideBox();
+bool XLevelLoop::CoinTouchesHero(const Coin& c, const XHero* hero) {
+    if (!hero || hero->GetLiveState() != XHero::NORMAL) return false;
+    const D3DVECTOR& hp = hero->GetPos();
+    const XCollideBox& box = hero->GetCollideBox();
     if (std::fabs(c.pos.z - hp.z) >= box.WidthZ() + c.radius) return false;
     if (std::fabs(c.pos.x - hp.x) >= box.WidthX() + c.radius) return false;
     // JObject3DX::CheckCollision_Sphere: the coin's sphere against the hero's mesh (MageCOL)
-    return hero_->BodyModel().CheckCollision_Sphere(D3DVECTOR(c.pos.x, c.pos.y + c.radius, c.pos.z), c.radius);
+    return hero->BodyModel().CheckCollision_Sphere(D3DVECTOR(c.pos.x, c.pos.y + c.radius, c.pos.z), c.radius);
 }
 
 XLevelLoop::Coin& XLevelLoop::CreateCoin(const D3DVECTOR& pos, int type) {
@@ -360,16 +369,33 @@ void XLevelLoop::ProcessCoin(Coin& c) {
     c.model->SetYaw(c.yaw);
     c.model->SetPos(c.pos);
     c.model->UpdateWorldMatrix();
-    if (CoinTouchesHero(c)) {
-        sound_(kSoundCoin, c.pos.z);
-        particles_->CreateGetCoinEffect(D3DVECTOR(c.pos.x, c.pos.y + c.radius, c.pos.z));
-        if (c.type == 2) {
-            if (++status_->life > 5) status_->life = 5;
-        } else {
-            int g = status_->gold + (int)c.gold;
-            status_->gold = (int16_t)(g > 9999 ? 9999 : g);
-        }
-        c.live = false;
+    // hero A first: a coin both touch goes to player 1
+    CoinCollisionCheckHero(c, heroA_);
+    CoinCollisionCheckHero(c, heroB_);
+}
+
+void XLevelLoop::CoinCollisionCheckHero(Coin& c, XHero* hero) {
+    if (!c.live || !CoinTouchesHero(c, hero)) return;
+    sound_(kSoundCoin, c.pos.z);
+    particles_->CreateGetCoinEffect(D3DVECTOR(c.pos.x, c.pos.y + c.radius, c.pos.z));
+    // XHeroBase::IncreaseLife / IncreaseGold: that hero's status
+    XHeroStatus& st = hero->Status();
+    if (c.type == 2) {
+        if (++st.life > 5) st.life = 5;
+    } else {
+        int g = st.gold + (int)c.gold;
+        st.gold = (int16_t)(g > 9999 ? 9999 : g);
+    }
+    c.live = false;
+}
+
+void XLevelLoop::TorchCollisionCheckHero(const Torch& t, XHero* hero) {
+    // the flame burns a hero standing in it
+    if (!hero || hero->GetLiveState() != XHero::NORMAL) return;
+    if (std::fabs(t.pos.z - hero->GetPos().z) > 80.0f) return;
+    if (ApproxDistance(hero->GetPos(), t.fireCheckPos) < t.heroCheckRadius) {
+        hero->Damage(*this);
+        hero->KnockBack(t.pos);
     }
 }
 
@@ -384,14 +410,8 @@ void XLevelLoop::ProcessAfterHero() {
         t.localCounter++;
         if (!t.fireOn) continue;
         if (t.localCounter % 12 == 0) particles_->CreateTorchFire2(RandomPosXZ(t.fireCheckPos, 2.5f));
-        if (!hero_) continue;
-        // XTorch::_CollisionCheck_Hero: the flame burns a hero standing in it
-        if (hero_->GetLiveState() != XHero::NORMAL) continue;
-        if (std::fabs(t.pos.z - hero_->GetPos().z) > 80.0f) continue;
-        if (ApproxDistance(hero_->GetPos(), t.fireCheckPos) < t.heroCheckRadius) {
-            hero_->Damage(*this);
-            hero_->KnockBack(t.pos);
-        }
+        TorchCollisionCheckHero(t, heroA_);
+        TorchCollisionCheckHero(t, heroB_);
     }
     platforms_->ProcessFrame();
     statics_->ProcessFrame();
@@ -449,7 +469,8 @@ void XLevelLoop::RenderEffects(Device* d, const D3DMATRIX& view) {
     particles_->Render(d, view);
     for (const Fire& f : fires_) {
         if (!f.live) continue;
-        fireSprite_->SetWorldPos(f.pos);
-        fireSprite_->Render2(d, view);
+        JObject3DRect& sprite = f.owner->IsHeroA() ? *fireSpriteA_ : *fireSpriteB_;
+        sprite.SetWorldPos(f.pos);
+        sprite.Render2(d, view);
     }
 }
