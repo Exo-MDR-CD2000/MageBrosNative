@@ -1,4 +1,7 @@
 #include "XApplication.h"
+#include "core/log.h"
+#include "core/saves.h"
+#include <ctime>
 #include "game/JSprite.h"
 #include "game/XLogoObject.h"
 #include "game/XTitleObject.h"
@@ -36,9 +39,17 @@ void XApplication::FrameMove(unsigned n) {
             current_ = title_.get();
             state_ = RUNNING;
             break;
+        case SELECT_SLOT: {
+            // stand-in until the save slots exist: slot 0 of this game mode, or a new game
+            Saves::PackSave file;
+            XSaveData data;
+            if (!Saves::Load("original", &file) || !data.ReadSlot(file, onePlayer_, 0)) data.Reset();
+            SetSaveData(data, 0);
+            EnterGame();  // (and level select's stand-in: the save's own level)
+            break;
+        }
         case GAME:
-        // stand-ins until their screens exist: the game at the current level status
-        case SELECT_SLOT:
+        // stand-ins until their screens exist: the game at the save's level status
         case SELECT_LEVEL:
         case REGISTER_INFO:
             EnterGame();
@@ -69,9 +80,22 @@ void XApplication::EnterGame() {
     state_ = RUNNING;
 }
 
+void XApplication::DoSaveData() {
+    if (slot_ < 0) return;  // (the original would write slot "-1")
+    std::time_t now = std::time(nullptr);
+    if (const std::tm* t = std::localtime(&now)) {  // GetLocalTime
+        saveData_.month = (int8_t)(t->tm_mon + 1);
+        saveData_.day = (int8_t)t->tm_mday;
+    }
+    Saves::PackSave file;
+    if (!Saves::Load("original", &file)) file.pack = "original";
+    saveData_.WriteSlot(file, onePlayer_, slot_);
+    if (!Saves::Store(file)) Log("Saves: could not save %s", XSaveData::SlotName(onePlayer_, slot_).c_str());
+}
+
 void XApplication::StartGameAt(int world, int level) {
-    levelStatus_.currentWorld = (int8_t)world;
-    levelStatus_.currentLevel = (int8_t)level;
+    saveData_.levelStatus.currentWorld = (int8_t)world;
+    saveData_.levelStatus.currentLevel = (int8_t)level;
     EnterGame();
 }
 

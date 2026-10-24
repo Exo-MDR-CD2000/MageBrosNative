@@ -11,6 +11,7 @@
 #include "core/game_files.h"
 #include "core/log.h"
 #include "core/mods.h"
+#include "core/saves.h"
 #include "framework/d3dapp.h"
 #include "framework/d3dfile.h"
 #include "framework/d3dtextr.h"
@@ -403,6 +404,7 @@ int main(int argc, char** argv) {
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))
         FatalError("Mage Bros. Native", "SDL initialisation failed: %s", SDL_GetError());
+    Saves::Init();  // the save folder (the ini's save_path, or the per-user one)
     std::string err;
     if (!Assets::Init(gamePath, allowUnverified, &err)) FatalError("Mage Bros. Native", "%s", err.c_str());
     // the tool library's view of the same file (resource listing, level table, music files)

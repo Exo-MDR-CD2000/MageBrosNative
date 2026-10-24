@@ -1,5 +1,5 @@
 // XLevelStatus (XApplication.cpp of the original): where the players are and how far they have
-// got, kept by the application across levels (and saved: stage 6 chunk 3).
+// got, kept by the application across levels in its XSaveData.
 //
 // Worlds 1 to 3 are open from the start; world 4 opens once all three are cleared. Until then,
 // clearing world 3 goes back to world 1.
@@ -42,6 +42,16 @@ struct XLevelStatus {
         } else if (currentWorld > maxSelWorld) {
             maxSelWorld = currentWorld;
         }
+    }
+    // XLevelStatus::Valid: worlds 0..3, levels 0..9, each world cleared 0 or 1
+    bool Valid() const {
+        if (currentWorld < 0 || currentWorld >= 4 || currentLevel < 0 || currentLevel >= 10) return false;
+        if (maxSelWorld < 0 || maxSelWorld >= 4) return false;
+        for (int8_t m : maxSelLevel)
+            if (m < 0 || m >= 10) return false;
+        for (int8_t b : bossDefeated)
+            if (b != 0 && b != 1) return false;
+        return true;
     }
     bool IsLastLevel() const { return currentLevel == 9; }
     bool IsLastWorld() const { return currentWorld == 3; }

@@ -277,6 +277,40 @@ The gamepads are skipped when the joystick is disabled in the settings (`RegInfo
 direction (`GetJoyDirState`) is the axis beyond 800 of 1000: up Y < −800, right X > 800, down
 Y > 800, left X < −800.
 
+### Saving (`XSaveData`, `XApplication::DoSaveData`)
+
+The application plays from one `XSaveData` (+0x1d4, 26 bytes): `month`, `day` (the date it was
+last saved, which the save slots show), the `XLevelStatus` (+2; `GetLevelStatus` returns it) and
+`heroStatusA` / `heroStatusB` (+14, +20; `GetHeroStatus(isA)` returns them). `SetSaveData` copies a
+slot's save in; the slot number is +0x1a8 (−1 at start). `XHeroStatus` (6 bytes): `gold` (short),
+`life`, `magicPoint`, `magicLevel`, `wandType`.
+
+| Function | What it does |
+|---|---|
+| `XSaveData::Reset` | month 1, day 1, `XLevelStatus::Reset`, both `XHeroStatus::Reset` |
+| `XSaveData::Valid` | month 1–12, day 1–31, and the level status and both hero statuses valid |
+| `XHeroStatus::Reset` | gold 0, life 5, magic 10, magic level 0, wand 0 |
+| `XHeroStatus::Valid` | gold 0–9999, life 0–5, magic 0–10, magic level 0–7, wand 0–5 |
+| `XLevelStatus::Valid` | world 0–3, level 0–9, `maxSelWorld` 0–3, each `maxSelLevel` 0–9, each `bossDefeated` 0 or 1 |
+
+`DoSaveData` (after every level's fade-out, and from level select) puts today's month and day
+(`GetLocalTime`) into the save, then writes all 26 bytes as one binary registry value under
+`HKCU\Software\SaitoGames\MageBros`, named `1P_SLOT%d` in a one-player game or `2P_SLOT%d` in
+a two-player one with the slot number. `XSelectSlot::_LoadSlots` reads 8 slots of the current
+game mode (`1P_SLOT0`–`7` or `2P_SLOT0`–`7`), each reset when missing or not `Valid`.
+
+**The port** keeps the same slots in its own save file, `<save dir>/original/progress.ini` (the
+save dir is `%APPDATA%\MageBrosNative\saves`, or the ini's `save_path`), one section per slot
+named as the registry value, with `month`, `day`, `world`, `level`, `max_world`, `max_level`
+and `boss_defeated` (four numbers each), and `a_` / `b_` `gold`, `life`, `magic`, `magic_level`,
+`wand`. A slot with a key missing or out of its field's range, or not `Valid`, is reset, as
+`_LoadSlots` does. The original's registry values are not read (the owner's decision).
+`core/saves` (from Hopmon Native) writes the file safely: a temporary file read back and swapped
+in, the previous version kept as `progress.bak`, a damaged file replaced by its backup (kept as
+`progress.damaged`), unknown keys kept, and existing saves copied over when `save_path` changes.
+The port does not save while no slot is chosen (the original would write a slot named `-1`), so
+the test hooks that start a level directly never touch the save file.
+
 **`JSprite`**: `Draw` blits the current frame stretched to the draw size (`SetDrawSize`, −1 for
 the bitmap's own); `DrawScaleXY(sx, sy)` blits it scaled about the sprite's centre
 (`GetCenterIntX` = position + width / 2), sizes rounded half away from zero.
@@ -287,7 +321,8 @@ the bitmap's own); `DrawScaleXY(sx, sy)` blits it scaled about the sprite's cent
   random-number generator reproduced exactly.
 - Two-player co-op: `XHeroA` and `XHeroB` read separate inputs (`_UpdateInput`); see "Player 2".
 - Save slots (`XSelectSlot`, `XSaveData`) and settings via the registry (`JWinReg`). The port
-  will keep its own saves and import the original's, as Hopmon Native does.
+  keeps its own save files in the per-user folder (`%APPDATA%\MageBrosNative\saves`, or the
+  ini's `save_path`) and does not import the original's registry saves (the owner's decision).
 
 ## The hero (XHeroBase, XHeroA)
 

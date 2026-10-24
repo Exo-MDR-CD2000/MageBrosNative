@@ -173,7 +173,7 @@ void XGameScene::ProcessFrame(unsigned n) {
                 app_->SetState(XApplication::ENDING);
                 state_ = NON;
             }
-            // (XApplication::DoSaveData: stage 6 chunk 3)
+            app_->DoSaveData();
             return;
         }
     } else if (state_ == PROCESS) {

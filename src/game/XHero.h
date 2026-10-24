@@ -26,6 +26,13 @@ struct XHeroStatus {
     int8_t magicPoint = 10;  // 0..10
     int8_t magicLevel = 0;   // 0..7
     int8_t wandType = 0;     // 0..5
+
+    void Reset() { *this = XHeroStatus(); }  // XHeroStatus::Reset
+    // XHeroStatus::Valid: every field in its range
+    bool Valid() const {
+        return gold >= 0 && gold <= 9999 && life >= 0 && life <= 5 && magicPoint >= 0 && magicPoint <= 10 &&
+               magicLevel >= 0 && magicLevel <= 7 && wandType >= 0 && wandType < 6;
+    }
 };
 
 class XHero;

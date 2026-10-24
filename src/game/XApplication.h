@@ -6,11 +6,13 @@
 //   game -> 9 ending (after the last world) -> 3 logo; title -> 1 quit
 //   (8, the register screen, is never reached: RegInfo_Registered returns 1 in the freeware build)
 //
-// It also keeps what the original application keeps for the screens: both players' status, the
-// level status, the one-player flag, the status display and the sound list.
+// It also keeps what the original application keeps for the screens: the save being played
+// (XSaveData: the level status and both players' status) and its slot, the one-player flag, the
+// status display and the sound list. DoSaveData writes the save back to its slot after each level.
 //
 // Built so far: the logo, the title (stage 6 chunk 2) and the game. Stand-ins until their
-// screens exist: the save slots and level select go straight into the game at the current level
+// screens exist: the save slots load slot 0 of the chosen game mode (a new game when it is
+// empty); the save slots and level select then go straight into the game at the save's level
 // status (so a death replays the level and a cleared world starts the next one), and the ending
 // goes back to the logo.
 //
@@ -21,6 +23,7 @@
 #include "game/XGameScene.h"
 #include "game/XHero.h"
 #include "game/XLevelStatus.h"
+#include "game/XSaveData.h"
 #include <memory>
 
 class BackBuffer;
@@ -59,8 +62,17 @@ public:
         return t;
     }
     XStatusDisplay& StatusDisplay() { return *statusDisplay_; }
-    XHeroStatus& HeroStatus(bool heroA) { return heroA ? statusA_ : statusB_; }  // GetHeroStatus
-    XLevelStatus& LevelStatus() { return levelStatus_; }
+    // GetHeroStatus / GetLevelStatus: parts of the save being played
+    XHeroStatus& HeroStatus(bool heroA) { return heroA ? saveData_.heroStatusA : saveData_.heroStatusB; }
+    XLevelStatus& LevelStatus() { return saveData_.levelStatus; }
+    // SetSaveData: play from this save, kept in `slot` of the current game mode
+    void SetSaveData(const XSaveData& data, int slot) {
+        saveData_ = data;
+        slot_ = slot;
+    }
+    // DoSaveData: date the save and write it to its slot (nothing while no slot is chosen: the
+    // test hooks that start a level directly never touch the save file)
+    void DoSaveData();
     bool OnePlayer() const { return onePlayer_; }
     // the one-player flag (+0x1a4), which the title sets; F2 and --two-player are test hooks
     void SetTwoPlayer(bool twoPlayer) { onePlayer_ = !twoPlayer; }
@@ -84,7 +96,7 @@ private:
     JDInput dinput_;
     int musicRequest_ = 0;
     std::unique_ptr<XStatusDisplay> statusDisplay_;
-    XHeroStatus statusA_, statusB_;
-    XLevelStatus levelStatus_;
+    XSaveData saveData_;  // +0x1d4
+    int slot_ = -1;       // +0x1a8: the slot of the save being played, -1 for none
     bool onePlayer_ = true;
 };

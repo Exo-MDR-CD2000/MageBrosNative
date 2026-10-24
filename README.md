@@ -5,12 +5,12 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 6 of 7 in progress (version 0.3.1).** The engine runs (window, OpenGL
+> **Status: stage 6 of 7 in progress (version 0.3.2).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
 > explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
 > boss included, by one player or two. The front end has begun: the game opens on the
-> original's logo and title screen, and levels fade in and out. Next: saving, then save slots,
-> level select, the shop and the ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
+> original's logo and title screen, levels fade in and out, and progress is saved. Next: the
+> save slots, level select, the shop and the ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
@@ -31,7 +31,9 @@ original game logic unchanged when every option is at its default.
 opens on the original's **logo** with its jingle, then the **title screen**: choose 1 PLAYER,
 2 PLAYERS or EXIT with the arrow keys (or W / S, or a gamepad) and Enter (or Shift, Ctrl, a
 gamepad button); Escape picks EXIT. Until the save slots and level select exist, either game
-goes straight into the **game view**: World 1-1 with player 1's mage, who drops in from above and plays
+continues the first save slot of its kind (a new game the first time) and goes straight into
+the **game view**, at the level you reached: World 1-1 to start, with player 1's mage, who drops
+in from above and plays
 with the original controls (arrow keys; jump Right Shift or `]`; fire Right Ctrl or `[`; in a
 one-player game Left Shift and Left Ctrl too; or a gamepad). Shots cost magic, which refills over
 time; jump-fire over a torch post to light its torch; collect coins; once every torch is lit the
@@ -90,6 +92,11 @@ fences, red enemies, large magenta bosses).
 
 The first run creates `magebros_native.ini` (every option, with comments) and
 `magebros_native.log` next to the program.
+
+**Saved progress** is kept after every level, in `%APPDATA%\MageBrosNative\saves\original\progress.ini`
+(or the folder set by `save_path` in the ini): the level you have reached, the worlds you have
+cleared, and each player's gold, life, magic and wand, in 8 slots for one-player games and 8
+for two-player games, as the original. Saves from the original game are not carried over.
 
 **`MageBrosAssets.exe`**: inspects your copy from the command line:
 

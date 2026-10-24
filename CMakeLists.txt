@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 # The project version is the single source of the program's version number.
-project(MageBrosNative VERSION 0.3.1 LANGUAGES C CXX)
+project(MageBrosNative VERSION 0.3.2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -99,7 +99,8 @@ if(MBN_BUILD_GAME)
     ${CMAKE_SOURCE_DIR}/src/input/*.cpp ${CMAKE_SOURCE_DIR}/src/ui/*.cpp
     ${CMAKE_SOURCE_DIR}/src/framework/*.cpp ${CMAKE_SOURCE_DIR}/src/game/*.cpp)
   list(APPEND MBN_GAME_SOURCES
-    src/main.cpp src/core/assets.cpp src/core/config.cpp src/core/mods.cpp src/core/third_party_impl.cpp)
+    src/main.cpp src/core/assets.cpp src/core/config.cpp src/core/mods.cpp src/core/saves.cpp
+    src/core/third_party_impl.cpp)
   if(WIN32)
     add_executable(MageBrosNative WIN32 ${MBN_GAME_SOURCES})
   else()

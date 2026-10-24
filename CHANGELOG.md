@@ -7,6 +7,16 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.3.2] - 2026-10-24
+
+- **Saving**: progress is saved after every level, as in the original: the level you have
+  reached, the worlds you have cleared, and each player's gold, life, magic and wand. Saves go to
+  `%APPDATA%\MageBrosNative\saves` (or the folder set by `save_path` in `magebros_native.ini`),
+  written safely with a backup of the previous save. Saves from the original game are not
+  carried over.
+- Until the save slots arrive, 1 PLAYER and 2 PLAYERS continue the first slot of their kind (a
+  new game the first time).
+
 ## [0.3.1] - 2026-10-24
 
 - **The title screen**: after the logo comes the original's title, with its scrolling

@@ -89,13 +89,21 @@ them.
 - **`XApplication`** (`src/game/XApplication.*`, owned by `AssetViewerApp` in `main.cpp` as
   `app_`) is the original's screen state machine: `FrameMove(n)` runs the current
   `XProcessObject` screen and makes the next one when a screen calls `SetState`. It keeps what
-  the original application keeps: both `XHeroStatus`es, the `XLevelStatus` (world, level,
-  progress), the one-player flag (`SetTwoPlayer`: the title sets it; F2 and `--two-player` are
+  the original application keeps: the `XSaveData` being played (`saveData_`: the `XLevelStatus`
+  of world, level and progress, and both `XHeroStatus`es) and its slot (`slot_`, −1 until one is
+  chosen; `SetSaveData`, `DoSaveData`), the one-player flag (`SetTwoPlayer`: the title sets it; F2 and `--two-player` are
   test hooks), the `XStatusDisplay`, the `JSoundList`, the menus' `JDInput` (`GetDInput`) and a
   music request (`PlayMusic(track)`, which `main.cpp` takes with `TakeMusicRequest`). Screens
   built: `XLogoObject`, `XTitleObject` and the game (`XGameScene`, kept and restarted with
-  `Start()` on each entry). Stand-ins: the save slots and level select go straight into the game
-  at the level status; the ending goes to the logo.
+  `Start()` on each entry). Stand-ins: the save slots load slot 0 of the game mode (or a new
+  game) and, with level select, go straight into the game at the save's level status; the
+  ending goes to the logo.
+- **Saving**: `src/core/saves.*` (adapted from Hopmon Native's, without its legacy registry
+  import) resolves the save folder (`%APPDATA%\MageBrosNative\saves`, or the ini's
+  `save_path`) and reads and writes `original/progress.ini` safely. `XSaveData` (`src/game`)
+  maps a slot to a section `1P_SLOTn` / `2P_SLOTn` (`ReadSlot`, `WriteSlot`), with the
+  original's `Reset` / `Valid`. The game calls `DoSaveData` after each level's fade-out.
+  `DoSaveData` does nothing while `slot_` is −1, so `--auto level=` runs never touch saves.
 - **`XProcessObject`** is every screen's base: its state (NON, FADEIN, FADEOUT, PROCESS),
   `tick_`, `processType_` and the venetian-blind fade (`StartFadeIn` / `Out`, `ProcessFadeIn` /
   `Out`, `RenderFade`).
@@ -280,10 +288,10 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.3.1, stage 6 chunk 2 done)
+## Where we are (last updated: 2026-10-24, version 0.3.2, stage 6 chunk 3 done)
 
-**Stage 6 (the front end) is under way: chunks 1 (the screen framework, fades and logo) and 2
-(the title) are done; chunk 3, saving, is next.** Stage 5 built every object of the 40 levels and
+**Stage 6 (the front end) is under way: chunks 1 (the screen framework, fades and logo), 2
+(the title) and 3 (saving) are done; chunk 4, the save slots, is next.** Stage 5 built every object of the 40 levels and
 two-player co-op (player 2, hero on hero, player 2's platform shadow and HUD panel). Wait for the owner to say "start the next chunk". The chunk table, with the
 levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
@@ -307,15 +315,15 @@ Playable now, with nothing left unbuilt (no marker cubes):
 Stage 5's code is complete (chunks 1 to 18). Chunk 19, the owner playing the whole game, is
 deferred: the owner will test once the front end is in, so stage 6 goes ahead first.
 
-**Stage 6 (the front end) has 9 chunks; chunks 1 (0.3.0) and 2 (0.3.1) are done, chunk 3 is
-next.** The table,
+**Stage 6 (the front end) has 9 chunks; chunks 1 (0.3.0), 2 (0.3.1) and 3 (0.3.2) are done,
+chunk 4 is next.** The table,
 with the original's screen states, is in `docs/ROADMAP.md`, "Stage 6, chunk by chunk":
 
 | Chunk | What |
 |---|---|
 | 1 | Screen framework: `XApplication` states, `XProcessObject` fades, the logo (done, 0.3.0) |
 | 2 | Title (`XTitleObject`): one / two players, quit (done, 0.3.1) |
-| 3 | Saving: `XSaveData`, `XLevelStatus`, `DoSaveData`; own save file, import of registry saves |
+| 3 | Saving: `XSaveData`, `XLevelStatus`, `DoSaveData`; the port's own save files in AppData (`core/saves`, behind the ini's `save_path`); no import of the original's registry saves (owner's decision) (done, 0.3.2) |
 | 4 | Save slots (`XSelectSlot`) |
 | 5 | Level select (`XSelectLevelObject`) and the game's real level ends |
 | 6 | Shop screen (`XShop`) |
@@ -400,6 +408,13 @@ finish, the dragon fight, the third-barrel heart.
 
 ### Working notes (tools and habits that worked)
 
+- **Testing saves without touching the owner's**: copy `build/Release/MageBrosNative.exe` to a
+  scratch folder, run it once (it writes its own ini there), set `save_path = saves` in that ini
+  and test there (pass `--game` with the full path). A first run with an empty `save_path` makes
+  `%APPDATA%\MageBrosNative` (with `save_location.txt`); remove it afterwards if it wasn't there
+  before. The title's menu answers from about 12.2 s, the level fades in for 2.5 s after it
+  (Escape does nothing until then), and a lost level saves about 8 s after Escape.
+
 - **Building here**: CMake is not on the PATH; it is
   `/c/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`
   (and `ctest.exe` beside it), with the existing `build/` (Visual Studio 18 2026 generator,
@@ -433,7 +448,8 @@ finish, the dragon fight, the third-barrel heart.
 
 ### Known stand-ins (replace them when their real code lands)
 
-- The save slots and level select go straight into the game at the level status, so
+- The save slots use slot 0 of the game mode; they and level select go straight into the game
+  at the save's level status, so
   death replays the level and finishing a world starts the next one (`XLevelStatus::IncreaseWorld`:
   world 3 leads back to world 1 until worlds 1–3 are cleared). The ending goes back to the logo.
   Each waits for its stage 6 chunk.
