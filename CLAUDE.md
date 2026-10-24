@@ -86,15 +86,27 @@ them.
 
 ### How the game code fits together
 
-- **`XGameScene`** owns:
+- **`XApplication`** (`src/game/XApplication.*`, owned by `AssetViewerApp` in `main.cpp` as
+  `app_`) is the original's screen state machine: `FrameMove(n)` runs the current
+  `XProcessObject` screen and makes the next one when a screen calls `SetState`. It keeps what
+  the original application keeps: both `XHeroStatus`es, the `XLevelStatus` (world, level,
+  progress), the one-player flag (`SetTwoPlayer`; F2 or `--two-player` until the title exists),
+  the `XStatusDisplay` and the `JSoundList`. Screens built: `XLogoObject` and the game
+  (`XGameScene`, kept and restarted with `Start()` on each entry). Stand-ins: title, save slots
+  and level select go straight into the game at the level status; the ending goes to the logo.
+- **`XProcessObject`** is every screen's base: its state (NON, FADEIN, FADEOUT, PROCESS),
+  `tick_`, `processType_` and the venetian-blind fade (`StartFadeIn` / `Out`, `ProcessFadeIn` /
+  `Out`, `RenderFade`).
+- **`XGameScene`** (the original's `XGameObject`) owns:
   - `XLevelView` (map data, object codes),
   - two `XHero`s (`heroA_`, `heroB_`; B is `XHero(false)`, always made, reset only in a
     two-player game, so NON for the whole level in a one-player one),
   - `XLevelLoop`,
   - `XCamera`,
-  - `XStatusDisplay` (the HUD),
-  - each hero's `XShadow`,
-  - both players' `XHeroStatus` and the one-player flag (`SetTwoPlayer`; F2 or `--two-player`).
+  - each hero's `XShadow`.
+
+  Its `ProcessFrame(n)` is `XGameObject::ProcessFrame`: the fade and the level's end (process
+  types 0–4), then `n` calls of `Tick()` (one tick of play).
 - **`XLevelLoop`** stands in for the original's `XGameObject` and implements `XHeroWorld`, the
   callbacks XHero uses. It owns:
   - an `XGameContext`, the shared pointers that objects reach through `XGameObject` in the
@@ -200,7 +212,8 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
 - `key=<SDL key name>`: press a key. `down=` and `up=` hold and release one.
 - `shot=<file.bmp>`: write a screenshot.
 - `quit`: exit.
-- `level=<world>,<level>`: start that level (1-based).
+- `level=<world>,<level>`: start that level (1-based), from any screen (the logo included).
+  The game opens on the logo for 9.5 s, so every test run starts with `level=`.
 - `place=<x>,<z>`: move hero A there with `XGameScene::TestPlaceHero`, which calls
   `SetStartPos` then `Reset`. `placeB=<x>,<z>` does the same for hero B (two-player games only).
 - `players=1` or `players=2`: the number of players for the next `level=`.
@@ -262,12 +275,11 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.2.24, stage 5 chunk 18 done)
+## Where we are (last updated: 2026-10-24, version 0.3.0, stage 6 chunk 1 done)
 
-**Stage 5 (the whole game) is under way: chunks 1 to 18 are done, so every object of the 40
-levels is built and two-player co-op is complete (player 2, hero on hero, player 2's platform
-shadow and HUD panel); chunk 19, the checks and the whole-game zip played start to finish by the
-owner, is the last of stage 5.** Wait for the owner to say "start the next chunk". The chunk table, with the
+**Stage 6 (the front end) is under way: chunk 1, the screen framework, the fades and the logo,
+is done; chunk 2, the title, is next.** Stage 5 built every object of the 40 levels and
+two-player co-op (player 2, hero on hero, player 2's platform shadow and HUD panel). Wait for the owner to say "start the next chunk". The chunk table, with the
 levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
 
@@ -287,11 +299,32 @@ Playable now, with nothing left unbuilt (no marker cubes):
   World 4 level by level and found nothing wrong (2026-10-24). A script over the 40 levels' object fields found no code outside
   `kDone` but `!` (the invisible block, never drawn).
 
-Still to build in stage 5 (the remaining chunks):
+Stage 5's code is complete (chunks 1 to 18). Chunk 19, the owner playing the whole game, is
+deferred: the owner will test once the front end is in, so stage 6 goes ahead first.
 
-| Chunk | What | Completes |
-|---|---|---|
-| 19 | Checks and the whole-game zip, played start to finish by the owner | |
+**Stage 6 (the front end) has 9 chunks; chunk 1 is done (0.3.0), chunk 2 is next.** The table,
+with the original's screen states, is in `docs/ROADMAP.md`, "Stage 6, chunk by chunk":
+
+| Chunk | What |
+|---|---|
+| 1 | Screen framework: `XApplication` states, `XProcessObject` fades, the logo (done, 0.3.0) |
+| 2 | Title (`XTitleObject`): one / two players, quit |
+| 3 | Saving: `XSaveData`, `XLevelStatus`, `DoSaveData`; own save file, import of registry saves |
+| 4 | Save slots (`XSelectSlot`) |
+| 5 | Level select (`XSelectLevelObject`) and the game's real level ends |
+| 6 | Shop screen (`XShop`) |
+| 7 | The other wands' shots (`XHeroFireList::_Wand*`, `XHeroFire_Chase`) |
+| 8 | Ending (`XEndingObject`) |
+| 9 | Checks and the stage 6 zip |
+
+`XRegisterInfoObject` (state 8) is never reached: `RegInfo_Registered` returns 1 in the
+freeware build. Keep the Tab viewers and the test hooks (`--auto`, N / B, F2) working alongside
+the front end. Chunk 1 notes: the sound cache moved to `JSoundList` (the application's);
+`JSurfaceList::Create(id, colorKey)` makes a bitmap with or without the colour key, as the
+original's `CreateSurface` flag (the fade strips 0x1f7 and the logo 0x2d1 have none; `Get` still
+makes any other keyed); `XLevelStatus` has its play part (`IncreaseLevel` / `World`,
+`IsLast*`, `Reset`), and its `Valid` and saving come with chunk 3. `XApplication::FrameMove`
+takes at most 10 ticks a frame, as the original.
 
 Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
 status, shot colour, warp photons, lost-gold line and platform mark; `XGameScene::UpdateInput`
@@ -313,8 +346,7 @@ platforms of 1-5 move, so a `place` onto them drops into the pit). Before
 splitting any future large piece, read every state's transitions first: the nest's bird turned out to be one loop sharing its steering, so a split
 proposed before reading it didn't fit; the wizard waits for each attack, so it split cleanly.
 
-After stage 5: **stage 6**, the front end (title, save slots, level select, the shop's screen,
-the ending); **stage 7**, opt-in modern extras.
+After stage 6: **stage 7**, opt-in modern extras.
 
 ### Waiting for the owner to check in play
 
@@ -395,8 +427,10 @@ finish, the dragon fight, the third-barrel heart.
 
 ### Known stand-ins (replace them when their real code lands)
 
-- Death restarts the level, and finishing the last level of a world goes to the next world.
-  Both wait for the level select in stage 6.
+- The title, save slots and level select go straight into the game at the level status, so
+  death replays the level and finishing a world starts the next one (`XLevelStatus::IncreaseWorld`:
+  world 3 leads back to world 1 until worlds 1–3 are cleared). The ending goes back to the logo.
+  Each waits for its stage 6 chunk.
 - The shop's screen (the building stands; stage 6).
 - One or two players is chosen with F2 or `--two-player` until the front end (stage 6) asks.
 - Only the starting wand's shot pattern exists. The others come with the shop.

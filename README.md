@@ -5,11 +5,12 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 5 of 7 in progress (version 0.2.24).** The engine runs (window, OpenGL
+> **Status: stage 6 of 7 in progress (version 0.3.0).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
 > explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
-> boss included, by one player or two (F2 or `--two-player`). Next: the checks that finish
-> stage 5, then the title, save slots and level select (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
+> boss included, by one player or two (F2 or `--two-player`). The front end has begun: the game
+> opens on the original's logo, and levels fade in and out. Next: the title screen, then saving,
+> save slots, level select, the shop and the ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
@@ -27,12 +28,15 @@ original game logic unchanged when every option is at its default.
 ## What works today
 
 **`MageBrosNative.exe`**: put it next to `MageBros.exe` (or pass `--game PATH`) and run it. It
-starts in the **game view**: World 1-1 with player 1's mage, who drops in from above and plays
+opens on the original's **logo** with its jingle; about ten seconds later (the title screen comes
+next) it goes into the **game view**: World 1-1 with player 1's mage, who drops in from above and plays
 with the original controls (arrow keys; jump Right Shift or `]`; fire Right Ctrl or `[`; in a
 one-player game Left Shift and Left Ctrl too; or a gamepad). Shots cost magic, which refills over
 time; jump-fire over a torch post to light its torch; collect coins; once every torch is lit the
 goal opens: stand on it to warp to the next level. Lit torches burn if you stand in them, and the
-mage flashes white after a hit. Escape gives up the level (losing some gold, as in the original).
+mage flashes white after a hit. Escape gives up the level (losing some gold, as in the original),
+once the level has finished fading in. Each level fades in and out with the original's venetian
+blind.
 The original status display shows the level, torches, life, gold and magic (and a boss's
 hearts), sounds are panned left and right as the mage moves, and the original's shadow and
 particle effects are in.

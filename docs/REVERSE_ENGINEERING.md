@@ -178,6 +178,68 @@ A floor tile is a flat 40×40 `JObject3D_Rect` at height × 25, mapped to the to
 the floor texture with a half-texel inset. The J library is the same one Hopmon uses, one
 version newer: texture and UVs are set by separate calls (`SetTexture`, `SetUV`).
 
+## The application and its screens (`XApplication`, `XProcessObject`, `XLogoObject`)
+
+`XApplication::FrameMove(n)` caps a frame at 10 ticks. While `state` (+0x1ac) is 2 (running) it
+calls the current screen's `ProcessFrame(n)` (+0x1c8). Any other state is a request: the old
+screen is deleted, the state's screen is made, and the state becomes 2; the new screen runs from
+the next frame. `Create` sets state 3, so the game opens on the logo. `Render` clears to the
+background colour (black) and draws the running screen.
+
+| State | Screen | Asks for next |
+|---|---|---|
+| 1 | (quit) | |
+| 3 | `XLogoObject` | 4 at tick 950 |
+| 4 | `XTitleObject` | 5 (one or two players: sets +0x1a4), 1 (quit) |
+| 5 | `XSelectSlot` | 6, or 4 (back) |
+| 6 | `XSelectLevelObject` | 7, 8 (when `RegInfo_Registered` is 0 and world ≥ 1: never, it returns 1 in the freeware build), or 4 (back) |
+| 7 | `XGameObject` | 6, or 9 after the last world |
+| 8 | `XRegisterInfoObject` | 6 |
+| 9 | `XEndingObject` | 3 |
+
+**`XProcessObject`**: `state` (+0x08: NON 0, FADEIN 1, FADEOUT 2, PROCESS 3), `tick` (+0x0c,
+counted by each screen), 30 fade sprites (+0x10, bitmap 0x1f7, which `XApplication::Create` makes
+without a colour key) and `processType` (+0x88, what the screen does next). `StartFadeIn`,
+`StartFadeOut` and `StartProcess` set the type and the state and zero the tick. The fade is a
+venetian blind: strip i is the 640-wide bitmap stretched over rows 16i to 16i + 15. With
+t = max(tick − 20, 0) and k = (t > 5i ? min(t − 5i, 64) : 0) / 4, fading in puts the strip at
+row 16i + k with height 16 − k (it opens downwards), fading out gives it height k from row 16i
+(it closes downwards). Everything is covered or clear by tick 229; the screens wait for tick 254.
+`RenderFade` draws the strips while fading in or out, last of all.
+
+**The game's flow** (`XGameObject::ProcessFrame(n)`): `tick += n`, then
+
+- FADEIN: `ProcessFadeIn`; at tick 254 `StartProcess(0)`.
+- FADEOUT: `ProcessFadeOut`; at tick 254, by type: 0 → state 6 (level select); 1 →
+  `IncreaseLevel` and `InitLevel` (which fades the next level in); 2 → `IncreaseWorld`, state 6;
+  3 → `IncreaseWorld`, state 9 (the ending); then `DoSaveData`, and nothing else that frame.
+- PROCESS type 0 (playing): a level cleared (as in "Player 2") → `StartProcess` 1, or 2 after a
+  world's last level, or 3 after the last world's; lost → `StartProcess(4)`; Escape (pressed this
+  frame) makes each hero in NORMAL give up. Types 1–3: after 200 ticks `StartFadeOut(type)`.
+  Type 4: after 300 ticks `StartFadeOut(0)`.
+- Then, unless the shop is open, `n` ticks of play. So a level is played while it fades in and
+  while it fades out, and Escape does nothing until the fade-in is over.
+
+**`XLevelStatus`** (11 bytes): `currentWorld`, `currentLevel`, `maxSelWorld`, `maxSelLevel[4]`,
+`bossDefeated[4]`. `Reset`: world and level 0, `maxSelWorld` 2 (worlds 1–3 open), the rest 0.
+`IncreaseLevel`: the level + 1 (back to 0 after 10), raising that world's `maxSelLevel`.
+`IncreaseWorld`: level 0, `bossDefeated[world] = 1`, world + 1 (back to 0 after 4); then if worlds
+1–3 are all cleared `maxSelWorld = 3`, else if the new world is 4 it becomes world 1, else
+`maxSelWorld` rises to it. `IsLastLevel`: level 9; `IsLastWorld`: world 3.
+
+**`XLogoObject`**: stops the music (`JMidiList::Stop`), makes the logo bitmap 0x2d1 without a
+colour key, an `XCamera` with `ResetForTitle` (distance 500, vertical angle 0, horizontal angle
+π, looking at the origin: the eye at (0, 0, −500)), the logo sprite and a 600 × 600
+`JObject3D_Rect` turned −π/2 about X (upright, facing the camera), without perspective
+correction, texture 0x13c; then `StartProcess(0)`. Each tick it counts; at tick 50 it plays sound
+0x2d0 unpanned (`PlayMono`, volume 1); at tick 950 it asks for state 4. `Render`: the camera, the
+backdrop, then the logo centred on the 640 × 480 screen (`DrawScale(1)`). It has no fade and
+takes no keys.
+
+**`JSprite`**: `Draw` blits the current frame stretched to the draw size (`SetDrawSize`, −1 for
+the bitmap's own); `DrawScaleXY(sx, sy)` blits it scaled about the sprite's centre
+(`GetCenterIntX` = position + width / 2), sizes rounded half away from zero.
+
 ## Behaviour to preserve
 
 - Fixed-step game logic (tick rate to be confirmed from `XApplication::FrameMove`), with any

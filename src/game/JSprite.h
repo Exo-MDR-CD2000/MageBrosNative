@@ -14,7 +14,11 @@ class BackBuffer;
 class Surface;
 
 namespace JSurfaceList {
-// JSurfaceList::CreateSurface / GetByResId: the bitmap, colour-keyed (nullptr if unreadable).
+// JSurfaceList::CreateSurface(resId, useColorKey): load the bitmap once, colour-keyed on its
+// top-left pixel or not (the fade strips and the logo are not). Get loads a bitmap not created
+// yet colour-keyed, as most of the game's are.
+void Create(uint16_t resId, bool useColorKey);
+// JSurfaceList::GetByResId: the bitmap (nullptr if unreadable).
 Surface* Get(uint16_t resId, int* width, int* height);
 void Clear();
 }  // namespace JSurfaceList
@@ -29,17 +33,24 @@ public:
     void SetCurrentFrame(int f) { if (f >= 0 && f < numFrames_) current_ = f; }
     int GetPosIntX() const { return (int)posX_; }
     int GetPosIntY() const { return (int)posY_; }
+    int GetCenterIntX() const { return GetPosIntX() + width_ / 2; }
+    int GetCenterIntY() const { return GetPosIntY() + frameHeight_ / 2; }
+    // the size the frame is stretched to when drawn (a negative size keeps the bitmap's)
+    void SetDrawSize(int w, int h) { drawWidth_ = w, drawHeight_ = h; }
     int GetWidth() const { return width_; }
     int GetHeight() const { return frameHeight_; }
     int GetNumFrames() const { return numFrames_; }
 
     void Draw(BackBuffer* bb) const;
+    // DrawScale / DrawScaleXY: the frame stretched by (sx, sy) about the sprite's centre
+    void DrawScale(BackBuffer* bb, float s) const { DrawScaleXY(bb, s, s); }
+    void DrawScaleXY(BackBuffer* bb, float sx, float sy) const;
 
 private:
     uint16_t resId_;
     float posX_ = 0, posY_ = 0;
     int width_ = 0, frameHeight_ = 0;
-    int drawWidth_ = -1, drawHeight_ = -1;  // SetDrawSize (not used by the HUD)
+    int drawWidth_ = -1, drawHeight_ = -1;  // SetDrawSize
     int current_ = 0, numFrames_ = 1;
 };
 

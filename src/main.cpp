@@ -15,6 +15,7 @@
 #include "framework/d3dfile.h"
 #include "framework/d3dtextr.h"
 #include "framework/d3dutil.h"
+#include "game/XApplication.h"
 #include "game/XGameScene.h"
 #include "game/XLevelView.h"
 #include "gfx/device.h"
@@ -56,7 +57,7 @@ class AssetViewerApp : public CD3DApplication {
 public:
     explicit AssetViewerApp(bool twoPlayer) {
         m_strWindowTitle = "Mage Bros. Native";
-        scene_.SetTwoPlayer(twoPlayer);
+        app_.SetTwoPlayer(twoPlayer);
     }
 
 protected:
@@ -80,7 +81,7 @@ protected:
         Log("Viewer: %zu models, %zu sounds", models_.size(), sounds_.size());
         LoadModel();
         levelView_.Load(0, 0);
-        scene_.Load(0, 0);
+        app_.Init();  // the original's screens, from the logo
         ResetCamera();
         PlayMusic(levelView_.MusicTrack());
         return S_OK;
@@ -108,29 +109,30 @@ protected:
         d->SetRenderState(D3DRENDERSTATE_AMBIENT, 0xff808080);
     }
 
-    // test automation (--auto): "place=x,z" drops hero A there ("placeB=x,z" hero B),
-    // "level=w,l" loads a level, "players=1" or "players=2" sets the number of players for the
-    // next level loaded
+    // test automation (--auto): "level=w,l" goes straight into the game at a level (from any
+    // screen), "place=x,z" drops hero A there ("placeB=x,z" hero B), "players=1" or "players=2"
+    // sets the number of players for the next level started
     void OnAutomation(const std::string& action, const std::string& arg) override {
         if (action == "players") {
-            scene_.SetTwoPlayer(arg == "2");
+            app_.SetTwoPlayer(arg == "2");
             return;
         }
         float a = 0, b = 0;
         if (std::sscanf(arg.c_str(), "%f,%f", &a, &b) != 2) return;
-        if (action == "place") scene_.TestPlaceHero(a, b);
-        else if (action == "placeB") scene_.TestPlaceHero(a, b, false);
-        else if (action == "level" && scene_.Load((int)a - 1, (int)b - 1)) PlayMusic(scene_.Level().MusicTrack());
+        if (action == "place" && app_.InGame()) app_.Game().TestPlaceHero(a, b);
+        else if (action == "placeB" && app_.InGame()) app_.Game().TestPlaceHero(a, b, false);
+        else if (action == "level") app_.StartGameAt((int)a - 1, (int)b - 1);
     }
 
     HRESULT FrameMove(DWORD n) override {
         angle_ += 0.01f * n;
         if (mode_ == Mode::Game) {
-            for (DWORD i = 0; i < n; i++) scene_.ProcessFrame();  // the original's 10 ms ticks
-            if (scene_.TakeLevelChanged()) {
-                PlayMusic(scene_.Level().MusicTrack());
-                UpdateTitle();
-            }
+            bool inGame = app_.InGame();
+            app_.FrameMove(n);  // n ticks of 10 ms (the original takes at most 10 a frame)
+            if (app_.QuitRequested()) RequestQuit();
+            bool levelChanged = app_.Game().TakeLevelChanged();
+            if (levelChanged) PlayMusic(app_.Game().Level().MusicTrack());
+            if (levelChanged || inGame != app_.InGame()) UpdateTitle();
             return S_OK;
         }
         if (levelMode_) {
@@ -167,8 +169,7 @@ protected:
         d->BeginScene();
         if (mode_ == Mode::Game) {
             XGameScene::SetDeviceState(d);
-            scene_.Render(d);
-            scene_.RenderStatus(GetBackBuffer());
+            app_.Render(d, GetBackBuffer());
             d->EndScene();
             return S_OK;
         }
@@ -209,20 +210,21 @@ protected:
             return;
         }
         if (mode_ == Mode::Game) {
+            if (!app_.InGame()) return;  // (the logo takes no keys)
+            const XLevelView& lv = app_.Game().Level();
             if (dik == DIK_N || dik == DIK_B) {
-                int w = scene_.Level().World(), l = scene_.Level().Level();
-                int i = w * GameFiles::kLevelsPerWorld + l + (dik == DIK_N ? 1 : -1);
+                // test hooks: the next or previous level, straight away
+                int i = lv.World() * GameFiles::kLevelsPerWorld + lv.Level() + (dik == DIK_N ? 1 : -1);
                 int n = GameFiles::kWorldCount * GameFiles::kLevelsPerWorld;
                 i = (i % n + n) % n;
-                if (scene_.Load(i / GameFiles::kLevelsPerWorld, i % GameFiles::kLevelsPerWorld))
-                    PlayMusic(scene_.Level().MusicTrack());
+                app_.StartGameAt(i / GameFiles::kLevelsPerWorld, i % GameFiles::kLevelsPerWorld);
                 UpdateTitle();
             } else if (dik == DIK_F2) {
-                // one or two players (the front end's choice, until it exists): restarts the level
-                scene_.SetTwoPlayer(!scene_.TwoPlayer());
-                if (scene_.Load(scene_.Level().World(), scene_.Level().Level())) PlayMusic(scene_.Level().MusicTrack());
+                // one or two players (the title's choice, until it exists): restarts the level
+                app_.SetTwoPlayer(app_.OnePlayer());
+                app_.StartGameAt(lv.World(), lv.Level());
                 UpdateTitle();
-            } else if (!scene_.TwoPlayer() && dik >= DIK_1 && dik < DIK_1 + GameFiles::kMusicTrackCount) {
+            } else if (app_.OnePlayer() && dik >= DIK_1 && dik < DIK_1 + GameFiles::kMusicTrackCount) {
                 PlayMusic(dik - DIK_1 + 1);  // (1 and 2 are player 2's fire and jump keys)
             }
             return;
@@ -315,18 +317,24 @@ private:
                 if (m != std::string::npos) name = text.substr(m + 5, text.find_first_of(" {\r\n", m + 5) - (m + 5));
             }
         char title[512];
+        if (mode_ == Mode::Game && !app_.InGame()) {
+            std::snprintf(title, sizeof title, "Mage Bros. Native %s   [Tab viewer, F10 options]", MBN_VERSION_STRING);
+            SDL_SetWindowTitle(GetWindow(), title);
+            return;
+        }
         if (mode_ == Mode::Game) {
-            if (scene_.TwoPlayer())
+            const XLevelView& lv = app_.Game().Level();
+            if (!app_.OnePlayer())
                 std::snprintf(title, sizeof title,
                               "Mage Bros. Native %s - World %d-%d, 2 players   [P1: arrows, R.Shift / ] jump, "
                               "R.Ctrl / [ fire; P2: WASD, L.Shift / 2 jump, L.Ctrl / 1 fire; Esc give up, "
                               "N/B level, F2 one player, Tab viewer, F10 options]",
-                              MBN_VERSION_STRING, scene_.Level().World() + 1, scene_.Level().Level() + 1);
+                              MBN_VERSION_STRING, lv.World() + 1, lv.Level() + 1);
             else
                 std::snprintf(title, sizeof title,
                               "Mage Bros. Native %s - World %d-%d   [arrows move, Shift / ] jump, Ctrl / [ fire, "
                               "Esc give up, N/B level, F2 two players, Tab viewer, F10 options]",
-                              MBN_VERSION_STRING, scene_.Level().World() + 1, scene_.Level().Level() + 1);
+                              MBN_VERSION_STRING, lv.World() + 1, lv.Level() + 1);
             SDL_SetWindowTitle(GetWindow(), title);
             return;
         }
@@ -354,7 +362,7 @@ private:
     float angle_ = 0, zoom_ = 1.f, radius_ = 10.f;
     D3DVECTOR center_{0, 0, 0};
     XLevelView levelView_;
-    XGameScene scene_;
+    XApplication app_;  // the original's screens: the logo, the game (the rest come with stage 6)
     enum class Mode { Game, LevelViewer, ModelViewer };
     Mode mode_ = Mode::Game;  // Tab cycles game -> level viewer -> model viewer
     bool levelMode_ = false;

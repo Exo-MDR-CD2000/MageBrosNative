@@ -7,6 +7,19 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.3.0] - 2026-10-24
+
+The front end begins (stage 6).
+
+- **The logo**: the game opens on the original's Saito Games logo with its jingle, as the original
+  does, before going into the game (the title screen comes next).
+- **Fades**: every level fades in and out with the original's venetian blind of black strips.
+  A cleared level waits 2 seconds before fading out to the next, a lost one 3 seconds.
+- Escape only gives up a level once it has finished fading in, as in the original.
+- Leaving world 3 goes back to world 1 until worlds 1 to 3 are all cleared, which opens world 4,
+  as in the original. After the last world the game goes back to the logo for now (the ending
+  comes later in stage 6).
+
 ## [0.2.24] - 2026-10-24
 
 - **Player 2's shadow on platforms**: player 2 now casts its shadow on the platform under it, as

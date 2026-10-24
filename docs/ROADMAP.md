@@ -8,8 +8,8 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 2 | Engine: window, OpenGL renderer, sound, MIDI music, keyboard/gamepad, options menu | Done |
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
 | 4 | First playable: World 1 with player 1 | Done |
-| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **In progress**: chunks 1–18 of 21 done (below) |
-| 6 | Front end: title, save slots, level select, shop, ending, saving | |
+| 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Built: chunks 1–18 done; chunk 19's play-through waits for the owner's full test (below) |
+| **6** | **Front end: title, save slots, level select, shop, ending, saving** | **In progress**: chunk 1 of 9 done (below) |
 | 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | |
 
 ## Stage 4, chunk by chunk
@@ -60,7 +60,7 @@ is done.
 | 16 | Player 2 (`XHeroB`): its models, keys and gamepad, its own status, the camera midpoint, the two-player start and level end; every enemy, boss, bullet, coin, torch, platform and the shop check both heroes; each player's shot colour; player 2's HUD panel; F2 / `--two-player` | all | | Done |
 | 17 | Hero-on-hero collision and carrying: each hero's box blocks the other, standing on the other (`heroAbove`, not while a floor fan lifts), the lower hero carrying the upper, platforms lifting and carrying a stacked pair | all | | Done |
 | 18 | Player 2's platform shadow (`XShadowOnPlatform`'s second shadow); player 2's HUD panel checked against `XStatusDisplay::Render` (identical to player 1's) | all | | Done |
-| 19 | Checks and the whole-game zip, played start to finish by the owner | | | **Next** |
+| 19 | Checks and the whole-game zip, played start to finish by the owner | | | Deferred: the owner will play the whole game once the front end is in |
 
 Chunk 7 was split in two (7a, 7b) because the genie is the largest piece of World 2. Chunk 14 was
 planned as two halves too, but the bird's five states form one loop that shares its steering, so
@@ -70,6 +70,36 @@ come separately. World 4
 reuses the earlier bosses (4-2 dragon, 4-5 genie, 4-8 nest) and only needs the wizard
 on top of what worlds 1–3 add. The split comes from counting each object code in the 40 shipped
 levels.
+
+## Stage 6, chunk by chunk
+
+The front end is `XApplication`'s state machine (`FrameMove`, `SetState`): each state builds one
+`XProcessObject` screen, which fades in, runs, fades out and sets the next state.
+
+| State | Screen | Goes to |
+|---|---|---|
+| 3 | `XLogoObject` | title |
+| 4 | `XTitleObject` | save slots (one or two players), or quit (state 1) |
+| 5 | `XSelectSlot` | level select, or back to the title |
+| 6 | `XSelectLevelObject` | the game, the register screen, or back to the title |
+| 7 | `XGameObject` | level select, or the ending after the last world |
+| 8 | `XRegisterInfoObject` | level select (never reached here: `RegInfo_Registered` returns 1 in the freeware build) |
+| 9 | `XEndingObject` | logo |
+
+| Chunk | What it covers | What you can test | Status |
+|---|---|---|---|
+| 1 | The screen framework: `XApplication`'s states, `XProcessObject`'s fade in and out (the game's own fades included), and the logo (`XLogoObject`) | the game starts on the logo, then goes into the game (the title's stand-in); levels fade in and out | Done |
+| 2 | The title (`XTitleObject`, `XCamera::ResetForTitle`): one player, two players, quit; it sets the one-player flag (F2 and `--two-player` become test hooks) | the title screen and its menu | **Next** |
+| 3 | Saving: `XSaveData`, `XLevelStatus` (`Reset`, `Valid`, `IncreaseLevel` / `World`, `IsLastLevel` / `World`), both heroes' status, `XApplication::DoSaveData`; the port's own save file, and import of the original's registry saves | progress and gold kept between runs | |
+| 4 | The save slots (`XSelectSlot`): one-player and two-player slots, loading, a new game, deleting a slot | choosing, starting and deleting slots | |
+| 5 | Level select (`XSelectLevelObject`) and the game's real level ends (`XGameObject`'s process types 0–4): clearing or dying returns to level select, the last level of a world moves on, the last world goes to the ending; the register screen noted as unreachable | picking any unlocked level; the stand-ins (restart on death, next world) are gone | |
+| 6 | The shop screen (`XShop`): opened by the shop building, life, magic level and wands for gold (`_CheckEnabledItems`), each player's own purchases | buying in the shop of each world | |
+| 7 | The other wands' shots (`XHeroFireList::_WandNormal2` / `3`, `_WandChase` / `2` / `3`, `XHeroFire_Chase`) | every wand bought in the shop fires its own pattern | |
+| 8 | The ending (`XEndingObject`, `XCamera::ResetForEnding`), then back to the logo | finishing 4-10 | |
+| 9 | Checks and the stage 6 zip: the whole flow from logo to ending by screenshot | the complete game, ready for the owner's full play-through (stage 5 chunk 19 and stage 6 together) | |
+
+Chunks 6 and 7 may swap: the shop can sell wands before they fire their own patterns, but the
+wands are easier to check once they can be bought.
 
 ## Open items
 
@@ -83,7 +113,7 @@ levels.
 | Static objects' collision with the hero | Done (5a): `XStaticObjList` and `XCollideBox` as the original |
 | Colour under the pit water | Settled (0.2.4): black, the original's clear colour; nothing is drawn under the water sheets |
 | Sound panning | Done (4c): pan, fade and per-sound copies as `JSound::PlayStereo` |
-| Death and the last level of a world | Restart / next world as stand-ins until level select exists (stage 6) |
+| Death and the last level of a world | Restart / next world as stand-ins until level select exists (stage 6 chunk 5) |
 
 ## Verification
 
