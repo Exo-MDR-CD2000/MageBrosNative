@@ -7,6 +7,16 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.3.4] - 2026-10-24
+
+- **Level select**: after the save slots comes the original's world map, with the level dots
+  of each world lit up to the level reached, a tick on each cleared world, and your gold and
+  life at the top. START plays the marked level, SELECT LEVEL moves the marker to any level
+  reached, BACK saves and returns to the title.
+- **The real level endings**: losing a level now saves and returns to level select (it no longer
+  just restarts), and clearing a world's last level saves and returns to level select at the next
+  world, as in the original.
+
 ## [0.3.3] - 2026-10-24
 
 - **The save slots**: after the title comes the original's slot screen, with 8 slots for

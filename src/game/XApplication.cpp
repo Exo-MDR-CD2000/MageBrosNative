@@ -4,6 +4,7 @@
 #include <ctime>
 #include "game/JSprite.h"
 #include "game/XLogoObject.h"
+#include "game/XSelectLevelObject.h"
 #include "game/XSelectSlot.h"
 #include "game/XTitleObject.h"
 #include "audio/midi.h"
@@ -47,10 +48,14 @@ void XApplication::FrameMove(unsigned n) {
             current_ = selectSlot_.get();
             state_ = RUNNING;
             break;
-        case GAME:
-        // stand-ins until their screens exist: the game at the save's level status
         case SELECT_LEVEL:
-        case REGISTER_INFO:
+            DropScreens();
+            selectLevel_ = std::make_unique<XSelectLevelObject>(this);
+            current_ = selectLevel_.get();
+            state_ = RUNNING;
+            break;
+        case GAME:
+        case REGISTER_INFO:  // (never asked for: the freeware build is registered)
             EnterGame();
             break;
         case ENDING:  // stand-in: the ending goes back to the logo, as the real one does
@@ -71,6 +76,7 @@ void XApplication::DropScreens() {
     logo_.reset();
     title_.reset();
     selectSlot_.reset();
+    selectLevel_.reset();
 }
 
 void XApplication::StopMusic() {

@@ -5,12 +5,12 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 6 of 7 in progress (version 0.3.3).** The engine runs (window, OpenGL
+> **Status: stage 6 of 7 in progress (version 0.3.4).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
 > explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
 > boss included, by one player or two. The front end has begun: the game opens on the
-> original's logo, title screen and save slots, levels fade in and out, and progress is saved.
-> Next: level select, the shop and the ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
+> original's logo, title screen, save slots and level select, levels fade in and out, and
+> progress is saved. Next: the shop and the ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
@@ -32,9 +32,10 @@ opens on the original's **logo** with its jingle, then the **title screen**: cho
 2 PLAYERS or EXIT with the arrow keys (or W / S, or a gamepad) and Enter (or Shift, Ctrl, a
 gamepad button); Escape picks EXIT. Then the **save slots**: 8 for each game mode, each showing
 the date it was saved and the level reached; choose one (an empty one starts a new game), or
-press Delete to delete a saved game. Until level select exists, the slot goes straight into the
-**game view**, at the level you reached: World 1-1 to start, with player 1's mage, who drops
-in from above and plays
+press Delete to delete a saved game. Then **level select**, the world map: START plays the
+level marked, SELECT LEVEL lets you move the marker to any level you have reached (Left / Right
+along a world, Up / Down between worlds), BACK saves and returns to the title. Then the **game
+view**: World 1-1 to start, with player 1's mage, who drops in from above and plays
 with the original controls (arrow keys; jump Right Shift or `]`; fire Right Ctrl or `[`; in a
 one-player game Left Shift and Left Ctrl too; or a gamepad). Shots cost magic, which refills over
 time; jump-fire over a torch post to light its torch; collect coins; once every torch is lit the
@@ -69,9 +70,8 @@ other, and one can stand on the other's head and be carried along, or up and dow
   pit, circles the arena, and attacks with a great spinning blade whose wind blows the mage towards
   the edge or a wand that fires homing fireballs.
 
-Defeated enemies drop coins. Dying restarts the
-level and finishing a world's last level goes on to the next world, until the level select of
-stage 6 exists.
+Defeated enemies drop coins. After a lost level, or a world's last level, the game saves and
+returns to level select; world 4 opens once worlds 1 to 3 are cleared.
 
 In the game view N / B change level and F2 switches between one and two players. Tab switches to the **level viewer**: every one of the 40
 levels, built by the original's own map code with each world's textures. The goal, coins and

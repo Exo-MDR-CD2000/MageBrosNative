@@ -357,6 +357,51 @@ the chosen slot, or 2 either side of "back". Then `RenderFade`.
 Music01 carries on from the title into the slots, and a level replayed after a death keeps its
 music going; `Stop` clears the current track, so the next `Play` starts again.
 
+### Level select (`XSelectLevelObject`)
+
+Fields: +0xe0 the menu item (0 START, 1 SELECT LEVEL, 2 BACK; −1 until the fade-in ends), +0xe4
+a counter of every tick, +0xe8 picking a level.
+
+The constructor plays Music01 and makes, all colour-keyed but the background tile 0x1fc: the
+arrows 0xd0 / 0xd1 (left, right) and 0x236 / 0x235 (up, down), 2 frames each; the menu items
+0xcd, 0xcc, 0xc8 (2 frames: chosen, not); the heading WORLD MAP (0x222); the four world
+banners 0x226–0x229; the level dot (0x224, 2 frames: frame 1 reached), the link between dots
+(0x223), the cleared tick (0x22a), the scroll panel (0x225) and the marker (0x1fd, the status
+display's). Then `XStatusDisplay::InitForSelLevel` (as `InitForGame`, with no game object, so it
+draws no magic) and `StartFadeIn`.
+
+`ProcessFrame`: input, tick and counter += n. FADEIN: at 254 the item is 0, `StartProcess`.
+FADEOUT: at 254, type 0 goes to state 7 (the game; or 8, the register screen, when unregistered
+and the world is past the first: never here), type 1 calls `DoSaveData` and goes to state 4
+(the title); that frame ends there. PROCESS: all four arrows blink; then
+
+- picking: Escape counts as the button; left takes the level down (below 0 it becomes the
+  world's `maxSelLevel`), right up (past `maxSelLevel` back to 0); up takes the world down (below
+  0 it becomes `maxSelWorld`), down up (past `maxSelWorld` back to 0), each then bringing the
+  level down to that world's `maxSelLevel` if it is higher; all with sound 0xec. The button plays
+  0xed and ends picking. The choice is made in the save's level status itself;
+- otherwise Escape chooses BACK and counts as the button; left and right move the item (sound
+  0xec, no wrapping); the button plays 0xed and on START fades out (type 0), on SELECT LEVEL starts
+  picking, on BACK fades out (type 1).
+
+Then (except on the frame that ends the fade-out) the status display runs n ticks.
+
+`Render`: the camera; the scrolling background as on the title; the panel centred at (320, 250);
+WORLD MAP centred at (320, 116); the banners centred on x 320 from 10 below it, each the next
+34 below the last's bottom. For each world: the tick at (banner right − 10, banner top − 4) when
+it is cleared (`bossDefeated`); ten dots from x 130 at 4 below the banner, frame 1 when the world
+is open (≤ `maxSelWorld`) and the level reached (≤ its `maxSelLevel`); after each but the last,
+x moves on half a dot, the link is drawn there, and x moves on half a link; the marker at (dot x
+− 9, dot y − 12) on the current level. The menu from (136, 436), each item 40 after the last
+(frame 0 chosen). While PROCESS: picking, four arrows centred around the marker's centre (+2
+down): left and right at x ± 20 shifted right by a quarter of the left arrow's width, up and down
+at y ± 20 shifted right by a quarter of the up arrow's width; otherwise the left and right arrows
+2 either side of the chosen item. Then the status display and `RenderFade`.
+
+With level select in, the game's level ends are the original's: a lost level saves and returns
+to level select at the same level; a cleared world (`IncreaseWorld`) saves and returns to level
+select at the next world's first level; only the last world's end goes on (to the ending).
+
 **`JSprite`**: `Draw` blits the current frame stretched to the draw size (`SetDrawSize`, −1 for
 the bitmap's own); `DrawScaleXY(sx, sy)` blits it scaled about the sprite's centre
 (`GetCenterIntX` = position + width / 2), sizes rounded half away from zero.

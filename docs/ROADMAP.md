@@ -9,7 +9,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Built: chunks 1–18 done; chunk 19's play-through waits for the owner's full test (below) |
-| **6** | **Front end: title, save slots, level select, shop, ending, saving** | **In progress**: chunks 1–4 of 9 done (below) |
+| **6** | **Front end: title, save slots, level select, shop, ending, saving** | **In progress**: chunks 1–5 of 9 done (below) |
 | 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | |
 
 ## Stage 4, chunk by chunk
@@ -92,8 +92,8 @@ The front end is `XApplication`'s state machine (`FrameMove`, `SetState`): each 
 | 2 | The title (`XTitleObject`, `XCamera::ResetForTitle`): one player, two players, quit; it sets the one-player flag (F2 and `--two-player` become test hooks) | the title screen and its menu | Done |
 | 3 | Saving: `XSaveData`, `XLevelStatus` (`Reset`, `Valid`, `IncreaseLevel` / `World`, `IsLastLevel` / `World`), both heroes' status, `XApplication::DoSaveData`; the port's own save files in the per-user folder (`%APPDATA%\MageBrosNative\saves`, or the ini's `save_path`), through a new `core/saves` that does what `save_path` already documents (modelled on Hopmon Native's). The original's registry saves are not imported | progress and gold kept between runs | Done |
 | 4 | The save slots (`XSelectSlot`): one-player and two-player slots, loading, a new game, deleting a slot | choosing, starting and deleting slots | Done |
-| 5 | Level select (`XSelectLevelObject`) and the game's real level ends (`XGameObject`'s process types 0–4): clearing or dying returns to level select, the last level of a world moves on, the last world goes to the ending; the register screen noted as unreachable | picking any unlocked level; the stand-ins (restart on death, next world) are gone | **Next** |
-| 6 | The shop screen (`XShop`): opened by the shop building, life, magic level and wands for gold (`_CheckEnabledItems`), each player's own purchases | buying in the shop of each world | |
+| 5 | Level select (`XSelectLevelObject`) and the game's real level ends (`XGameObject`'s process types 0–4): clearing or dying returns to level select, the last level of a world moves on, the last world goes to the ending; the register screen noted as unreachable | picking any unlocked level; the stand-ins (restart on death, next world) are gone | Done |
+| 6 | The shop screen (`XShop`): opened by the shop building, life, magic level and wands for gold (`_CheckEnabledItems`), each player's own purchases | buying in the shop of each world | **Next** |
 | 7 | The other wands' shots (`XHeroFireList::_WandNormal2` / `3`, `_WandChase` / `2` / `3`, `XHeroFire_Chase`) | every wand bought in the shop fires its own pattern | |
 | 8 | The ending (`XEndingObject`, `XCamera::ResetForEnding`), then back to the logo | finishing 4-10 | |
 | 9 | Checks and the stage 6 zip: the whole flow from logo to ending by screenshot | the complete game, ready for the owner's full play-through (stage 5 chunk 19 and stage 6 together) | |
@@ -113,7 +113,7 @@ wands are easier to check once they can be bought.
 | Static objects' collision with the hero | Done (5a): `XStaticObjList` and `XCollideBox` as the original |
 | Colour under the pit water | Settled (0.2.4): black, the original's clear colour; nothing is drawn under the water sheets |
 | Sound panning | Done (4c): pan, fade and per-sound copies as `JSound::PlayStereo` |
-| Death and the last level of a world | Restart / next world as stand-ins until level select exists (stage 6 chunk 5) |
+| Death and the last level of a world | Done (stage 6 chunk 5): back to level select, as the original |
 
 ## Verification
 

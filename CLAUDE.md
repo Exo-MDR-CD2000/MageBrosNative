@@ -94,9 +94,9 @@ them.
   chosen; `SetSaveData`, `DoSaveData`), the one-player flag (`SetTwoPlayer`: the title sets it; F2 and `--two-player` are
   test hooks), the `XStatusDisplay`, the `JSoundList`, the menus' `JDInput` (`GetDInput`) and a
   music request (`PlayMusic(track)`, which `main.cpp` takes with `TakeMusicRequest`). Screens
-  built: `XLogoObject`, `XTitleObject`, `XSelectSlot` and the game (`XGameScene`, kept and
-  restarted with `Start()` on each entry). Stand-ins: level select goes straight into the game
-  at the save's level status; the ending goes to the logo. `PlayMusic` ignores the track already
+  built: `XLogoObject`, `XTitleObject`, `XSelectSlot`, `XSelectLevelObject` and the game
+  (`XGameScene`, kept and restarted with `Start()` on each entry). Stand-in: the ending goes to
+  the logo. `PlayMusic` ignores the track already
   playing and `StopMusic` clears it, as `JMidiList` (the logo and the bosses' "stop the music"
   use `StopMusic`).
 - **Saving**: `src/core/saves.*` (adapted from Hopmon Native's, without its legacy registry
@@ -290,10 +290,11 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.3.3, stage 6 chunk 4 done)
+## Where we are (last updated: 2026-10-24, version 0.3.4, stage 6 chunk 5 done)
 
 **Stage 6 (the front end) is under way: chunks 1 (the screen framework, fades and logo), 2
-(the title), 3 (saving) and 4 (the save slots) are done; chunk 5, level select, is next.** Stage 5 built every object of the 40 levels and
+(the title), 3 (saving), 4 (the save slots) and 5 (level select and the real level ends) are
+done; chunk 6, the shop, is next.** Stage 5 built every object of the 40 levels and
 two-player co-op (player 2, hero on hero, player 2's platform shadow and HUD panel). Wait for the owner to say "start the next chunk". The chunk table, with the
 levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
@@ -317,8 +318,8 @@ Playable now, with nothing left unbuilt (no marker cubes):
 Stage 5's code is complete (chunks 1 to 18). Chunk 19, the owner playing the whole game, is
 deferred: the owner will test once the front end is in, so stage 6 goes ahead first.
 
-**Stage 6 (the front end) has 9 chunks; chunks 1 (0.3.0), 2 (0.3.1), 3 (0.3.2) and 4 (0.3.3)
-are done, chunk 5 is next.** The table,
+**Stage 6 (the front end) has 9 chunks; chunks 1 (0.3.0), 2 (0.3.1), 3 (0.3.2), 4 (0.3.3) and
+5 (0.3.4) are done, chunk 6 is next.** The table,
 with the original's screen states, is in `docs/ROADMAP.md`, "Stage 6, chunk by chunk":
 
 | Chunk | What |
@@ -327,7 +328,7 @@ with the original's screen states, is in `docs/ROADMAP.md`, "Stage 6, chunk by c
 | 2 | Title (`XTitleObject`): one / two players, quit (done, 0.3.1) |
 | 3 | Saving: `XSaveData`, `XLevelStatus`, `DoSaveData`; the port's own save files in AppData (`core/saves`, behind the ini's `save_path`); no import of the original's registry saves (owner's decision) (done, 0.3.2) |
 | 4 | Save slots (`XSelectSlot`) (done, 0.3.3) |
-| 5 | Level select (`XSelectLevelObject`) and the game's real level ends |
+| 5 | Level select (`XSelectLevelObject`) and the game's real level ends (done, 0.3.4) |
 | 6 | Shop screen (`XShop`) |
 | 7 | The other wands' shots (`XHeroFireList::_Wand*`, `XHeroFire_Chase`) |
 | 8 | Ending (`XEndingObject`) |
@@ -419,8 +420,9 @@ finish, the dragon fight, the third-barrel heart.
   `save_location.txt` in that folder with its save folder: back it up before testing and put it
   back after (it can't harm the saves, as copying only fills an empty folder, but keep it
   exact). The title's menu answers from about 12.2 s; after Return there the slot screen answers
-  from about 18.2 s; a level fades in for 2.5 s after it starts (Escape does nothing until then),
-  and a lost level saves about 8 s after Escape.
+  from about 18.2 s; after Return there (19 s) level select answers from about 24.2 s; a level
+  fades in for 2.5 s after it starts (Escape does nothing until then), and a lost level saves and
+  is back on level select about 12 s after Escape.
 
 - **Building here**: CMake is not on the PATH; it is
   `/c/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`
@@ -455,10 +457,6 @@ finish, the dragon fight, the third-barrel heart.
 
 ### Known stand-ins (replace them when their real code lands)
 
-- Level select goes straight into the game at the save's level status, so
-  death replays the level and finishing a world starts the next one (`XLevelStatus::IncreaseWorld`:
-  world 3 leads back to world 1 until worlds 1–3 are cleared). The ending goes back to the logo.
-  Each waits for its stage 6 chunk.
+- The ending goes back to the logo (stage 6 chunk 8).
 - The shop's screen (the building stands; stage 6).
-- One or two players is chosen with F2 or `--two-player` until the front end (stage 6) asks.
 - Only the starting wand's shot pattern exists. The others come with the shop.

@@ -10,10 +10,9 @@
 // (XSaveData: the level status and both players' status) and its slot, the one-player flag, the
 // status display and the sound list. DoSaveData writes the save back to its slot after each level.
 //
-// Built so far: the logo, the title, the save slots (stage 6 chunk 4) and the game. Stand-ins
-// until their screens exist: level select goes straight into the game at the save's level status
-// (so a death replays the level and a cleared world starts the next one), and the ending goes
-// back to the logo.
+// Built so far: the logo, the title, the save slots, level select (stage 6 chunk 5) and the game.
+// Stand-in until its screen exists: the ending goes back to the logo. The register screen is
+// never asked for (RegInfo_Registered is 1 in the freeware build).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -30,6 +29,7 @@ class Device;
 class XLogoObject;
 class XTitleObject;
 class XSelectSlot;
+class XSelectLevelObject;
 class XProcessObject;
 class XStatusDisplay;
 
@@ -100,6 +100,7 @@ private:
     std::unique_ptr<XLogoObject> logo_;
     std::unique_ptr<XTitleObject> title_;
     std::unique_ptr<XSelectSlot> selectSlot_;
+    std::unique_ptr<XSelectLevelObject> selectLevel_;
     std::unique_ptr<XGameScene> game_;  // kept, and restarted on each entry (the original remakes it)
     JSoundList sounds_;
     JDInput dinput_;
