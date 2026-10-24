@@ -13,6 +13,7 @@
 namespace {
 constexpr uint16_t kModelCannonBall = 0x18d, kModelCannonRBall = 0x1f2, kModelNeedleBall = 0x1f0;
 constexpr uint16_t kModelRocket = 0x196, kSoundRocketLaunch = 0x262;
+constexpr uint16_t kModelWizardFire = 0x29d;
 constexpr uint16_t kTexFlame = 0x192;
 constexpr float kQuarterPi = 0.785398f;
 
@@ -297,6 +298,62 @@ private:
     int frame_ = 0;
     std::unique_ptr<JObject3DRect> particle_;
 };
+
+// XBullet_WizardFire: the wizard's fireball (model 0x29d, radius 9, shadow 18). It grows from
+// nothing by 0.015 a tick and homes on the closer hero's centre, turning 1.2 degrees and pitching
+// 0.8 degrees a tick; after 40 ticks it speeds up from 0.8 by 0.008 a tick to 3, with a puff of
+// smoke every 12. The map, an object or a hero stops it with a burst where it was; below -200 it
+// just goes; on a water level below the surface it makes a ring (unless already below -43) and
+// bursts.
+class WizardFire : public XBulletBase {
+public:
+    WizardFire(const XGameContext* g, const D3DVECTOR& p, float yaw) : XBulletBase(g, p) {
+        model_ = std::make_unique<JObject3DX>(kModelWizardFire);
+        yaw_ = yaw;
+        model_->SetScale(0.0f);
+        UpdateWorldMatrix();
+        radius_ = 9.0f;
+        shadow_ = std::make_unique<XShadow>(radius_ * 2.0f);
+        speed_ = 0.8f;
+        liveState_ = NORMAL;
+    }
+    void ProcessFrame() override {
+        XBulletBase::ProcessFrame();
+        if (liveState_ != NORMAL) return;
+        const D3DVECTOR prev = pos_;
+        XHero* hero = game_->heroA;  // XGameObject::GetCloserHero (player 2: stage 5)
+        if (localCounter_ > 40) {
+            speed_ += 0.008f;
+            if (speed_ > 3.0f) speed_ = 3.0f;
+            if (localCounter_ % 12 == 0) game_->particles->CreateSmoke(pos_);
+        }
+        const D3DVECTOR& hp = hero->GetPos();
+        D3DVECTOR c(hp.x, hp.y + 14.5f, hp.z);  // XHeroBase::GetCenterPos
+        yaw_ = MakeAngleCloseTo_Constant(yaw_, FindYaw(c.x - pos_.x, c.z - pos_.z), 0.020944f);
+        pitch_ = MakeValueCloseTo_Constant(pitch_, -FindPitch(pos_, c), 0.0139626f);
+        pos_.x += std::sin(yaw_) * speed_ * std::cos(-pitch_);
+        pos_.z += std::cos(yaw_) * speed_ * std::cos(-pitch_);
+        pos_.y += std::sin(-pitch_) * speed_;
+        scale_ += 0.015f;
+        if (scale_ > 1.0f) scale_ = 1.0f;
+        model_->SetScale(scale_);
+        UpdateWorldMatrix();
+        if (game_->level->Collision().IsBlockedFloat(pos_.x, pos_.z, pos_.y) || game_->statics->CollisionCheck(pos_) ||
+            CollisionCheck_Hero(game_->heroA)) {  // (and hero B: player 2, stage 5)
+            game_->particles->CreateBulletExplode(prev);
+            liveState_ = NON;
+        } else if (pos_.y < -200.0f) {
+            liveState_ = NON;
+        } else if (game_->useWater && pos_.y < -38.0f) {
+            if (pos_.y > -43.0f) game_->particles->CreateWaterWave(D3DVECTOR(pos_.x, -38.0f, pos_.z), false, true);
+            game_->particles->CreateBulletExplode(prev);
+            liveState_ = NON;
+        }
+    }
+
+private:
+    float speed_ = 0, scale_ = 0;
+};
 }  // namespace
 
 // --------------------------------------------------------------------------------- XBulletBase
@@ -373,6 +430,11 @@ void XBulletList::CreateNeedleBall(const D3DVECTOR& pos, float yaw) {
 void XBulletList::CreateRocket(const D3DVECTOR& pos) {
     int i = GetNullIndex();
     if (i >= 0) slots_[i] = std::make_unique<Rocket>(game_, pos);
+}
+
+void XBulletList::CreateWizardFire(const D3DVECTOR& pos, float yaw) {
+    int i = GetNullIndex();
+    if (i >= 0) slots_[i] = std::make_unique<WizardFire>(game_, pos, yaw);
 }
 
 void XBulletList::ProcessFrame() {

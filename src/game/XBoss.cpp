@@ -22,9 +22,9 @@ constexpr uint16_t kModelNest = 0x28d, kColNest = 0x28e;
 constexpr uint16_t kModelBird1 = 0x289, kModelBird2 = 0x28a, kModelBird3 = 0x28b, kColBird = 0x28c;
 constexpr uint16_t kSoundBirdChirp = 0x2a5, kSoundNestHit = 0x2a6;
 constexpr uint16_t kModelWizard1 = 0x298, kModelWizard2 = 0x299, kModelWizard3 = 0x29a, kColWizard = 0x296;
-constexpr uint16_t kModelWizardBlade = 0x29c;
+constexpr uint16_t kModelWizardBlade = 0x29c, kModelWizardWand = 0x29b;
 constexpr uint16_t kSoundWizardRotate = 0x2a7, kSoundWizardAttack = 0x2aa, kSoundWizardAppear = 0x2ab,
-                   kSoundWizardRoar = 0x2b3;
+                   kSoundWizardRoar = 0x2b3, kSoundWizardFire = 0x2a8, kSoundWizardWandUp = 0x2a9;
 
 // FindDirectionXZ: the yaw from `from` towards `to`
 float FindDirectionXZ(const D3DVECTOR& from, const D3DVECTOR& to) { return FindYaw(to.x - from.x, to.z - from.z); }
@@ -1102,7 +1102,7 @@ XBoss_Wizard::XBoss_Wizard(const XGameContext* game, const D3DVECTOR& pos) : XBo
     collideBox_ = std::make_unique<XCollideBox>(200.0f, 80.0f);
     bodyShadow_ = std::make_unique<XShadow>(39.9f);
     blade_ = std::make_unique<XBoss_WizardBlade>(game, this);
-    // (the wand, XBoss_WizardWand, comes in stage 5 chunk 15b)
+    wand_ = std::make_unique<XBoss_WizardWand>(game, this);
     yaw_ = 3.14159f;
     pos_ = GetRefPos(RIGHT);
     pos_.y = -300.0f;  // under the floor
@@ -1141,6 +1141,7 @@ void XBoss_Wizard::Render(Device* d) {
     bodyShadow_->Render(d, game_->level->Collision());
     // (the original also calls the box's debug draw)
     if (moveState_ == BLADE) blade_->Render(d);
+    else if (moveState_ == WAND) wand_->Render(d);
 }
 
 void XBoss_Wizard::ProcessFrame() {
@@ -1226,11 +1227,130 @@ void XBoss_Wizard::Blade() {
     }
 }
 
-// _ProcessFrame_Wand: the wand attack (XBoss_WizardWand and its fire) comes in stage 5 chunk
-// 15b; until then a wand turn goes straight back in
+// _ProcessFrame_Wand: the same as the blade, with the wand
 void XBoss_Wizard::Wand() {
+    if (localCounter_ == 1) {
+        game_->playSound(kSoundWizardAttack, pos_.z);
+        int wandDir = -1;
+        if (posState_ == LEFT) wandDir = 0;
+        else if (posState_ == RIGHT) wandDir = 4;
+        wand_->Start(wandDir);
+        toPos_ = GetRefPos(CENTER);
+    }
+    yaw_ = MakeAngleCloseTo(yaw_, FindDirectionXZ(pos_, toPos_), 0.05f, 0.0f, FLT_MAX);
+    wand_->ProcessFrame();
+    if (wand_->GetLiveState() == XBossBase::NON) {
+        localCounter_ = 0;
+        moveState_ = MOVEIN;
+    }
+}
+
+// ---------------------------------------------------------------------------- XBoss_WizardWand
+
+XBoss_WizardWand::XBoss_WizardWand(const XGameContext* game, XBoss_Wizard* parent)
+    : XBossBase(game, parent->GetPos()), parent_(parent) {
+    model_ = std::make_unique<JObject3DX>(kModelWizardWand);  // (no collision model, no box)
+}
+
+void XBoss_WizardWand::Start(int wandDir) {
+    wandDir_ = wandDir;
+    scale_ = 0;
+    pitch_ = 0;
+    UpdatePosAndYaw();
+    UpdateWorldMatrix();
+    fireTimer_ = 120;
     localCounter_ = 0;
-    moveState_ = MOVEIN;
+    liveState_ = NORMAL;
+    moveState_ = APPEAR;
+}
+
+void XBoss_WizardWand::ProcessFrame() {
+    XBossBase::ProcessFrame();
+    if (liveState_ != NORMAL) return;
+    switch (moveState_) {
+        case APPEAR: Appear(); break;
+        case STICK_OUT: StickOut(); break;
+        case STICK_IN: StickIn(); break;
+        case ATTACK: Attack(); break;
+        case DISAPPEAR: Disappear(); break;
+        default: break;
+    }
+    UpdatePosAndYaw();
+    UpdateWorldMatrix();
+}
+
+// _UpdatePosAndYaw: 1 in front of the wizard, facing its way (pos written directly: no box)
+void XBoss_WizardWand::UpdatePosAndYaw() {
+    yaw_ = parent_->GetYaw();
+    pos_ = parent_->GetPos();
+    pos_.x += std::sin(yaw_) * 1.0f;
+    pos_.z += std::cos(yaw_) * 1.0f;
+}
+
+D3DVECTOR XBoss_WizardWand::GetFirePos() const {
+    D3DVECTOR p = pos_;
+    p.x += std::sin(yaw_) * 50.0f;
+    p.z += std::cos(yaw_) * 50.0f;
+    p.y -= 20.0f;
+    return p;
+}
+
+// grows over 100 ticks
+void XBoss_WizardWand::Appear() {
+    scale_ = std::sin((float)localCounter_ / 100.0f * 1.5708f);
+    if (localCounter_ >= 100) {
+        localCounter_ = 0;
+        moveState_ = STICK_OUT;
+    }
+}
+
+// tilts out to 60 degrees over 50 ticks
+void XBoss_WizardWand::StickOut() {
+    pitch_ = std::sin((float)localCounter_ / 50.0f * 1.5708f) * 1.0472f;
+    if (localCounter_ >= 50) {
+        pitch_ = 1.0472f;
+        localCounter_ = 0;
+        moveState_ = ATTACK;
+    }
+}
+
+// _ProcessFrame_Attack: sound 0x2a9; a flash at the tip every 4 ticks; when the timer runs out
+// (first after 120) sound 0x2a8 and a fireball along its yaw, the next in 160, 130 from tick 666
+// or 105 from 1332; 2000 ticks in all
+void XBoss_WizardWand::Attack() {
+    if (localCounter_ == 1) game_->playSound(kSoundWizardWandUp, pos_.z);
+    if (localCounter_ % 4 == 1) game_->particles->CreateWizardFireFlash(GetFirePos());
+    if (--fireTimer_ <= 0) {
+        game_->playSound(kSoundWizardFire, pos_.z);
+        game_->bullets->CreateWizardFire(GetFirePos(), yaw_);
+        if (localCounter_ < 666) fireTimer_ = 160;
+        else if (localCounter_ < 1332) fireTimer_ = 130;
+        else fireTimer_ = 105;
+    }
+    if (localCounter_ >= 2000) {
+        localCounter_ = 0;
+        moveState_ = STICK_IN;
+    }
+}
+
+// tilts back over 50 ticks
+void XBoss_WizardWand::StickIn() {
+    pitch_ = (1.0f - std::sin((float)localCounter_ / 50.0f * 1.5708f)) * 1.0472f;
+    if (localCounter_ >= 50) {
+        pitch_ = 0;
+        localCounter_ = 0;
+        moveState_ = DISAPPEAR;
+    }
+}
+
+// shrinks over 40 ticks and goes
+void XBoss_WizardWand::Disappear() {
+    scale_ = std::cos((float)localCounter_ / 40.0f * 1.5708f);
+    if (localCounter_ >= 40) {
+        localCounter_ = 0;
+        moveState_ = NON;
+        liveState_ = XBossBase::NON;
+    }
 }
 
 // The glide of _ProcessFrame_MoveIn and _ProcessFrame_MoveOut: 150 ticks in a straight line,

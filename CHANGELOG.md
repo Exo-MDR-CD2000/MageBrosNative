@@ -7,6 +7,13 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.2.21] - 2026-10-24
+
+- **The wizard's wand**: it holds out its wand, glowing at the tip, and fires fireballs that grow
+  as they fly and home in on the mage, faster and more often as the attack goes on.
+- **Every object in all 40 levels is now in the game**: all four worlds can be played with
+  player 1. (Two-player co-op comes next.)
+
 ## [0.2.20] - 2026-10-24
 
 - **The wizard**, World 4's boss (4-10), with 10 hearts: it rises out of the pit when the mage

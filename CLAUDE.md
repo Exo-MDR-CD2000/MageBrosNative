@@ -261,10 +261,10 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.2.20, stage 5 chunk 15a done)
+## Where we are (last updated: 2026-10-24, version 0.2.21, stage 5 chunk 15b done)
 
-**Stage 5 (the whole game) is under way: chunks 1 to 15a are done; chunk 15b, the wizard's wand
-and its fireballs, is next.** Wait for the owner to say "start the next chunk". The chunk table, with the
+**Stage 5 (the whole game) is under way: chunks 1 to 15b are done, so every object of the 40
+levels is built; chunk 16, player 2, is next.** Wait for the owner to say "start the next chunk". The chunk table, with the
 levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
 
@@ -279,23 +279,23 @@ Playable now, with nothing left unbuilt (no marker cubes):
 - **World 3**, 3-1 to 3-10 (chunks 8 to 14): pots, kiwis, jump needles, stalactites, rocket
   launchers and rockets, floor fans, ghosts, the nest and its 40 birds (the boss confirmed by the
   owner).
-- **World 4**: the wizard (chunk 15a, confirmed by the owner) with its blade; it skips its wand
-  turns until 15b. World 4's levels have not been checked one by one yet (15b).
+- **World 4**, 4-1 to 4-10: the first three worlds' objects and bosses plus the wizard (15a,
+  confirmed by the owner) with its blade and its wand and fireballs (15b). The owner played
+  World 4 level by level and found nothing wrong (2026-10-24). A script over the 40 levels' object fields found no code outside
+  `kDone` but `!` (the invisible block, never drawn).
 
 Still to build in stage 5 (the remaining chunks):
 
 | Chunk | What | Completes |
 |---|---|---|
-| 15b | The wizard's wand (`XBoss_WizardWand`), its fire (`XBullet_WizardFire`, `XParticle_WizardFireFlash`, `XCollideSphere`); World 4 checked | all 40 levels |
 | 16 | Player 2 analysis; `XHeroB` input and the camera midpoint | |
 | 17 | Hero-on-hero collision and carrying | |
 | 18 | Player 2's HUD panel and platform shadow | |
 | 19 | Checks and the whole-game zip, played start to finish by the owner | |
 
-For 15b: `XBoss_Wizard::Wand` is the stand-in to replace (the original starts the wand with
-windDir 0 from LEFT or 4 from RIGHT, faces the middle, runs and draws the wand, and goes to MOVEIN
-when it is NON, exactly as `Blade`). Before splitting any future large piece, read every state's
-transitions first: the nest's bird turned out to be one loop sharing its steering, so a split
+Player 2 (chunks 16 to 18): every place that checks only hero A says "player 2: stage 5" in a
+comment (grep for it); `XHero::pushedByFan_` is waiting for the landing-on-hero check. Before
+splitting any future large piece, read every state's transitions first: the nest's bird turned out to be one loop sharing its steering, so a split
 proposed before reading it didn't fit; the wizard waits for each attack, so it split cleanly.
 
 After stage 5: **stage 6**, the front end (title, save slots, level select, the shop's screen,
@@ -377,7 +377,6 @@ finish, the dragon fight, the third-barrel heart.
 
 - Death restarts the level, and finishing the last level of a world goes to the next world.
   Both wait for the level select in stage 6.
-- The shop's screen (the building stands; stage 6), the wizard's wand (skipped: 15b), and the other
-  unbuilt objects (marker cubes).
+- The shop's screen (the building stands; stage 6).
 - No player 2 (stage 5).
 - Only the starting wand's shot pattern exists. The others come with the shop.

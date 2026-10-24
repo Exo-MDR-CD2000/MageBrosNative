@@ -5,8 +5,8 @@
 // stops; once the boss has gone (NON) for 500 ticks the goal opens.
 //
 // Built so far: the dragon, World 1's boss (and World 4-2's), the genie, World 2's (and World
-// 4-5's), the nest and its birds, World 3's (and World 4-8's), and the wizard with its blade,
-// World 4's (its wand: stage 5 chunk 15b).
+// 4-5's), the nest and its birds, World 3's (and World 4-8's), and the wizard with its blade and
+// its wand, World 4's.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -250,6 +250,7 @@ private:
 };
 
 class XBoss_Wizard;
+class XBoss_WizardWand;
 
 // XBoss_WizardBlade: a great blade the wizard holds out 38 in front of it, spinning up, holding
 // at full speed for 800 ticks and spinning down. It has no box and can't hurt: it blows the hero
@@ -275,6 +276,32 @@ private:
     XBoss_Wizard* parent_;
     MoveState moveState_ = NON;
     float rotateSpeed_ = 0;
+};
+
+// XBoss_WizardWand: the wizard's wand, held 1 in front of it. It grows (100 ticks), tilts out to 60
+// degrees (50), then for 2000 ticks glows at the tip (a flash every 4 ticks) and fires a homing
+// fireball (XBullet_WizardFire) every 160 ticks, every 130 after 666 and every 105 after 1332; then
+// it tilts back (50) and shrinks away (40). No box: it never hurts or meets shots itself.
+class XBoss_WizardWand : public XBossBase {
+public:
+    enum MoveState { NON = 0, APPEAR = 1, STICK_OUT = 2, STICK_IN = 3, ATTACK = 4, DISAPPEAR = 5 };
+
+    XBoss_WizardWand(const XGameContext* game, XBoss_Wizard* parent);
+    void ProcessFrame() override;
+    void Start(int wandDir);  // (wandDir is stored but never used)
+
+private:
+    void Appear();
+    void StickOut();
+    void StickIn();
+    void Attack();
+    void Disappear();
+    void UpdatePosAndYaw();     // _UpdatePosAndYaw
+    D3DVECTOR GetFirePos() const;  // GetFirePos: 50 ahead and 20 down
+
+    XBoss_Wizard* parent_;
+    MoveState moveState_ = NON;
+    int wandDir_ = -1, fireTimer_ = 0;
 };
 
 // XBoss_Wizard ('9'): World 4's boss (4-10). It waits under the floor until a hero comes within 110
@@ -313,6 +340,7 @@ private:
     PosState posState_ = CENTER;
     std::unique_ptr<XShadow> bodyShadow_;
     std::unique_ptr<XBoss_WizardBlade> blade_;
+    std::unique_ptr<XBoss_WizardWand> wand_;
     D3DVECTOR toPos_{0, 0, 0}, fromPos_{0, 0, 0};
     float rotateAngle_ = 0, rotateSpeed_ = 0, rotateRadius_ = 0;
     unsigned subLocalCounter_ = 0, offsetCounter_ = 0;

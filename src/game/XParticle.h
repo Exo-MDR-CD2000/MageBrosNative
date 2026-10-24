@@ -74,6 +74,7 @@ public:
     void CreateLandEffect(const D3DVECTOR& pos);
     void CreateHammerEffect(const D3DVECTOR& pos);
     void CreateLampSteam(const D3DVECTOR& pos);
+    void CreateWizardFireFlash(const D3DVECTOR& pos);  // the glow at the wizard's wand tip
     // XParticleList::CreateWaterWave: a ring on the water at `pos`
     void CreateWaterWave(const D3DVECTOR& pos, bool large, bool sound);
 

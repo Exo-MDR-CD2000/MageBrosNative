@@ -397,6 +397,41 @@ private:
     D3DVECTOR dir_;
     float alpha_ = 1.0f;
 };
+
+// XParticle_WizardFireFlash: the glow at the tip of the wizard's wand, a 150-unit sprite of the
+// hero shot's flash sheet (a random cell of 3 x 3 every tick), shrinking by 0.95 and fading by
+// 0.12 a tick
+class WizardFireFlash : public XParticleBase {
+public:
+    WizardFireFlash(XParticleList* l, const D3DVECTOR& p) : XParticleBase(l, p) {
+        particle_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(1, 1));
+        particle_->Scale(150);
+        particle_->SetTexture(kTexHeroFlashA);
+        SetTextureRandomly();
+        state_ = NORMAL;
+    }
+    void ProcessFrame() override {
+        XParticleBase::ProcessFrame();
+        if (state_ != NORMAL) return;
+        alpha_ -= 0.12f;
+        if (alpha_ > 0.05f) {
+            particle_->Scale(0.95f);
+            particle_->SetAlphaFactor(alpha_);
+            SetTextureRandomly();
+        } else {
+            state_ = NON;
+        }
+    }
+
+private:
+    void SetTextureRandomly() {
+        int r = (int)Random(9);
+        float u = (r % 3) / 3.0f, v = (r / 3) / 3.0f;
+        const float third = 0.333333f;
+        particle_->SetUV(u, r % 3 == 2 ? 1.0f : u + third, v, r / 3 == 2 ? 1.0f : v + third, 0);
+    }
+    float alpha_ = 1.0f;
+};
 }  // namespace
 
 // ------------------------------------------------------------------------------- XParticleBase
@@ -471,6 +506,7 @@ void XParticleList::CreateHeroFireSmoke(const D3DVECTOR& pos, bool heroA, bool l
 void XParticleList::CreateHeroFireFlash(const D3DVECTOR& pos, bool heroA, bool large) {
     Add(std::make_unique<HeroFireFlash>(this, pos, heroA, large));
 }
+void XParticleList::CreateWizardFireFlash(const D3DVECTOR& pos) { Add(std::make_unique<WizardFireFlash>(this, pos)); }
 void XParticleList::CreateHeroWarpPhoton(bool heroA) { Add(std::make_unique<HeroWarpPhoton>(this, heroA)); }
 void XParticleList::CreateTorchFire1(const D3DVECTOR& pos) { Add(std::make_unique<TorchFire1>(this, pos)); }
 void XParticleList::CreateTorchFire2(const D3DVECTOR& pos) { Add(std::make_unique<TorchFire2>(this, pos)); }

@@ -974,12 +974,12 @@ beat), collision 0x28c, an `XShadow` 12 (`bodyShadow`), box 20 × 20, not damaga
 - `_LimitPosition_Wall(p, m)`: x kept within m .. 200 − m, and z ≥ m (no limit at the far end).
   `_LimitPosition_Floor(p, m)`: y ≥ m. Both ignore the level's real floors and walls.
 
-## The wizard and its blade (`XBoss_Wizard`, `XBoss_WizardBlade`)
+## The wizard, its blade and its wand (`XBoss_Wizard`, `XBoss_WizardBlade`, `XBoss_WizardWand`)
 
 World 4's boss (`9`, 4-10 at (140, 940); the arena is the floor around z 860..1020, with pits on
-every side). The wizard owns a blade and a wand (`XBoss_WizardWand`, its fire `XBullet_WizardFire`
-and `XParticle_WizardFireFlash`: stage 5 chunk 15b), both `XBossBase` objects it runs and draws
-itself during the matching state.
+every side). The wizard owns a blade and a wand, both `XBossBase` objects it runs and draws itself
+during the matching state; the wand fires `XBullet_WizardFire` and glows with
+`XParticle_WizardFireFlash`.
 
 **Wizard**: models 0x298 / 0x299 / 0x298 / 0x29a, collision 0x296, box 200 × 80, an `XShadow` 39.9
 (`bodyShadow`). yaw π; pos = `GetRefPos(RIGHT)` with y −300 (under the floor). `explodeRadius` 80,
@@ -1015,8 +1015,8 @@ healthSubMax 40 (= healthSub), healthMain the base's 10. NORMAL, HIDE, posState 
 - BLADE: at t = 1 sound 0x2aa, `blade->Start(windDir)` with windDir 0 from LEFT or 4 from RIGHT,
   toPos = CENTER. yaw eases (0.05) towards the middle; the blade's `ProcessFrame`; when its liveState
   is NON → MOVEIN.
-- WAND: the same with the wand (`wand->Start`), until the wand is NON (stage 5 chunk 15b; until
-  then the port goes straight back to MOVEIN).
+- WAND: the same with the wand (`wand->Start(wandDir)`, 0 from LEFT, 4 from RIGHT), until the wand
+  is NON.
 
 **Blade**: base made with the wizard's pos; model 0x29c only: no collision model and no box (it
 never hurts and never meets shots; its pos is written directly). windDir −1.
@@ -1033,6 +1033,38 @@ never hurts and never meets shots; its pos is written directly). windDir −1.
 - `_PushHero` (blade NORMAL, hero NORMAL, not NON, APPEAR or DISAPPEAR): push = speed/10 · 1.375;
   windDir 0: `IncreasePushZ(push)`, 4: `IncreasePushZ(−push)`. So it blows the hero away from the
   wizard's side, towards the pit beyond the arena.
+
+**Wand**: base made with the wizard's pos; model 0x29b only (no collision model, no box; pos
+written directly). wandDir −1, fireTimer 0.
+- `Start(wandDir)`: wandDir stored (never read), scale 0, pitch 0, `_UpdatePosAndYaw`, world matrix,
+  fireTimer 120, t = 0, NORMAL, APPEAR.
+- `ProcessFrame`: the base's; if NORMAL: the state, `_UpdatePosAndYaw`, world matrix. Drawn by the
+  base `Render`.
+- `_UpdatePosAndYaw`: yaw = the wizard's; pos = the wizard's + 1 · (sin yaw, 0, cos yaw).
+- `GetFirePos`: pos + 50 · (sin yaw, 0, cos yaw), 20 lower.
+- APPEAR: scale = sin(t/100 · π/2); at 100 → STICK_OUT. STICK_OUT: pitch = sin(t/50 · π/2) · 60°;
+  at 50 pitch 60° → ATTACK. STICK_IN: pitch = (1 − sin(t/50 · π/2)) · 60°; at 50 pitch 0 →
+  DISAPPEAR. DISAPPEAR: scale = cos(t/40 · π/2); at 40 NON.
+- ATTACK: at t = 1 sound 0x2a9; when t mod 4 = 1 `CreateWizardFireFlash(GetFirePos())`; when
+  --fireTimer ≤ 0: sound 0x2a8, `CreateWizardFire(GetFirePos(), yaw)`, fireTimer = 160 (t < 666),
+  130 (t < 1332) or 105. At t ≥ 2000 → STICK_IN. So fireballs at 120, 280, ... about 16 in all.
+
+**Fireball** (`XBullet_WizardFire`, `XBulletList::CreateWizardFire(pos, yaw)`): model 0x29d scaled 0,
+yaw as given, radius 9 (its `XCollideSphere`), an `XShadow` 18 (radius × 2), speed 0.8, NORMAL.
+`ProcessFrame` (after the base's count, if NORMAL): keep pos; target = the closer hero's
+`GetCenterPos`; after t > 40 speed +0.008 to 3 and `CreateSmoke(pos)` when t mod 12 = 0; yaw steps
+1.2° (0.020944) towards the target (`MakeAngleCloseTo_Constant`), pitch 0.8° (0.0139626) towards
+−`FindPitch` (`MakeValueCloseTo_Constant`); pos += speed · (sin yaw cos(−pitch), sin(−pitch),
+cos yaw cos(−pitch)); scale +0.015 to 1 (`SetScale`); world matrix. Then: the map (`IsBlockedFloat`),
+an object (`XStaticObjList::CollisionCheck`) or a hero hit (`_CollisionCheck_Hero`, either hero) →
+`CreateBulletExplode` at the kept pos, NON; else below −200 → NON; else on a water level below
+−38 → a small ring with sound at y −38 if still above −43, the burst, NON. Platforms don't stop it.
+
+**Fire flash** (`XParticle_WizardFireFlash`, `XParticleList::CreateWizardFireFlash(pos)`): a 1 × 1
+`JObject3D_Particle` (camera-facing) `Scale`d 150, texture 0x194 (player 1's shot flash sheet), a
+random cell of its 3 × 3 grid (`_SetTextureRandomly`: Random(9), cells a third wide), alpha 1.
+Each tick alpha −0.12; while above 0.05 it `Scale`s by 0.95, sets the alpha factor and a new random
+cell; then it ends. (The port's `XCollideSphere` is the bullets' `radius_`.)
 
 ## Particles and shadows (`XParticleList`, `XShadow`, `JObject3D`)
 

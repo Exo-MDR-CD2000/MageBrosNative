@@ -8,7 +8,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 2 | Engine: window, OpenGL renderer, sound, MIDI music, keyboard/gamepad, options menu | Done |
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
 | 4 | First playable: World 1 with player 1 | Done |
-| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **In progress**: chunks 1–15a of 21 done (below) |
+| **5** | **The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op** | **In progress**: chunks 1–15b of 21 done (below) |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | |
 | 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | |
 
@@ -56,8 +56,8 @@ is done.
 | 13 | Ghost `g` | 3-5, 3-7, 3-8 | 3-5, 3-7, 3-8 | Done |
 | 14 | The nest and its birds, World 3's boss (`8`) | 3-10 | all of World 3 | Done |
 | 15a | The wizard, World 4's boss (`9`): hiding, appearing, gliding, circling, its hearts and defeat, and its blade, which blows the mage along; its wand turns go straight back in for now | 4-10 | | Done |
-| 15b | The wizard's wand and its fireballs (`XBoss_WizardWand`, `XBullet_WizardFire`, `XParticle_WizardFireFlash`, `XCollideSphere`); World 4 checked | 4-10 | all 40 levels | **Next** |
-| 16 | Player 2 analysis; `XHeroB` input and the camera midpoint | | | |
+| 15b | The wizard's wand and its fireballs (`XBoss_WizardWand`, `XBullet_WizardFire`, `XParticle_WizardFireFlash`; `XCollideSphere` is the bullets' radius); every object code in the 40 levels built; World 4 played level by level by the owner | 4-10 | all 40 levels | Done |
+| 16 | Player 2 analysis; `XHeroB` input and the camera midpoint | | | **Next** |
 | 17 | Hero-on-hero collision and carrying | | | |
 | 18 | Player 2's HUD panel and platform shadow | | | |
 | 19 | Checks and the whole-game zip, played start to finish by the owner | | | |
