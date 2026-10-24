@@ -7,6 +7,14 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.2.20] - 2026-10-24
+
+- **The wizard**, World 4's boss (4-10), with 10 hearts: it rises out of the pit when the mage
+  reaches the far edge of the arena, glides in, circles the middle faster and closer, then stops on
+  the other side and glides out to attack.
+- **The wizard's blade**: a great spinning blade whose wind blows the mage along the arena towards
+  the pit. (Its wand attack comes in the next version; until then it skips those turns.)
+
 ## [0.2.19] - 2026-10-24
 
 - **The nest**, World 3's boss (also in 4-8): a great nest floating in the water, turning slowly,

@@ -5,7 +5,8 @@
 // stops; once the boss has gone (NON) for 500 ticks the goal opens.
 //
 // Built so far: the dragon, World 1's boss (and World 4-2's), the genie, World 2's (and World
-// 4-5's), and the nest and its birds, World 3's (and World 4-8's).
+// 4-5's), the nest and its birds, World 3's (and World 4-8's), and the wizard with its blade,
+// World 4's (its wand: stage 5 chunk 15b).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -246,5 +247,75 @@ private:
     int currentBirdIndex_ = 0;
     float refPosY_ = 0, rotSpeed_ = 0;
     std::unique_ptr<XBoss_Bird> birdArray_[kBirds];
+};
+
+class XBoss_Wizard;
+
+// XBoss_WizardBlade: a great blade the wizard holds out 38 in front of it, spinning up, holding
+// at full speed for 800 ticks and spinning down. It has no box and can't hurt: it blows the hero
+// along Z, away from the side the wizard is on (up to 1.375 a tick). The wizard runs and draws it.
+class XBoss_WizardBlade : public XBossBase {
+public:
+    enum MoveState { NON = 0, APPEAR = 1, ROTATE_FASTER = 2, ROTATE_STABLE = 3, ROTATE_SLOWER = 4, DISAPPEAR = 5 };
+
+    XBoss_WizardBlade(const XGameContext* game, XBoss_Wizard* parent);
+    void ProcessFrame() override;
+    void Start(int windDir);  // windDir 0 blows along +Z, 4 along -Z
+
+private:
+    void Appear();
+    void RotateFaster();
+    void RotateStable();
+    void RotateSlower();
+    void Disappear();
+    void UpdatePosAndYaw();     // _UpdatePosAndYaw
+    void PushHero(XHero* hero);  // _PushHero
+
+    int windDir_ = -1;
+    XBoss_Wizard* parent_;
+    MoveState moveState_ = NON;
+    float rotateSpeed_ = 0;
+};
+
+// XBoss_Wizard ('9'): World 4's boss (4-10). It waits under the floor until a hero comes within 110
+// (a roar from 300), rises at the right over 100 ticks and bobs there until 300, then loops: it
+// glides in to 100 off the middle (150 ticks), circles the middle (speeding up to 6 degrees a
+// tick, closing to 40 away, holding 300 ticks, widening and slowing) and stops on the other side,
+// glides out to 200 off the middle and attacks with its blade or its wand, chosen at random.
+// 10 hearts of 40 hits.
+class XBoss_Wizard : public XBossBase {
+public:
+    enum MoveState { NON = 0, HIDE, APPEAR, BLADE, WAND, MOVEIN, MOVEOUT, ROTATE };
+    enum RotateState { GET_FASTER = 0, GET_CLOSER, STAY, GET_FURTHER, GET_SLOWER, STOP };
+    enum PosState { CENTER = 0, LEFT, RIGHT, LEFT_CENTER, RIGHT_CENTER, UP_CENTER, DOWN_CENTER };
+
+    XBoss_Wizard(const XGameContext* game, const D3DVECTOR& pos);
+    ~XBoss_Wizard() override;
+    void Render(Device* d) override;
+    void ProcessFrame() override;
+    D3DVECTOR GetRefPos(PosState s) const;  // GetRefPos
+    float GetYaw() const { return yaw_; }
+
+private:
+    void UpdatePosY();                    // _UpdatePosY: the bob
+    void PlayRotateSound(float from, float to);  // _PlayRotateSound: at each quarter turn passed
+    void Hide();
+    void Appear();
+    void Blade();
+    void Wand();
+    void MoveIn();
+    void MoveOut();
+    void Rotate();
+    void Glide(PosState fromState, PosState toState);  // MoveIn and MoveOut's shared step
+
+    MoveState moveState_ = NON;
+    RotateState rotateState_ = GET_FASTER;
+    PosState posState_ = CENTER;
+    std::unique_ptr<XShadow> bodyShadow_;
+    std::unique_ptr<XBoss_WizardBlade> blade_;
+    D3DVECTOR toPos_{0, 0, 0}, fromPos_{0, 0, 0};
+    float rotateAngle_ = 0, rotateSpeed_ = 0, rotateRadius_ = 0;
+    unsigned subLocalCounter_ = 0, offsetCounter_ = 0;
+    bool roarSoundPlayed_ = false;
 };
 

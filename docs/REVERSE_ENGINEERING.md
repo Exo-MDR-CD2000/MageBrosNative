@@ -974,6 +974,66 @@ beat), collision 0x28c, an `XShadow` 12 (`bodyShadow`), box 20 × 20, not damaga
 - `_LimitPosition_Wall(p, m)`: x kept within m .. 200 − m, and z ≥ m (no limit at the far end).
   `_LimitPosition_Floor(p, m)`: y ≥ m. Both ignore the level's real floors and walls.
 
+## The wizard and its blade (`XBoss_Wizard`, `XBoss_WizardBlade`)
+
+World 4's boss (`9`, 4-10 at (140, 940); the arena is the floor around z 860..1020, with pits on
+every side). The wizard owns a blade and a wand (`XBoss_WizardWand`, its fire `XBullet_WizardFire`
+and `XParticle_WizardFireFlash`: stage 5 chunk 15b), both `XBossBase` objects it runs and draws
+itself during the matching state.
+
+**Wizard**: models 0x298 / 0x299 / 0x298 / 0x29a, collision 0x296, box 200 × 80, an `XShadow` 39.9
+(`bodyShadow`). yaw π; pos = `GetRefPos(RIGHT)` with y −300 (under the floor). `explodeRadius` 80,
+healthSubMax 40 (= healthSub), healthMain the base's 10. NORMAL, HIDE, posState RIGHT.
+- `GetRefPos(s)`: x 100, y 87.5 (absolute), z = start.z, −200 (LEFT), +200 (RIGHT), −100
+  (LEFT_CENTER), +100 (RIGHT_CENTER); UP_CENTER / DOWN_CENTER: x 0 / 200 at start.z (unused here).
+- `ProcessFrame`: the base's; if NORMAL: frame = (t / 3) mod 4, the state, then (not in HIDE or
+  APPEAR) `_UpdatePosY`, world matrix, the hero checks.
+- `Render`: not NON or DEAD: model, shadow at pos (box debug draw), then the blade in BLADE or the
+  wand in WAND.
+- `_UpdatePosY`: offsetCounter++; pos.y = 87.5 + sin((offsetCounter mod 100)/100 · 2π + π) · 4.5
+  (pos only; the box keeps the y the last `_SetPos` gave it).
+- HIDE: the first time the closer hero is within 300 (XZ) of pos, `PlayMono(0x2b3)` (a roar); within
+  110 (XZ) → APPEAR. pos is the RIGHT spot, 200 past the arena's middle, so the hero has to reach the
+  arena's far edge.
+- APPEAR: at t = 1 `PlayMono(0x2ab)`. k = min(t/100, 1), y = −300 + sin(k · π/2) · 387.5, `_SetPos`;
+  from t = 100 also `_UpdatePosY`. At t ≥ 300: posState RIGHT, MOVEIN.
+- MOVEIN / MOVEOUT: at t = 1 fromPos and toPos = the ref spots (LEFT → LEFT_CENTER, RIGHT →
+  RIGHT_CENTER; out the other way). pos = `D3DVectorInterpolate(from, to, t/150)`, `_SetPos`; yaw
+  eases (0.05) to the direction moved. At t ≥ 150 posState becomes the new spot; MOVEIN → ROTATE,
+  MOVEOUT → `Random(2)` 0: WAND, else BLADE.
+- ROTATE: at t = 1 angle π (from LEFT_CENTER) or 0 (RIGHT_CENTER), toPos = the CENTER spot, radius
+  100, speed 1.2 (degrees a tick), subLocalCounter 0, GET_FASTER. Each tick subLocalCounter++; unless
+  STOP, angle = `NormaliseAngle(angle + speed°)`, from t > 10 `_PlayRotateSound(old, new)`, pos =
+  toPos + radius · (sin angle, 0, cos angle), yaw = `FindDirectionXZ(pos, toPos)` (facing the middle).
+  Then: GET_FASTER speed +0.016 to 6; GET_CLOSER radius −0.2 to 40; STAY 300 ticks; GET_FURTHER
+  radius +0.2 to 100; GET_SLOWER speed −0.016 to 1.2; STOP: angle += speed° without normalising,
+  capped at 2π (from LEFT_CENTER) or 3π (from RIGHT_CENTER), placed and faced as above; on reaching
+  it posState flips to the other centre spot and MOVEOUT. So it always stops opposite where it came
+  in.
+- `_PlayRotateSound(a, b)`: sound 0x2a7 when a > b (wrapped past 0) or a ≤ q ≤ b for q = π/2, π,
+  3π/2.
+- BLADE: at t = 1 sound 0x2aa, `blade->Start(windDir)` with windDir 0 from LEFT or 4 from RIGHT,
+  toPos = CENTER. yaw eases (0.05) towards the middle; the blade's `ProcessFrame`; when its liveState
+  is NON → MOVEIN.
+- WAND: the same with the wand (`wand->Start`), until the wand is NON (stage 5 chunk 15b; until
+  then the port goes straight back to MOVEIN).
+
+**Blade**: base made with the wizard's pos; model 0x29c only: no collision model and no box (it
+never hurts and never meets shots; its pos is written directly). windDir −1.
+- `Start(windDir)`: scale 0, rotateSpeed 0, `_UpdatePosAndYaw`, world matrix, t = 0, NORMAL,
+  APPEAR.
+- `ProcessFrame`: the base's; if NORMAL: the state, `_UpdatePosAndYaw`, `_PushHero` for each hero,
+  world matrix. Drawn by the base `Render` (model only).
+- `_UpdatePosAndYaw`: yaw = the wizard's; pos = the wizard's + 38 · (sin yaw, 0, cos yaw).
+- APPEAR: scale = sin(t/120 · π/2); at 120 → ROTATE_FASTER. ROTATE_FASTER: at t = 1 speed 0;
+  speed +0.02 to 10; roll = `NormaliseAngle(roll − speed°)`; at 10 → ROTATE_STABLE. ROTATE_STABLE:
+  roll −10° a tick; at t ≥ 800 → ROTATE_SLOWER. ROTATE_SLOWER: at t = 1 speed 10; speed −0.02 to 0;
+  roll −speed°; at 0 → DISAPPEAR. DISAPPEAR: scale = cos(t/40 · π/2); at 40: NON (moveState and
+  liveState).
+- `_PushHero` (blade NORMAL, hero NORMAL, not NON, APPEAR or DISAPPEAR): push = speed/10 · 1.375;
+  windDir 0: `IncreasePushZ(push)`, 4: `IncreasePushZ(−push)`. So it blows the hero away from the
+  wizard's side, towards the pit beyond the arena.
+
 ## Particles and shadows (`XParticleList`, `XShadow`, `JObject3D`)
 
 **`JObject3D_Rect`** is a w × h quad of lit vertices in the XZ plane (v0 −x+z, v1 +x+z, v2 −x−z,

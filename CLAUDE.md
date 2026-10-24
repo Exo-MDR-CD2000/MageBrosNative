@@ -261,10 +261,10 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.2.19, stage 5 chunk 14 done)
+## Where we are (last updated: 2026-10-24, version 0.2.20, stage 5 chunk 15a done)
 
-**Stage 5 (the whole game) is under way: chunks 1 to 14 are done; chunk 15, the wizard (World 4's
-boss), is next.** Wait for the owner to say "start the next chunk". The chunk table, with the
+**Stage 5 (the whole game) is under way: chunks 1 to 15a are done; chunk 15b, the wizard's wand
+and its fireballs, is next.** Wait for the owner to say "start the next chunk". The chunk table, with the
 levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
 in `CHANGELOG.md`.
 
@@ -279,21 +279,24 @@ Playable now, with nothing left unbuilt (no marker cubes):
 - **World 3**, 3-1 to 3-10 (chunks 8 to 14): pots, kiwis, jump needles, stalactites, rocket
   launchers and rockets, floor fans, ghosts, the nest and its 40 birds (the boss confirmed by the
   owner).
+- **World 4**: the wizard (chunk 15a, confirmed by the owner) with its blade; it skips its wand
+  turns until 15b. World 4's levels have not been checked one by one yet (15b).
 
 Still to build in stage 5 (the remaining chunks):
 
 | Chunk | What | Completes |
 |---|---|---|
-| 15 | The wizard, World 4's boss (`9`: `XBoss_Wizard`, its blade, wand, `XBullet_WizardFire`); World 4 checked | all 40 levels |
+| 15b | The wizard's wand (`XBoss_WizardWand`), its fire (`XBullet_WizardFire`, `XParticle_WizardFireFlash`, `XCollideSphere`); World 4 checked | all 40 levels |
 | 16 | Player 2 analysis; `XHeroB` input and the camera midpoint | |
 | 17 | Hero-on-hero collision and carrying | |
 | 18 | Player 2's HUD panel and platform shadow | |
 | 19 | Checks and the whole-game zip, played start to finish by the owner | |
 
-The wizard is large (like the genie, split into 7a and 7b, and the nest, planned as 14a and 14b):
-check its size in the listings and offer the owner a split before starting. Read every state's
-transitions first: the nest's bird turned out to be one loop of states sharing its steering, so
-the split proposed before reading it didn't fit and it was built whole.
+For 15b: `XBoss_Wizard::Wand` is the stand-in to replace (the original starts the wand with
+windDir 0 from LEFT or 4 from RIGHT, faces the middle, runs and draws the wand, and goes to MOVEIN
+when it is NON, exactly as `Blade`). Before splitting any future large piece, read every state's
+transitions first: the nest's bird turned out to be one loop sharing its steering, so a split
+proposed before reading it didn't fit; the wizard waits for each attack, so it split cleanly.
 
 After stage 5: **stage 6**, the front end (title, save slots, level select, the shop's screen,
 the ending); **stage 7**, opt-in modern extras.
@@ -328,6 +331,10 @@ finish, the dragon fight, the third-barrel heart.
   doesn't).
 - The nest's 40 birds are `XBossBase` objects owned by the nest (not in any list); shots only
   test the nest, and the waiting birds are drawn at its centre, as the original.
+- 4-10 is an arena (floor at z 860..1020, x 40..160) surrounded by bottomless pit; the wizard
+  wakes only when a hero is within 110 (XZ) of (100, 1140), so a test `place` must be at the
+  arena's far edge (z 1036; 1030 is exactly 110 and doesn't wake it). Check the map rows (`0`
+  floor, `.` pit) before choosing a `place`.
 - SDL reads gamepads even in a window without focus: a test run while the owner plays another
   copy picks up their controller (it fired shots in a 3-10 test). Close other copies first.
 - Player 2 is not built: wherever the original checks hero B, the port checks `heroA` only and
@@ -370,7 +377,7 @@ finish, the dragon fight, the third-barrel heart.
 
 - Death restarts the level, and finishing the last level of a world goes to the next world.
   Both wait for the level select in stage 6.
-- The shop's screen (the building stands; stage 6), the wizard, and the other
+- The shop's screen (the building stands; stage 6), the wizard's wand (skipped: 15b), and the other
   unbuilt objects (marker cubes).
 - No player 2 (stage 5).
 - Only the starting wand's shot pattern exists. The others come with the shop.

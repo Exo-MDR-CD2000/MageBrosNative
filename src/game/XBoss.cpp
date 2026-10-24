@@ -21,6 +21,10 @@ constexpr uint16_t kSoundGenieAppear = 0x2a1, kSoundGenieFire = 0x2a2, kSoundGen
 constexpr uint16_t kModelNest = 0x28d, kColNest = 0x28e;
 constexpr uint16_t kModelBird1 = 0x289, kModelBird2 = 0x28a, kModelBird3 = 0x28b, kColBird = 0x28c;
 constexpr uint16_t kSoundBirdChirp = 0x2a5, kSoundNestHit = 0x2a6;
+constexpr uint16_t kModelWizard1 = 0x298, kModelWizard2 = 0x299, kModelWizard3 = 0x29a, kColWizard = 0x296;
+constexpr uint16_t kModelWizardBlade = 0x29c;
+constexpr uint16_t kSoundWizardRotate = 0x2a7, kSoundWizardAttack = 0x2aa, kSoundWizardAppear = 0x2ab,
+                   kSoundWizardRoar = 0x2b3;
 
 // FindDirectionXZ: the yaw from `from` towards `to`
 float FindDirectionXZ(const D3DVECTOR& from, const D3DVECTOR& to) { return FindYaw(to.x - from.x, to.z - from.z); }
@@ -980,6 +984,371 @@ void XBoss_Nest::Shake() {
     if (localCounter_ >= 100) {
         localCounter_ = 0;
         moveState_ = WAIT;
+    }
+}
+
+// --------------------------------------------------------------------------- XBoss_WizardBlade
+
+XBoss_WizardBlade::XBoss_WizardBlade(const XGameContext* game, XBoss_Wizard* parent)
+    : XBossBase(game, parent->GetPos()), parent_(parent) {
+    model_ = std::make_unique<JObject3DX>(kModelWizardBlade);  // (no collision model, no box)
+}
+
+void XBoss_WizardBlade::Start(int windDir) {
+    windDir_ = windDir;
+    scale_ = 0;
+    rotateSpeed_ = 0;
+    UpdatePosAndYaw();
+    UpdateWorldMatrix();
+    localCounter_ = 0;
+    liveState_ = NORMAL;
+    moveState_ = APPEAR;
+}
+
+void XBoss_WizardBlade::ProcessFrame() {
+    XBossBase::ProcessFrame();
+    if (liveState_ != NORMAL) return;
+    switch (moveState_) {
+        case APPEAR: Appear(); break;
+        case ROTATE_FASTER: RotateFaster(); break;
+        case ROTATE_STABLE: RotateStable(); break;
+        case ROTATE_SLOWER: RotateSlower(); break;
+        case DISAPPEAR: Disappear(); break;
+        default: break;
+    }
+    UpdatePosAndYaw();
+    PushHero(game_->heroA);  // (and hero B: player 2, stage 5)
+    UpdateWorldMatrix();
+}
+
+// _UpdatePosAndYaw: 38 in front of the wizard, facing its way (pos written directly: no box)
+void XBoss_WizardBlade::UpdatePosAndYaw() {
+    yaw_ = parent_->GetYaw();
+    pos_ = parent_->GetPos();
+    pos_.x += std::sin(yaw_) * 38.0f;
+    pos_.z += std::cos(yaw_) * 38.0f;
+}
+
+// _PushHero: while it spins (not appearing or going), 1.375 a tick at full speed
+void XBoss_WizardBlade::PushHero(XHero* hero) {
+    if (liveState_ != NORMAL) return;
+    if (!hero || hero->GetLiveState() != XHero::NORMAL) return;
+    if (moveState_ == NON || moveState_ == APPEAR || moveState_ == DISAPPEAR) return;
+    float push = rotateSpeed_ / 10.0f * 1.375f;
+    if (windDir_ == 0) hero->IncreasePushZ(push);
+    else if (windDir_ == 4) hero->IncreasePushZ(-push);
+}
+
+// grows over 120 ticks
+void XBoss_WizardBlade::Appear() {
+    scale_ = std::sin((float)localCounter_ / 120.0f * 1.5708f);
+    if (localCounter_ >= 120) {
+        localCounter_ = 0;
+        moveState_ = ROTATE_FASTER;
+    }
+}
+
+// spins up by 0.02 degrees a tick to 10
+void XBoss_WizardBlade::RotateFaster() {
+    if (localCounter_ == 1) rotateSpeed_ = 0;
+    rotateSpeed_ += 0.02f;
+    if (rotateSpeed_ > 10.0f) rotateSpeed_ = 10.0f;
+    roll_ = NormaliseAngle(roll_ - 0.0174533f * rotateSpeed_);
+    if (rotateSpeed_ >= 10.0f) {
+        localCounter_ = 0;
+        moveState_ = ROTATE_STABLE;
+    }
+}
+
+// 10 degrees a tick for 800 ticks
+void XBoss_WizardBlade::RotateStable() {
+    roll_ = NormaliseAngle(roll_ - 0.174533f);
+    if (localCounter_ >= 800) {
+        localCounter_ = 0;
+        moveState_ = ROTATE_SLOWER;
+    }
+}
+
+// spins down by 0.02 degrees a tick to 0
+void XBoss_WizardBlade::RotateSlower() {
+    if (localCounter_ == 1) rotateSpeed_ = 10.0f;
+    rotateSpeed_ -= 0.02f;
+    if (0.0f > rotateSpeed_) rotateSpeed_ = 0.0f;
+    roll_ = NormaliseAngle(roll_ - 0.0174533f * rotateSpeed_);
+    if (0.0f >= rotateSpeed_) {
+        localCounter_ = 0;
+        moveState_ = DISAPPEAR;
+    }
+}
+
+// shrinks over 40 ticks and goes
+void XBoss_WizardBlade::Disappear() {
+    scale_ = std::cos((float)localCounter_ / 40.0f * 1.5708f);
+    if (localCounter_ >= 40) {
+        localCounter_ = 0;
+        moveState_ = NON;
+        liveState_ = XBossBase::NON;
+    }
+}
+
+// -------------------------------------------------------------------------------- XBoss_Wizard
+
+XBoss_Wizard::XBoss_Wizard(const XGameContext* game, const D3DVECTOR& pos) : XBossBase(game, pos) {
+    model_ = std::make_unique<JObject3DX>(kModelWizard1);
+    model_->AppendFrame(kModelWizard2);
+    model_->AppendFrame(kModelWizard1);
+    model_->AppendFrame(kModelWizard3);
+    model_->SetCollisionModel(kColWizard);
+    collideBox_ = std::make_unique<XCollideBox>(200.0f, 80.0f);
+    bodyShadow_ = std::make_unique<XShadow>(39.9f);
+    blade_ = std::make_unique<XBoss_WizardBlade>(game, this);
+    // (the wand, XBoss_WizardWand, comes in stage 5 chunk 15b)
+    yaw_ = 3.14159f;
+    pos_ = GetRefPos(RIGHT);
+    pos_.y = -300.0f;  // under the floor
+    SetPos(pos_);
+    UpdateWorldMatrix();
+    explodeRadius_ = 80.0f;
+    healthSubMax_ = 40;
+    healthSub_ = healthSubMax_;
+    liveState_ = NORMAL;
+    moveState_ = HIDE;
+    posState_ = RIGHT;
+}
+XBoss_Wizard::~XBoss_Wizard() = default;
+
+// GetRefPos: 87.5 up across the middle (x 100); along Z the middle, 200 or 100 to either side; or
+// the middle at either edge (x 0 or 200)
+D3DVECTOR XBoss_Wizard::GetRefPos(PosState s) const {
+    D3DVECTOR p(100.0f, 87.5f, startPos_.z);
+    switch (s) {
+        case LEFT: p.z = startPos_.z - 200.0f; break;
+        case RIGHT: p.z = startPos_.z + 200.0f; break;
+        case LEFT_CENTER: p.z = startPos_.z - 100.0f; break;
+        case RIGHT_CENTER: p.z = startPos_.z + 100.0f; break;
+        case UP_CENTER: p.x -= 100.0f; break;
+        case DOWN_CENTER: p.x += 100.0f; break;
+        default: break;
+    }
+    return p;
+}
+
+void XBoss_Wizard::Render(Device* d) {
+    if (liveState_ == XBossBase::NON || liveState_ == DEAD) return;
+    model_->SetCurrentFrame(frame_);
+    model_->Render(d);
+    bodyShadow_->SetPos(pos_);
+    bodyShadow_->Render(d, game_->level->Collision());
+    // (the original also calls the box's debug draw)
+    if (moveState_ == BLADE) blade_->Render(d);
+}
+
+void XBoss_Wizard::ProcessFrame() {
+    XBossBase::ProcessFrame();
+    if (liveState_ != NORMAL) return;
+    frame_ = (int)(localCounter_ / 3 % 4);
+    switch (moveState_) {
+        case HIDE: Hide(); break;
+        case APPEAR: Appear(); break;
+        case BLADE: Blade(); break;
+        case WAND: Wand(); break;
+        case MOVEIN: MoveIn(); break;
+        case MOVEOUT: MoveOut(); break;
+        case ROTATE: Rotate(); break;
+        default: break;
+    }
+    if (moveState_ != HIDE && moveState_ != APPEAR) UpdatePosY();
+    UpdateWorldMatrix();
+    CollisionCheck_Hero(game_->heroA);  // (and hero B: player 2, stage 5)
+}
+
+// _UpdatePosY: 87.5 up, bobbing 4.5 over 100 ticks (pos only: the box keeps its height)
+void XBoss_Wizard::UpdatePosY() {
+    offsetCounter_++;
+    float t = (float)(offsetCounter_ % 100) / 100.0f;
+    pos_.y = 87.5f + std::sin(t * 6.28319f + 3.14159f) * 4.5f;
+}
+
+// _PlayRotateSound: sound 0x2a7 when the angle passes 0, 90, 180 or 270 degrees
+void XBoss_Wizard::PlayRotateSound(float from, float to) {
+    bool play = from > to;
+    if (1.5708f >= from && to >= 1.5708f) play = true;
+    if (3.14159f >= from && to >= 3.14159f) play = true;
+    if (4.71239f >= from && to >= 4.71239f) play = true;
+    if (play) game_->playSound(kSoundWizardRotate, pos_.z);
+}
+
+// _ProcessFrame_Hide: a roar (0x2b3) when a hero first comes within 300 (XZ), out within 110
+void XBoss_Wizard::Hide() {
+    if (!roarSoundPlayed_ && game_->DistanceToCloserHeroXZ(pos_) < 300.0f) {
+        if (game_->playMono) game_->playMono(kSoundWizardRoar, 1.0f);
+        roarSoundPlayed_ = true;
+    }
+    if (game_->DistanceToCloserHeroXZ(pos_) < 110.0f) {
+        localCounter_ = 0;
+        moveState_ = APPEAR;
+    }
+}
+
+// _ProcessFrame_Appear: sound 0x2ab; up from under the floor to 87.5 over 100 ticks, bobbing from
+// then on, and in after 300
+void XBoss_Wizard::Appear() {
+    if (localCounter_ == 1 && game_->playMono) game_->playMono(kSoundWizardAppear, 1.0f);
+    float k = (float)localCounter_ / 100.0f;
+    if (k > 1.0f) k = 1.0f;
+    D3DVECTOR p = pos_;
+    p.y = std::sin(k * 1.5708f) * 387.5f + -300.0f;
+    SetPos(p);
+    if (localCounter_ >= 100) UpdatePosY();
+    if (localCounter_ >= 300) {
+        posState_ = RIGHT;
+        localCounter_ = 0;
+        moveState_ = MOVEIN;
+    }
+}
+
+// _ProcessFrame_Blade: sound 0x2aa, the blade blowing away from this side; it faces the middle
+// until the blade has gone
+void XBoss_Wizard::Blade() {
+    if (localCounter_ == 1) {
+        game_->playSound(kSoundWizardAttack, pos_.z);
+        int windDir = -1;
+        if (posState_ == LEFT) windDir = 0;
+        else if (posState_ == RIGHT) windDir = 4;
+        blade_->Start(windDir);
+        toPos_ = GetRefPos(CENTER);
+    }
+    yaw_ = MakeAngleCloseTo(yaw_, FindDirectionXZ(pos_, toPos_), 0.05f, 0.0f, FLT_MAX);
+    blade_->ProcessFrame();
+    if (blade_->GetLiveState() == XBossBase::NON) {
+        localCounter_ = 0;
+        moveState_ = MOVEIN;
+    }
+}
+
+// _ProcessFrame_Wand: the wand attack (XBoss_WizardWand and its fire) comes in stage 5 chunk
+// 15b; until then a wand turn goes straight back in
+void XBoss_Wizard::Wand() {
+    localCounter_ = 0;
+    moveState_ = MOVEIN;
+}
+
+// The glide of _ProcessFrame_MoveIn and _ProcessFrame_MoveOut: 150 ticks in a straight line,
+// turning to face the way it goes
+void XBoss_Wizard::Glide(PosState fromState, PosState toState) {
+    if (localCounter_ == 1) {
+        fromPos_ = GetRefPos(fromState);
+        toPos_ = GetRefPos(toState);
+    }
+    float t = (float)localCounter_ / 150.0f;
+    D3DVECTOR prev = pos_;
+    D3DVECTOR p(fromPos_.x + (toPos_.x - fromPos_.x) * t, fromPos_.y + (toPos_.y - fromPos_.y) * t,
+                fromPos_.z + (toPos_.z - fromPos_.z) * t);  // D3DVectorInterpolate
+    SetPos(p);
+    yaw_ = MakeAngleCloseTo(yaw_, FindDirectionXZ(prev, pos_), 0.05f, 0.0f, FLT_MAX);
+}
+
+// _ProcessFrame_MoveIn: from 200 off the middle to 100 off it, then circle
+void XBoss_Wizard::MoveIn() {
+    if (posState_ == LEFT) Glide(LEFT, LEFT_CENTER);
+    else if (posState_ == RIGHT) Glide(RIGHT, RIGHT_CENTER);
+    if (localCounter_ >= 150) {
+        if (posState_ == LEFT) posState_ = LEFT_CENTER;
+        else if (posState_ == RIGHT) posState_ = RIGHT_CENTER;
+        localCounter_ = 0;
+        moveState_ = ROTATE;
+    }
+}
+
+// _ProcessFrame_MoveOut: from 100 off the middle to 200 off it, then the wand or the blade
+void XBoss_Wizard::MoveOut() {
+    if (posState_ == LEFT_CENTER) Glide(LEFT_CENTER, LEFT);
+    else if (posState_ == RIGHT_CENTER) Glide(RIGHT_CENTER, RIGHT);
+    if (localCounter_ >= 150) {
+        if (posState_ == LEFT_CENTER) posState_ = LEFT;
+        else if (posState_ == RIGHT_CENTER) posState_ = RIGHT;
+        localCounter_ = 0;
+        moveState_ = Random(2) == 0 ? WAND : BLADE;
+    }
+}
+
+// _ProcessFrame_Rotate: round the middle at radius 100 facing it, from the side it came in on:
+// speeding up by 0.016 degrees a tick to 6, closing in by 0.2 to 40, 300 ticks there, out again to
+// 100, slowing to 1.2; then on to the other side (angle 2 pi or 3 pi) and out from there
+void XBoss_Wizard::Rotate() {
+    if (localCounter_ == 1) {
+        if (posState_ == LEFT_CENTER) rotateAngle_ = 3.14159f;
+        else if (posState_ == RIGHT_CENTER) rotateAngle_ = 0.0f;
+        toPos_ = GetRefPos(CENTER);
+        rotateRadius_ = 100.0f;
+        rotateSpeed_ = 1.2f;
+        subLocalCounter_ = 0;
+        rotateState_ = GET_FASTER;
+    }
+    subLocalCounter_++;
+    auto place = [this]() {
+        D3DVECTOR p = toPos_;
+        p.x += std::sin(rotateAngle_) * rotateRadius_;
+        p.z += std::cos(rotateAngle_) * rotateRadius_;
+        SetPos(p);
+        yaw_ = FindDirectionXZ(pos_, toPos_);
+    };
+    if (rotateState_ != STOP) {
+        float prev = rotateAngle_;
+        rotateAngle_ = NormaliseAngle(rotateAngle_ + 0.0174533f * rotateSpeed_);
+        if (localCounter_ > 10) PlayRotateSound(prev, rotateAngle_);
+        place();
+    }
+    if (rotateState_ == GET_FASTER) {
+        rotateSpeed_ += 0.016f;
+        if (rotateSpeed_ > 6.0f) rotateSpeed_ = 6.0f;
+        if (rotateSpeed_ >= 6.0f) {
+            subLocalCounter_ = 0;
+            rotateState_ = GET_CLOSER;
+        }
+    } else if (rotateState_ == GET_CLOSER) {
+        rotateRadius_ -= 0.2f;
+        if (40.0f > rotateRadius_) rotateRadius_ = 40.0f;
+        if (40.0f >= rotateRadius_) {
+            subLocalCounter_ = 0;
+            rotateState_ = STAY;
+        }
+    } else if (rotateState_ == STAY) {
+        if (subLocalCounter_ >= 300) {
+            subLocalCounter_ = 0;
+            rotateState_ = GET_FURTHER;
+        }
+    } else if (rotateState_ == GET_FURTHER) {
+        rotateRadius_ += 0.2f;
+        if (rotateRadius_ > 100.0f) rotateRadius_ = 100.0f;
+        if (rotateRadius_ >= 100.0f) {
+            subLocalCounter_ = 0;
+            rotateState_ = GET_SLOWER;
+        }
+    } else if (rotateState_ == GET_SLOWER) {
+        rotateSpeed_ -= 0.016f;
+        if (1.2f > rotateSpeed_) rotateSpeed_ = 1.2f;
+        if (1.2f >= rotateSpeed_) {
+            subLocalCounter_ = 0;
+            rotateState_ = STOP;
+        }
+    } else if (rotateState_ == STOP) {
+        // (no longer normalised: it runs on to the stopping angle)
+        rotateAngle_ += 0.0174533f * rotateSpeed_;
+        if (posState_ == LEFT_CENTER && rotateAngle_ > 6.28319f) rotateAngle_ = 6.28319f;
+        else if (posState_ == RIGHT_CENTER && rotateAngle_ > 9.42478f) rotateAngle_ = 9.42478f;
+        place();
+        if (posState_ == LEFT_CENTER) {
+            if (rotateAngle_ >= 6.28319f) {
+                posState_ = RIGHT_CENTER;
+                localCounter_ = 0;
+                moveState_ = MOVEOUT;
+            }
+        } else if (posState_ == RIGHT_CENTER && rotateAngle_ >= 9.42478f) {
+            posState_ = LEFT_CENTER;
+            localCounter_ = 0;
+            moveState_ = MOVEOUT;
+        }
     }
 }
 

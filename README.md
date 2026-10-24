@@ -5,10 +5,11 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 5 of 7 in progress (version 0.2.19).** The engine runs (window, OpenGL
+> **Status: stage 5 of 7 in progress (version 0.2.20).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
 > explored in the level viewer. Worlds 1, 2 and 3 play from start to finish with player 1,
-> bosses included. Next: World 4's wizard and two-player co-op (stage 5), then the title, save
+> bosses included, and World 4's wizard is in (its wand attack still to come). Next: the wand and
+> two-player co-op (stage 5), then the title, save
 > slots and level select (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 
@@ -48,6 +49,9 @@ particle effects are in.
   floor, stalactites that drop and shake the screen, rocket launchers whose rockets home in on
   the mage, floor fans that float the mage up to higher ledges, ghosts that drift through walls
   and swoop at the mage, and in 3-10 the nest, which sends a bird after the mage with every hit.
+- **World 4** reuses the first three worlds' enemies and bosses; in 4-10 the wizard rises from the
+  pit, circles the arena and holds out a great spinning blade whose wind blows the mage towards
+  the edge. (Its wand attack comes next.)
 
 Defeated enemies drop coins. Objects still to come show as coloured markers. Dying restarts the
 level and finishing a world's last level goes on to the next world, until the level select of
