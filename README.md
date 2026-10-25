@@ -73,7 +73,8 @@ other, and one can stand on the other's head and be carried along, or up and dow
 Defeated enemies drop coins. After a lost level, or a world's last level, the game saves and
 returns to level select; world 4 opens once worlds 1 to 3 are cleared.
 
-In the game view N / B change level and F2 switches between one and two players. Tab switches to the **level viewer**: every one of the 40
+In the game view N / B change level and F2 switches between one and two players (test keys:
+a game started with them is not saved). Tab switches to the **level viewer**: every one of the 40
 levels, built by the original's own map code with each world's textures. The goal, coins and
 torches use their real models; other objects are colour-coded markers (blue platforms, brown objects, grey
 fences, red enemies, large magenta bosses).

@@ -58,6 +58,11 @@ MageBros-Project/                   (C:\Users\ExoJag\Documents\MageBros-Project)
   MageBrosNative/                   this repository
 ```
 
+A personal read-only copy of Hopmon Native is at
+`C:\Users\ExoJag\Documents\Hopmon-Native-Reference\HopmonNative` (on the same commit as its
+GitHub `main` when last checked). Read it for engine code to adapt (`core/saves` came from it);
+never change it.
+
 Unzip the analysis notes next to the repo, not inside it, giving
 `MageBros-Project/MageBros-analysis/`. Its tools then find `../MageBros.exe` on their own, or
 you can set `MAGEBROS_EXE` and `MAGEBROS_PDB_DIR`.
@@ -65,7 +70,7 @@ you can set `MAGEBROS_EXE` and `MAGEBROS_PDB_DIR`.
 ## Source layout
 
 ```
-src/core       PE resources, SHA-256 check, bitmaps, WAV, .x models, levels, config, log
+src/core       PE resources, SHA-256 check, bitmaps, WAV, .x models, levels, config, log, saves
 src/gfx        OpenGL loader; Direct3D 7 / DirectDraw emulation (device.cpp maps the D3D states)
 src/audio      sound mixer (stereo pan, per-sound copies), MIDI (TinySoundFont), music streaming
 src/input      SDL3 -> DirectInput-style keyboard/gamepad state
@@ -119,8 +124,8 @@ them.
 
   Its `ProcessFrame(n)` is `XGameObject::ProcessFrame`: the fade and the level's end (process
   types 0–4), then `n` calls of `Tick()` (one tick of play).
-- **`XLevelLoop`** stands in for the original's `XGameObject` and implements `XHeroWorld`, the
-  callbacks XHero uses. It owns:
+- **`XLevelLoop`** holds the lists the original's `XGameObject` owns (`XGameScene` is the
+  `XGameObject` screen itself) and implements `XHeroWorld`, the callbacks XHero uses. It owns:
   - an `XGameContext`, the shared pointers that objects reach through `XGameObject` in the
     original;
   - `XParticleList` (300 slots);
@@ -295,9 +300,10 @@ Conventions:
 **Stage 6 (the front end) is under way: chunks 1 (the screen framework, fades and logo), 2
 (the title), 3 (saving), 4 (the save slots) and 5 (level select and the real level ends) are
 done; chunk 6, the shop, is next.** Stage 5 built every object of the 40 levels and
-two-player co-op (player 2, hero on hero, player 2's platform shadow and HUD panel). Wait for the owner to say "start the next chunk". The chunk table, with the
-levels each chunk completes, is in `docs/ROADMAP.md`, "Stage 5, chunk by chunk"; what each version changed is
-in `CHANGELOG.md`.
+two-player co-op (player 2, hero on hero, player 2's platform shadow and HUD panel). Wait for
+the owner to say "start the next chunk". The chunk tables are in `docs/ROADMAP.md` ("Stage 6,
+chunk by chunk" for the front end, "Stage 5" for the game); what each version changed is in
+`CHANGELOG.md`. The latest release is v0.3.4 (GitHub), and `main` is clean and pushed.
 
 Playable now, with nothing left unbuilt (no marker cubes):
 
@@ -340,8 +346,25 @@ the front end. Chunk 1 notes: the sound cache moved to `JSoundList` (the applica
 `JSurfaceList::Create(id, colorKey)` makes a bitmap with or without the colour key, as the
 original's `CreateSurface` flag (the fade strips 0x1f7 and the logo 0x2d1 have none; `Get` still
 makes any other keyed); `XLevelStatus` has its play part (`IncreaseLevel` / `World`,
-`IsLast*`, `Reset`), and its `Valid` and saving come with chunk 3. `XApplication::FrameMove`
-takes at most 10 ticks a frame, as the original.
+`IsLast*`, `Reset`, `Valid`), saved inside `XSaveData`. `XApplication::FrameMove` takes at most
+10 ticks a frame, as the original.
+
+**Starting chunk 6 (the shop, `XShop`, `listings/XShop.asm`)**, from what earlier chunks saw
+(check each against the listing):
+
+- The shop building is `XStaticObj_Shop` (`src/game/XStaticObj.cpp`): a hero in NORMAL within 15
+  of its door calls `XShop::Start(hero)` (the port has a `CheckHero` with a comment there), with
+  a per-hero "finished" flag cleared once the hero is 25 away.
+- `XGameObject` owns the shop (+0x9c); `InitLevel` calls `XShop::Reset`. In
+  `XGameObject::ProcessFrame`, while `XShop::GetState` is not 0 the level is paused: only the
+  status display and the camera run each tick, then `XShop::ProcessFrame(n)`. `XGameObject::Render`
+  draws `XShop::Render` after the status display, before `RenderFade`.
+- `XShop::_CheckEnabledItems` reads the hero's status: life below 5, magic level below 7, the
+  wands (compared with `wandType`), each against a price table, and the gold (`DecreaseGold`).
+  Buying updates `life` / `magicLevel` (then `XHeroBase::UpdateMagicLevel`) / `wandType`.
+- The shop's input is `XShop::_UpdateInput` (the menu helpers are in `src/game/JDInput.*`).
+- The wands' own shot patterns are chunk 7 (`XHeroFireList::_WandNormal2` / `3`, `_WandChase` /
+  `2` / `3`, `XHeroFire_Chase`); the port's `XLevelLoop::CreateFire` fires only `_WandNormal`.
 
 Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
 status, shot colour, warp photons, lost-gold line and platform mark; `XGameScene::UpdateInput`
@@ -375,8 +398,10 @@ and touching the blades from beside it hurts); the ghost (3-5: its warning, swoo
 and how it looks); two players (0.2.22: player 2's keys and second gamepad, the camera between
 the mages, enemies turning to the closer one, the level ending when both are done); standing on
 and carrying each other (0.2.23: on a lift in 1-4 to 1-9, over a floor fan in 3-4, jumping off
-the other's head and bumping into it from below). Already confirmed by the owner: World 1 start to
-finish, the dragon fight, the third-barrel heart.
+the other's head and bumping into it from below); the front end (0.3.0–0.3.4: logo, title,
+save slots, level select, saving; the owner has been playing these versions). Already confirmed
+by the owner: World 1 start to finish, the dragon fight, the third-barrel heart, the carrying
+between the two mages (0.2.23).
 
 ### Notes from earlier stages
 
@@ -458,5 +483,5 @@ finish, the dragon fight, the third-barrel heart.
 ### Known stand-ins (replace them when their real code lands)
 
 - The ending goes back to the logo (stage 6 chunk 8).
-- The shop's screen (the building stands; stage 6).
-- Only the starting wand's shot pattern exists. The others come with the shop.
+- The shop's screen (the building stands; stage 6 chunk 6).
+- Only the starting wand's shot pattern exists; the others are stage 6 chunk 7.
