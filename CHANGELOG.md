@@ -7,6 +7,19 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.3.5] - 2026-10-24
+
+- **The shop**: walking up to a shop's door opens the original's MAGIC SHOP and pauses the
+  level. Spend gold on a heal potion (one more heart), a magic potion (magic refills faster) and
+  two wands that change with each world. Items you can't afford or already have are greyed out.
+  The board shows the shopper's magic level and wand. Each player shops with their own keys or
+  gamepad and their own gold. As in the original, Enter doesn't buy (use your fire or jump key),
+  and Escape leaves the shop but also gives up the level.
+- **The wands**: each wand now fires its own shots, as in the original. The double wand fires
+  two shots side by side. The triple wand fires one shot and two smaller ones spread wider. The
+  X wands fire the same patterns as homing shots: after a moment each turns towards the enemy it
+  picked as it was fired, or the boss if no enemy was near.
+
 ## [0.3.4] - 2026-10-24
 
 - **Level select**: after the save slots comes the original's world map, with the level dots

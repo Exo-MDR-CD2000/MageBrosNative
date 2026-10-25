@@ -5,12 +5,13 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 6 of 7 in progress (version 0.3.4).** The engine runs (window, OpenGL
+> **Status: stage 6 of 7 in progress (version 0.3.5).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
 > explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
 > boss included, by one player or two. The front end has begun: the game opens on the
-> original's logo, title screen, save slots and level select, levels fade in and out, and
-> progress is saved. Next: the shop and the ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
+> original's logo, title screen, save slots and level select, levels fade in and out,
+> progress is saved, and the shop sells potions and wands, each with its own shots. Next: the
+> ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
@@ -69,6 +70,17 @@ other, and one can stand on the other's head and be carried along, or up and dow
 - **World 4** reuses the first three worlds' enemies and bosses; in 4-10 the wizard rises from the
   pit, circles the arena, and attacks with a great spinning blade whose wind blows the mage towards
   the edge or a wand that fires homing fireballs.
+
+**The shop**: walk up to the door of a shop building (levels 3, 6 and 9 of worlds 1 to 3, and 4-2,
+4-5, 4-8) and the original's MAGIC SHOP opens, pausing the level. The shopper buys with their own
+gold: a heal potion (20 gold, one more heart), a magic potion (100, a faster magic refill) and
+two wands that depend on the world. What you can't afford or already have is greyed out. Move
+with the shopper's own direction keys and buy with their fire or jump key (player 1: arrows,
+Right Shift or Right Ctrl; player 2: W A S D, Left Shift or Left Ctrl; or their gamepad). Choose
+EXIT to leave. As in the original, Escape also leaves the shop, but it gives up the level too.
+Each wand fires its own pattern: the double wand two shots side by side, the triple wand a
+shot and two smaller ones spread wider, and the X wands the same in homing shots that curve
+towards the nearest enemy (or the boss).
 
 Defeated enemies drop coins. After a lost level, or a world's last level, the game saves and
 returns to level select; world 4 opens once worlds 1 to 3 are cleared.

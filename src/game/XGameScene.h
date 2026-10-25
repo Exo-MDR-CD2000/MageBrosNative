@@ -8,7 +8,7 @@
 // still playing give up. In a two-player game the level is cleared when one hero has warped and
 // the other has warped or died, and lost only when both have died. Hero B always exists; in a
 // one-player game it is never reset, so it stays NON (not drawn, not processed, ignored by
-// everything that looks for a hero).
+// everything that looks for a hero). While the shop (XShop) is open the level is paused.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -23,6 +23,7 @@
 class BackBuffer;
 class Device;
 class XShadow;
+class XShop;
 
 class XGameScene : public XProcessObject {
 public:
@@ -57,10 +58,10 @@ private:
     std::unique_ptr<XHero> heroA_, heroB_;
     XLevelLoop loop_;
     XCamera camera_;
+    std::unique_ptr<XShop> shop_;  // XGameObject::shop (+0x9c), made by Start
     XHeroInput inputA_, inputB_;
     uint8_t prevKeys_[256] = {};
     uint8_t prevButtons_[2][2] = {};  // gamepad 1 (player 1) and 2 (player 2), buttons 1 and 2
-    bool prevEscape_ = false;         // Escape, read once a frame
     bool levelChanged_ = false;
     std::unique_ptr<XShadow> heroShadowA_, heroShadowB_;
 };

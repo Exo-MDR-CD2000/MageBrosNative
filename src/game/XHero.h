@@ -108,6 +108,7 @@ public:
     void KnockBack(const D3DVECTOR& from);       // XHeroBase::KnockBack
     void StartDying();                           // XHeroBase::StartDying
     void UpdateMagicLevel();                     // XHeroBase::UpdateMagicLevel
+    void DecreaseGold(int amount);               // XHeroBase::DecreaseGold: not below 0
     // XHeroBase::IncreasePushX / Y / Z: added to the next tick's move (a platform carrying it)
     void IncreasePushX(float v) { push_.x += v; }
     void IncreasePushY(float v) { push_.y += v; }

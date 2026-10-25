@@ -24,6 +24,8 @@ float MakeAngleCloseTo_Constant(float cur, float target, float step);
 float AngleDifference(float a, float b);
 // atan2(a, b), normalised: the yaw of a stick direction is FindYaw(y, x).
 float FindYaw(float a, float b);
+// FindDirectionXZ: the yaw from `from` towards `to`
+float FindDirectionXZ(const D3DVECTOR& from, const D3DVECTOR& to);
 // Interpolate: a + (b - a) * t, and D3DVectorInterpolate on each coordinate.
 float Interpolate(float a, float b, float t);
 D3DVECTOR D3DVectorInterpolate(const D3DVECTOR& a, const D3DVECTOR& b, float t);

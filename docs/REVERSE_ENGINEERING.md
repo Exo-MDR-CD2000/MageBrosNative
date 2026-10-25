@@ -406,6 +406,69 @@ select at the next world's first level; only the last world's end goes on (to th
 the bitmap's own); `DrawScaleXY(sx, sy)` blits it scaled about the sprite's centre
 (`GetCenterIntX` = position + width / 2), sizes rounded half away from zero.
 
+### The shop (`XShop`)
+
+`XGameObject` owns one `XShop` (+0x9c); `InitLevel` calls `XShop::Reset`. Fields: +0x4 the game
+object, +0x8 `localCounter`, +0xc `state` (NON 0, FADEIN 1, FADEOUT 2, PROCESS 3), +0x10 `pHero`,
++0x14 four `XShopItem`s of 16 bytes (`type` (`XShopItemType`), `pSprite`, `price`, `enabled`),
++0x54–0x9c the sprites, +0xa0 the magic-level number, +0xa4 the back panel, +0xa8 `cursorPos`
+(0–3 the items, 4 exit), +0xac–0xbc the keys pressed this frame (right, left, up, down, button).
+
+`XShopItemType`: 0 single wand, 1 double, 2 triple, 3 single X, 4 double X, 5 triple X (the
+same numbers as `XHeroStatus::wandType`), 6 heal potion, 7 magic potion.
+
+The constructor makes the bitmaps, not colour-keyed: the heal potion 0x212, magic potion 0x214,
+double wand 0x210, triple 0x216, single X 0x215, double X 0x211, triple X 0x217 (2 frames each:
+on, greyed out) and exit 0x219; colour-keyed: the board MAGIC SHOP 0x221, the shopkeeper 0x213,
+the cursor 0x21b and the small cursor 0x21a (2 frames: blink), WAND 0x21e / 0x21f and MAGIC LEVEL
+0x220 / 0x21d (player 1's, player 2's), the wand names 0x21c (6 frames, by `wandType`); the
+mage icons are the status display's 0x1fd / 0x1fe. The number uses the digits 0xba, 1 digit. The
+back is a `JObject3D_Particle` 300 × 140 with texture 0x218, alpha state 3, alpha 0.75.
+
+`Reset`: item 0 the heal potion (20), item 1 the magic potion (100), then by the level status's
+world: World 1 single X (100) and double (200); World 2 double (200) and double X (300); World 3
+double X (300) and triple (400); World 4 triple (400) and triple X (500). `pHero` null, counter 0,
+NON.
+
+`Start(hero)` (from `XStaticObj_Shop`): the back at (220, 150, camera look-at Z), `pHero`, every
+item on, `_CheckEnabledItems`, the cursor on exit, counter 0, FADEIN.
+
+`_CheckEnabledItems` only turns items off: price above the gold; the heal potion at life ≥ 5; the
+magic potion at magic level ≥ 7; item 2 or 3 when it is the wand held. (Buying the better wand
+leaves the cheaper one on sale.)
+
+`_UpdateInput` (pressed this frame, through the application's `JDInput`; the joystick unless
+`RegInfo_GetDisableJoystick`): hero A (`IsHeroA`, vtable +4) the arrows and gamepad 0, button
+Right Shift, Right Ctrl, or pad 0's button 0 or 1; hero B D, A, W, S and gamepad 1, Left Shift,
+Left Ctrl or pad 1's buttons. Enter does nothing in the shop.
+
+`ProcessFrame(n)` (after the game's ticks, see below): nothing when NON; counter += n. FADEIN /
+FADEOUT: at 40 the counter is 0 and the state PROCESS / NON. PROCESS: `_UpdateInput`; Escape
+puts the cursor on exit and sets the button. Then only the first of: left (1 → 0, 3 → 2), right
+(0 → 1, 2 → 3), up (2 → 0, 3 → 1, 4 → 3), down (0 → 2, 1 → 3, 2 or 3 → 4), each playing 0xec even
+when the cursor stays; the button: on exit 0xed, counter 0, FADEOUT; on an item that is on, 0xed,
+then life + 1, magic level + 1, or `wandType` = the item's type, `XHeroBase::UpdateMagicLevel`,
+`DecreaseGold(price)` (not below 0) and `_CheckEnabledItems`. A greyed item does nothing.
+
+`Render` (after the status display, before `RenderFade`; only when not NON): `t` = counter / 40
+fading in, (40 − counter) / 40 fading out, else 1, kept to 0..1. The back at (220, 150, look-at
+Z), alpha 0.75 t, drawn facing the camera. Left x = 50 − (int)((1 − t) · 330): the board at
+(x, 152); below it (y = 152 + board height + 20) the shopper's mage icon at x, MAGIC LEVEL at
+x + 42 and the number (magic level + 1) 4 after it; 6 below that WAND at x + 42 and the wand's
+name 4 after it. Right x = 640 − (int)(t · 260): the items at (x, 147), (x + 107, 147),
+(x, 271), (x + 107, 271), frame 1 when off; exit at (x + 107, 395). While PROCESS the cursor (or
+the small cursor on exit) 11 up and left of the item, frame `counter % 40 < 20 ? 0 : 1`. The
+shopkeeper at (100, 480 − (int)(height · t)).
+
+In `XGameObject::ProcessFrame`, after the level's own logic: when `XShop::GetState` is NON, `n`
+ticks of play; otherwise `n` ticks of only the status display and the camera, then
+`XShop::ProcessFrame(n)`. The state is read once a frame, so a shop opened during a tick lets the
+rest of that frame's ticks run. The Escape check of the game itself still runs while the shop is
+open, so Escape in the shop also makes the shopper (and the other hero, if NORMAL) give up the
+level once play resumes. The port keeps that quirk. The port also reads the heroes' keys during
+the paused ticks, so that a key held from the shop isn't taken as freshly pressed when play
+resumes. The original reads them through its once-a-frame `JDInput`, which behaves the same way.
+
 ## Behaviour to preserve
 
 - Fixed-step game logic (tick rate to be confirmed from `XApplication::FrameMove`), with any
@@ -623,10 +686,36 @@ NORMAL who comes within 80 along Z and 24 of the flame point (damage and knockba
 
 ### Shots (`XHeroFire`, up to 30)
 
-A fire press (with the wand down and magic to spare, see the hero) makes shots by wand type:
-0 one shot; 1 two; 2 three, spread ±6°; 3–5 the homing ("chase") versions. A shot starts 20
-ahead of the hero along its yaw at hero height + 12, radius 8 (80 % for the small variant), drawn
-as an 18 × 18 glowing sprite (texture 348 for player 1, 388 for player 2). Each tick it moves 2.6
+A fire press (with the wand down and magic to spare, see the hero) calls
+`XHeroFireList::CreateFire`, which picks the pattern by the shooter's `wandType` (each angle
+through `NormaliseAngle`):
+
+| wandType | Function | Shots |
+|---|---|---|
+| 0 | `_WandNormal` | one along the yaw |
+| 1 | `_WandNormal2` | two, yaw ± 0.10472 (6°) |
+| 2 | `_WandNormal3` | one along the yaw, then two small ones at yaw ± 0.20944 (12°) |
+| 3 | `_WandChase` | one homing shot along the yaw |
+| 4 | `_WandChase2` | two homing, yaw ± 0.139626 (8°) |
+| 5 | `_WandChase3` | one homing along the yaw, then two small ones at yaw ± 0.279253 (16°) |
+
+`_CreateFire_Normal(hero, angle, large)` / `_CreateFire_Chase` take the first free slot (none:
+no shot) and make an `XHeroFire` / `XHeroFire_Chase`. `Create8Way` (the hero's death burst) is
+12 plain large shots whatever the wand. A shot starts 20 ahead of the hero along its angle at hero
+height + 12, radius 8, drawn as an 18 × 18 glowing sprite (texture 348 for player 1, 388 for
+player 2). A small shot (`large` 0) has its sprite scaled by 0.8 and radius 6.4, and its smoke
+and flash are the small ones (`large` is passed to `CreateHeroFireSmoke` / `Flash`).
+
+**`XHeroFire_Chase`** (+0x38 `targetEnemy`, +0x3c `targetBoss`): when made, the target is
+`XEnemyList::GetClosestEnemy(point 100 ahead of the shot along its angle, 200)`, which looks at
+the enemies up to the first empty slot that are `Chasable` (slime, bee, wallaby, mushroom, squid,
+kiwi, turtle, ghost) and NORMAL, skips those more than 200 from the point along Z, and keeps the
+strictly nearest by `ApproxDistance`. With none, the boss, if it exists, is NORMAL and is less
+than 200 from the shot along Z. `ProcessFrame`: once `localTime` > 10 (before the base class counts
+the tick), the angle turns towards the target (`FindDirectionXZ` from the shot) by at most
+0.0279253 (1.6°) a tick with `MakeAngleCloseTo_Constant`, the enemy first, else the boss. The
+target is never dropped, so a shot keeps turning towards a defeated enemy's last position. Then
+`XHeroFire::ProcessFrame`. Each tick it moves 2.6
 along its angle; after 20 ticks it also falls (vertical speed −0.06 per tick); every 2 ticks it
 leaves a smoke puff. It ends, with a flash, on the first of: the map (`IsBlockedFloat`), the
 other hero, static objects that block fire (their box tested against the shot's centre point,
@@ -926,7 +1015,8 @@ its shape from its neighbours.
 **Shop** (`S`, `XStaticObj_Shop`): model 0x1ab turned 90°, a 112 × 1000 × 120 box, and a sign
 (texture 0x1ac, an 84 × 36.96 rect turned −90° about Y and −90° about Z, moved 56 out and 127.4
 up, opaque). A NORMAL hero within 15 of the doorstep (60 in front of it in X) calls
-`XShop::Start` once; it can start again after the hero has been more than 25 away.
+`XShop::Start` once; it can start again after the hero has been more than 25 away. Hero A is
+tested before hero B, so if both arrive in the same tick, B is the shopper.
 
 **Needle fan** (`m`): a spiked bar, model 0x17f, collision 0x17d, box 200 × 80, shadow 42,
 turning (0.6 + 0.1 × world)° a tick on a post (model 0x17e, a static 19 × 87 box). Can't be hurt;

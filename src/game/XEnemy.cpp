@@ -19,9 +19,6 @@ constexpr float kPi = 3.14159f, kHalfPi = 1.5708f, kQuarterPi = 0.785398f;
 // RandomI: lo..hi, including hi when `inclusive`
 long RandomI(long lo, long hi, bool inclusive) { return Random(hi - lo + (inclusive ? 1 : 0)) + lo; }
 
-// FindDirectionXZ: the yaw from `from` towards `to` (sin along X, cos along Z)
-float FindDirectionXZ(const D3DVECTOR& from, const D3DVECTOR& to) { return FindYaw(to.x - from.x, to.z - from.z); }
-
 // ------------------------------------------------------------------------------- XEnemy_Slime
 // 'a' slime (1 health), '1' king slime (20), '5' queen slime (120, starts at x 100). It walks a
 // short way, waits, and every few waits sits for 60 ticks then turns towards a random point (or
@@ -1871,6 +1868,22 @@ bool XEnemyList::CollisionCheck_Fire(const D3DVECTOR& pos, float radius, const D
         if (s->CollisionCheck_Fire(pos, radius, heroPos)) return true;
     }
     return false;
+}
+
+XEnemyBase* XEnemyList::GetClosestEnemy(const D3DVECTOR& pos, float rangeZ) const {
+    XEnemyBase* closest = nullptr;
+    float closestDist = kFloatMax;
+    for (auto& s : slots_) {
+        if (!s) break;
+        if (!s->Chasable() || s->GetLiveState() != XEnemyBase::NORMAL) continue;
+        if (std::fabs(s->GetPos().z - pos.z) > rangeZ) continue;
+        float d = ApproxDistance(pos, s->GetPos());
+        if (closestDist > d) {
+            closestDist = d;
+            closest = s.get();
+        }
+    }
+    return closest;
 }
 
 bool XEnemyList::CollisionCheckX(float& newX, const XEnemyBase& m) const {

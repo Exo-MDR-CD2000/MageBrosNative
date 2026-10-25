@@ -55,6 +55,8 @@ float MakeAngleCloseTo_Constant(float cur, float target, float step) {
 
 float FindYaw(float a, float b) { return NormaliseAngle(std::atan2(a, b)); }
 
+float FindDirectionXZ(const D3DVECTOR& from, const D3DVECTOR& to) { return FindYaw(to.x - from.x, to.z - from.z); }
+
 float Interpolate(float a, float b, float t) { return (b - a) * t + a; }
 
 D3DVECTOR D3DVectorInterpolate(const D3DVECTOR& a, const D3DVECTOR& b, float t) {

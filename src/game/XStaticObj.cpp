@@ -289,10 +289,10 @@ public:
 private:
     // a hero in the NORMAL state within 15 of the door opens the shop; it opens again for that hero
     // only once it has gone 25 away
-    void CheckHero(const XHero* h, bool& finished) {
+    void CheckHero(XHero* h, bool& finished) {
         if (!finished) {
             if (h && h->GetLiveState() == XHero::NORMAL && 15.0f > ApproxDistance(h->GetPos(), checkPos_)) {
-                // (XShop::Start(hero): the shop screen comes with stage 6)
+                if (game_->startShop) game_->startShop(h);  // XShop::Start
                 finished = true;
             }
         } else if (h && ApproxDistance(h->GetPos(), checkPos_) > 25.0f) {

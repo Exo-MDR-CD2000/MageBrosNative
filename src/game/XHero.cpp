@@ -65,6 +65,11 @@ void XHero::UpdateMagicLevel() {
     mpRecoveryFrames_ = kRecoveryFrames[status_->magicLevel];
 }
 
+void XHero::DecreaseGold(int amount) {
+    int gold = status_->gold - amount;
+    status_->gold = (int16_t)(gold < 0 ? 0 : gold);
+}
+
 void XHero::Reset() {
     UpdateMagicLevel();
     pos_ = startPos_;
@@ -354,8 +359,7 @@ void XHero::ProcessDying(XHeroWorld& world) {
         // the rest
         int base = world.BossLevel() ? 0 : (5 - status_->life) * 3;
         int lost = status_->gold <= base ? status_->gold : (int)((status_->gold - base) * 0.1f) + base;
-        int gold = status_->gold - lost;  // XHeroBase::DecreaseGold
-        status_->gold = (int16_t)(gold < 0 ? 0 : gold);
+        DecreaseGold(lost);
         world.ShowLostGoldMessage(heroA_, lost);
         status_->life = 5;
         status_->magicPoint = 10;

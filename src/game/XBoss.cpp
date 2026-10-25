@@ -26,8 +26,6 @@ constexpr uint16_t kModelWizardBlade = 0x29c, kModelWizardWand = 0x29b;
 constexpr uint16_t kSoundWizardRotate = 0x2a7, kSoundWizardAttack = 0x2aa, kSoundWizardAppear = 0x2ab,
                    kSoundWizardRoar = 0x2b3, kSoundWizardFire = 0x2a8, kSoundWizardWandUp = 0x2a9;
 
-// FindDirectionXZ: the yaw from `from` towards `to`
-float FindDirectionXZ(const D3DVECTOR& from, const D3DVECTOR& to) { return FindYaw(to.x - from.x, to.z - from.z); }
 }  // namespace
 
 // ----------------------------------------------------------------------------------- XBossBase

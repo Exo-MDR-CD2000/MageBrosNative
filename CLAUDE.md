@@ -100,7 +100,7 @@ them.
   test hooks), the `XStatusDisplay`, the `JSoundList`, the menus' `JDInput` (`GetDInput`) and a
   music request (`PlayMusic(track)`, which `main.cpp` takes with `TakeMusicRequest`). Screens
   built: `XLogoObject`, `XTitleObject`, `XSelectSlot`, `XSelectLevelObject` and the game
-  (`XGameScene`, kept and restarted with `Start()` on each entry). Stand-in: the ending goes to
+  (`XGameScene`, kept and restarted with `Start()` on each entry; `Start` remakes its `XShop`). Stand-in: the ending goes to
   the logo. `PlayMusic` ignores the track already
   playing and `StopMusic` clears it, as `JMidiList` (the logo and the bosses' "stop the music"
   use `StopMusic`).
@@ -120,10 +120,13 @@ them.
     two-player game, so NON for the whole level in a one-player one),
   - `XLevelLoop`,
   - `XCamera`,
-  - each hero's `XShadow`.
+  - each hero's `XShadow`;
+  - the shop (`XShop`, `src/game/XShop.*`), opened through `XGameContext::startShop`.
 
-  Its `ProcessFrame(n)` is `XGameObject::ProcessFrame`: the fade and the level's end (process
-  types 0–4), then `n` calls of `Tick()` (one tick of play).
+  Its `ProcessFrame(n)` is `XGameObject::ProcessFrame`: it updates the application's `JDInput`
+  (Escape and the shop's keys), runs the fade and the level's end (process types 0–4), then
+  `n` calls of `Tick()` (one tick of play). While the shop is open it runs only the status
+  display and the camera, then `XShop::ProcessFrame(n)`.
 - **`XLevelLoop`** holds the lists the original's `XGameObject` owns (`XGameScene` is the
   `XGameObject` screen itself) and implements `XHeroWorld`, the callbacks XHero uses. It owns:
   - an `XGameContext`, the shared pointers that objects reach through `XGameObject` in the
@@ -295,15 +298,16 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.3.4, stage 6 chunk 5 done)
+## Where we are (last updated: 2026-10-24, version 0.3.5, stage 6 chunk 7 done)
 
 **Stage 6 (the front end) is under way: chunks 1 (the screen framework, fades and logo), 2
-(the title), 3 (saving), 4 (the save slots) and 5 (level select and the real level ends) are
-done; chunk 6, the shop, is next.** Stage 5 built every object of the 40 levels and
+(the title), 3 (saving), 4 (the save slots), 5 (level select and the real level ends) and 6
+(the shop) and 7 (the wands' shots) are done; chunk 8, the ending, is next.** Stage 5 built every object of the 40 levels and
 two-player co-op (player 2, hero on hero, player 2's platform shadow and HUD panel). Wait for
 the owner to say "start the next chunk". The chunk tables are in `docs/ROADMAP.md` ("Stage 6,
 chunk by chunk" for the front end, "Stage 5" for the game); what each version changed is in
-`CHANGELOG.md`. The latest release is v0.3.4 (GitHub), and `main` is clean and pushed.
+`CHANGELOG.md`. The latest release is v0.3.4 (GitHub); 0.3.5 (chunks 6 and 7: the owner
+wanted the wands working before committing the shop) is built and waiting for "commit and push".
 
 Playable now, with nothing left unbuilt (no marker cubes):
 
@@ -324,8 +328,8 @@ Playable now, with nothing left unbuilt (no marker cubes):
 Stage 5's code is complete (chunks 1 to 18). Chunk 19, the owner playing the whole game, is
 deferred: the owner will test once the front end is in, so stage 6 goes ahead first.
 
-**Stage 6 (the front end) has 9 chunks; chunks 1 (0.3.0), 2 (0.3.1), 3 (0.3.2), 4 (0.3.3) and
-5 (0.3.4) are done, chunk 6 is next.** The table,
+**Stage 6 (the front end) has 9 chunks; chunks 1 (0.3.0), 2 (0.3.1), 3 (0.3.2), 4 (0.3.3),
+5 (0.3.4), 6 and 7 (0.3.5) are done, chunk 8 is next.** The table,
 with the original's screen states, is in `docs/ROADMAP.md`, "Stage 6, chunk by chunk":
 
 | Chunk | What |
@@ -335,8 +339,8 @@ with the original's screen states, is in `docs/ROADMAP.md`, "Stage 6, chunk by c
 | 3 | Saving: `XSaveData`, `XLevelStatus`, `DoSaveData`; the port's own save files in AppData (`core/saves`, behind the ini's `save_path`); no import of the original's registry saves (owner's decision) (done, 0.3.2) |
 | 4 | Save slots (`XSelectSlot`) (done, 0.3.3) |
 | 5 | Level select (`XSelectLevelObject`) and the game's real level ends (done, 0.3.4) |
-| 6 | Shop screen (`XShop`) |
-| 7 | The other wands' shots (`XHeroFireList::_Wand*`, `XHeroFire_Chase`) |
+| 6 | Shop screen (`XShop`) (done, 0.3.5) |
+| 7 | The other wands' shots (`XHeroFireList::_Wand*`, `XHeroFire_Chase`) (done, 0.3.5) |
 | 8 | Ending (`XEndingObject`) |
 | 9 | Checks and the stage 6 zip |
 
@@ -349,22 +353,26 @@ makes any other keyed); `XLevelStatus` has its play part (`IncreaseLevel` / `Wor
 `IsLast*`, `Reset`, `Valid`), saved inside `XSaveData`. `XApplication::FrameMove` takes at most
 10 ticks a frame, as the original.
 
-**Starting chunk 6 (the shop, `XShop`, `listings/XShop.asm`)**, from what earlier chunks saw
-(check each against the listing):
+**The shop (chunk 6, 0.3.5)** is in: `XShop` (see "The shop (`XShop`)" in
+`docs/REVERSE_ENGINEERING.md`). Testing it: the shops stand at x 60 in 1-3, 1-6, 1-9, 2-3, 2-6,
+2-9, 3-3, 3-6, 3-9, 4-2, 4-5 and 4-8. The door is at x 120, at the shop's z (1-3: z 6460). In 4-2
+a wooden gate stands in front of the door. In 1-3, `place=100,6400` first, wait about 14 s for
+the camera, then `place=120,6460`. The mage is pushed out to x 129 and the shop opens as it
+lands. The shop's menu answers from about 0.4 s after it opens (the 40-tick fade). Test-hook
+games start with 0 gold, so every item is greyed out. To test buying, temporarily set the gold
+in `XShop::Start`, and remove it afterwards.
 
-- The shop building is `XStaticObj_Shop` (`src/game/XStaticObj.cpp`): a hero in NORMAL within 15
-  of its door calls `XShop::Start(hero)` (the port has a `CheckHero` with a comment there), with
-  a per-hero "finished" flag cleared once the hero is 25 away.
-- `XGameObject` owns the shop (+0x9c); `InitLevel` calls `XShop::Reset`. In
-  `XGameObject::ProcessFrame`, while `XShop::GetState` is not 0 the level is paused: only the
-  status display and the camera run each tick, then `XShop::ProcessFrame(n)`. `XGameObject::Render`
-  draws `XShop::Render` after the status display, before `RenderFade`.
-- `XShop::_CheckEnabledItems` reads the hero's status: life below 5, magic level below 7, the
-  wands (compared with `wandType`), each against a price table, and the gold (`DecreaseGold`).
-  Buying updates `life` / `magicLevel` (then `XHeroBase::UpdateMagicLevel`) / `wandType`.
-- The shop's input is `XShop::_UpdateInput` (the menu helpers are in `src/game/JDInput.*`).
-- The wands' own shot patterns are chunk 7 (`XHeroFireList::_WandNormal2` / `3`, `_WandChase` /
-  `2` / `3`, `XHeroFire_Chase`); the port's `XLevelLoop::CreateFire` fires only `_WandNormal`.
+**The wands (chunk 7, 0.3.5)** are in: `XLevelLoop::CreateFire` picks the pattern by
+`wandType`; shots carry `large` (small: sprite 0.8, radius 6.4) and, for the homing ones, a target
+enemy or boss (`XEnemyList::GetClosestEnemy`). `FindDirectionXZ` moved to `XMath`. See "Shots"
+in `docs/REVERSE_ENGINEERING.md`. Testing tips: test-hook games start with wand 0, so set
+`wandType` temporarily (e.g. after `SetStatus` in `XGameScene::InitLevel`). Slimes for homing:
+1-1, `place=40,1040`, fire about 6 s later. The dragon: 1-10, `place=100,1340` puts the mage on
+the island (z 1300 to 1460); the dragon becomes a target about 10 s in.
+
+**Starting chunk 8 (the ending, `XEndingObject`, `XCamera::ResetForEnding`)**:
+`listings/XEndingObject.asm`. The game's `TO_ENDING` already sets state 9; `XApplication`'s
+stand-in sends it to the logo.
 
 Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
 status, shot colour, warp photons, lost-gold line and platform mark; `XGameScene::UpdateInput`
@@ -399,7 +407,9 @@ and how it looks); two players (0.2.22: player 2's keys and second gamepad, the 
 the mages, enemies turning to the closer one, the level ending when both are done); standing on
 and carrying each other (0.2.23: on a lift in 1-4 to 1-9, over a floor fan in 3-4, jumping off
 the other's head and bumping into it from below); the front end (0.3.0–0.3.4: logo, title,
-save slots, level select, saving; the owner has been playing these versions). Already confirmed
+save slots, level select, saving; the owner has been playing these versions); the shop (0.3.5:
+buying in each world, both players, and Escape leaving it and giving up the level, as the original);
+the wands' shots (0.3.5: the spreads and how strongly the X wands' shots home). Already confirmed
 by the owner: World 1 start to finish, the dragon fight, the third-barrel heart, the carrying
 between the two mages (0.2.23).
 
@@ -483,5 +493,3 @@ between the two mages (0.2.23).
 ### Known stand-ins (replace them when their real code lands)
 
 - The ending goes back to the logo (stage 6 chunk 8).
-- The shop's screen (the building stands; stage 6 chunk 6).
-- Only the starting wand's shot pattern exists; the others are stage 6 chunk 7.

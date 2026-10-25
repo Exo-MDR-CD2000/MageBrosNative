@@ -2,6 +2,7 @@
 #include "game/JSoundList.h"
 #include "game/XApplication.h"
 #include "game/XParticle.h"
+#include "game/XShop.h"
 #include "game/XStatusDisplay.h"
 #include "audio/midi.h"
 #include "framework/d3dutil.h"
@@ -44,6 +45,7 @@ XGameScene::XGameScene(XApplication* app)
 XGameScene::~XGameScene() = default;
 
 void XGameScene::Start() {
+    shop_ = std::make_unique<XShop>(app_, &camera_);
     app_->StatusDisplay().InitForGame();
     InitLevel();
 }
@@ -74,6 +76,8 @@ bool XGameScene::InitLevel() {
     loop_.SetMonoSoundHandler([this](uint16_t id, float volume) { app_->Sounds().PlayMono(id, volume); });
     loop_.SetStopMusicHandler([this] { app_->StopMusic(); });  // JMidiList::Stop
     loop_.SetShakeHandler([this](float magnitude) { camera_.StartShaking(magnitude); });
+    loop_.SetShopHandler([this](XHero* hero) { shop_->Start(hero); });
+    shop_->Reset();
     camera_.ResetForGame(level_.Depth());
     sd.InitForGame();  // XStatusDisplay::Reset: the counter and the lost-gold messages
     levelChanged_ = true;
@@ -143,13 +147,10 @@ void XGameScene::PlaySound(uint16_t waveId, float z) {
 
 void XGameScene::ProcessFrame(unsigned n) {
     if (state_ == NON || !heroA_) return;
+    // the menus' input, read once a frame (Escape here, and the shop's keys)
+    JDInput& in = app_->GetDInput();
+    in.UpdateInputState();
     tick_ += n;
-    // Escape, read once a frame (JDInput::UpdateInputState, GetKeyboardPressed)
-    uint8_t keys[256];
-    Input::GetKeyboardState(keys);
-    bool escape = (keys[DIK_ESCAPE] & 0x80) != 0;
-    bool escapePressed = escape && !prevEscape_;
-    prevEscape_ = escape;
 
     if (state_ == FADEIN) {
         ProcessFadeIn();
@@ -193,8 +194,9 @@ void XGameScene::ProcessFrame(unsigned n) {
                 else if (a == XHero::DEAD && b == XHero::DEAD)
                     StartProcess(LOST);
             }
-            // Escape makes each hero still playing give up the level
-            if (escapePressed) {
+            // Escape makes each hero still playing give up the level (even with the shop open:
+            // the shop takes Escape as "exit" as well)
+            if (in.GetKeyboardPressed(DIK_ESCAPE)) {
                 for (XHero* h : {heroA_.get(), heroB_.get()})
                     if (h->GetLiveState() == XHero::NORMAL) h->StartDying();
             }
@@ -204,8 +206,19 @@ void XGameScene::ProcessFrame(unsigned n) {
             StartFadeOut(processType_);
         }
     }
-    // (the shop's screen pauses the level here: stage 6)
-    for (unsigned i = 0; i < n; i++) Tick();
+    if (shop_->GetState() == XShop::NON) {
+        for (unsigned i = 0; i < n; i++) Tick();
+    } else {
+        // the shop pauses the level: only the status display and the camera run, then the shop.
+        // (The heroes' keys are still read, so a key held over from the shop doesn't count as
+        // pressed afresh when play resumes, as the original's once-a-frame JDInput.)
+        for (unsigned i = 0; i < n; i++) {
+            UpdateInput();
+            app_->StatusDisplay().ProcessFrame();
+            camera_.ProcessFrame(heroA_->GetPos().z, Alive(*heroA_), heroB_->GetPos().z, Alive(*heroB_));
+        }
+        shop_->ProcessFrame(n);
+    }
 }
 
 void XGameScene::Tick() {
@@ -274,5 +287,6 @@ void XGameScene::Render(Device* d, BackBuffer* bb) {
     info.heroADead = heroA_->GetLiveState() == XHero::DEAD;
     info.heroBDead = heroB_->GetLiveState() == XHero::DEAD;
     app_->StatusDisplay().Render(bb, info);
+    if (shop_->GetState() != XShop::NON) shop_->Render(d, bb);
     RenderFade(bb);
 }

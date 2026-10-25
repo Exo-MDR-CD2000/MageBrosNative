@@ -49,6 +49,7 @@ public:
     int GetFloorLevel() const { return floorLevel_; }
     void SetFloorLevel(int level);
     bool Collidable() const { return collidable_; }
+    bool Chasable() const { return chasable_; }  // a homing shot may aim at it
     const XCollideBox& GetCollideBox() const { return *collideBox_; }
 
 protected:
@@ -93,6 +94,9 @@ public:
 
     // A hero's shot: true if an enemy stopped it.
     bool CollisionCheck_Fire(const D3DVECTOR& pos, float radius, const D3DVECTOR& heroPos);
+    // XEnemyList::GetClosestEnemy: the chasable enemy in the NORMAL state nearest `pos`, among
+    // those within `rangeZ` of it along Z (nullptr if none)
+    XEnemyBase* GetClosestEnemy(const D3DVECTOR& pos, float rangeZ) const;
     // An enemy moving against the others (boxes only, heights ignored).
     bool CollisionCheckX(float& newX, const XEnemyBase& mover) const;
     bool CollisionCheckZ(float& newZ, const XEnemyBase& mover) const;

@@ -4,8 +4,8 @@
 // "The level loop" and "Enemies and static objects".
 //
 // Also the enemies' bullets (XBulletList), the platforms (XPlatformList), the water (XWater) and
-// the boss (the dragon so far) and the wall candles (XCandleList). Still to come: the other bosses and the remaining objects and enemies; only the starting wand's shot pattern is
-// made (the others come with the shop).
+// the bosses and the wall candles (XCandleList). The shots follow the shooter's wand: one, two or
+// three straight shots, or the same of homing shots (XHeroFire_Chase).
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -38,6 +38,7 @@ public:
     using MonoSoundFn = std::function<void(uint16_t waveId, float volume)>;
     using StopMusicFn = std::function<void()>;
     using ShakeFn = std::function<void(float magnitude)>;
+    using ShopFn = std::function<void(XHero* hero)>;
 
     XLevelLoop();
     ~XLevelLoop() override;
@@ -61,6 +62,7 @@ public:
     void SetMonoSoundHandler(MonoSoundFn f) { playMono_ = std::move(f); }
     void SetStopMusicHandler(StopMusicFn f) { stopMusic_ = std::move(f); }
     void SetShakeHandler(ShakeFn f) { shake_ = std::move(f); }
+    void SetShopHandler(ShopFn f) { shop_ = std::move(f); }
     // XBossBase::GetHealthMain for the status display (0 without a boss)
     int BossHealth() const;
     int NumTorches() const { return (int)torches_.size(); }
@@ -94,12 +96,17 @@ public:
     bool CandleCollisionY(float& newY, const XCollideBox& box) override;
 
 private:
-    struct Fire {  // XHeroFire
+    struct Fire {  // XHeroFire (and XHeroFire_Chase)
         bool live = false;
         const XHero* owner = nullptr;  // ownerHero: picks the colour and where enemies flinch from
         unsigned localTime = 0;
         D3DVECTOR pos{0, 0, 0};
         float angle = 0, verticalSpeed = 0, radius = 8.0f;
+        bool large = true;  // the side shots of the triple wands are 0.8 the size (radius 6.4)
+        // XHeroFire_Chase: the enemy, or else the boss, it turns towards (chosen when fired)
+        bool chase = false;
+        const XEnemyBase* targetEnemy = nullptr;
+        const XBossBase* targetBoss = nullptr;
     };
     struct Torch {
         bool large = false, fireOn = false;
@@ -121,6 +128,10 @@ private:
         std::unique_ptr<XShadowSimple> shadow;
     };
 
+    // XHeroFireList::_CreateFire_Normal / _CreateFire_Chase: one shot at `angle`
+    void CreateFire_Normal(const XHero& hero, float angle, bool large);
+    void CreateFire_Chase(const XHero& hero, float angle, bool large);
+    Fire* NewFire(const XHero& hero, float angle, bool large);  // the first free slot, or nullptr
     void ProcessFire(Fire& f);
     bool TorchCollisionCheckFire(const Fire& f);  // XTorchList::CollisionCheck_Fire
     bool CoinTouchesHero(const Coin& c, const XHero* hero);  // XCoin::CollisionCheck_Hero's test
@@ -138,6 +149,7 @@ private:
     MonoSoundFn playMono_;
     StopMusicFn stopMusic_;
     ShakeFn shake_;
+    ShopFn shop_;
     std::vector<Fire> fires_;  // 30 slots
     std::vector<Torch> torches_;
     std::vector<Coin> coins_;
@@ -159,4 +171,5 @@ private:
     std::unique_ptr<XBossBase> boss_;  // XGameObject::boss
     bool useWater_ = false;
     std::unique_ptr<JObject3DRect> fireSpriteA_, fireSpriteB_;  // drawn at each live shot, by its owner
+    std::unique_ptr<JObject3DRect> fireSpriteSmallA_, fireSpriteSmallB_;  // the same at 0.8, for small shots
 };

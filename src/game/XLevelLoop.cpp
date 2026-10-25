@@ -43,6 +43,12 @@ XLevelLoop::XLevelLoop()
     fireSpriteA_->SetTexture(kTextureFireA);
     fireSpriteB_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(18.0f, 18.0f));
     fireSpriteB_->SetTexture(kTextureFireB);
+    fireSpriteSmallA_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(18.0f, 18.0f));
+    fireSpriteSmallA_->Scale(0.8f);
+    fireSpriteSmallA_->SetTexture(kTextureFireA);
+    fireSpriteSmallB_ = std::make_unique<JObject3DRect>(JObject3DRect::Particle(18.0f, 18.0f));
+    fireSpriteSmallB_->Scale(0.8f);
+    fireSpriteSmallB_->SetTexture(kTextureFireB);
     particles_->SetHeroPos([this](bool heroA) {
         const XHero* h = heroA ? heroA_ : heroB_;
         return h ? h->GetPos() : D3DVECTOR(0, 0, 0);
@@ -100,6 +106,9 @@ void XLevelLoop::Load(const XLevelView& level, XHero* heroA, XHero* heroB, bool 
     };
     g.startShaking = [this](float magnitude) {
         if (shake_) shake_(magnitude);
+    };
+    g.startShop = [this](XHero* hero) {
+        if (shop_) shop_(hero);
     };
     g.createEnemyCoin = [this](const XEnemyBase& e) { CreateEnemyCoin(e, (int)e.GetSizeType()); };
     g.createHeart = [this](const XEnemyBase& e) { CreateEnemyCoin(e, 2); };
@@ -205,13 +214,44 @@ void XLevelLoop::CloseWarpZone() {
 
 // ---------------------------------------------------------------------------- shots
 
+// XHeroFireList::CreateFire: the pattern of the shooter's wand (XHeroStatus::wandType). The
+// double wands fire two shots 6 degrees either side of the hero's yaw (the homing one 8); the
+// triple wands one straight ahead and two small ones 12 degrees either side (the homing one 16).
 void XLevelLoop::CreateFire(const XHero& hero) {
-    // _WandNormal: one shot along the hero's yaw (the other wands come with the shop)
-    CreateFireAt(hero, hero.GetYaw());
+    const float yaw = hero.GetYaw();
+    switch (hero.Status().wandType) {
+    case 0:  // _WandNormal
+        CreateFire_Normal(hero, yaw, true);
+        break;
+    case 1:  // _WandNormal2
+        CreateFire_Normal(hero, NormaliseAngle(yaw + 0.10472f), true);
+        CreateFire_Normal(hero, NormaliseAngle(yaw - 0.10472f), true);
+        break;
+    case 2:  // _WandNormal3
+        CreateFire_Normal(hero, yaw, true);
+        CreateFire_Normal(hero, NormaliseAngle(yaw + 0.20944f), false);
+        CreateFire_Normal(hero, NormaliseAngle(yaw - 0.20944f), false);
+        break;
+    case 3:  // _WandChase
+        CreateFire_Chase(hero, yaw, true);
+        break;
+    case 4:  // _WandChase2
+        CreateFire_Chase(hero, NormaliseAngle(yaw + 0.139626f), true);
+        CreateFire_Chase(hero, NormaliseAngle(yaw - 0.139626f), true);
+        break;
+    case 5:  // _WandChase3
+        CreateFire_Chase(hero, yaw, true);
+        CreateFire_Chase(hero, NormaliseAngle(yaw + 0.279253f), false);
+        CreateFire_Chase(hero, NormaliseAngle(yaw - 0.279253f), false);
+        break;
+    }
 }
 
-void XLevelLoop::CreateFireAt(const XHero& hero, float angle) {
-    // XHeroFireList::_CreateFire_Normal: the first free slot, 20 units out and 12 up
+// Create8Way's shots (the hero bursting as it dies) are always plain and large
+void XLevelLoop::CreateFireAt(const XHero& hero, float angle) { CreateFire_Normal(hero, angle, true); }
+
+// XHeroFire::XHeroFire: 20 units out along `angle` and 12 up; radius 8, or 6.4 for a small shot
+XLevelLoop::Fire* XLevelLoop::NewFire(const XHero& hero, float angle, bool large) {
     for (Fire& f : fires_) {
         if (f.live) continue;
         const D3DVECTOR& p = hero.GetPos();
@@ -220,8 +260,27 @@ void XLevelLoop::CreateFireAt(const XHero& hero, float angle) {
         f.owner = &hero;
         f.angle = angle;
         f.pos = D3DVECTOR(p.x + std::sin(angle) * 20.0f, p.y + 12.0f, p.z + std::cos(angle) * 20.0f);
-        return;
+        f.large = large;
+        if (!large) f.radius *= 0.8f;
+        return &f;
     }
+    return nullptr;
+}
+
+void XLevelLoop::CreateFire_Normal(const XHero& hero, float angle, bool large) { NewFire(hero, angle, large); }
+
+// XHeroFire_Chase::XHeroFire_Chase: the target is the chasable enemy nearest a point 100 ahead of
+// the shot, among those within 200 of that point along Z; with none, the boss if it is in its
+// NORMAL state and within 200 of the shot along Z
+void XLevelLoop::CreateFire_Chase(const XHero& hero, float angle, bool large) {
+    Fire* f = NewFire(hero, angle, large);
+    if (!f) return;
+    f->chase = true;
+    D3DVECTOR ahead(f->pos.x + std::sin(f->angle) * 100.0f, f->pos.y, f->pos.z + std::cos(f->angle) * 100.0f);
+    f->targetEnemy = enemies_->GetClosestEnemy(ahead, 200.0f);
+    if (!f->targetEnemy && boss_ && boss_->GetLiveState() == XBossBase::NORMAL &&
+        std::fabs(boss_->GetPos().z - f->pos.z) < 200.0f)
+        f->targetBoss = boss_.get();
 }
 
 void XLevelLoop::CreateEnemyExplode(const D3DVECTOR& pos, int size) { particles_->CreateEnemyExplode(pos, size != 0); }
@@ -248,6 +307,14 @@ bool XLevelLoop::TorchCollisionCheckFire(const Fire& f) {
 }
 
 void XLevelLoop::ProcessFire(Fire& f) {
+    // XHeroFire_Chase::ProcessFrame: after 10 ticks, turn at most 1.6 degrees a tick towards the
+    // target (wherever it is: the target is kept even once it has been defeated)
+    if (f.chase && f.localTime > 10) {
+        if (f.targetEnemy)
+            f.angle = MakeAngleCloseTo_Constant(f.angle, FindDirectionXZ(f.pos, f.targetEnemy->GetPos()), 0.0279253f);
+        else if (f.targetBoss)
+            f.angle = MakeAngleCloseTo_Constant(f.angle, FindDirectionXZ(f.pos, f.targetBoss->GetPos()), 0.0279253f);
+    }
     f.localTime++;
     const D3DVECTOR prev = f.pos;  // the flash goes where the shot was before this move
     f.pos.x += std::sin(f.angle) * kFireSpeed;
@@ -257,14 +324,14 @@ void XLevelLoop::ProcessFire(Fire& f) {
         f.pos.y += f.verticalSpeed;
     }
     bool ownerA = f.owner->IsHeroA();
-    if (f.localTime % 2 == 0) particles_->CreateHeroFireSmoke(f.pos, ownerA, true);  // normal size
+    if (f.localTime % 2 == 0) particles_->CreateHeroFireSmoke(f.pos, ownerA, f.large);
     // XHeroFire::ProcessFrame: the map, either hero, objects, platforms, enemies, bullets,
     // candles, the boss stop the shot with a flash
     if (level_->Collision().IsBlockedFloat(f.pos.x, f.pos.z, f.pos.y) || (heroA_ && heroA_->CollisionCheck(f.pos)) ||
         (heroB_ && heroB_->CollisionCheck(f.pos)) || statics_->CollisionCheck_Fire(f.pos) ||
         platforms_->CollisionCheck(f.pos) || enemies_->CollisionCheck_Fire(f.pos, f.radius, f.owner->GetPos()) ||
         bullets_->CollisionCheck_Fire(f.pos, f.radius) || candles_->CollisionCheck(f.pos) || (boss_ && boss_->CollisionCheck_Fire(f.pos, f.radius))) {
-        particles_->CreateHeroFireFlash(prev, ownerA, true);
+        particles_->CreateHeroFireFlash(prev, ownerA, f.large);
         f.live = false;
     } else if (TorchCollisionCheckFire(f)) {
         f.live = false;
@@ -469,7 +536,8 @@ void XLevelLoop::RenderEffects(Device* d, const D3DMATRIX& view) {
     particles_->Render(d, view);
     for (const Fire& f : fires_) {
         if (!f.live) continue;
-        JObject3DRect& sprite = f.owner->IsHeroA() ? *fireSpriteA_ : *fireSpriteB_;
+        JObject3DRect& sprite = f.owner->IsHeroA() ? (f.large ? *fireSpriteA_ : *fireSpriteSmallA_)
+                                                   : (f.large ? *fireSpriteB_ : *fireSpriteSmallB_);
         sprite.SetWorldPos(f.pos);
         sprite.Render2(d, view);
     }
