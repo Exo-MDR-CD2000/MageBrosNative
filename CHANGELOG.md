@@ -7,6 +7,14 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.3.6] - 2026-10-24
+
+- **The ending**: clearing World 4's last level now plays the original's ending instead of
+  jumping back to the logo. The two mages walk side by side down a long corridor between
+  scrolling film strips, with the menu music, while four credits slide past: the creator, the
+  thanks, "The End" and the Saito Games logo. Press a button on the last one to return to the
+  logo.
+
 ## [0.3.5] - 2026-10-24
 
 - **The shop**: walking up to a shop's door opens the original's MAGIC SHOP and pauses the

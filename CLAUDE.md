@@ -26,6 +26,11 @@ repository contains no game content.
   1.2 (`third_party/coldet`, LGPL, built as a separate static library), never a rewrite. Keep
   this in mind for every module, and revisit it whenever a choice comes up between the
   original's own code or library and a substitute.
+- **High refresh rates must not change the game.** The port will add upgrades over the original
+  (stage 7), including high refresh-rate support that leaves the game logic and speed untouched.
+  Whenever the original advances something once per frame instead of once per tick, keep it as
+  the original for now, but add it to the "Stage 7: frame-rate dependence" table in
+  `docs/ROADMAP.md`.
 - **One-to-one faithful by default.** The original's behaviour is unchanged when every option is
   at its default: the same tick order, constants, slot counts and quirks, including ones that
   look like bugs. Any modern extras (stage 7) must be opt-in options.
@@ -99,9 +104,9 @@ them.
   chosen; `SetSaveData`, `DoSaveData`), the one-player flag (`SetTwoPlayer`: the title sets it; F2 and `--two-player` are
   test hooks), the `XStatusDisplay`, the `JSoundList`, the menus' `JDInput` (`GetDInput`) and a
   music request (`PlayMusic(track)`, which `main.cpp` takes with `TakeMusicRequest`). Screens
-  built: `XLogoObject`, `XTitleObject`, `XSelectSlot`, `XSelectLevelObject` and the game
-  (`XGameScene`, kept and restarted with `Start()` on each entry; `Start` remakes its `XShop`). Stand-in: the ending goes to
-  the logo. `PlayMusic` ignores the track already
+  built: `XLogoObject`, `XTitleObject`, `XSelectSlot`, `XSelectLevelObject`, the game
+  (`XGameScene`, kept and restarted with `Start()` on each entry; `Start` remakes its `XShop`)
+  and `XEndingObject`. `PlayMusic` ignores the track already
   playing and `StopMusic` clears it, as `JMidiList` (the logo and the bosses' "stop the music"
   use `StopMusic`).
 - **Saving**: `src/core/saves.*` (adapted from Hopmon Native's, without its legacy registry
@@ -240,8 +245,11 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
 - `place=<x>,<z>`: move hero A there with `XGameScene::TestPlaceHero`, which calls
   `SetStartPos` then `Reset`. `placeB=<x>,<z>` does the same for hero B (two-player games only).
 - `players=1` or `players=2`: the number of players for the next `level=`.
+- `ending`: go to the ending from any screen. The first credit slides in about 8 s later. The
+  last one stops in the middle about 45 s later and waits for a button (allow a little more:
+  startup takes time).
 
-`level`, `place`, `placeB` and `players` are test hooks only. Key names are SDL's (`Left Ctrl`,
+`level`, `place`, `placeB`, `players` and `ending` are test hooks only. Key names are SDL's (`Left Ctrl`,
 `Right Ctrl`, `Left Shift`, `D`, `1`); a wrong name does nothing, silently.
 
 Screenshots are game images: view them, then delete them. Never commit them.
@@ -298,16 +306,17 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.3.5, stage 6 chunk 7 done)
+## Where we are (last updated: 2026-10-24, version 0.3.6, stage 6 chunk 8 done)
 
 **Stage 6 (the front end) is under way: chunks 1 (the screen framework, fades and logo), 2
-(the title), 3 (saving), 4 (the save slots), 5 (level select and the real level ends) and 6
-(the shop) and 7 (the wands' shots) are done; chunk 8, the ending, is next.** Stage 5 built every object of the 40 levels and
+(the title), 3 (saving), 4 (the save slots), 5 (level select and the real level ends), 6
+(the shop), 7 (the wands' shots) and 8 (the ending) are done; chunk 9, the checks of the whole
+front end, is next.** Stage 5 built every object of the 40 levels and
 two-player co-op (player 2, hero on hero, player 2's platform shadow and HUD panel). Wait for
 the owner to say "start the next chunk". The chunk tables are in `docs/ROADMAP.md` ("Stage 6,
 chunk by chunk" for the front end, "Stage 5" for the game); what each version changed is in
-`CHANGELOG.md`. The latest release is v0.3.4 (GitHub); 0.3.5 (chunks 6 and 7: the owner
-wanted the wands working before committing the shop) is built and waiting for "commit and push".
+`CHANGELOG.md`. The latest release is v0.3.5 (chunks 6 and 7, GitHub); 0.3.6 (chunk 8) is built and waiting
+for "commit and push".
 
 Playable now, with nothing left unbuilt (no marker cubes):
 
@@ -341,7 +350,7 @@ with the original's screen states, is in `docs/ROADMAP.md`, "Stage 6, chunk by c
 | 5 | Level select (`XSelectLevelObject`) and the game's real level ends (done, 0.3.4) |
 | 6 | Shop screen (`XShop`) (done, 0.3.5) |
 | 7 | The other wands' shots (`XHeroFireList::_Wand*`, `XHeroFire_Chase`) (done, 0.3.5) |
-| 8 | Ending (`XEndingObject`) |
+| 8 | Ending (`XEndingObject`) (done, 0.3.6) |
 | 9 | Checks and the stage 6 zip |
 
 `XRegisterInfoObject` (state 8) is never reached: `RegInfo_Registered` returns 1 in the
@@ -370,9 +379,14 @@ in `docs/REVERSE_ENGINEERING.md`. Testing tips: test-hook games start with wand 
 1-1, `place=40,1040`, fire about 6 s later. The dragon: 1-10, `place=100,1340` puts the mage on
 the island (z 1300 to 1460); the dragon becomes a target about 10 s in.
 
-**Starting chunk 8 (the ending, `XEndingObject`, `XCamera::ResetForEnding`)**:
-`listings/XEndingObject.asm`. The game's `TO_ENDING` already sets state 9; `XApplication`'s
-stand-in sends it to the logo.
+**The ending (chunk 8, 0.3.6)** is in: `XEndingObject` and `XCamera::ResetForEnding` (see "The
+ending" in `docs/REVERSE_ENGINEERING.md`). `--auto ending` jumps there. Its corridor scrolls once
+a frame (`textureOffset`, as the original), so it scrolls faster at higher frame rates. It is in
+the "Stage 7: frame-rate dependence" table in `docs/ROADMAP.md`.
+
+**Starting chunk 9 (checks and the stage 6 zip)**: play the whole flow by screenshot: logo,
+title, save slots, level select, a level, the shop, a cleared world, the ending, back to the
+logo. Then the owner's full play-through (stage 5 chunk 19 and stage 6 together).
 
 Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
 status, shot colour, warp photons, lost-gold line and platform mark; `XGameScene::UpdateInput`
@@ -409,7 +423,8 @@ and carrying each other (0.2.23: on a lift in 1-4 to 1-9, over a floor fan in 3-
 the other's head and bumping into it from below); the front end (0.3.0–0.3.4: logo, title,
 save slots, level select, saving; the owner has been playing these versions); the shop (0.3.5:
 buying in each world, both players, and Escape leaving it and giving up the level, as the original);
-the wands' shots (0.3.5: the spreads and how strongly the X wands' shots home). Already confirmed
+the wands' shots (0.3.5: the spreads and how strongly the X wands' shots home); the
+ending (0.3.6: the corridor's scrolling speed, the credits' timing). Already confirmed
 by the owner: World 1 start to finish, the dragon fight, the third-barrel heart, the carrying
 between the two mages (0.2.23).
 
@@ -492,4 +507,4 @@ between the two mages (0.2.23).
 
 ### Known stand-ins (replace them when their real code lands)
 
-- The ending goes back to the logo (stage 6 chunk 8).
+- None left in the front end.

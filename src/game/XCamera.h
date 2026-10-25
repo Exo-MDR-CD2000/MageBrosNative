@@ -2,7 +2,7 @@
 //
 // It looks at a point that slides along the level (Z) following the heroes, from a fixed
 // distance and angles. See docs/REVERSE_ENGINEERING.md, "Level start, camera and music".
-// Not yet reconstructed: the ending set-up and the vertical-angle controls.
+// Not yet reconstructed: the vertical-angle controls.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
@@ -17,6 +17,8 @@ public:
     // XCamera::ResetForTitle: 500 units from the origin, level with it, on the -Z side looking
     // along +Z (the logo and the title)
     void ResetForTitle();
+    // XCamera::ResetForEnding: as the title's, but looking at a point 60 below the origin
+    void ResetForEnding();
     // XCamera::ProcessFrame (game state): count the tick, ease the look-at point toward the heroes
     // that are alive (not NON, DEAD or COMPLETED), then shake. With one alive it follows that one;
     // with both, their midpoint, but never more than 120 behind the one further along.

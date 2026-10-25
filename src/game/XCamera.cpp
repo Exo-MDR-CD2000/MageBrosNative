@@ -27,6 +27,16 @@ void XCamera::ResetForTitle() {
     localTime_ = 0;  // (and its state to 1, which only the game's ProcessFrame reads)
 }
 
+void XCamera::ResetForEnding() {
+    distance_ = 500.0f;
+    vAngle_ = 0.0f;
+    hAngle_ = 3.14159f;
+    lookAt_ = D3DVECTOR(0.0f, -60.0f, 0.0f);
+    eyeBase_ = D3DVECTOR(0, 0, 0);
+    UpdateViewMatrix();
+    localTime_ = 0;  // (and its state to 1, as ResetForTitle)
+}
+
 void XCamera::ProcessFrame(float zA, bool aliveA, float zB, bool aliveB) {
     localTime_++;
     if (aliveA && !aliveB) {

@@ -5,13 +5,13 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 6 of 7 in progress (version 0.3.5).** The engine runs (window, OpenGL
+> **Status: stage 6 of 7 in progress (version 0.3.6).** The engine runs (window, OpenGL
 > renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
 > explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
 > boss included, by one player or two. The front end has begun: the game opens on the
 > original's logo, title screen, save slots and level select, levels fade in and out,
-> progress is saved, and the shop sells potions and wands, each with its own shots. Next: the
-> ending (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
+> progress is saved, the shop sells potions and wands, each with its own shots, and clearing
+> 4-10 plays the ending. Next: checks of the whole front end (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
 > for what changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
@@ -81,6 +81,10 @@ EXIT to leave. As in the original, Escape also leaves the shop, but it gives up 
 Each wand fires its own pattern: the double wand two shots side by side, the triple wand a
 shot and two smaller ones spread wider, and the X wands the same in homing shots that curve
 towards the nearest enemy (or the boss).
+
+**The ending**: clearing 4-10 plays the original's ending. The two mages walk down an endless
+corridor between scrolling film strips while the credits slide past. On the last one, press a
+button (Enter, Shift, Ctrl, a gamepad button or Escape) to return to the logo.
 
 Defeated enemies drop coins. After a lost level, or a world's last level, the game saves and
 returns to level select; world 4 opens once worlds 1 to 3 are cleared.

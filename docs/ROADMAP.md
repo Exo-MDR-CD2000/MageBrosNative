@@ -9,8 +9,8 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Built: chunks 1–18 done; chunk 19's play-through waits for the owner's full test (below) |
-| **6** | **Front end: title, save slots, level select, shop, ending, saving** | **In progress**: chunks 1–7 of 9 done (below) |
-| 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | |
+| **6** | **Front end: title, save slots, level select, shop, ending, saving** | **In progress**: chunks 1–8 of 9 done (below) |
+| 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | Planned (see "Stage 7: frame-rate dependence" below) |
 
 ## Stage 4, chunk by chunk
 
@@ -95,11 +95,26 @@ The front end is `XApplication`'s state machine (`FrameMove`, `SetState`): each 
 | 5 | Level select (`XSelectLevelObject`) and the game's real level ends (`XGameObject`'s process types 0–4): clearing or dying returns to level select, the last level of a world moves on, the last world goes to the ending; the register screen noted as unreachable | picking any unlocked level; the stand-ins (restart on death, next world) are gone | Done |
 | 6 | The shop screen (`XShop`): opened by the shop building, life, magic level and wands for gold (`_CheckEnabledItems`), each player's own purchases | buying in the shop of each world | Done |
 | 7 | The other wands' shots (`XHeroFireList::_WandNormal2` / `3`, `_WandChase` / `2` / `3`, `XHeroFire_Chase`) | every wand bought in the shop fires its own pattern | Done |
-| 8 | The ending (`XEndingObject`, `XCamera::ResetForEnding`), then back to the logo | finishing 4-10 | **Next** |
-| 9 | Checks and the stage 6 zip: the whole flow from logo to ending by screenshot | the complete game, ready for the owner's full play-through (stage 5 chunk 19 and stage 6 together) | |
+| 8 | The ending (`XEndingObject`, `XCamera::ResetForEnding`), then back to the logo | finishing 4-10 | Done |
+| 9 | Checks and the stage 6 zip: the whole flow from logo to ending by screenshot | the complete game, ready for the owner's full play-through (stage 5 chunk 19 and stage 6 together) | **Next** |
 
 Chunks 6 and 7 were released together, in 0.3.5, so the wands the shop sells fire their own
 patterns from the start.
+
+## Stage 7: frame-rate dependence
+
+The game logic runs in fixed 10 ms ticks (`XApplication::FrameMove(n)` with up to 10 ticks a
+frame), so its speed doesn't depend on the frame rate. High refresh rates must stay that way:
+more frames drawn, with the game's speed and behaviour unchanged.
+
+A few things in the original advance once per frame instead of once per tick. The port keeps them
+per frame for now, to stay one-to-one. On a high-refresh display they run faster than the
+original intended. Stage 7 should move each one to ticks (or scale it by the elapsed time) as
+part of high-refresh support. Add each new one to this table as it's found.
+
+| Where | What advances per frame | Found in |
+|---|---|---|
+| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks) | stage 6 chunk 8 (0.3.6) |
 
 ## Open items
 

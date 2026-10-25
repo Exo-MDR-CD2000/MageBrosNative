@@ -3,6 +3,7 @@
 #include "core/saves.h"
 #include <ctime>
 #include "game/JSprite.h"
+#include "game/XEndingObject.h"
 #include "game/XLogoObject.h"
 #include "game/XSelectLevelObject.h"
 #include "game/XSelectSlot.h"
@@ -58,8 +59,11 @@ void XApplication::FrameMove(unsigned n) {
         case REGISTER_INFO:  // (never asked for: the freeware build is registered)
             EnterGame();
             break;
-        case ENDING:  // stand-in: the ending goes back to the logo, as the real one does
-            state_ = LOGO;
+        case ENDING:
+            DropScreens();
+            ending_ = std::make_unique<XEndingObject>(this);
+            current_ = ending_.get();
+            state_ = RUNNING;
             break;
         case QUIT:
             quit_ = true;
@@ -77,6 +81,7 @@ void XApplication::DropScreens() {
     title_.reset();
     selectSlot_.reset();
     selectLevel_.reset();
+    ending_.reset();
 }
 
 void XApplication::StopMusic() {

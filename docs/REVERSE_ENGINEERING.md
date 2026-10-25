@@ -469,6 +469,41 @@ level once play resumes. The port keeps that quirk. The port also reads the hero
 the paused ticks, so that a key held from the shop isn't taken as freshly pressed when play
 resumes. The original reads them through its once-a-frame `JDInput`, which behaves the same way.
 
+### The ending (`XEndingObject`, `XCamera::ResetForEnding`)
+
+Fields (after `XProcessObject`): +0x90 the camera, +0x94 / +0x98 the film strips (upper 0x2cb,
+lower 0x2ca, not colour-keyed), +0x9c four credit sprites (0x2cc, 0x2cd, 0x2ce colour-keyed;
+0x2cf, the Saito Games logo, not), +0xac / +0xb0 the left and right walls, +0xb4 the floor
+(`JObject3D_Rect`s), +0xb8 / +0xbc the mages' bodies, +0xc0 / +0xc4 their wands
+(`JObject3DX`), +0xc8 / +0xcc their shadows (`JObject3D_Shadow`), +0xd0 `textureOffset`, +0xd4
+`localCounter`, +0xd8 `creditIndex`, +0xdc `creditPosX`, +0xe0 `creditState` (`CREDITSTATE`:
+NONE 0, WAIT1 1, APPEAR 2, WAIT2 3, DISAPPEAR 4, WAIT_FOR_INPUT 5).
+
+The constructor plays Music01 (`JMidiList::Play(0)`), makes the bitmaps and the camera
+(`ResetForEnding`: distance 500, vertical angle 0, horizontal angle π, looking at (0, −60, 0),
+eye base the origin, so the title's view lowered by 60). The floor is a 200 × 12800 rect moved
+50 down, texture 0x2c8. Each wall is 12800 × 200, turned −90° about X, then −90° (left) or +90°
+(right) about Y, moved (∓99, 50, 0), texture 0x2c7. All three use perspective correction and
+linear filtering. Mage A is body 0x163 with frames 0x164, 0x163, 0x165 at (−40, −50, −280).
+Mage B is 0x168 with 0x169, 0x168, 0x16a at (40, −50, −280). Each has wand model 0x1b7 at the
+same place. All face the camera (yaw π), at scale 1. A 40 × 40 shadow (texture 0xa3) sits 0.2
+above each mage's feet. `creditIndex` −1, `creditPosX` 0, `creditState` 1, `StartFadeIn(0)`.
+
+`ProcessFrame(n)`: tick and `localCounter` += n, `textureOffset` += 0.008 (once per call, so per
+frame, not per tick: see "Stage 7: frame-rate dependence" in `ROADMAP.md`), `JDInput::UpdateInputState`. FADEIN: at 254 `StartProcess(0)`. FADEOUT:
+at 254 state 3 (the logo). PROCESS: with no credit yet and tick ≥ 300, credit 0 in WAIT1 (tick
+0). Then for credits 0–3: WAIT1 sets x 820 and after 200 ticks APPEAR; APPEAR sets x =
+820 − (int)(tick / 200 · 500) and after 200 ticks WAIT2, or WAIT_FOR_INPUT for the last credit;
+WAIT2 sets x 320 and after 500 ticks DISAPPEAR; DISAPPEAR sets x = 320 − (int)(tick / 200 · 500)
+and after 200 ticks moves to the next credit at x 820 in WAIT1. WAIT_FOR_INPUT: `CheckButtonPressed`
+or Escape plays 0xed and `StartFadeOut(0)`. Each change of state sets the tick back to 0.
+
+`Render`: the camera; the floor's UV (u 0–5, v `off`–320 + `off`), the left wall's (u −`off`–
+320 − `off`, v 0–1) and the right wall's (u `off`–320 + `off`, v 0–1), each drawn after; the two
+shadows; the two wands; the bodies on frame ((`localCounter` − 1) / 9 + 1) % 4 (unsigned); the
+film strips, 9 tiles 80 apart, x = i · 80 − ((int)(`localCounter` · 0.25) % 80), the upper at y 0
+and the lower at y 360; the current credit centred at (`creditPosX`, 240); `RenderFade`.
+
 ## Behaviour to preserve
 
 - Fixed-step game logic (tick rate to be confirmed from `XApplication::FrameMove`), with any

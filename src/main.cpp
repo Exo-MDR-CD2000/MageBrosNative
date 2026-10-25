@@ -112,8 +112,12 @@ protected:
 
     // test automation (--auto): "level=w,l" goes straight into the game at a level (from any
     // screen), "place=x,z" drops hero A there ("placeB=x,z" hero B), "players=1" or "players=2"
-    // sets the number of players for the next level started
+    // sets the number of players for the next level started, "ending" goes to the ending
     void OnAutomation(const std::string& action, const std::string& arg) override {
+        if (action == "ending") {
+            app_.SetState(XApplication::ENDING);
+            return;
+        }
         if (action == "players") {
             app_.SetTwoPlayer(arg == "2");
             return;
