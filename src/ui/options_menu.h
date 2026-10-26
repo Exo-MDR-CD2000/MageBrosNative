@@ -93,8 +93,9 @@ private:
         FullscreenMode mode;
         int fw, fh;   // exclusive fullscreen resolution (0 = desktop)
         int display;  // monitor index (0 = primary)
+        float hz;     // exclusive fullscreen refresh rate (0 = the desktop's)
         bool operator==(const DisplayCfg& o) const {
-            return mode == o.mode && fw == o.fw && fh == o.fh && display == o.display;
+            return mode == o.mode && fw == o.fw && fh == o.fh && display == o.display && hz == o.hz;
         }
     };
     DisplayCfg CurrentDisplay() const;
@@ -107,6 +108,11 @@ private:
     DisplayCfg pending_{};
     // sizes for a mode, smallest first; for exclusive the desktop resolution ({0,0}) comes last
     std::vector<std::pair<int, int>> ResolutionList(FullscreenMode mode, int display) const;
+    // the refresh rates a monitor has at a resolution ({0, 0} = its desktop one), lowest first,
+    // after 0 (= the desktop's rate)
+    std::vector<float> RefreshList(int fw, int fh, int display) const;
+    // " *" on a display row whose pending value differs from what is applied now
+    std::string PendingMark(bool differs) const { return pendingActive_ && differs ? " *" : ""; }
     std::vector<std::string> SynthList() const;
     std::string KeyNamesFor(int dik) const;
     std::string PadNamesFor(int button) const;
@@ -124,7 +130,7 @@ private:
     int captureButton_ = 0;       // gamepad button being rebound
     std::string captureLabel_;
     // display confirmation
-    struct DisplaySnapshot { int fullscreen, w, h, fw, fh, display, lastFullscreen; } snapshot_{};
+    struct DisplaySnapshot { int fullscreen, w, h, fw, fh, display, lastFullscreen; float hz; } snapshot_{};
     DWORD confirmDeadline_ = 0;
     int confirmChoice_ = 1;       // 0 = keep / yes, 1 = revert / no (default)
     // yes/no confirmation (main menu, quit)

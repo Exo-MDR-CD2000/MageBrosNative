@@ -103,7 +103,8 @@ to replace the MIDI music.
 **The window** opens where you left it, at the size you left it (maximized too), on the same
 monitor; the first start opens the largest 4:3 window that fits the monitor. Alt+Enter or F11
 switches between the window and the fullscreen mode you used last (borderless or exclusive), and
-is remembered. Window sizes are real screen pixels: with Windows display scaling above 100% the
+is remembered. Exclusive fullscreen can run at any resolution and refresh rate your monitor has
+(Options > Video > Resolution and Refresh rate). Window sizes are real screen pixels: with Windows display scaling above 100% the
 window looks smaller than its numbers suggest.
 
 In the game view N / B change level and F2 switches between one and two players (test keys:

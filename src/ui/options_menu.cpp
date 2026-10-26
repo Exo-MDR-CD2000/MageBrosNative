@@ -176,7 +176,7 @@ void OptionsMenu::BeginDisplayChange() {
     const Config& c = GetConfig();
     if (mode_ != Mode::ConfirmDisplay)
         snapshot_ = {(int)c.fullscreen, c.windowWidth, c.windowHeight, c.fullscreenWidth, c.fullscreenHeight,
-                     c.displayIndex, (int)c.lastFullscreen};
+                     c.displayIndex, (int)c.lastFullscreen, c.fullscreenRefresh};
 }
 
 void OptionsMenu::ApplyDisplay() {
@@ -195,6 +195,7 @@ void OptionsMenu::RevertDisplay() {
     c.fullscreenWidth = snapshot_.fw;
     c.fullscreenHeight = snapshot_.fh;
     c.displayIndex = snapshot_.display;
+    c.fullscreenRefresh = snapshot_.hz;
     app_->ApplyDisplaySettings();
     c.lastFullscreen = (FullscreenMode)snapshot_.lastFullscreen;  // (a reverted exclusive mode isn't F11's)
     Save();
@@ -245,10 +246,14 @@ std::vector<std::pair<int, int>> OptionsMenu::ResolutionList(FullscreenMode mode
         return a.first * a.second < b.first * b.second || (a.first * a.second == b.first * b.second && a.first < b.first);
     };
     if (mode == FullscreenMode::Exclusive) {
+        // the monitor's modes, one per size (the refresh rate has its own row), none smaller than
+        // the game's 640 x 480 and none the same size as Desktop, which ends the list
+        const SDL_DisplayMode* desk = SDL_GetDesktopDisplayMode(disp);
         int n = 0;
         SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(disp, &n);
         for (int i = 0; i < n; i++) {
             std::pair<int, int> r{modes[i]->w, modes[i]->h};
+            if (r.first < 640 || r.second < 480 || (desk && r.first == desk->w && r.second == desk->h)) continue;
             if (std::find(out.begin(), out.end(), r) == out.end()) out.push_back(r);
         }
         SDL_free(modes);
@@ -280,11 +285,42 @@ std::vector<std::pair<int, int>> OptionsMenu::ResolutionList(FullscreenMode mode
     return out;
 }
 
+std::vector<float> OptionsMenu::RefreshList(int fw, int fh, int display) const {
+    SDL_DisplayID disp = DisplayIdFor(display);
+    if (fw <= 0 || fh <= 0) {
+        const SDL_DisplayMode* desk = SDL_GetDesktopDisplayMode(disp);
+        if (!desk) return {0.f};
+        fw = desk->w, fh = desk->h;
+    }
+    std::vector<float> rates;
+    int n = 0;
+    SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(disp, &n);
+    for (int i = 0; i < n; i++) {
+        float r = modes[i]->refresh_rate;
+        if (modes[i]->w != fw || modes[i]->h != fh || r <= 0.f) continue;
+        bool seen = false;
+        for (float o : rates) seen |= std::fabs(o - r) < 0.01f;
+        if (!seen) rates.push_back(r);
+    }
+    SDL_free(modes);
+    std::sort(rates.begin(), rates.end());
+    rates.insert(rates.begin(), 0.f);  // "Desktop"
+    return rates;
+}
+
+// "144 Hz", or "59.94 Hz" for a rate that isn't a whole number
+static std::string RateName(float hz) {
+    char b[32];
+    if (std::fabs(hz - std::round(hz)) < 0.05f) snprintf(b, sizeof b, "%d Hz", (int)std::lround(hz));
+    else snprintf(b, sizeof b, "%.2f Hz", hz);
+    return b;
+}
+
 // ------------------------------------------------------------------ display settings
 OptionsMenu::DisplayCfg OptionsMenu::CurrentDisplay() const {
     const Config& c = GetConfig();
     return {c.fullscreen, c.fullscreenWidth > 0 ? c.fullscreenWidth : 0, c.fullscreenWidth > 0 ? c.fullscreenHeight : 0,
-            c.displayIndex};
+            c.displayIndex, c.fullscreenRefresh};
 }
 
 OptionsMenu::DisplayCfg OptionsMenu::ShownDisplay() const { return pendingActive_ ? pending_ : CurrentDisplay(); }
@@ -314,6 +350,7 @@ void OptionsMenu::ApplyPending() {
     c.fullscreen = pending_.mode;
     c.fullscreenWidth = pending_.fw;
     c.fullscreenHeight = pending_.fh;
+    c.fullscreenRefresh = pending_.hz;
     if (pending_.display != c.displayIndex) c.windowPosSet = false;
     c.displayIndex = pending_.display;
     pendingActive_ = false;
@@ -457,9 +494,9 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
             default: return std::string("Exclusive");
         }
     };
-    auto star = [this] { return pendingActive_ ? std::string(" *") : std::string(); };
     {
-        Item it{"Display mode", "", [this, modeName, star] { return modeName(ShownDisplay().mode) + star(); },
+        Item it{"Display mode", "",
+                [this, modeName] { return modeName(ShownDisplay().mode) + PendingMark(ShownDisplay().mode != CurrentDisplay().mode); },
                 [this](int d) {
                     DisplayCfg p = ShownDisplay();
                     p.mode = (FullscreenMode)((((int)p.mode + d) % 3 + 3) % 3);
@@ -479,12 +516,13 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
     }
     {
         Item it{"Resolution", "",
-                [this, star] {
-                    DisplayCfg p = ShownDisplay();
+                [this] {
+                    DisplayCfg p = ShownDisplay(), cur = CurrentDisplay();
                     const Config& c = GetConfig();
                     if (p.mode == FullscreenMode::Borderless) return std::string("Desktop");
                     if (p.mode == FullscreenMode::Exclusive)
-                        return (p.fw <= 0 ? std::string("Desktop") : SizeName(p.fw, p.fh)) + star();
+                        return (p.fw <= 0 ? std::string("Desktop") : SizeName(p.fw, p.fh)) +
+                               PendingMark(p.fw != cur.fw || p.fh != cur.fh);
                     if (c.maximized) return std::string("Maximized");
                     return SizeName(c.windowWidth, c.windowHeight);
                 },
@@ -493,9 +531,16 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                     Config& c = GetConfig();
                     auto list = ResolutionList(p.mode, p.display);
                     if (p.mode == FullscreenMode::Exclusive) {
-                        int i = CycleIndex(list, std::pair<int, int>{p.fw, p.fh}, d);
+                        // stops at both ends (Desktop is the last), never wrapping round to the smallest
+                        int i = std::clamp(CycleIndex(list, std::pair<int, int>{p.fw, p.fh}, 0) + d, 0,
+                                           (int)list.size() - 1);
                         p.fw = list[(size_t)i].first;
                         p.fh = list[(size_t)i].second;
+                        // a refresh rate this size doesn't have goes back to the desktop's
+                        auto rates = RefreshList(p.fw, p.fh, p.display);
+                        bool have = false;
+                        for (float r : rates) have |= std::fabs(r - p.hz) < 0.01f;
+                        if (!have) p.hz = 0.f;
                         ProposeDisplay(p);
                     } else {  // window size: resize right away (a maximized window first goes back to its own size)
                         int i = CycleIndex(list, std::pair<int, int>{c.windowWidth, c.windowHeight}, 0);
@@ -531,8 +576,37 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
         v.push_back(it);
     }
     {
+        // exclusive fullscreen only: Window and Borderless run at the desktop's rate
+        Item it{"Refresh rate", "",
+                [this] {
+                    DisplayCfg p = ShownDisplay();
+                    std::string mark = PendingMark(p.hz != CurrentDisplay().hz);
+                    if (p.mode == FullscreenMode::Exclusive && p.hz > 0.f) return RateName(p.hz) + mark;
+                    const SDL_DisplayMode* desk = SDL_GetDesktopDisplayMode(DisplayIdFor(p.display));
+                    return (desk && desk->refresh_rate > 0.f ? "Desktop " + RateName(desk->refresh_rate) : std::string("Desktop")) +
+                           mark;
+                },
+                [this](int d) {
+                    DisplayCfg p = ShownDisplay();
+                    auto rates = RefreshList(p.fw, p.fh, p.display);
+                    int i = 0;
+                    for (size_t k = 0; k < rates.size(); k++)
+                        if (std::fabs(rates[k] - p.hz) < 0.01f) i = (int)k;
+                    p.hz = rates[(size_t)std::clamp(i + d, 0, (int)rates.size() - 1)];
+                    ProposeDisplay(p);
+                },
+                [this] { ApplyPending(); }, [this] { return ShownDisplay().mode == FullscreenMode::Exclusive; }};
+        it.focusWhenDisabled = true;
+        it.helpFn = [this] {
+            if (ShownDisplay().mode != FullscreenMode::Exclusive)
+                return std::string("Exclusive fullscreen only: Window and Borderless use the desktop's refresh rate.");
+            return DisplayHelp("How often the screen refreshes in exclusive fullscreen; press Enter to apply.");
+        };
+        v.push_back(it);
+    }
+    {
         Item it{"Monitor", "",
-                [this, star] {
+                [this] {
                     int idx = ShownDisplay().display;
                     std::string s;
                     if (idx == 0) {
@@ -547,7 +621,7 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                         }
                         SDL_free(ids);
                     }
-                    return Fit(s, 13) + star();
+                    return Fit(s, 13) + PendingMark(ShownDisplay().display != CurrentDisplay().display);
                 },
                 [this](int d) {
                     int n = 0;

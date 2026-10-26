@@ -212,15 +212,17 @@ void CD3DApplication::ApplyDisplaySettings() {
         SDL_SetWindowResizable(window_, true);
         SDL_SetWindowPosition(window_, SDL_WINDOWPOS_CENTERED_DISPLAY(target), SDL_WINDOWPOS_CENTERED_DISPLAY(target));
         SDL_SyncWindow(window_);
+        // the chosen size (or the desktop's) at the chosen refresh rate (or the desktop's): SDL
+        // picks the closest mode the monitor has
         SDL_DisplayMode mode{};
         bool have = false;
-        if (cfg.fullscreenWidth > 0 && cfg.fullscreenHeight > 0)
-            have = SDL_GetClosestFullscreenDisplayMode(target, cfg.fullscreenWidth, cfg.fullscreenHeight, 0.f, true, &mode);
-        if (!have) {
-            if (const SDL_DisplayMode* desk = SDL_GetDesktopDisplayMode(target)) {
-                mode = *desk;
-                have = true;
-            }
+        const SDL_DisplayMode* desk = SDL_GetDesktopDisplayMode(target);
+        int w = cfg.fullscreenWidth, h = cfg.fullscreenHeight;
+        if ((w <= 0 || h <= 0) && desk) w = desk->w, h = desk->h;
+        if (w > 0 && h > 0) have = SDL_GetClosestFullscreenDisplayMode(target, w, h, cfg.fullscreenRefresh, true, &mode);
+        if (!have && desk) {
+            mode = *desk;
+            have = true;
         }
         SDL_SetWindowFullscreenMode(window_, have ? &mode : nullptr);
         SDL_SetWindowFullscreen(window_, true);

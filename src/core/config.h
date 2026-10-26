@@ -19,6 +19,7 @@ struct Config {
     FullscreenMode lastFullscreen = FullscreenMode::Borderless;  // where F11 / Alt+Enter goes from a window
     int fullscreenWidth = 0;       // exclusive fullscreen screen mode; 0 = desktop resolution
     int fullscreenHeight = 0;
+    float fullscreenRefresh = 0.f; // exclusive fullscreen refresh rate (Hz); 0 = the desktop's
     int displayIndex = 0;          // 0 = primary monitor, 1..n = monitors in system order
     bool vsync = true;
     int maxFps = 0;                // 0 = uncapped (or vsync limited)
@@ -62,7 +63,7 @@ struct Config {
 
     std::string path;
     int version = 0;                    // config_version found in the file (0 = older file)
-    static constexpr int kCurrentVersion = 16;
+    static constexpr int kCurrentVersion = 17;
     bool firstRun = false;              // no ini existed at start (not saved): size the window to the monitor
     bool Load(const std::string& file);
     bool Save() const;

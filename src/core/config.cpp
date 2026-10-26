@@ -54,6 +54,7 @@ bool Config::Load(const std::string& file) {
             if (k == "width") windowWidth = std::max(320, iv);
             else if (k == "height") windowHeight = std::max(240, iv);
             else if (k == "fullscreen_width") fullscreenWidth = iv <= 0 ? 0 : std::max(320, iv);
+            else if (k == "fullscreen_refresh") fullscreenRefresh = std::clamp((float)atof(v.c_str()), 0.f, 1000.f);
             else if (k == "fullscreen_height") fullscreenHeight = iv <= 0 ? 0 : std::max(240, iv);
             else if (k == "fullscreen") fullscreen = (FullscreenMode)std::clamp(iv, 0, 2);
             else if (k == "last_fullscreen") lastFullscreen = iv == 2 ? FullscreenMode::Exclusive : FullscreenMode::Borderless;
@@ -140,6 +141,7 @@ bool Config::Load(const std::string& file) {
             Log("Config: ignoring unknown setting '%s' in [%s]", k.c_str(), section.c_str());
     }
     fclose(f);
+    // config_version 17: [video] fullscreen_refresh
     // config_version 16: [video] window_x / window_y, maximized and last_fullscreen; the window's
     // size, position and monitor and Alt+Enter / F11 are saved
     // config_version 15: the [keys] and [gamepad] notes describe Mage Bros.' keys, and Hopmon's
@@ -217,6 +219,12 @@ bool Config::Save() const {
       ";   exclusive fullscreen (fullscreen = 2). 0 = your desktop resolution\n"
       ";   (default). Other values pick the closest mode the monitor supports.\n");
     fprintf(f, "fullscreen_width = %d\nfullscreen_height = %d\n\n", fullscreenWidth, fullscreenHeight);
+    P("; fullscreen_refresh: the refresh rate (Hz) used by exclusive fullscreen.\n"
+      ";   0 = your desktop's refresh rate (default). Other values, e.g. 60, 144 or\n"
+      ";   165, pick the closest rate the monitor has at that resolution. Window and\n"
+      ";   borderless always run at the desktop's rate. The game itself always runs\n"
+      ";   100 steps a second; this only sets how often the screen is refreshed.\n");
+    fprintf(f, "fullscreen_refresh = %g\n\n", fullscreenRefresh);
     P("; display: which monitor to use. 0 = primary monitor (default),\n"
       ";   1 = first monitor, 2 = second, ... in the order Windows lists them.\n"
       ";   Moving the window to another monitor updates it.\n");

@@ -7,6 +7,18 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.2] - 2026-10-25
+
+- **Refresh rate for exclusive fullscreen**: Options > Video has a new Refresh rate row. In
+  exclusive fullscreen you can pick any rate your monitor offers at the chosen resolution (60,
+  120, 144, 165 Hz...), or Desktop, your desktop's own rate (the default, as before). It is
+  applied with Enter and the usual keep / revert question. The game itself still runs at the
+  same speed; this only sets how often the screen refreshes.
+- **A shorter resolution list** for exclusive fullscreen: modes smaller than the game's
+  640 x 480 are gone, Desktop comes last, and the list stops at its ends instead of jumping from
+  Desktop to the smallest mode.
+- While a display change waits for Enter, the `*` now marks only the rows that will change.
+
 ## [0.4.1] - 2026-10-25
 
 - **The window remembers itself**: its size (resizing it by dragging the edges too), where it
