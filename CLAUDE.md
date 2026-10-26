@@ -256,11 +256,12 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
 - `place=<x>,<z>`: move hero A there with `XGameScene::TestPlaceHero`, which calls
   `SetStartPos` then `Reset`. `placeB=<x>,<z>` does the same for hero B (two-player games only).
 - `players=1` or `players=2`: the number of players for the next `level=`.
-- `ending`: go to the ending from any screen. The first credit slides in about 8 s later. The
+- `ending`: go to the ending from any screen (also F3 in a level, or `--ending` on the command
+  line, which starts there instead of the logo). The first credit slides in about 8 s later. The
   last one stops in the middle about 45 s later and waits for a button (allow a little more:
   startup takes time).
 
-`level`, `place`, `placeB`, `players` and `ending` are test hooks only. Key names are SDL's (`Left Ctrl`,
+`level`, `place`, `placeB`, `players` and `ending` (and F3, `--ending`) are test hooks only. Key names are SDL's (`Left Ctrl`,
 `Right Ctrl`, `Left Shift`, `D`, `1`); a wrong name does nothing, silently.
 
 Screenshots are game images: view them, then delete them. Never commit them.
@@ -322,7 +323,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-25, version 0.4.10, stage 7 chunk 2d-iii under way)
+## Where we are (last updated: 2026-10-26, version 0.4.12, stage 7 chunk 2d-iii under way)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -339,9 +340,13 @@ owner. Done so far, all on `menu-dev` with 4:3 screenshots byte for byte the sam
 the title's tile background filled out to the view's width on the title, save slots and level
 select, with the fade strips spanning the whole view (0.4.7); the shop sliding in from the view's
 edges over a full-width dim, the dim only when wider than 4:3 (0.4.8); the Saito Games logo's
-white backdrop widened with the view (0.4.10, Stretch also unchanged). Beside them, 0.4.9 made
+white backdrop widened with the view (0.4.10, Stretch also unchanged); the ending's film strips
+across the whole view and its credits waiting and leaving past the view's edges (0.4.11; the
+ending can't be compared byte for byte, as the corridor scrolls once a frame, so a temporary log
+showed the original's tiles and credit positions at 4:3 and Stretch); 0.4.12 added F3 in a level
+and `--ending` to reach the ending, for the owner to test it. Beside them, 0.4.9 made
 the shop's button take every fire / jump key of the shopper and Enter (the owner couldn't find
-how to buy or leave with the keyboard). **The rest of 2d-iii (the ending, options menu and HUD)
+how to buy or leave with the keyboard). **The rest of 2d-iii (the options menu and HUD)
 next**, then 2d-iv field of view. The owner's must: 16:9 with no culling or pop-in at all
 (verified by screenshot comparison with a draw-everything build). The owner then played 21:9
 (a 2560 x 1080 window): every object, enemy and boss showed and behaved normally to the edges, so
@@ -518,9 +523,12 @@ the options menu of 0.4.0 (tested by the owner: works as expected; MP3/FLAC musi
 tried, as there were no files to try). The window of 0.4.1 was tested by the owner too, F11 into
 exclusive fullscreen and back included (2026-10-25), and so were 0.4.2 (refresh rate), 0.4.3
 (monitors), 0.4.5 (widescreen, at 16:9 and 21:9) and 0.4.6 (widescreen sound, by ear).
-Waiting for the owner's check: 0.4.7 (the menus' background and fades in widescreen), 0.4.8 (the
-shop in widescreen), 0.4.9 (the shop's keys) and 0.4.10 (the logo in widescreen), all checked
-here by screenshots only. MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
+The ending in widescreen (0.4.11) was checked by the owner with 0.4.12's F3 (2026-10-26: "seems to
+work"). Waiting for the owner's check: 0.4.7 (the menus' background and fades in widescreen), 0.4.8
+(the shop in widescreen), 0.4.9 (the shop's keys) and 0.4.10 (the logo in widescreen), checked here
+by screenshots only. The widescreen screenshots so far are at 16:9, 21:9 and 32:9; 16:10 wasn't
+captured (the owner judged it fine: every fix works from the view's width, so 16:10, between 4:3
+and 16:9, needs nothing of its own). MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
 override warning can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
 
 ### Notes from earlier stages

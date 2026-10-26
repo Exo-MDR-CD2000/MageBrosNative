@@ -56,7 +56,7 @@ bool WaveData(const std::vector<uint8_t>& w, const uint8_t** pcm, size_t* len, i
 
 class AssetViewerApp : public CD3DApplication {
 public:
-    explicit AssetViewerApp(bool twoPlayer) {
+    AssetViewerApp(bool twoPlayer, bool ending) : startAtEnding_(ending) {
         m_strWindowTitle = "Mage Bros. Native";
         app_.SetTwoPlayer(twoPlayer);
     }
@@ -83,6 +83,7 @@ protected:
         LoadModel();
         levelView_.Load(0, 0);
         app_.Init();  // the original's screens, from the logo
+        if (startAtEnding_) app_.SetState(XApplication::ENDING);  // test hook: --ending
         ResetCamera();
         PlayMusic(levelView_.MusicTrack());
         return S_OK;
@@ -230,6 +231,9 @@ protected:
                 i = (i % n + n) % n;
                 app_.StartGameAt(i / GameFiles::kLevelsPerWorld, i % GameFiles::kLevelsPerWorld);
                 UpdateTitle();
+            } else if (dik == DIK_F3) {
+                // test hook: straight to the ending (as --ending and --auto ending)
+                app_.SetState(XApplication::ENDING);
             } else if (dik == DIK_F2) {
                 // one or two players (the title's choice, until it exists): restarts the level
                 app_.SetTwoPlayer(app_.OnePlayer());
@@ -399,12 +403,12 @@ private:
                 std::snprintf(title, sizeof title,
                               "Mage Bros. Native %s - World %d-%d, 2 players   [P1: arrows, R.Shift / ] jump, "
                               "R.Ctrl / [ fire; P2: WASD, L.Shift / 2 jump, L.Ctrl / 1 fire; Esc give up, "
-                              "N/B level, F2 one player, Tab viewer, F10 options]",
+                              "N/B level, F2 one player, F3 ending, Tab viewer, F10 options]",
                               MBN_VERSION_STRING, lv.World() + 1, lv.Level() + 1);
             else
                 std::snprintf(title, sizeof title,
                               "Mage Bros. Native %s - World %d-%d   [arrows move, Shift / ] jump, Ctrl / [ fire, "
-                              "Esc give up, N/B level, F2 two players, Tab viewer, F10 options]",
+                              "Esc give up, N/B level, F2 two players, F3 ending, Tab viewer, F10 options]",
                               MBN_VERSION_STRING, lv.World() + 1, lv.Level() + 1);
             SDL_SetWindowTitle(GetWindow(), title);
             return;
@@ -439,6 +443,7 @@ private:
     enum class Mode { Game, LevelViewer, ModelViewer };
     Mode mode_ = Mode::Game;  // Tab cycles game -> level viewer -> model viewer
     bool levelMode_ = false;
+    bool startAtEnding_ = false;  // --ending
     float camZ_ = 160.0f, camDist_ = 340.0f, camPitch_ = 0.610865f;
 };
 
@@ -463,11 +468,12 @@ int main(int argc, char** argv) {
         cfg.Save();  // rewrite older files with the current comments, keeping their values
     }
     std::string gamePath = cfg.gamePath;
-    bool allowUnverified = false, twoPlayer = false;
+    bool allowUnverified = false, twoPlayer = false, ending = false;
     for (size_t i = 0; i < args.size(); i++) {
         if (args[i] == "--game" && i + 1 < args.size()) gamePath = args[++i];
         else if (args[i] == "--allow-unverified") allowUnverified = true;
         else if (args[i] == "--two-player") twoPlayer = true;
+        else if (args[i] == "--ending") ending = true;  // test hook: start at the ending
         else if (args[i] == "--windowed") cfg.fullscreen = FullscreenMode::Windowed;
         else if (args[i] == "--fullscreen") cfg.fullscreen = FullscreenMode::Borderless;
         else if (args[i] == "--size" && i + 2 < args.size()) {
@@ -498,7 +504,7 @@ int main(int argc, char** argv) {
 
     int res = 0;
     {
-        AssetViewerApp app(twoPlayer);
+        AssetViewerApp app(twoPlayer, ending);
         if (FAILED(app.Create(args)))
             FatalError("Mage Bros. Native", "Could not create the game window (OpenGL 3.3 is required).");
         res = app.Run();

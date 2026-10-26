@@ -7,6 +7,20 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.12] - 2026-10-26
+
+- **Test shortcut to the ending**: press F3 during a level to jump straight to the ending, or
+  start the game with `--ending` to open on it. Like the other test keys (N / B, F2), nothing
+  is saved.
+
+## [0.4.11] - 2026-10-26
+
+- **The ending in widescreen**: the black film-strip bands at the top and bottom of the ending now
+  run the whole width of a wide screen, where before the corridor showed through above and below
+  them at the sides. The credits now slide in from the edge of the wide screen and out past the
+  other edge, instead of waiting in view at the right and vanishing at the left. In 4:3 nothing
+  changes.
+
 ## [0.4.10] - 2026-10-25
 
 - **The Saito Games logo fills widescreen**: the white behind the logo at start-up now reaches

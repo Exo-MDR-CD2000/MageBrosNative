@@ -631,6 +631,13 @@ or Escape plays 0xed and `StartFadeOut(0)`. Each change of state sets the tick b
 shadows; the two wands; the bodies on frame ((`localCounter` − 1) / 9 + 1) % 4 (unsigned); the
 film strips, 9 tiles 80 apart, x = i · 80 − ((int)(`localCounter` · 0.25) % 80), the upper at y 0
 and the lower at y 360; the current credit centred at (`creditPosX`, 240); `RenderFade`.
+The film strips are black bands with a row of sprocket holes along their inner edge: at 4:3 they
+letterbox the corridor, which is drawn under them. (Native: in widescreen the strips take in more
+tiles either side, i from ⌊(view left + s) / 80⌋ to ⌈(view right + s) / 80⌉ − 1, never fewer
+than 0 to 8, so the bands cover the corridor to the edges; the credit is drawn at x + (x − 320) ·
+(view right − 640) / 500 right of the middle and x + (320 − x) · view left / 500 left of it, so it
+waits and leaves past the wide view's edges on the original's ticks. Both are the original's at
+4:3.)
 
 ## Behaviour to preserve
 

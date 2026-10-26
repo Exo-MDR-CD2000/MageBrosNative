@@ -5,7 +5,7 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.10).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.12).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
 > Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
@@ -13,7 +13,8 @@ original game logic unchanged when every option is at its default.
 > exclusive fullscreen and VSync are done; widescreen, 16:9 and 21:9 included, shows the levels
 > without pop-in at the edges, with the sound panned to match, and the title, save slots and level
 > select with their green background filled out to the edges, the shop sliding in from the edges
-> over a dimmed level, and the start-up logo white to the edges. The game's logic and speed are the original's at any resolution,
+> over a dimmed level, the start-up logo white to the edges, and the ending's film strips across the
+> whole width. The game's logic and speed are the original's at any resolution,
 > refresh rate and frame rate. Next: widescreen on the remaining screens and the HUD. See
 > [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
 > changed in each version.
@@ -125,13 +126,14 @@ pulls it wider, and Widescreen widens the 3D view of the levels to fill the scre
 edges. The camera is the original's (45° lens, 340 away, 35° above) in every mode; widescreen only
 widens it. Sounds are panned to match the wider screen too, whatever shape the window is. The
 start-up logo is white to the edges, the scrolling green background of the title, save slots and
-level select fills the whole width,
-and the fades between screens cover it. The shop slides in from the screen's edges and dims the
-level across the whole width while it is open. The menus themselves and the HUD stay in a 4:3
-area in the middle for now.
+level select fills the whole width, and the fades between screens cover it. The shop slides in
+from the screen's edges and dims the level across the whole width while it is open, and the
+ending's film strips run edge to edge with the credits sliding in from the screen's edge. The
+menus themselves and the HUD stay in a 4:3 area in the middle for now.
 
-In the game view N / B change level and F2 switches between one and two players (test keys:
-a game started with them is not saved). Tab switches to the **level viewer**: every one of the 40
+In the game view N / B change level, F2 switches between one and two players and F3 jumps to the
+ending (test keys: a game started with them is not saved; `--ending` on the command line starts
+the game at the ending). Tab switches to the **level viewer**: every one of the 40
 levels, built by the original's own map code with each world's textures. The goal, coins and
 torches use their real models; other objects are colour-coded markers (blue platforms, brown objects, grey
 fences, red enemies, large magenta bosses).
