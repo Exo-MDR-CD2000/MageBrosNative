@@ -187,6 +187,42 @@ the next frame. `Create` sets state 3, so the game opens on the logo. `Render` c
 background colour (black) and, while the state is 2, draws the running screen, then the FPS
 display (below).
 
+**The frame loop and the frame rate** (`CD3DApplication::Run`, `Render3DEnvironment`,
+`CD3DFramework7::ShowFrame`):
+
+- `Run` spins on `PeekMessage` and calls `Render3DEnvironment` whenever the window is active and
+  ready (no sleep).
+- `Render3DEnvironment`: `now = timeGetTime()`; a clock that went back resets the last frame
+  time. With less than 10 ms since the last frame it returns at once: nothing is drawn, so the
+  game never draws more than 100 frames a second. Otherwise ticks = elapsed / 10 and the last
+  frame time becomes `now - elapsed % 10` (the remainder carries over). While `m_bFrameMoving`
+  (+0x10) or single-stepping (+0x14), `FrameMove(ticks)`, which `XApplication::FrameMove` caps
+  at 10 (past 100 ms a frame the game slows rather than skips). Then `Render`, `UpdateStats`,
+  `ShowFrame`.
+- `ShowFrame`: fullscreen, `Flip(NULL, DDFLIP_WAIT)` (with DDFLIP_STEREO for stereo), which waits
+  for the monitor's refresh: VSync; windowed, `Blt` with DDBLT_WAIT only (no wait for the
+  refresh).
+- `XApplication::XApplication` sets +0xd8, which makes `CD3DApplication::Create` pass flag 2 to
+  `D3DEnum_SelectDefaultDevice`: the device is fullscreen (`bWindowed` +0x494 = 0). The
+  framework's mode is 640 x 480 (+0xdc / +0xde). So the original normally ran exclusive 640 x 480
+  fullscreen with VSync: on a 60 Hz mode, about 60 frames a second of 1 or 2 ticks each (100
+  ticks a second on average). The settings (`RegInfo_*`) have no display, VSync or refresh
+  option: only the joystick, the FPS display and the registration.
+- Everything the game simulates counts ticks (`ProcessFrame(n)` adds `n`, or loops `n` times), so
+  its speed never depends on the frame rate. No drawing function changes game state or draws a
+  random number. Done once a frame instead: each screen's `JDInput::UpdateInputState` and its
+  state machine's step, the ending's `textureOffset` (the corridor scrolls faster with more
+  frames), and the heroes' presses (next point).
+- `XHeroA::_UpdateInput` / `XHeroB::_UpdateInput` read the application's `JDInput`
+  (`GetKeyboardState`, `GetKeyboardPressed`, `GetJoyButtonPressed`), updated once a frame by
+  `XGameObject::ProcessFrame`. So a fresh fire or jump press counts as pressed on every tick of
+  that frame: one tick at 100 frames a second, sometimes two at 60. Firing can't repeat (the wand
+  stays out while the button is held), but a jump pressed one tick before landing jumps when both
+  ticks fall in one frame. **The port reads the heroes' keys every tick** (`XGameScene::
+  UpdateInput`, with its own previous state), so a press counts for one tick: the original at 100
+  frames a second, at any frame rate. Deliberate (the owner's decision, 2026-10-25): the game
+  must play the same whatever the refresh rate.
+
 **`XApplication::MsgProc`** (before `CD3DApplication::MsgProc`):
 
 - WM_SYSCOMMAND SC_KEYMENU (0xf100): swallowed, so Alt doesn't open the window menu.
@@ -513,7 +549,8 @@ same place. All face the camera (yaw π), at scale 1. A 40 × 40 shadow (texture
 above each mage's feet. `creditIndex` −1, `creditPosX` 0, `creditState` 1, `StartFadeIn(0)`.
 
 `ProcessFrame(n)`: tick and `localCounter` += n, `textureOffset` += 0.008 (once per call, so per
-frame, not per tick: see "Stage 7: frame-rate dependence" in `ROADMAP.md`), `JDInput::UpdateInputState`. FADEIN: at 254 `StartProcess(0)`. FADEOUT:
+frame, not per tick: at refresh / 60 of its 60 Hz speed, up to 1.67x where the 100-a-second
+frame cap stops it; kept as the original, see "Stage 7: frame-rate dependence" in `ROADMAP.md`), `JDInput::UpdateInputState`. FADEIN: at 254 `StartProcess(0)`. FADEOUT:
 at 254 state 3 (the logo). PROCESS: with no credit yet and tick ≥ 300, credit 0 in WAIT1 (tick
 0). Then for credits 0–3: WAIT1 sets x 820 and after 200 ticks APPEAR; APPEAR sets x =
 820 − (int)(tick / 200 · 500) and after 200 ticks WAIT2, or WAIT_FOR_INPUT for the last credit;

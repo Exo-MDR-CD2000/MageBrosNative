@@ -640,14 +640,32 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
         };
         v.push_back(it);
     }
-    v.push_back({"VSync", "Sync to the monitor refresh rate (prevents tearing).",
-                 [] { return OnOff(GetConfig().vsync); },
-                 [this](int) {
-                     GetConfig().vsync = !GetConfig().vsync;
-                     app_->ApplyVSync();
-                     Save();
-                 },
-                 nullptr, nullptr});
+    {
+        // Off / On / Adaptive (Adaptive only where the driver can do it)
+        Item it{"VSync", "",
+                [] {
+                    int m = GetConfig().vsync;
+                    return std::string(m == 2 ? "Adaptive" : m == 1 ? "On" : "Off");
+                },
+                [this](int d) {
+                    std::vector<int> l{0, 1};
+                    if (app_->AdaptiveVSyncSupported() || GetConfig().vsync == 2) l.push_back(2);
+                    GetConfig().vsync = l[(size_t)CycleIndex(l, GetConfig().vsync, d)];
+                    app_->ApplyVSync();
+                    Save();
+                },
+                nullptr, nullptr};
+        it.helpFn = [this] {
+            int want = GetConfig().vsync, got = app_->VSyncInEffect(), over = app_->VSyncOverride();
+            if (over > 0) return std::string("VSync is on here, but your graphics driver's own setting seems to keep it off.");
+            if (over < 0) return std::string("VSync is off here, but your graphics driver's own setting seems to force it on.");
+            if (want == 2 && got != 2) return std::string("Your graphics driver can't do adaptive VSync, so it is on (as On).");
+            if (want == 2) return std::string("As On, but a late picture shows at once: a little tearing instead of a stutter.");
+            if (want == 1) return std::string("Waits for each screen refresh: no tearing. Off: shows pictures at once (tearing).");
+            return std::string("Off: pictures show as soon as drawn (tearing). With Smooth motion, set a Frame limit.");
+        };
+        v.push_back(it);
+    }
     v.push_back({"Smooth motion",
                  "On: draws at the monitor's rate (in-between pictures come later). Off: on game ticks, max 100, as the original.",
                  [] { return OnOff(GetConfig().interpolation); },
@@ -656,7 +674,7 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Frame limit", "Maximum frames per second (needs Smooth motion; without it the cap is 100).",
+    v.push_back({"Frame limit", "Most frames a second with Smooth motion (without it: 100). With VSync, the refresh rate.",
                  [] {
                      int f = GetConfig().maxFps;
                      return f == 0 ? std::string("Unlimited") : std::to_string(f);

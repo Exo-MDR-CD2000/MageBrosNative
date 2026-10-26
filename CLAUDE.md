@@ -26,6 +26,12 @@ repository contains no game content.
   1.2 (`third_party/coldet`, LGPL, built as a separate static library), never a rewrite. Keep
   this in mind for every module, and revisit it whenever a choice comes up between the
   original's own code or library and a substitute.
+- **The owner's aim for the port (2026-10-25):** it must work flawlessly at any resolution,
+  refresh rate and frame rate without that affecting the game logic or speed, and play and feel
+  identical to the original, enhanced with modern features. Where the original itself behaved
+  differently at different frame rates (the heroes' presses, the ending's scroll), the port takes
+  the frame-rate-independent behaviour. See "The frame loop and the frame rate" in
+  `docs/REVERSE_ENGINEERING.md`.
 - **High refresh rates must not change the game.** The port will add upgrades over the original
   (stage 7), including high refresh-rate support that leaves the game logic and speed untouched.
   Whenever the original advances something once per frame instead of once per tick, keep it as
@@ -311,7 +317,7 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-25, version 0.4.3, stage 7 chunk 2c done)
+## Where we are (last updated: 2026-10-25, version 0.4.4, stage 7 chunk 2d-i done)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -321,7 +327,8 @@ opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) 
 release; a push to `menu-dev` doesn't). Chunk 2 (the Video page) is split into small chunks
 for thoroughness: 2a windowed mode (0.4.1, tested by the owner, on `menu-dev`), 2b exclusive fullscreen (0.4.2,
 tested by the owner, on `menu-dev`), 2c monitors (0.4.3, tested by the owner, on
-`menu-dev`), **2d the rest of the page next**. The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
+`menu-dev`), 2d-i VSync (0.4.4, on `menu-dev`), **2d-ii widescreen and the HUD next**, then 2d-iii field of view. The owner set aside a
+G-Sync / FreeSync frame-limit choice as a possible later feature (noted in the ROADMAP). The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
 its own).
 Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
 7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.
@@ -382,6 +389,15 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   3840 x 2160 at 143.86 Hz, 150%, primary; 2 "PA278CGV", 2560 x 1440 at 143.97 Hz, 100%, left of
   it (Windows lists it on the AMD graphics; it still runs at 144 fps); 3 "TX-NR646", 1920 x 1080
   at 60 Hz, 100%, right of it (an Onkyo receiver, most likely a TV; it offers 3840 x 2160 modes).
+
+**VSync (chunk 2d-i, 0.4.4)**: `vsync` is 0 / 1 / 2 (adaptive = swap interval -1, probed once
+at start: `adaptiveSupported_`); `ApplyVSync` falls back to 1, reads back the interval
+(`VSyncInEffect`) and runs after every display change. `JudgeVSync` (each second, only with Smooth
+motion on, no limit, menu closed) sets `VSyncOverride` after two seconds of frames above 115% of
+the refresh rate with VSync on (+1), or within 3% of it with VSync off (-1). Measured on the
+owner's NVIDIA (Smooth motion on): VSync on or adaptive 144 / 60; off about 980 in a window, 490
+in 4K borderless; Smooth motion off 100 (60 on the 60 Hz monitor with VSync). The frame limiter
+schedules each frame from when the last was due (`lastPresent += interval`).
 
 **Monitors (chunk 2c, 0.4.3)**: `CD3DApplication::SetDisplay` sets `display` and
 `display_name` together (the menu and the window tracking use it); `ResolveDisplay` (at start
@@ -447,8 +463,9 @@ the island (z 1300 to 1460); the dragon becomes a target about 10 s in.
 
 **The ending (chunk 8, 0.3.6)** is in: `XEndingObject` and `XCamera::ResetForEnding` (see "The
 ending" in `docs/REVERSE_ENGINEERING.md`). `--auto ending` jumps there. Its corridor scrolls once
-a frame (`textureOffset`, as the original), so it scrolls faster at higher frame rates. It is in
-the "Stage 7: frame-rate dependence" table in `docs/ROADMAP.md`.
+a frame (`textureOffset`, as the original), so it scrolls faster at higher frame rates. The owner chose
+to keep it so (2026-10-25: minor and visual only); the details are under the "Stage 7:
+frame-rate dependence" table in `docs/ROADMAP.md`.
 
 Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
 status, shot colour, warp photons, lost-gold line and platform mark; `XGameScene::UpdateInput`

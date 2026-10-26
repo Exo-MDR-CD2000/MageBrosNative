@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2c done (below) |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-i done (below) |
 
 ## Stage 4, chunk by chunk
 
@@ -113,9 +113,13 @@ Mage Bros.' own and finishes the ones that need the game's help.
 | 2a | Windowed mode: the window's size (dragged too), position, maximized state and monitor are saved and restored (a position no longer on any monitor falls back to centred); F11 / Alt+Enter goes to the fullscreen mode used last and is saved; the window size list has the game's 4:3 sizes (multiples of 640 x 480, "2x", "3x") first, then wider ones, all fitting the monitor with the title bar; the first start picks the largest 4:3 window that fits | resizing, maximizing, moving and closing the window, then reopening; F11; the Resolution list | Done (0.4.1, tested by the owner) |
 | 2b | Exclusive fullscreen: a Refresh rate row (the rates the monitor has at the chosen size, or Desktop: `fullscreen_refresh`); the resolution list drops modes below 640 x 480 and the copy of Desktop, and stops at its ends (Desktop last) instead of wrapping round; `*` only on the rows that will change | choosing a mode and a refresh rate, keep and revert | Done (0.4.2, tested by the owner) |
 | 2c | Monitors: remembered by name (`display_name`; when that monitor isn't connected the primary is used and the name kept); the Monitor row shows number and resolution, its help the full name and rate; F11 goes fullscreen on the monitor the window has just moved to; a saved window position counts only on the chosen monitor; borderless lays the picture out on the visible rows (not its hidden extra one); the monitors listed in the log at start; Window and Borderless checked on the owner's three monitors (each at its own refresh rate) | moving between monitors in each mode | Done (0.4.3, tested by the owner) |
-| 2d | The rest of the Video page: VSync checked; widescreen on every screen; the HUD position, max width and size hooked into `XStatusDisplay`; the field of view hooked into the level camera (`Device::SetGameplayView`) | the Video page, in widescreen | **Next** |
+| 2d-i | VSync: Off / On / Adaptive (adaptive only where the driver can do it, else On, and said so); what took effect read back and logged; a driver overriding it (NVIDIA Control Panel, AMD Software) noticed from the frame rate and shown in the help line; the frame limit made exact (60 gave 58); help text on how VSync, Smooth motion and Frame limit work together; every combination checked in Window and Borderless on the 144 Hz and 60 Hz monitors | VSync, Smooth motion and Frame limit together, with Show FPS | Done (0.4.4) |
+| 2d-ii | Widescreen: the Aspect modes checked on every screen (title, save slots, level select, shop, ending, the options menu); the HUD position, max width and size hooked into `XStatusDisplay` | the Video page, in widescreen | **Next** |
+| 2d-iii | Field of view: hooked into the level camera (`Device::SetGameplayView`), the menus and the ending keeping the original lens | Field of view in levels | |
 
-The rest is to be planned with the owner after chunk 2. Candidates: smooth motion (drawing the
+The rest is to be planned with the owner after chunk 2. Possible later, maybe more than a game of
+this size needs (the owner's note): a frame-limit choice for G-Sync / FreeSync (the monitor's
+refresh rate less 3), worth it only once smooth motion draws between ticks. Candidates: smooth motion (drawing the
 game's objects between ticks; it may become a stage of its own), moving the per-frame items in
 the table below onto ticks, the graphics options checked on Mage Bros.' scenes, Mage Bros.' own
 cheats, mods (add-ons and level packs, with `MODDING.md`), `--set`, `CONFIG.md` and the README
@@ -129,7 +133,10 @@ way.
 ## Stage 7: frame-rate dependence
 
 The game logic runs in fixed 10 ms ticks (`XApplication::FrameMove(n)` with up to 10 ticks a
-frame), so its speed doesn't depend on the frame rate. High refresh rates must stay that way:
+frame), so its speed doesn't depend on the frame rate. The original drew at most 100 frames a
+second and normally ran 640 x 480 exclusive fullscreen with VSync, about 60 frames a second (see
+"The frame loop and the frame rate" in `REVERSE_ENGINEERING.md`). Nothing the game simulates is
+tied to the frame rate, so no speed-ups at high refresh rates. High refresh rates must stay that way:
 more frames drawn, with the game's speed and behaviour unchanged.
 
 A few things in the original advance once per frame instead of once per tick. The port keeps them
@@ -139,8 +146,19 @@ part of high-refresh support. Add each new one to this table as it's found.
 
 | Where | What advances per frame | Found in |
 |---|---|---|
-| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks). `ProcessFrame` runs only on frames with at least one tick, so at most 100 times a second | stage 6 chunk 8 (0.3.6) |
+| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks). `ProcessFrame` runs only on frames with at least one tick, so at most 100 times a second. **Kept as the original** (the owner's decision, 2026-10-25: a minor visual effect, hardly noticeable in play); the details are under the table | stage 6 chunk 8 (0.3.6) |
+| The heroes' fire and jump presses (`XHeroA` / `XHeroB::_UpdateInput` read the once-a-frame `JDInput`) | A press counts on every tick of its frame: one at 100 frames a second, sometimes two at 60 (a 10 ms jump buffer on landing). **Already handled**: the port reads the heroes' keys every tick, as the original at 100 frames a second, whatever the frame rate (the owner's decision) | the frame-loop review, stage 7 chunk 2d-i (0.4.4) |
 | The menus and the shop (`JDInput::UpdateInputState`, `XShop::GetState` in `XGameObject::ProcessFrame`) | The menus' keys are read once a frame ("pressed" = held now and not at the last read), and the shop's state once a frame. This changes no speed; drawing between ticks must keep it on frames that tick | stage 7 chunk 1 (0.4.0) |
+
+**The ending's corridor, for reference.** The original updates the corridor once a frame, and
+with VSync its frames followed the monitor's refresh, so the scroll ran at refresh / 60 of its
+60 Hz speed: 1x at 60 Hz (LCDs, most setups), 1.25x at 75 Hz and about 1.4x at 85 Hz (common
+CRT settings in 2003), and 1.67x at 100 Hz or more, where the 100-a-second cap of the frame loop
+stops it. The port behaves the same: on the owner's 60 Hz receiver 1x, on the 144 Hz monitors
+1.67x, with Smooth motion on or off (extra frames between ticks repeat the last position).
+Only the textures move faster: the mages' walk, the credits, the music and the ending's length
+run on ticks. Had it been changed, the scroll would have been `0.008 x 60 / 100 = 0.0048` per
+tick (`textureOffset += 0.0048f * n`), the 60 Hz speed at any frame rate.
 
 ## Open items
 

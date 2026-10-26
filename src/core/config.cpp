@@ -69,7 +69,7 @@ bool Config::Load(const std::string& file) {
             }
             else if (k == "display") displayIndex = std::max(0, iv);
             else if (k == "display_name") displayName = v;
-            else if (k == "vsync") vsync = toBool(v);
+            else if (k == "vsync") vsync = iv == 2 || v == "adaptive" ? 2 : toBool(v) ? 1 : 0;
             else if (k == "max_fps") maxFps = std::max(0, iv);
             else if (k == "interpolation") interpolation = toBool(v);
             else if (k == "msaa") msaa = std::clamp(iv, 0, 16);
@@ -142,6 +142,7 @@ bool Config::Load(const std::string& file) {
             Log("Config: ignoring unknown setting '%s' in [%s]", k.c_str(), section.c_str());
     }
     fclose(f);
+    // config_version 19: [video] vsync 2 (adaptive)
     // config_version 18: [video] display_name
     // config_version 17: [video] fullscreen_refresh
     // config_version 16: [video] window_x / window_y, maximized and last_fullscreen; the window's
@@ -237,9 +238,17 @@ bool Config::Save() const {
       ";   monitors in or out, say); while it isn't, the primary monitor is used.\n"
       ";   Empty = go by the number alone.\n");
     fprintf(f, "display_name = %s\n\n", displayName.c_str());
-    P("; vsync: 1 = sync to the monitor's refresh rate, no tearing (default)\n"
-      ";        0 = render as fast as possible\n");
-    fprintf(f, "vsync = %d\n\n", vsync ? 1 : 0);
+    P("; vsync: 1 = wait for the monitor's refresh before showing each picture: no\n"
+      ";            tearing (default)\n"
+      ";        2 = adaptive: as 1, but a picture that is late shows at once (a\n"
+      ";            little tearing instead of a stutter); where the graphics driver\n"
+      ";            can't do it, the game uses 1 and says so in the log\n"
+      ";        0 = off: show each picture as soon as it is drawn (tearing). With\n"
+      ";            interpolation = 1 and max_fps = 0 that is as fast as the graphics\n"
+      ";            card can go; set max_fps to keep it down.\n"
+      "; Your graphics driver's own setting (NVIDIA Control Panel, AMD Software) can\n"
+      "; override this one; the options menu tells you when it seems to.\n");
+    fprintf(f, "vsync = %d\n\n", vsync);
     P("; max_fps: frame-rate cap. 0 = no cap (default). Any positive number, e.g. 60,\n"
       ";   144. Only applies when interpolation = 1; without interpolation the game\n"
       ";   draws at most 100 frames per second, like the original.\n");

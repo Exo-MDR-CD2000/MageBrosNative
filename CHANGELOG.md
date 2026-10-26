@@ -7,6 +7,17 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.4] - 2026-10-25
+
+- **Adaptive VSync**: Options > Video > VSync is now Off, On or Adaptive. Adaptive waits for the
+  screen like On, but a picture that comes too late shows at once (a little tearing instead of
+  a stutter). It is offered when your graphics driver supports it.
+- **VSync tells you when it isn't in charge**: your graphics driver's own setting (NVIDIA
+  Control Panel, AMD Software) can override the game's. When the frame rate shows that it does,
+  the VSync row's help line says so. The log records what took effect.
+- Fixed: the frame limit ran slightly slow (60 gave 58 frames a second); it is exact now.
+- The help lines for VSync, Smooth motion and Frame limit explain how the three work together.
+
 ## [0.4.3] - 2026-10-25
 
 - **Monitors are remembered by name**: if you plug monitors in or out, or Windows renumbers

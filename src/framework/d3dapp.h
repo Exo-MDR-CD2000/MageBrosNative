@@ -40,7 +40,16 @@ public:
     void RequestQuit() { quit_ = true; }
     // Re-apply window mode, size and monitor from the config (used by the options menu).
     void ApplyDisplaySettings();
+    // [video] vsync to the swap interval: 0 off, 1 on, 2 adaptive (-1), which falls back to on where
+    // the driver refuses it. What took effect is read back (VSyncInEffect).
     void ApplyVSync();
+    bool AdaptiveVSyncSupported() const { return adaptiveSupported_; }
+    int VSyncInEffect() const { return vsyncInEffect_; }  // 0, 1 or 2
+    // What the frame rate says about the driver (NVIDIA Control Panel, AMD Software) overriding
+    // VSync: +1 = VSync is on here but frames come faster than the monitor refreshes; -1 = it is
+    // off here but frames stop at the refresh rate; 0 = nothing seen. Judged only while frames are
+    // drawn freely (Smooth motion on, no frame limit, the menu closed), from two seconds running.
+    int VSyncOverride() const { return vsyncOverride_; }
     // The room a window's inside has on a monitor (0 = primary, as [video] display): its usable
     // area (without the taskbar) less the window's title bar and borders.
     void WindowFitArea(int display, int* w, int* h) const;
@@ -115,6 +124,12 @@ private:
     bool quit_ = false;
     DWORD statsFrames_ = 0;
     float statsLastTime_ = 0.f;
+    void JudgeVSync();  // each second's frame rate against the monitor's refresh rate
+    bool adaptiveSupported_ = false;
+    int vsyncInEffect_ = 1;
+    int vsyncOverride_ = 0;
+    int vsyncVote_ = 0, vsyncVotes_ = 0;  // the last second's verdict and how many in a row
+    int vsyncLogged_ = -1;
 
     // scripted run for automated testing: "time_ms:action[=arg]" entries
     struct AutoStep { DWORD t; std::string action, arg; bool done; };

@@ -8,6 +8,7 @@
 #include "../audio/midi.h"
 #include "../ui/options_menu.h"
 #include <SDL3/SDL.h>
+#include <cmath>
 #include <cstdlib>
 #include <sstream>
 
@@ -40,7 +41,44 @@ void CD3DApplication::OpenOptions() {
     if (menu_) menu_->Open();
 }
 
-void CD3DApplication::ApplyVSync() { SDL_GL_SetSwapInterval(GetConfig().vsync ? 1 : 0); }
+void CD3DApplication::ApplyVSync() {
+    int want = GetConfig().vsync;
+    bool ok = false;
+    if (want == 2) ok = adaptiveSupported_ && SDL_GL_SetSwapInterval(-1);
+    if (!ok) ok = SDL_GL_SetSwapInterval(want == 0 ? 0 : 1);
+    if (!ok) Log("VSync: the driver refused it: %s", SDL_GetError());
+    int got = 1;
+    if (!SDL_GL_GetSwapInterval(&got)) got = want == 0 ? 0 : 1;
+    vsyncInEffect_ = got < 0 ? 2 : got > 0 ? 1 : 0;
+    vsyncOverride_ = vsyncVote_ = vsyncVotes_ = 0;  // judged afresh
+    int key = want * 10 + vsyncInEffect_;
+    if (key != vsyncLogged_) {
+        static const char* names[] = {"off", "on", "adaptive"};
+        Log("VSync: %s%s", names[vsyncInEffect_],
+            want == 2 && vsyncInEffect_ != 2 ? " (adaptive isn't supported by the driver)" : "");
+        vsyncLogged_ = key;
+    }
+}
+
+void CD3DApplication::JudgeVSync() {
+    const Config& cfg = GetConfig();
+    if (!cfg.interpolation || cfg.maxFps > 0 || (menu_ && menu_->IsOpen()) || !window_) return;  // (keep the verdict)
+    const SDL_DisplayMode* m = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window_));
+    float hz = m ? m->refresh_rate : 0.f;
+    if (hz <= 0.f) return;
+    // VSync on (or adaptive) never goes above the refresh rate; off, drawing freely, it lands on it
+    // only when something else holds it there
+    int vote = 0;
+    if (vsyncInEffect_ > 0 && m_fFPS > hz * 1.15f) vote = 1;
+    else if (vsyncInEffect_ == 0 && std::fabs(m_fFPS - hz) < hz * 0.03f) vote = -1;
+    vsyncVotes_ = vote == vsyncVote_ ? vsyncVotes_ + 1 : 1;
+    vsyncVote_ = vote;
+    if (vsyncVotes_ >= 2 && vsyncOverride_ != vote) {
+        vsyncOverride_ = vote;
+        if (vote) Log("VSync: %.0f frames a second on a %.0f Hz monitor: the graphics driver seems to have VSync %s", m_fFPS,
+                      hz, vote > 0 ? "off" : "forced on");
+    }
+}
 
 // A monitor by its [video] display number (0 = primary, 1..n in SDL's order; the primary if
 // that one isn't connected).
@@ -290,6 +328,7 @@ void CD3DApplication::ApplyDisplaySettings() {
         SDL_SyncWindow(window_);
         Log("Display: exclusive %dx%d @ %.0f Hz, monitor %d", mode.w, mode.h, mode.refresh_rate, cfg.displayIndex);
     }
+    if (glContext_) ApplyVSync();  // (the monitor and its refresh rate may have changed: judged afresh)
 }
 
 // Alt+Enter / F11: from a window to the fullscreen mode used last (borderless, or exclusive at its
@@ -364,7 +403,8 @@ HRESULT CD3DApplication::Create(const std::vector<std::string>& args) {
         return E_FAIL;
     }
     SDL_GL_MakeCurrent(window_, (SDL_GLContext)glContext_);
-    SDL_GL_SetSwapInterval(cfg.vsync ? 1 : 0);
+    adaptiveSupported_ = SDL_GL_SetSwapInterval(-1);  // can the driver do adaptive VSync?
+    ApplyVSync();
     if (!GetDevice().Init(window_)) return E_FAIL;
     if (cfg.fullscreen != FullscreenMode::Windowed) ApplyDisplaySettings();
     SDL_ShowWindow(window_);
@@ -393,6 +433,7 @@ void CD3DApplication::UpdateStats() {
         m_fFPS = statsFrames_ / (t - statsLastTime_);
         statsFrames_ = 0;
         statsLastTime_ = t;
+        JudgeVSync();
     }
 }
 
@@ -573,18 +614,24 @@ int CD3DApplication::Run() {
         bool menuOpen = menu_->IsOpen();
         bool force = cfg.interpolation || menuOpen;
         int cap = menuOpen ? 60 : cfg.maxFps;
-        if (force && cap > 0) {
+        bool capped = force && cap > 0;
+        if (capped) {
             double minDt = 1.0 / cap;
-            double dt = (double)(SDL_GetPerformanceCounter() - lastPresent) / perfFreq;
+            uint64_t counter = SDL_GetPerformanceCounter();
+            double dt = (double)(counter - lastPresent) / perfFreq;
             if (dt < minDt) {
                 SDL_DelayPrecise((uint64_t)((minDt - dt) * 1e9 * 0.9));
                 continue;
             }
+            // the next frame is due one interval after this one was due, not after it is drawn
+            // (else the drawing time adds to every frame: a limit of 60 gave 58); a frame more
+            // than an interval late starts the count again from now
+            lastPresent = dt < 2 * minDt ? lastPresent + (uint64_t)(minDt * perfFreq) : counter;
         }
         DWORD before = m_dwLastFrameTime;
         if (FAILED(Render3DEnvironment(now, force))) quit_ = true;
         if (!force && m_dwLastFrameTime == before) SDL_Delay(1);  // original only renders on tick boundaries
-        else lastPresent = SDL_GetPerformanceCounter();
+        else if (!capped) lastPresent = SDL_GetPerformanceCounter();
     }
     if (windowChangedAt_) SaveWindowState();  // a resize or move just before quitting
     DeleteDeviceObjects();
