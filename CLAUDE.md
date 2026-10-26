@@ -317,9 +317,11 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update. The
   port's draw range grows with widescreen (`XGameContext::visibleRange`); the update range never
-  changes (it is game logic).
+  changes (it is game logic). Sound panning grows the same way (`XGameScene::PlaySound`). Both
+  use `ViewWidthFactor` in `XGameScene.cpp`, the window's shape as laid out each frame: never
+  hardcode an aspect ratio (the owner: the window can be resized to anything).
 
-## Where we are (last updated: 2026-10-25, version 0.4.5, stage 7 chunk 2d-ii done)
+## Where we are (last updated: 2026-10-25, version 0.4.6, stage 7 chunk 2d-ii done)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -330,7 +332,8 @@ release; a push to `menu-dev` doesn't). Chunk 2 (the Video page) is split into s
 for thoroughness: 2a windowed mode (0.4.1, tested by the owner, on `menu-dev`), 2b exclusive fullscreen (0.4.2,
 tested by the owner, on `menu-dev`), 2c monitors (0.4.3, tested by the owner, on
 `menu-dev`), 2d-i VSync (0.4.4, on `menu-dev`), 2d-ii widescreen culling (0.4.5, tested by the owner, on
-`menu-dev`), **2d-iii widescreen on the other screens and the HUD next**, then 2d-iv field of view. The owner's must: 16:9 with no culling or pop-in at all
+`menu-dev`) and widescreen sound panning (0.4.6, tested by the owner, on `menu-dev`; at 4:3 and
+Stretch the panning is the original's bit for bit), **2d-iii widescreen on the other screens and the HUD next**, then 2d-iv field of view. The owner's must: 16:9 with no culling or pop-in at all
 (verified by screenshot comparison with a draw-everything build). The owner then played 21:9
 (a 2560 x 1080 window): every object, enemy and boss showed and behaved normally to the edges, so
 native 21:9 is feasible. The camera and lens were checked value by value against the original

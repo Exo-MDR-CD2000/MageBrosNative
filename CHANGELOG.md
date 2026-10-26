@@ -7,6 +7,15 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.6] - 2026-10-25
+
+- **Widescreen sound**: sounds are panned left and right by where they happen, as in the
+  original. In widescreen, things at the edges of the wider screen sounded much quieter than at
+  the edges of the original screen, and on 21:9 some objects you could see made no sound at all.
+  The panning now follows the shape of the window (any size, even while you resize it), so a
+  sound at the edge of a wide screen is as loud and as far to that side as one at the edge of the
+  original. In 4:3 nothing changes.
+
 ## [0.4.5] - 2026-10-25
 
 - **No more pop-in at the edges in widescreen**: tall pillars, hammers and other objects near the

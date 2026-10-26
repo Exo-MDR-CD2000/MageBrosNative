@@ -119,7 +119,7 @@ With Smooth motion on, Frame limit caps the frames a second.
 pulls it wider, and Widescreen widens the 3D view of the levels to fill the screen (16:9, 16:10,
 21:9 and so on), showing more of the level to the left and right with nothing popping in at the
 edges. The camera is the original's (45° lens, 340 away, 35° above) in every mode; widescreen only
-widens it. The menus and the HUD stay in a 4:3 area in the middle for now.
+widens it. Sounds are panned to match the wider screen too, whatever shape the window is. The menus and the HUD stay in a 4:3 area in the middle for now.
 
 In the game view N / B change level and F2 switches between one and two players (test keys:
 a game started with them is not saved). Tab switches to the **level viewer**: every one of the 40

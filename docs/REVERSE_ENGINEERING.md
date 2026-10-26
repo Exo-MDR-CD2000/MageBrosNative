@@ -891,6 +891,19 @@ z) / 240, positive to the right (the camera looks down −X, so +Z is screen rig
   0x262, 4 of 0x270, 0x278, 0x279 and 0x2a5, 2 of eleven others), so a sound can overlap itself
   that many times before the oldest is cut off.
 
+**Widescreen and the panning (native).** In the original's 4:3 view the screen's edge is 188
+along Z where enemies walk (289 at the back wall, 321 in the pits), so a sound at the edge plays
+at full volume and all but fully to that side (pan 0.78: the other channel −39 dB). With the
+port's wider view and the original's 240, the edges of a wide screen fell further out: at 16:9
+the back wall's edge played at −30 dB and the pits' at −39 dB; at 21:9 the middle's edge at
+−20 dB, and the back wall and pits beyond 480, silent although on screen. So the port divides
+by 240 × the view's width factor (`XGameScene::PlaySound`, `ViewWidthFactor`: the layout's width
+of the 480-high picture over 640, read when each sound plays, so it follows the window's shape
+as it is resized; 1 at 4:3 and in Stretch, which stay exactly the original). A sound at the edge
+of any wide screen is then placed and faded as one at the edge of the 4:3 screen, and the
+480 cut-off widens by the same factor. Sounds never feed back into the game, so nothing about
+play changes. The draw range uses the same factor.
+
 ## Enemies and static objects (`XEnemyList`, `XStaticObjList`)
 
 **Level codes** (`XMap::_ConstructObjects`, each cell in turn, at the cell centre and
