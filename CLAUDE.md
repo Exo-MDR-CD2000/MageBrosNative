@@ -331,15 +331,16 @@ Conventions:
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
 opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) is done in
-0.4.0, tested by the owner and pushed to the **`menu-dev` branch**: stage 7's menu work stays on
-`menu-dev`, apart from `main`, until the owner says to merge it (a push to `main` publishes a
-release; a push to `menu-dev` doesn't). Chunk 2 (the Video page) is split into small chunks
-for thoroughness: 2a windowed mode (0.4.1, tested by the owner, on `menu-dev`), 2b exclusive fullscreen (0.4.2,
-tested by the owner, on `menu-dev`), 2c monitors (0.4.3, tested by the owner, on
-`menu-dev`), 2d-i VSync (0.4.4, on `menu-dev`), 2d-ii widescreen culling (0.4.5, tested by the owner, on
-`menu-dev`) and widescreen sound panning (0.4.6, tested by the owner, on `menu-dev`; at 4:3 and
+0.4.0, tested by the owner. **Branches:** 0.4.0 to 0.4.13 were built on a `menu-dev` branch,
+apart from `main`; the owner merged it into `main` on 2026-10-26 (pull request #1, released as
+v0.4.13). **Work goes on `main` again**: commit and push there (each push publishes the
+version's release; see "GitHub releases"). The owner plans no new branch for now, perhaps one
+for the modding work. Chunk 2 (the Video page) is split into small chunks for thoroughness: 2a
+windowed mode (0.4.1, tested by the owner), 2b exclusive fullscreen (0.4.2, tested by the
+owner), 2c monitors (0.4.3, tested by the owner), 2d-i VSync (0.4.4), 2d-ii widescreen culling
+(0.4.5, tested by the owner) and widescreen sound panning (0.4.6, tested by the owner; at 4:3 and
 Stretch the panning is the original's bit for bit), then 2d-iii, widescreen on the other screens and the HUD, taken one screen at a time with the
-owner. Done so far, all on `menu-dev` with 4:3 screenshots byte for byte the same as before:
+owner. Done so far, all with 4:3 screenshots byte for byte the same as before:
 the title's tile background filled out to the view's width on the title, save slots and level
 select, with the fade strips spanning the whole view (0.4.7); the shop sliding in from the view's
 edges over a full-width dim, the dim only when wider than 4:3 (0.4.8); the Saito Games logo's
