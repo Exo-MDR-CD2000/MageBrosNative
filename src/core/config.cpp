@@ -68,6 +68,7 @@ bool Config::Load(const std::string& file) {
                 }
             }
             else if (k == "display") displayIndex = std::max(0, iv);
+            else if (k == "display_name") displayName = v;
             else if (k == "vsync") vsync = toBool(v);
             else if (k == "max_fps") maxFps = std::max(0, iv);
             else if (k == "interpolation") interpolation = toBool(v);
@@ -141,6 +142,7 @@ bool Config::Load(const std::string& file) {
             Log("Config: ignoring unknown setting '%s' in [%s]", k.c_str(), section.c_str());
     }
     fclose(f);
+    // config_version 18: [video] display_name
     // config_version 17: [video] fullscreen_refresh
     // config_version 16: [video] window_x / window_y, maximized and last_fullscreen; the window's
     // size, position and monitor and Alt+Enter / F11 are saved
@@ -226,9 +228,15 @@ bool Config::Save() const {
       ";   100 steps a second; this only sets how often the screen is refreshed.\n");
     fprintf(f, "fullscreen_refresh = %g\n\n", fullscreenRefresh);
     P("; display: which monitor to use. 0 = primary monitor (default),\n"
-      ";   1 = first monitor, 2 = second, ... in the order Windows lists them.\n"
+      ";   1 = first monitor, 2 = second, ... in the order Windows lists them (the\n"
+      ";   log, magebros_native.log, lists them at every start).\n"
       ";   Moving the window to another monitor updates it.\n");
     fprintf(f, "display = %d\n\n", displayIndex);
+    P("; display_name: that monitor's name, set by itself. While a monitor of that name\n"
+      ";   is connected it is used, whatever its number has become (after plugging\n"
+      ";   monitors in or out, say); while it isn't, the primary monitor is used.\n"
+      ";   Empty = go by the number alone.\n");
+    fprintf(f, "display_name = %s\n\n", displayName.c_str());
     P("; vsync: 1 = sync to the monitor's refresh rate, no tearing (default)\n"
       ";        0 = render as fast as possible\n");
     fprintf(f, "vsync = %d\n\n", vsync ? 1 : 0);

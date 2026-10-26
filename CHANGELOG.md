@@ -7,6 +7,21 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.3] - 2026-10-25
+
+- **Monitors are remembered by name**: if you plug monitors in or out, or Windows renumbers
+  them, the game still opens on the monitor you chose. If that monitor isn't connected, the game
+  uses your main monitor and goes back to the chosen one once it is there again.
+- **Clearer Monitor row**: Options > Video > Monitor shows the monitor's number and resolution,
+  and the line below it the full name and refresh rate. The log (`magebros_native.log`) lists
+  every monitor at each start.
+- Fixed: going back to a window could put it on another monitor than the one chosen (where it
+  had been before), and F11 then went fullscreen there. A remembered position now only counts on
+  the chosen monitor, and F11 goes fullscreen on the monitor the window has just been moved to.
+- Fixed: in borderless fullscreen the picture was laid out one row taller than the screen
+  (an extra row kept off the screen so graphics drivers don't switch to exclusive mode). It now
+  fits the screen exactly.
+
 ## [0.4.2] - 2026-10-25
 
 - **Refresh rate for exclusive fullscreen**: Options > Video has a new Refresh rate row. In

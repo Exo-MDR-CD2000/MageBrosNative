@@ -194,7 +194,7 @@ void OptionsMenu::RevertDisplay() {
     c.windowHeight = snapshot_.h;
     c.fullscreenWidth = snapshot_.fw;
     c.fullscreenHeight = snapshot_.fh;
-    c.displayIndex = snapshot_.display;
+    CD3DApplication::SetDisplay(snapshot_.display);
     c.fullscreenRefresh = snapshot_.hz;
     app_->ApplyDisplaySettings();
     c.lastFullscreen = (FullscreenMode)snapshot_.lastFullscreen;  // (a reverted exclusive mode isn't F11's)
@@ -332,7 +332,7 @@ void OptionsMenu::ProposeDisplay(const DisplayCfg& d) {
         pendingActive_ = false;
         if (d.display != c.displayIndex) c.windowPosSet = false;  // centred on the new monitor
         c.fullscreen = d.mode;
-        c.displayIndex = d.display;
+        CD3DApplication::SetDisplay(d.display);
         app_->ApplyDisplaySettings();
         Save();
         return;
@@ -352,7 +352,7 @@ void OptionsMenu::ApplyPending() {
     c.fullscreenHeight = pending_.fh;
     c.fullscreenRefresh = pending_.hz;
     if (pending_.display != c.displayIndex) c.windowPosSet = false;
-    c.displayIndex = pending_.display;
+    CD3DApplication::SetDisplay(pending_.display);
     pendingActive_ = false;
     ApplyDisplay();  // asks "Keep these display settings?"
 }
@@ -606,22 +606,16 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
     }
     {
         Item it{"Monitor", "",
+                // "Primary" or "2: 2560x1440" (names are long; the help line has the whole of it)
                 [this] {
                     int idx = ShownDisplay().display;
-                    std::string s;
-                    if (idx == 0) {
-                        s = "Primary";
-                    } else {
-                        int n = 0;
-                        SDL_DisplayID* ids = SDL_GetDisplays(&n);
+                    std::string s = "Primary";
+                    if (idx > 0) {
                         s = std::to_string(idx);
-                        if (ids && idx <= n) {
-                            const char* name = SDL_GetDisplayName(ids[idx - 1]);
-                            if (name) s += ": " + std::string(name);
-                        }
-                        SDL_free(ids);
+                        if (const SDL_DisplayMode* m = SDL_GetDesktopDisplayMode(DisplayIdFor(idx)))
+                            s += ": " + std::to_string(m->w) + "x" + std::to_string(m->h);
                     }
-                    return Fit(s, 13) + PendingMark(ShownDisplay().display != CurrentDisplay().display);
+                    return s + PendingMark(idx != CurrentDisplay().display);
                 },
                 [this](int d) {
                     int n = 0;
@@ -633,7 +627,17 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                     ProposeDisplay(p);
                 },
                 [this] { ApplyPending(); }, nullptr};
-        it.helpFn = [this] { return DisplayHelp("Which display the game uses."); };
+        it.helpFn = [this] {
+            // "Monitor 2 of 3: DELL U2723QE, 2560x1440, 144 Hz." (the primary: Windows' main monitor)
+            int idx = ShownDisplay().display, n = CD3DApplication::DisplayCount();
+            SDL_DisplayID id = DisplayIdFor(idx);
+            std::string s = idx == 0 ? "Windows' main monitor: " : "Monitor " + std::to_string(idx) + " of " + std::to_string(n) + ": ";
+            const char* name = SDL_GetDisplayName(id);
+            s += name && *name ? name : "(no name)";
+            if (const SDL_DisplayMode* m = SDL_GetDesktopDisplayMode(id))
+                s += ", " + std::to_string(m->w) + "x" + std::to_string(m->h) + ", " + RateName(m->refresh_rate);
+            return DisplayHelp(s + ".");
+        };
         v.push_back(it);
     }
     v.push_back({"VSync", "Sync to the monitor refresh rate (prevents tearing).",

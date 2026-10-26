@@ -21,6 +21,7 @@ struct Config {
     int fullscreenHeight = 0;
     float fullscreenRefresh = 0.f; // exclusive fullscreen refresh rate (Hz); 0 = the desktop's
     int displayIndex = 0;          // 0 = primary monitor, 1..n = monitors in system order
+    std::string displayName;       // that monitor's name; when connected it wins over the number
     bool vsync = true;
     int maxFps = 0;                // 0 = uncapped (or vsync limited)
     bool interpolation = true;     // smooth motion between 100 Hz logic ticks
@@ -63,7 +64,7 @@ struct Config {
 
     std::string path;
     int version = 0;                    // config_version found in the file (0 = older file)
-    static constexpr int kCurrentVersion = 17;
+    static constexpr int kCurrentVersion = 18;
     bool firstRun = false;              // no ini existed at start (not saved): size the window to the monitor
     bool Load(const std::string& file);
     bool Save() const;

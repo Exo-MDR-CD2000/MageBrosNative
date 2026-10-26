@@ -311,7 +311,7 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-25, version 0.4.2, stage 7 chunk 2b done)
+## Where we are (last updated: 2026-10-25, version 0.4.3, stage 7 chunk 2c done)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -320,8 +320,8 @@ opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) 
 `menu-dev`, apart from `main`, until the owner says to merge it (a push to `main` publishes a
 release; a push to `menu-dev` doesn't). Chunk 2 (the Video page) is split into small chunks
 for thoroughness: 2a windowed mode (0.4.1, tested by the owner, on `menu-dev`), 2b exclusive fullscreen (0.4.2,
-tested by the owner, on `menu-dev`), **2c monitors next**,
-then 2d the rest of the page. The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
+tested by the owner, on `menu-dev`), 2c monitors (0.4.3, tested by the owner, on
+`menu-dev`), **2d the rest of the page next**. The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
 its own).
 Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
 7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.
@@ -378,9 +378,17 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   fullscreen mode is applied; the menu's revert puts it back) and saves.
 - Window sizes are SDL window coordinates, which are real pixels on Windows here: at the
   owner's 150% scaling a 1280 x 960 window is 1280 x 960 pixels.
-- The owner's monitors: a 4K primary at 150% (3840 x 2160, 143 Hz, NVIDIA), a 2560 x 1440
-  listed on the AMD graphics, and a 1920 x 1080 at 60 Hz that SDL names "TX-NR646" (an Onkyo
-  receiver, so most likely a TV; `display = 3` in SDL's order; it offers 3840 x 2160 modes too).
+- The owner's monitors, as SDL lists them (and the log, at every start): 1 "LS28AG700N",
+  3840 x 2160 at 143.86 Hz, 150%, primary; 2 "PA278CGV", 2560 x 1440 at 143.97 Hz, 100%, left of
+  it (Windows lists it on the AMD graphics; it still runs at 144 fps); 3 "TX-NR646", 1920 x 1080
+  at 60 Hz, 100%, right of it (an Onkyo receiver, most likely a TV; it offers 3840 x 2160 modes).
+
+**Monitors (chunk 2c, 0.4.3)**: `CD3DApplication::SetDisplay` sets `display` and
+`display_name` together (the menu and the window tracking use it); `ResolveDisplay` (at start
+and on SDL_EVENT_DISPLAY_ADDED / REMOVED) finds the number by name, takes the primary for now
+when that monitor is missing (keeping the name), and gives an older ini its name. `PlaceWindow`
+uses a saved position only on the chosen monitor (`WindowPosOn`). The borderless window's extra
+row is `Device::SetHiddenBottomRows(1)`: the layout uses the rows above it.
 
 **Exclusive fullscreen (chunk 2b, 0.4.2)**: `fullscreen_refresh` (0 = the desktop's rate) goes
 to `SDL_GetClosestFullscreenDisplayMode` with the chosen size (or the desktop's).

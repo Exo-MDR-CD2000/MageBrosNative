@@ -337,7 +337,8 @@ void Device::ComputeLayout() {
     if (h < 1) h = 1;
     FrameLayout L;
     L.windowW = w;
-    L.windowH = h;
+    L.windowH = h;  // (the whole window: the GL viewport counts from its bottom)
+    if (h > hiddenBottomRows_ + 1) h -= hiddenBottomRows_;  // the picture goes on the visible rows
     float A = (float)w / (float)h;
     if (cfg.aspect == AspectMode::Stretch) {
         L.destX = 0; L.destY = 0; L.destW = w; L.destH = h;

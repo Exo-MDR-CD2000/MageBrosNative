@@ -78,6 +78,9 @@ public:
     void EndHudScale();
     // fov_scale applies only while a level is on screen (set by the game every frame).
     void SetGameplayView(bool on) { gameplayView_ = on; }
+    // Rows at the bottom of the window that are off the screen (the borderless window's extra
+    // row): the picture is laid out on the rows above them (from the next frame on).
+    void SetHiddenBottomRows(int n) { hiddenBottomRows_ = n; }
     // Screen area used by the top-left HUD group this frame (virtual space), so the FPS counter
     // can step out of its way at large HUD sizes. Reset every frame.
     void SetHudTopLeftExtent(float right, float bottom) { hudTLRight_ = right; hudTLBottom_ = bottom; }
@@ -123,6 +126,7 @@ public:
 private:
     float hudScale_ = 1.f, hudAnchorX_ = 0.f, hudAnchorY_ = 0.f;
     bool gameplayView_ = false;
+    int hiddenBottomRows_ = 0;
     float hudTLRight_ = -1e9f, hudTLBottom_ = 0.f;
     void ComputeLayout();
     void CreateTargets();

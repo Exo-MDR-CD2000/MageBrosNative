@@ -47,6 +47,14 @@ public:
     // The largest 4:3 window from kWindowScales (multiples of the game's 640 x 480) that fits
     // that monitor; at least 640 x 480. The first start and "Reset all settings" use it.
     void DefaultWindowSize(int display, int* w, int* h) const;
+    // Monitors by [video] display number (1..n in SDL's order; 0 = the primary).
+    static std::string DisplayName(int index);
+    static int DisplayCount();
+    // Choose a monitor: its number and its name (kept, so it is found again under another number).
+    static void SetDisplay(int index);
+    // display_name, when that monitor is connected, decides the number (at start and whenever a
+    // monitor is plugged in or out); when it isn't, the primary is used for now.
+    static void ResolveDisplay();
     static constexpr float kWindowScales[] = {1.f, 1.25f, 1.5f, 1.6f, 2.f, 2.5f, 3.f, 3.5f, 4.f, 4.5f, 5.f, 6.f};
     bool OptionsOpen() const;
     void OpenOptions();  // e.g. from the title screen's OPTIONS entry
