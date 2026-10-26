@@ -700,14 +700,14 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"HUD position", "Widescreen only: HUD at the screen edges or in the 4:3 area.",
+    v.push_back({"HUD position", "Widescreen only: the HUD and FPS counter in the original's 4:3 area or at the screen edges.",
                  [] { return std::string(GetConfig().hudLayout ? "Edges" : "Centered"); },
                  [this](int) {
                      GetConfig().hudLayout = GetConfig().hudLayout ? 0 : 1;
                      Save();
                  },
                  nullptr, [] { return GetConfig().aspect == AspectMode::Widescreen; }});
-    v.push_back({"HUD max width", "How far the edge HUD may spread on ultrawide screens.",
+    v.push_back({"HUD max width", "How far the edge HUD may spread on ultrawide screens (21:9 keeps it off a 32:9 screen's far corners).",
                  [] {
                      float a = GetConfig().hudMaxAspect;
                      if (a <= 0) return std::string("Unlimited");
@@ -728,7 +728,7 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                  },
                  nullptr,
                  [] { return GetConfig().aspect == AspectMode::Widescreen && GetConfig().hudLayout == 1; }});
-    v.push_back({"HUD size", "Size of the in-game HUD. Each part grows from its corner. 100% = original.",
+    v.push_back({"HUD size", "Size of the in-game HUD and FPS counter, from their corners. Limited when parts would meet. 100% = original.",
                  [] { return std::to_string((int)std::lround(GetConfig().hudScale * 100)) + "%"; },
                  [this](int d) {
                      Config& c = GetConfig();
@@ -751,13 +751,11 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    // not built for Mage Bros. yet: the HUD settings and the field of view need the game to tell
-    // the renderer where its HUD and its level camera are. (Smooth motion already sets how often
-    // the picture is drawn; drawing the game's objects between ticks comes later.)
+    // not built for Mage Bros. yet: the field of view needs the game to tell the renderer where
+    // its level camera is. (Smooth motion already sets how often the picture is drawn; drawing the
+    // game's objects between ticks comes later.)
     for (Item& it : v)
-        if (it.label == "HUD position" || it.label == "HUD max width" || it.label == "HUD size" ||
-            it.label == "Field of view")
-            NotYet(it);
+        if (it.label == "Field of view") NotYet(it);
     v.push_back({"Back", "", nullptr, nullptr, [this] { Back(false); }, nullptr});
     return p;
 }

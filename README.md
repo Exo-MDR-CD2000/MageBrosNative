@@ -5,7 +5,7 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.12).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.13).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
 > Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
@@ -14,8 +14,8 @@ original game logic unchanged when every option is at its default.
 > without pop-in at the edges, with the sound panned to match, and the title, save slots and level
 > select with their green background filled out to the edges, the shop sliding in from the edges
 > over a dimmed level, the start-up logo white to the edges, and the ending's film strips across the
-> whole width. The game's logic and speed are the original's at any resolution,
-> refresh rate and frame rate. Next: widescreen on the remaining screens and the HUD. See
+> whole width; the HUD can be moved to the screen's edges and resized. The game's logic and speed
+> are the original's at any resolution, refresh rate and frame rate. Next: the field of view. See
 > [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
 > changed in each version.
 
@@ -104,8 +104,7 @@ player 1's keys, player 2's keys, the general keys (select, pause, back) and the
 jump buttons. Options > Video > Show FPS shows the original's frames-per-second counter. Smooth
 motion (on by default) draws at the monitor's refresh rate; off, the picture is drawn only when the
 game ticks, at most 100 times a second, as the original. The game's speed is the same either way.
-Settings not ready for Mage Bros. yet (the HUD options, the field of view, cheats and mods) are
-greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
+Settings not ready for Mage Bros. yet (the field of view, cheats and mods) are greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
 to replace the MIDI music.
 
 **The window** opens where you left it, at the size you left it (maximized too), on the same
@@ -129,7 +128,15 @@ start-up logo is white to the edges, the scrolling green background of the title
 level select fills the whole width, and the fades between screens cover it. The shop slides in
 from the screen's edges and dims the level across the whole width while it is open, and the
 ending's film strips run edge to edge with the credits sliding in from the screen's edge. The
-menus themselves and the HUD stay in a 4:3 area in the middle for now.
+menus themselves stay in a 4:3 area in the middle.
+
+**HUD** (Options > Video): HUD position (widescreen) is Centered, the original's place inside the
+middle 4:3 area (the default), or Edges: the level and torches at the left edge, the players'
+panels at the right edge and the FPS counter in the bottom-right corner. HUD max width keeps the
+Edges HUD within 16:9, 16:10, 21:9 or 32:9 on wider screens (21:9 by default). HUD size, 50% to
+200%, grows each part from its corner, in any aspect mode; when the level information and the
+players' panels would meet (two players on a boss level, or a 4:3 screen), the HUD stops at the
+largest size that fits. Level select keeps the original's layout.
 
 In the game view N / B change level, F2 switches between one and two players and F3 jumps to the
 ending (test keys: a game started with them is not saved; `--ending` on the command line starts
@@ -230,7 +237,8 @@ third_party  ColDet 1.2 (the original's collision library), TinySoundFont, dr_li
              font8x8
 tools        MageBrosAssets
 tests        format and collision tests; map and hero tests on your copy (-DMBN_GAME_EXE)
-docs         REVERSE_ENGINEERING.md (what the original is made of), ROADMAP.md
+docs         REVERSE_ENGINEERING.md (what the original is made of, and at its end the
+             original's bugs and quirks with what the port does about each), ROADMAP.md
 CLAUDE.md    contributor handoff: project rules, build/test/RE workflow, current status, next steps
 ```
 

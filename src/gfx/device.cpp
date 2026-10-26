@@ -815,9 +815,9 @@ HRESULT Device::BltToBackBuffer(const RECT* dst, Surface* src, const RECT* srcRe
     // source rectangles are in the image's layout size (an HD replacement has more pixels)
     float tw = (float)src->Width(), th = (float)src->Height();
     float x0 = (float)d.left, y0 = (float)d.top, x1 = (float)d.right, y1 = (float)d.bottom;
-    if (hudScale_ != 1.f) {
-        x0 = hudAnchorX_ + (x0 - hudAnchorX_) * hudScale_;
-        x1 = hudAnchorX_ + (x1 - hudAnchorX_) * hudScale_;
+    if (hudScale_ != 1.f || hudShiftX_ != 0.f) {
+        x0 = hudAnchorX_ + (x0 - hudAnchorX_) * hudScale_ + hudShiftX_;
+        x1 = hudAnchorX_ + (x1 - hudAnchorX_) * hudScale_ + hudShiftX_;
         y0 = hudAnchorY_ + (y0 - hudAnchorY_) * hudScale_;
         y1 = hudAnchorY_ + (y1 - hudAnchorY_) * hudScale_;
     }
@@ -835,13 +835,17 @@ HRESULT Device::ColorFill(const RECT* dst, uint32_t rgb) {
     return D3D_OK;
 }
 
-void Device::BeginHudScale(float scale, float anchorX, float anchorY) {
+void Device::BeginHudScale(float scale, float anchorX, float anchorY, float shiftX) {
     hudScale_ = scale;
     hudAnchorX_ = anchorX;
     hudAnchorY_ = anchorY;
+    hudShiftX_ = shiftX;
 }
 
-void Device::EndHudScale() { hudScale_ = 1.f; }
+void Device::EndHudScale() {
+    hudScale_ = 1.f;
+    hudShiftX_ = 0.f;
+}
 
 void Device::ViewXRange(int* left, int* right) const {
     int side = (int)std::ceil(layout_.offsetX);

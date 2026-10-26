@@ -76,9 +76,10 @@ public:
     // and in Stretch, beyond both edges in widescreen (the window's shape as laid out, so any
     // window size counts, resized or not).
     void ViewXRange(int* left, int* right) const;
-    // HUD size (enhancement): while set, 2D blits are scaled by `scale` around the virtual-space
-    // point (anchorX, anchorY). The game's HUD code wraps each HUD group with these.
-    void BeginHudScale(float scale, float anchorX, float anchorY);
+    // HUD size and position (enhancement): while set, 2D blits are scaled by `scale` around the
+    // point (anchorX, anchorY) in the original's 640 x 480 pixels, then moved `shiftX` across. The
+    // game's HUD code wraps each HUD group with these (scale 1 and shift 0 draw as without them).
+    void BeginHudScale(float scale, float anchorX, float anchorY, float shiftX = 0.f);
     void EndHudScale();
     // fov_scale applies only while a level is on screen (set by the game every frame).
     void SetGameplayView(bool on) { gameplayView_ = on; }
@@ -128,7 +129,7 @@ public:
     void SetWorldOffset(const D3DVECTOR& v) { worldOffset_ = v; }
 
 private:
-    float hudScale_ = 1.f, hudAnchorX_ = 0.f, hudAnchorY_ = 0.f;
+    float hudScale_ = 1.f, hudAnchorX_ = 0.f, hudAnchorY_ = 0.f, hudShiftX_ = 0.f;
     bool gameplayView_ = false;
     int hiddenBottomRows_ = 0;
     float hudTLRight_ = -1e9f, hudTLBottom_ = 0.f;

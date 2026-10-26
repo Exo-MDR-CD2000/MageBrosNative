@@ -1,6 +1,7 @@
 // The original's frames-per-second display (XFPSDisplay): an "FPS" label and a three-digit
 // number in the bottom right, drawn by XApplication::Render after the running screen when the
 // setting is on (RegInfo_GetDisplayFPS in the original; [video] show_fps here).
+// Native: it follows the HUD settings (HUD position Edges, HUD size) on every screen.
 //
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once

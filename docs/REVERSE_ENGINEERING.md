@@ -1729,7 +1729,39 @@ the digit sprite's width (17 px) per digit.
 | GOLD and gold (4 digits) | 409 | 492, LIFE y + height + 2 (31); number at x + width + 4 |
 | MP and 10 lights | 413, 415 (2 frames) | 492, GOLD y + height + 2 (58); lights from x + width + 4, y + 2, each width / 4 on; lit while i < magic points, all dark while DEAD |
 | Player 2 (two-player games): face, LIFE, GOLD, MP | 510, 412, 410, 414 | the same at x 260 / 302 |
-| Lost-gold messages (500 ticks) | 0x230 (player 1), 0x231 (player 2), amounts in 3 digits | centred on (320, 240) and (320, 267); amount at x + 198, y + 10 |
+| Lost-gold messages (500 ticks) | 0x230 (player 1), 0x231 (player 2), amounts in 3 digits | centred on (320, 240) and (320, 267); amount at x + 198, y + 10. Both bitmaps are 311 × 35, so the two overlap by 8 rows and player 1's, drawn last, covers the top of player 2's (its mage icon): a slip in the original. (Native: player 2's at (320, 279), 2 below player 1's.) |
 
 The counter and the two message timers advance in `ProcessFrame`; `InitForGame` clears them.
 The world and level numbers are shown 1-based.
+
+At 4:3 the HUD is tight: on a two-player boss level the boss's hearts end about 35 pixels short
+of player 2's panel (x 260).
+
+**The HUD settings (native).** In levels (not on level select), `Render` draws the groups between
+`Device::BeginHudScale(scale, anchor x, anchor y, shift)` and `EndHudScale`, which scale each blit
+around the anchor and then move it across: the level info (rows A and B) around (0, 0), moved
+−`HudEdgeShift`; both players' panels as one block around (640, 0), moved +`HudEdgeShift`; the
+lost-gold messages around (320, 240), not moved. `HudEdgeShift` is 0 unless Aspect is Widescreen
+and HUD position is Edges; HUD max width caps it. The scale is HUD size, limited by `FitScale` to
+(640 + 2 · shift − 8) / (level info's width + panels' width), so the two stay 8 apart: the level
+info's width is the widest of row A, TORCH's row, or BOSS and the most hearts the boss has had
+on this level; the panels' width is 640 − the leftmost face's x (450, or 260 with two players).
+The limit never goes below 1. `XFPSDisplay` does the same around (640, 480), moved +shift, on
+every screen. At scale 1 and shift 0 the blits are the original's.
+
+## Bugs and quirks in the original
+
+Slips in the original game, and behaviour that depends on its once-a-frame loop, with what the
+port does about each. The rule (`CLAUDE.md`): the port keeps the original's behaviour, quirks
+included; a fix is made only when the owner chooses it, and then it is listed here. Add every
+new one found, kept or not. (The widescreen work of stage 7 isn't listed: the original was made
+for 4:3 only, so those are additions, not fixes.)
+
+| What | In the original | In the port | Since |
+|---|---|---|---|
+| The lost-gold messages overlap | In a two-player game, when both mages lose gold together, the two "you have lost ... gold" messages (311 × 35 each) are centred only 27 apart: player 1's, drawn last, covers the top 8 rows of player 2's, clipping its mage icon (see "The status display") | **Fixed in every mode** (the owner's choice): player 2's message centred at y 279 instead of 267, 2 below player 1's | 0.4.13 |
+| The shop's keyboard keys | The shop takes only Right Shift / Right Ctrl (player 2: Left Shift / Left Ctrl) to buy or leave, although `[` `]`, the one-player Left Shift / Left Ctrl (player 2: `1` `2`) and Enter fire, jump or confirm elsewhere, so a player using those keys can't buy or leave | **Changed** (the owner's choice): the shop also takes every other fire and jump key of the shopper, remapped keys and Enter; the original's keys work as before | 0.4.9 |
+| Escape in the shop | Escape leaves the shop and, because the level's own Escape check still runs, gives up the level too once play resumes (see "The shop") | **Kept** as the original | 0.3.5 |
+| Blits crossing the screen's edge | DirectDraw, used without a clipper, refuses any blit whose rectangle crosses the screen's edge, so a sprite partly off screen isn't drawn at all (the title background's edge tiles, for one) | **Changed**: the port clips such blits, so partly-off-screen sprites show their visible part (`Device::BltToBackBuffer`) | stage 2 |
+| The ending's corridor scroll | Advances once a frame, not once a tick, so the corridor scrolls faster above 60 Hz (up to 1.67 times at 100 Hz or more); see "Stage 7: frame-rate dependence" in `ROADMAP.md` | **Kept** as the original (the owner's decision, 2026-10-25: hardly noticeable) | 0.3.6 |
+| Fire and jump presses | Read once a frame, so at 60 frames a second a fresh press can count on two ticks of one frame (a 10 ms jump buffer on landing), at 100 on one (see "The frame loop and the frame rate") | **Changed** (the owner's decision, 2026-10-25): the heroes' keys are read every tick, as the original at 100 frames a second, at any frame rate | 0.4.4 |

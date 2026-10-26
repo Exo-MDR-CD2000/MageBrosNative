@@ -7,6 +7,25 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.13] - 2026-10-26
+
+- **HUD settings**: Options > Video > HUD position, HUD max width and HUD size now work.
+  - **HUD position** (widescreen): Centered keeps the HUD where the original has it, inside the
+    middle 4:3 area (the default); Edges moves the level information to the left edge, the
+    players' panels to the right edge and the FPS counter to the bottom-right corner.
+  - **HUD max width**: with Edges, how far the HUD may spread on very wide screens (21:9 by
+    default, so a 32:9 screen keeps it off the far corners).
+  - **HUD size**: 50% to 200%, each part growing from its corner (the FPS counter too). When the
+    level information and the panels would meet (two players on a boss level, or a narrow
+    screen), the HUD stops at the largest size that fits.
+- HUD position now starts as Centered. Settings files from earlier versions are set back to
+  Centered once (the setting did nothing before).
+- Fixed: in a two-player game, when both mages lost gold at once, player 1's "you have lost ...
+  gold" message covered the top of player 2's, clipping its mage icon (a slip in the original
+  game too). Player 2's message is now a little lower, so both show in full.
+- The original game's known slips and quirks, and what this port does about each, are now listed
+  at the end of `docs/REVERSE_ENGINEERING.md`.
+
 ## [0.4.12] - 2026-10-26
 
 - **Test shortcut to the ending**: press F3 during a level to jump straight to the ending, or

@@ -36,7 +36,7 @@ struct Config {
     AspectMode aspect = AspectMode::Original4x3;
     float fovScale = 1.0f;         // multiplies the original vertical FOV (widescreen keeps vertical FOV)
     bool showFps = false;
-    int hudLayout = 1;             // widescreen only: 0 = original centred 4:3 HUD, 1 = HUD at screen edges
+    int hudLayout = 0;             // widescreen only: 0 = original centred 4:3 HUD (default), 1 = HUD at screen edges
     float hudMaxAspect = 2.4f;     // edges layout spreads at most this wide (0 = no limit)
     float hudScale = 1.0f;         // in-game HUD size (0.5..2.0); each part grows from its screen corner
 
@@ -64,7 +64,7 @@ struct Config {
 
     std::string path;
     int version = 0;                    // config_version found in the file (0 = older file)
-    static constexpr int kCurrentVersion = 19;
+    static constexpr int kCurrentVersion = 20;
     bool firstRun = false;              // no ini existed at start (not saved): size the window to the monitor
     bool Load(const std::string& file);
     bool Save() const;

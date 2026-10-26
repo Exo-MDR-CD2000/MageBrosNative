@@ -1,5 +1,8 @@
 #include "game/XStatusDisplay.h"
 #include "game/XHero.h"
+#include "core/config.h"
+#include "gfx/device.h"
+#include <algorithm>
 
 namespace {
 // bitmap resources
@@ -84,7 +87,9 @@ XStatusDisplay::XStatusDisplay() {
     lostGoldNumB_->SetNumDigits(3);
     lostGoldA_->SetCenterPos(320, 240);
     lostGoldNumA_->SetPosition(lostGoldA_->GetPosIntX() + 198, lostGoldA_->GetPosIntY() + 10);
-    lostGoldB_->SetCenterPos(320, 267);
+    // native: player 2's 12 lower than the original's 267, 2 below player 1's (both are 35 high,
+    // so at 27 apart player 1's, drawn last, covered the top of player 2's and its mage icon)
+    lostGoldB_->SetCenterPos(320, 279);
     lostGoldNumB_->SetPosition(lostGoldB_->GetPosIntX() + 198, lostGoldB_->GetPosIntY() + 10);
 }
 
@@ -112,9 +117,41 @@ void XStatusDisplay::ShowLostGoldMessage(bool heroA, int amount) {
     }
 }
 
+float XStatusDisplay::FitScale(const Info& info, int shift) {
+    // the boss's full row of hearts: the most it has shown on this level
+    if (info.world != shownWorld_ || info.level != shownLevel_) {
+        shownWorld_ = info.world;
+        shownLevel_ = info.level;
+        mostBossHearts_ = 0;
+    }
+    if (info.bossLevel) mostBossHearts_ = std::max(mostBossHearts_, info.bossHealth);
+    // the level info's right edge (from the left corner) and the panels' left edge (from the right)
+    int left = levelNum_->GetPosIntX() + levelNum_->GetWidth();
+    if (!info.bossLevel) {
+        left = std::max(left, numTorch_->GetPosIntX() + numTorch_->GetWidth());
+    } else if (mostBossHearts_ > 0) {
+        int step = bossHeart_->GetWidth() / 2 - 8;
+        int x = boss_->GetPosIntX() + boss_->GetWidth() + 4;
+        left = std::max(left, x + (mostBossHearts_ - 1) * step + bossHeart_->GetWidth());
+    }
+    int right = 640 - (info.onePlayer ? faceA_ : faceB_)->GetPosIntX();
+    // as large as asked, but never so large that the two meet (8 pixels apart at the most), and
+    // never below the original's size, which always fits
+    float most = (float)(640 + 2 * shift - 8) / (float)(left + right);
+    return std::min(GetConfig().hudScale, std::max(1.0f, most));
+}
+
 void XStatusDisplay::Render(BackBuffer* bb, const Info& info) {
     int heartFrame = (int)((counter_ >> 4) % 4);
+    // native: the HUD settings, in levels only (level select keeps the original's layout). The
+    // level info grows from the top-left corner and moves out to the left edge with HUD position
+    // Edges; both players' panels, as one block, from the top-right corner to the right edge; the
+    // lost-gold messages from the middle. At 100% and Centered (or 4:3, Stretch) nothing moves.
+    Device& d = GetDevice();
+    int shift = info.inGame ? d.HudEdgeShift() : 0;
+    float scale = info.inGame ? FitScale(info, shift) : 1.0f;
 
+    d.BeginHudScale(scale, 0.0f, 0.0f, (float)-shift);
     level_->Draw(bb);
     dash_->Draw(bb);
     world_->SetNumber(info.world + 1);
@@ -142,6 +179,7 @@ void XStatusDisplay::Render(BackBuffer* bb, const Info& info) {
             }
         }
     }
+    d.EndHudScale();
 
     // one player's panel: face, gold, life hearts, magic lights
     auto panel = [&](const XHeroStatus* st, bool dead, JSprite& face, JSprite& gold, JNumber& goldNum,
@@ -174,9 +212,12 @@ void XStatusDisplay::Render(BackBuffer* bb, const Info& info) {
             }
         }
     };
+    d.BeginHudScale(scale, 640.0f, 0.0f, (float)shift);
     panel(info.statusA, info.heroADead, *faceA_, *goldA_, *goldNumA_, *lifeA_, *mpA_);
     if (!info.onePlayer) panel(info.statusB, info.heroBDead, *faceB_, *goldB_, *goldNumB_, *lifeB_, *mpB_);
+    d.EndHudScale();
 
+    d.BeginHudScale(info.inGame ? GetConfig().hudScale : 1.0f, 320.0f, 240.0f);
     if (lostGoldTimerB_ > 0) {
         lostGoldB_->Draw(bb);
         lostGoldNumB_->Draw(bb);
@@ -185,4 +226,5 @@ void XStatusDisplay::Render(BackBuffer* bb, const Info& info) {
         lostGoldA_->Draw(bb);
         lostGoldNumA_->Draw(bb);
     }
+    d.EndHudScale();
 }

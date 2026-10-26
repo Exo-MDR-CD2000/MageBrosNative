@@ -39,7 +39,10 @@ repository contains no game content.
   `docs/ROADMAP.md`.
 - **One-to-one faithful by default.** The original's behaviour is unchanged when every option is
   at its default: the same tick order, constants, slot counts and quirks, including ones that
-  look like bugs. Any modern extras (stage 7) must be opt-in options.
+  look like bugs. Any modern extras (stage 7) must be opt-in options. The exception: a slip in
+  the original that the owner chooses to fix (so far the overlapping lost-gold messages, 0.4.13,
+  and the shop's keys, 0.4.9). Every bug or quirk of the original found, fixed or kept, goes in
+  the "Bugs and quirks in the original" table at the end of `docs/REVERSE_ENGINEERING.md`.
 - **Never commit game material:**
   - `MageBros.exe`, `MageBros.pdb`, `.mid` files, or anything exported from them;
   - screenshots of the game;
@@ -323,7 +326,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-26, version 0.4.12, stage 7 chunk 2d-iii under way)
+## Where we are (last updated: 2026-10-26, version 0.4.13, stage 7 chunk 2d-iii done but the options menu)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -344,10 +347,15 @@ white backdrop widened with the view (0.4.10, Stretch also unchanged); the endin
 across the whole view and its credits waiting and leaving past the view's edges (0.4.11; the
 ending can't be compared byte for byte, as the corridor scrolls once a frame, so a temporary log
 showed the original's tiles and credit positions at 4:3 and Stretch); 0.4.12 added F3 in a level
-and `--ending` to reach the ending, for the owner to test it. Beside them, 0.4.9 made
+and `--ending` to reach the ending, for the owner to test it; the HUD settings (HUD position,
+HUD max width, HUD size) hooked into `XStatusDisplay` and `XFPSDisplay` (0.4.13; HUD position
+defaults to Centered, the owner's call, and config_version 20 resets older files once; tried by
+the owner, who also had the original's overlapping lost-gold messages fixed in every mode, the
+first entry of the "Bugs and quirks in the original" table in `docs/REVERSE_ENGINEERING.md`). The
+options menu in widescreen is left as it is for now (the owner: the menus and level select are
+fine). Beside them, 0.4.9 made
 the shop's button take every fire / jump key of the shopper and Enter (the owner couldn't find
-how to buy or leave with the keyboard). **The rest of 2d-iii (the options menu and HUD)
-next**, then 2d-iv field of view. The owner's must: 16:9 with no culling or pop-in at all
+how to buy or leave with the keyboard). **2d-iv, the field of view, next.** The owner's must: 16:9 with no culling or pop-in at all
 (verified by screenshot comparison with a draw-everything build). The owner then played 21:9
 (a 2560 x 1080 window): every object, enemy and boss showed and behaved normally to the edges, so
 native 21:9 is feasible. The camera and lens were checked value by value against the original
@@ -382,9 +390,8 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   showFps, fps)`.
 - The key pages are built from `kKeyActions` in `options_menu.cpp` (group, label, DIK):
   rebinding a DIK moves every place the game reads it (the menus' W / S too).
-- `OptionsMenu::NotYet` greys out what isn't built: HUD position, HUD max width, HUD size,
-  Field of view (chunk 2: nothing calls `Device::SetGameplayView`, `HudEdgeShift` or
-  `BeginHudScale` yet), Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
+- `OptionsMenu::NotYet` greys out what isn't built: Field of view (nothing calls
+  `Device::SetGameplayView` yet), Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
   menu's mod pages still speak of Hopmon's assets).
 - Smooth motion (`interpolation`, on by default, from Hopmon) only sets how often the picture is
   drawn: no game object takes part in `Interp::Tracked`, so frames repeat between ticks. Off, the
@@ -528,7 +535,10 @@ work"). Waiting for the owner's check: 0.4.7 (the menus' background and fades in
 (the shop in widescreen), 0.4.9 (the shop's keys) and 0.4.10 (the logo in widescreen), checked here
 by screenshots only. The widescreen screenshots so far are at 16:9, 21:9 and 32:9; 16:10 wasn't
 captured (the owner judged it fine: every fix works from the view's width, so 16:10, between 4:3
-and 16:9, needs nothing of its own). MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
+and 16:9, needs nothing of its own). The HUD settings of 0.4.13 were tried by the owner ("seems to
+work fine"), who then found the lost-gold messages overlapping in two-player games, a slip in the
+original as well: fixed in every mode in 0.4.13 (player 2's message 12 lower), seen on screen
+here through a temporary `ShowLostGoldMessage` call in `InitForGame` (removed). MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
 override warning can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
 
 ### Notes from earlier stages

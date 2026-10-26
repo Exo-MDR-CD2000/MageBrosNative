@@ -142,6 +142,9 @@ bool Config::Load(const std::string& file) {
             Log("Config: ignoring unknown setting '%s' in [%s]", k.c_str(), section.c_str());
     }
     fclose(f);
+    // config_version 20: [video] hud_layout defaults to 0 (the original's place); files written
+    // before it had 1 (Hopmon Native's default) while the setting did nothing, so it is reset
+    if (version > 0 && version < 20) hudLayout = 0;
     // config_version 19: [video] vsync 2 (adaptive)
     // config_version 18: [video] display_name
     // config_version 17: [video] fullscreen_refresh
@@ -297,8 +300,8 @@ bool Config::Save() const {
       ";   right of every screen. 0 = hide (default).\n");
     fprintf(f, "show_fps = %d\n\n", showFps ? 1 : 0);
     P("; hud_layout: where the in-game HUD (status display, FPS counter) goes\n"
-      ";   when aspect = 2. 1 = at the screen edges (default). 0 = original\n"
-      ";   position inside the centred 4:3 area. No effect with aspect 0 or 1.\n");
+      ";   when aspect = 2. 0 = the original's place inside the centred 4:3 area\n"
+      ";   (default). 1 = at the screen edges. No effect with aspect 0 or 1.\n");
     fprintf(f, "hud_layout = %d\n\n", hudLayout);
     P("; hud_max_aspect: with hud_layout = 1, how far the HUD may spread on very\n"
       ";   wide screens, as an aspect ratio. 2.4 (default) = about 21:9, so on a\n"

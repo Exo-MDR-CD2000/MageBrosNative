@@ -1,4 +1,6 @@
 #include "XFPSDisplay.h"
+#include "core/config.h"
+#include "gfx/device.h"
 
 namespace {
 constexpr uint16_t kBitmapLabel = 0xbf, kBitmapDigits = 0xbb;
@@ -10,6 +12,10 @@ XFPSDisplay::XFPSDisplay() : label_(kBitmapLabel, 1), number_(kBitmapDigits) {
 }
 
 void XFPSDisplay::Render(BackBuffer* bb, int fps) {
+    // native: on every screen the HUD settings move it out to the bottom-right corner (HUD position
+    // Edges, in widescreen) and resize it from that corner (HUD size); the original's at 100%
+    Device& d = GetDevice();
+    d.BeginHudScale(GetConfig().hudScale, 640.0f, 480.0f, (float)d.HudEdgeShift());
     int x = 552, y = 454;
     label_.SetPosition(x, y);
     label_.Draw(bb);
@@ -17,4 +23,5 @@ void XFPSDisplay::Render(BackBuffer* bb, int fps) {
     number_.SetPosition(x, y);
     number_.SetNumber(fps);  // CD3DApplication::GetFPS
     number_.Draw(bb);
+    d.EndHudScale();
 }
