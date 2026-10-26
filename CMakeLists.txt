@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 # The project version is the single source of the program's version number.
-project(MageBrosNative VERSION 0.4.14 LANGUAGES C CXX)
+project(MageBrosNative VERSION 0.4.15 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

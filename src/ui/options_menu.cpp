@@ -736,8 +736,13 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Field of view", "Camera zoom in levels (menus and the ending keep the original view). 100% = original.",
-                 [] { return std::to_string((int)std::lround(GetConfig().fovScale * 100)) + "%"; },
+    v.push_back({"Field of view", "Experimental: best left at 100% (the original, 45 degrees). Zooms levels; above 100% shows unbuilt edges.",
+                 [] {
+                     // the percentage, and the vertical angle it gives (the original's 45 degrees at 100%)
+                     float f = GetConfig().fovScale;
+                     int deg = (int)std::lround(2.0 * std::atan(f * std::tan(0.392699)) * 57.29578);
+                     return std::to_string((int)std::lround(f * 100)) + "% (" + std::to_string(deg) + " deg)";
+                 },
                  [this](int d) {
                      Config& c = GetConfig();
                      c.fovScale = std::clamp(std::round((c.fovScale + d * 0.05f) * 20.f) / 20.f, 0.5f, 2.0f);
@@ -751,11 +756,7 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    // not built for Mage Bros. yet: the field of view needs the game to tell the renderer where
-    // its level camera is. (Smooth motion already sets how often the picture is drawn; drawing the
-    // game's objects between ticks comes later.)
-    for (Item& it : v)
-        if (it.label == "Field of view") NotYet(it);
+
     v.push_back({"Back", "", nullptr, nullptr, [this] { Back(false); }, nullptr});
     return p;
 }

@@ -81,7 +81,8 @@ public:
     // game's HUD code wraps each HUD group with these (scale 1 and shift 0 draw as without them).
     void BeginHudScale(float scale, float anchorX, float anchorY, float shiftX = 0.f);
     void EndHudScale();
-    // fov_scale applies only while a level is on screen (set by the game every frame).
+    // fov_scale applies only while this is on: XGameScene::Render turns it on for the level's 3D
+    // and off before the shop and the HUD, every frame.
     void SetGameplayView(bool on) { gameplayView_ = on; }
     // Rows at the bottom of the window that are off the screen (the borderless window's extra
     // row): the picture is laid out on the rows above them (from the next frame on).

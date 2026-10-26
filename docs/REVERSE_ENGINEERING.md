@@ -203,7 +203,7 @@ Checked against the listings on 2026-10-25 (`XCamera::ResetForGame`, `_UpdateVie
 | View matrix | eye = look-at base + (sin h · cos v, sin v, cos h · cos v) × distance, up (0, 1, 0) | the same |
 | Title camera | 500 away, angle 0, horizontal π, looking at (0, 0, 0) | the same |
 | Ending camera | 500 away, angle 0, horizontal π, looking at (0, −60, 0) | the same |
-| Draw range / update range | 400 / 480 along z | 400 / 480 at 4:3 (the draw range only grows in widescreen) |
+| Draw range / update range | 400 / 480 along z | 400 / 480 at 4:3 and 100% (the draw range only grows in widescreen and with the field of view above 100%) |
 
 The resulting eye in levels is at (418.5, 315.0, z), looking down at (140, 120, z).
 
@@ -221,8 +221,15 @@ What the port's options do to the lens (all applied by the renderer, `Device` in
   virtualW`, virtualW being 480 × the window's aspect). The vertical view, the camera's place and
   its angles stay the original's, so a 16:9 screen shows the same height of the level and more of
   it to the left and right.
-- Field of view (greyed out until chunk 2d-iv): would divide both parts of the lens, in levels
-  only (`gameplayView_`, which nothing sets yet), so at 100% it changes nothing.
+- Field of view (0.4.15, experimental: players are advised to leave it at 100%): divides both
+  parts of the lens by the setting (50% to 200%), only
+  while `gameplayView_` is on, which `XGameScene::Render` turns on for the level's 3D and off
+  before the shop's panel and the HUD; every other screen keeps the original lens. At 100% it
+  changes nothing. Above 100% the draw range and the sound panning grow by the setting too.
+  The original's levels are built only as far as its own view: zoomed out, black shows below the
+  near edge (the cliff faces are 200 deep, and at 100% their bottom is just off screen) from about
+  105%, then above the 240-high back wall and past the ends (the end walls' scenery reaches two
+  cells beyond them).
 
 A floor tile is a flat 40×40 `JObject3D_Rect` at height × 25, mapped to the top-left quarter of
 the floor texture with a half-texel inset. The J library is the same one Hopmon uses, one

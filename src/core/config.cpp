@@ -276,9 +276,12 @@ bool Config::Save() const {
       ";             the on-screen display stay 4:3 in the middle. On a screen\n"
       ";             narrower than 4:3 this behaves like 0.\n");
     fprintf(f, "aspect = %d\n\n", (int)aspect);
-    P("; fov_scale: camera field of view in levels. 1.0 = original (default). Above\n"
-      ";   1.0 shows more (zoomed out), below 1.0 shows less (zoomed in). Range 0.5\n"
-      ";   to 2.0. The title, level select and ending always use the original view.\n");
+    P("; fov_scale: EXPERIMENTAL, best left at 1.0. Camera field of view in levels.\n"
+      ";   1.0 = original (default). Above 1.0 shows more (zoomed out), below 1.0\n"
+      ";   shows less (zoomed in). Range 0.5 to 2.0. The original's levels are\n"
+      ";   built only as far as its own view, so above 1.0 their unbuilt edges show\n"
+      ";   (black below the near edge, above the back wall and past the ends). The\n"
+      ";   title, level select, shop panel and ending always use the original view.\n");
     fprintf(f, "fov_scale = %.2f\n\n", fovScale);
     P("; smooth_textures: 1 = bilinear filtering on 3D textures the original drew\n"
       ";   pixelated. 0 = original look (default).\n");

@@ -7,6 +7,20 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.15] - 2026-10-26
+
+- **Field of view (experimental)**: Options > Video > Field of view now works, from 50% (zoomed in) to 200%
+  (zoomed out), in 5% steps; the menu shows the lens angle too (100% = the original's 45
+  degrees). It changes the view in levels only: the title, level select, the shop's panel, the
+  HUD and the ending keep the original view. Zoomed out, objects keep showing to the screen's
+  edges and sounds are panned to match the wider view.
+- The original's levels are built only as far as its own view reaches, so above 100% their
+  unbuilt edges come into view: black below the level's near edge (from about 105%), and at
+  stronger zoom-out above the back wall and past the level's ends. Far-away enemies, which the
+  original keeps still until you are near, can also be seen standing still. The help line says
+  so. **The setting is experimental: we recommend leaving it at 100%**, the view the original's
+  levels were made for.
+
 ## [0.4.14] - 2026-10-26
 
 - Fixed: at the start of level 3-9 a black strip showed on the wall to the left, just above the

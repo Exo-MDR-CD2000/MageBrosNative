@@ -322,11 +322,11 @@ Conventions:
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update. The
   port's draw range grows with widescreen (`XGameContext::visibleRange`); the update range never
   changes (it is game logic). Sound panning grows the same way (`XGameScene::PlaySound`). Both
-  use `ViewWidthFactor` in `XGameScene.cpp`, the window's shape as laid out each frame: never
+  use `ViewReachFactor` in `XGameScene.cpp` (`ViewWidthFactor` times the field of view above 100%), the window's shape as laid out each frame: never
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-26, version 0.4.14, stage 7 chunk 2d-iii done but the options menu)
+## Where we are (last updated: 2026-10-26, version 0.4.15, stage 7 chunk 2 done but the options menu)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -357,7 +357,12 @@ then 0.4.14 fixed another slip the owner found, the black strip on 3-9's start w
 options menu in widescreen is left as it is for now (the owner: the menus and level select are
 fine). Beside them, 0.4.9 made
 the shop's button take every fire / jump key of the shopper and Enter (the owner couldn't find
-how to buy or leave with the keyboard). **2d-iv, the field of view, next.** The owner's must: 16:9 with no culling or pop-in at all
+how to buy or leave with the keyboard). 2d-iv, the field of view, is done in 0.4.15 (50% to
+200% in the menu, the owner's choice, with a help line warning that zooming out shows the level's
+unbuilt edges; at 100% byte for byte the same as before). The owner tried it ("seems to work")
+and wants it presented as **experimental**, with players advised to leave it at 100%: keep that
+wording wherever the setting is described (the help line, the ini comment, README, CHANGELOG). **Chunk 2 is done; the rest of stage 7
+is to be planned with the owner** (see ROADMAP). The owner's must: 16:9 with no culling or pop-in at all
 (verified by screenshot comparison with a draw-everything build). The owner then played 21:9
 (a 2560 x 1080 window): every object, enemy and boss showed and behaved normally to the edges, so
 native 21:9 is feasible. The camera and lens were checked value by value against the original
@@ -392,8 +397,7 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   showFps, fps)`.
 - The key pages are built from `kKeyActions` in `options_menu.cpp` (group, label, DIK):
   rebinding a DIK moves every place the game reads it (the menus' W / S too).
-- `OptionsMenu::NotYet` greys out what isn't built: Field of view (nothing calls
-  `Device::SetGameplayView` yet), Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
+- `OptionsMenu::NotYet` greys out what isn't built: Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
   menu's mod pages still speak of Hopmon's assets).
 - Smooth motion (`interpolation`, on by default, from Hopmon) only sets how often the picture is
   drawn: no game object takes part in `Interp::Tracked`, so frames repeat between ticks. Off, the
@@ -540,7 +544,8 @@ captured (the owner judged it fine: every fix works from the view's width, so 16
 and 16:9, needs nothing of its own). The HUD settings of 0.4.13 were tried by the owner ("seems to
 work fine"), who then found the lost-gold messages overlapping in two-player games, a slip in the
 original as well: fixed in every mode in 0.4.13 (player 2's message 12 lower), seen on screen
-here through a temporary `ShowLostGoldMessage` call in `InitForGame` (removed). MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
+here through a temporary `ShowLostGoldMessage` call in `InitForGame` (removed). The field of view of
+0.4.15 was tried by the owner too. MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
 override warning can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
 
 ### Notes from earlier stages
