@@ -40,8 +40,8 @@ repository contains no game content.
 - **One-to-one faithful by default.** The original's behaviour is unchanged when every option is
   at its default: the same tick order, constants, slot counts and quirks, including ones that
   look like bugs. Any modern extras (stage 7) must be opt-in options. The exception: a slip in
-  the original that the owner chooses to fix (so far the overlapping lost-gold messages, 0.4.13,
-  and the shop's keys, 0.4.9). Every bug or quirk of the original found, fixed or kept, goes in
+  the original that the owner chooses to fix (so far the shop's keys, 0.4.9, the overlapping
+  lost-gold messages, 0.4.13, and the black strip at the start of 3-9, 0.4.14). Every bug or quirk of the original found, fixed or kept, goes in
   the "Bugs and quirks in the original" table at the end of `docs/REVERSE_ENGINEERING.md`.
 - **Never commit game material:**
   - `MageBros.exe`, `MageBros.pdb`, `.mid` files, or anything exported from them;
@@ -326,7 +326,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-26, version 0.4.13, stage 7 chunk 2d-iii done but the options menu)
+## Where we are (last updated: 2026-10-26, version 0.4.14, stage 7 chunk 2d-iii done but the options menu)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -352,7 +352,8 @@ and `--ending` to reach the ending, for the owner to test it; the HUD settings (
 HUD max width, HUD size) hooked into `XStatusDisplay` and `XFPSDisplay` (0.4.13; HUD position
 defaults to Centered, the owner's call, and config_version 20 resets older files once; tried by
 the owner, who also had the original's overlapping lost-gold messages fixed in every mode, the
-first entry of the "Bugs and quirks in the original" table in `docs/REVERSE_ENGINEERING.md`). The
+first entry of the "Bugs and quirks in the original" table in `docs/REVERSE_ENGINEERING.md`;
+then 0.4.14 fixed another slip the owner found, the black strip on 3-9's start wall). The
 options menu in widescreen is left as it is for now (the owner: the menus and level select are
 fine). Beside them, 0.4.9 made
 the shop's button take every fire / jump key of the shopper and Enter (the owner couldn't find

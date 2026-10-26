@@ -100,7 +100,13 @@ Units and coordinates:
 
 How `_ConstructFloorAndWall` builds a level, in order:
 
-1. Side walls for the whole level (`_CreateSideWalls`).
+1. Side walls for the whole level (`_CreateSideWalls`): an end wall across each end, a 40 × 320
+   quad per column from the floor's height (y 0) up, and walls and cliffs beyond them on the camera
+   side. Nothing covers an end wall below y 0, so where an end row is a pit the black background
+   shows between the floor's height and the water: only at the start of 3-9 (the one level that
+   opens on a row of pits; five end on one, but their far wall is never in view). (Native: such
+   an end wall gets a 200-deep cliff face below it, as `_CreateUnderground` builds; see "Bugs and
+   quirks in the original".)
 2. Back walls for every row, chosen by the row flag (`_CreateBackWalls`).
 3. Underground scenery for every cell (`_CreateUnderground`): 40 × 200 cliff faces from y 0 to
    −200. A cell with a floor gets one under each edge whose neighbour (+X, +Z or −Z) is a hole
@@ -1760,6 +1766,7 @@ for 4:3 only, so those are additions, not fixes.)
 | What | In the original | In the port | Since |
 |---|---|---|---|
 | The lost-gold messages overlap | In a two-player game, when both mages lose gold together, the two "you have lost ... gold" messages (311 × 35 each) are centred only 27 apart: player 1's, drawn last, covers the top 8 rows of player 2's, clipping its mage icon (see "The status display") | **Fixed in every mode** (the owner's choice): player 2's message centred at y 279 instead of 267, 2 below player 1's | 0.4.13 |
+| The black strip at the start of 3-9 | `_CreateSideWalls` builds each end wall only from the floor's height up, and `_CreateUnderground` puts cliff faces under floor cells' edges, never under an end wall. 3-9 opens on a row of pits, so the black background shows on its start wall between the floor's height and the water (see "Map geometry (XMap)"). 1-10, 3-10, 4-2, 4-8 and 4-10 end on pits, but the camera never reaches their far wall | **Fixed in every mode** (the owner's choice): where an end row is a pit, the end wall gets a 200-deep cliff face below it with the underground texture, as every other pit edge (`MapGeometry::Builder::SideWalls`); 4-10's far end checked byte for byte the same as before, being out of view | 0.4.14 |
 | The shop's keyboard keys | The shop takes only Right Shift / Right Ctrl (player 2: Left Shift / Left Ctrl) to buy or leave, although `[` `]`, the one-player Left Shift / Left Ctrl (player 2: `1` `2`) and Enter fire, jump or confirm elsewhere, so a player using those keys can't buy or leave | **Changed** (the owner's choice): the shop also takes every other fire and jump key of the shopper, remapped keys and Enter; the original's keys work as before | 0.4.9 |
 | Escape in the shop | Escape leaves the shop and, because the level's own Escape check still runs, gives up the level too once play resumes (see "The shop") | **Kept** as the original | 0.3.5 |
 | Blits crossing the screen's edge | DirectDraw, used without a clipper, refuses any blit whose rectangle crosses the screen's edge, so a sprite partly off screen isn't drawn at all (the title background's edge tiles, for one) | **Changed**: the port clips such blits, so partly-off-screen sprites show their visible part (`Device::BltToBackBuffer`) | stage 2 |

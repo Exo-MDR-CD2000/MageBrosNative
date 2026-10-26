@@ -99,6 +99,22 @@ struct Builder {
             b.UV(0.75f, 1.0f, 0.0f, 1.0f);
             FacingMinusZ(b).Shift(px, 160.0f, depth * kCellSize);
             Append(out.floorMesh, b);
+            // native: where the end row is a pit, the end wall carries on below the floor as a
+            // 200-deep cliff face, as every other pit edge does (_CreateUnderground). The original
+            // has none, so at the start of 3-9, which opens on a row of pits, a black strip shows
+            // on the end wall between the floor's height and the water.
+            if (Level(x, 0) < 0) {
+                Quad c(40.0f, 200.0f);
+                c.UV(0.625f, 0.875f, 0.0f, 1.0f);
+                FacingPlusZ(c).Shift(px, -100.0f, 0.0f);
+                Append(out.undergroundMesh, c);
+            }
+            if (Level(x, depth - 1) < 0) {
+                Quad c(40.0f, 200.0f);
+                c.UV(0.625f, 0.875f, 0.0f, 1.0f);
+                FacingMinusZ(c).Shift(px, -100.0f, depth * kCellSize);
+                Append(out.undergroundMesh, c);
+            }
         }
         for (int i = 0; i < 2; i++) {
             float off = i * kCellSize + 20.0f;

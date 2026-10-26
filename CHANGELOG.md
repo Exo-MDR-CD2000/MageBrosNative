@@ -7,6 +7,13 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.14] - 2026-10-26
+
+- Fixed: at the start of level 3-9 a black strip showed on the wall to the left, just above the
+  water, because the level opens on a row of pits and the original game never built the wall
+  below floor level there (a slip in the original game too). The wall now carries on down to the
+  water in the same brick as every other pit edge. No other level is affected.
+
 ## [0.4.13] - 2026-10-26
 
 - **HUD settings**: Options > Video > HUD position, HUD max width and HUD size now work.
