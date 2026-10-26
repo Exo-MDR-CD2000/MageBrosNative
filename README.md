@@ -5,13 +5,13 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.5).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.6).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
 > Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
 > pause and FPS counter, rebinding both players' keys, replacement music); the window, monitors,
 > exclusive fullscreen and VSync are done; widescreen, 16:9 and 21:9 included, shows the levels
-> without pop-in at the edges. The game's logic and speed are the original's at any resolution,
+> without pop-in at the edges, with the sound panned to match. The game's logic and speed are the original's at any resolution,
 > refresh rate and frame rate. Next: widescreen on the other screens and the HUD. See
 > [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
 > changed in each version.

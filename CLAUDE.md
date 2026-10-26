@@ -504,7 +504,8 @@ The owner's full play-through of 0.3.6 covered everything built up to stage 6. F
 the options menu of 0.4.0 (tested by the owner: works as expected; MP3/FLAC music was not
 tried, as there were no files to try). The window of 0.4.1 was tested by the owner too, F11 into
 exclusive fullscreen and back included (2026-10-25), and so were 0.4.2 (refresh rate), 0.4.3
-(monitors) and 0.4.5 (widescreen, at 16:9 and 21:9). Nothing from stage 7 waits for the owner's
+(monitors), 0.4.5 (widescreen, at 16:9 and 21:9) and 0.4.6 (widescreen sound, by ear).
+Nothing from stage 7 waits for the owner's
 check now; MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
 override warning can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
 
