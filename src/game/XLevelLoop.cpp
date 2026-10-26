@@ -346,6 +346,8 @@ void XLevelLoop::ProcessFire(Fire& f) {
 
 // ---------------------------------------------------------------------------- per tick
 
+void XLevelLoop::SetVisibleRange(float range) { game_->visibleRange = range; }
+
 void XLevelLoop::ProcessBeforeHero(float cameraZ) {
     game_->cameraZ = cameraZ;
     // XMap::ProcessFrame

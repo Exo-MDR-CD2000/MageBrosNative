@@ -5,13 +5,16 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.0).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.5).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
-> Stage 7 adds optional modern extras: the options menu is now made for Mage Bros. (the
-> original's pause and FPS counter, rebinding both players' keys, replacement music). Next: the
-> video options (widescreen HUD, field of view). See [docs/ROADMAP.md](docs/ROADMAP.md) for the
-> plan and [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+> Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
+> pause and FPS counter, rebinding both players' keys, replacement music); the window, monitors,
+> exclusive fullscreen and VSync are done; widescreen, 16:9 and 21:9 included, shows the levels
+> without pop-in at the edges. The game's logic and speed are the original's at any resolution,
+> refresh rate and frame rate. Next: widescreen on the other screens and the HUD. See
+> [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
+> changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
 > images, models, levels, sounds, music or text. Everything is read at runtime from the original
@@ -105,7 +108,18 @@ monitor; the first start opens the largest 4:3 window that fits the monitor. Alt
 switches between the window and the fullscreen mode you used last (borderless or exclusive), and
 is remembered. Exclusive fullscreen can run at any resolution and refresh rate your monitor has
 (Options > Video > Resolution and Refresh rate). Window sizes are real screen pixels: with Windows display scaling above 100% the
-window looks smaller than its numbers suggest.
+window looks smaller than its numbers suggest. Monitors are remembered by name, so the game finds
+the right one even after they are plugged in or out.
+
+**VSync** (Options > Video) is Off, On or Adaptive (on, but a late picture shows at once instead of
+waiting); the line under it tells you if your graphics driver's own setting seems to override it.
+With Smooth motion on, Frame limit caps the frames a second.
+
+**Widescreen** (Options > Video > Aspect): 4:3 is the original picture with black bars, Stretch
+pulls it wider, and Widescreen widens the 3D view of the levels to fill the screen (16:9, 16:10,
+21:9 and so on), showing more of the level to the left and right with nothing popping in at the
+edges. The camera is the original's (45° lens, 340 away, 35° above) in every mode; widescreen only
+widens it. The menus and the HUD stay in a 4:3 area in the middle for now.
 
 In the game view N / B change level and F2 switches between one and two players (test keys:
 a game started with them is not saved). Tab switches to the **level viewer**: every one of the 40

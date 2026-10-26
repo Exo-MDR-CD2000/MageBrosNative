@@ -7,6 +7,16 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.5] - 2026-10-25
+
+- **No more pop-in at the edges in widescreen**: tall pillars, hammers and other objects near the
+  back of a level or down in its pits could appear and vanish at the left and right edges of a
+  wide screen. The original only draws objects close to the middle of its 4:3 view; the game now
+  draws as far as the wider view reaches (at 4:3 it is exactly the original). What objects do,
+  and when enemies wake up, is unchanged.
+- Ultrawide (21:9) now plays properly: every object, enemy and boss shows and behaves normally
+  right to the edges of the screen.
+
 ## [0.4.4] - 2026-10-25
 
 - **Adaptive VSync**: Options > Video > VSync is now Off, On or Adaptive. Adaptive waits for the

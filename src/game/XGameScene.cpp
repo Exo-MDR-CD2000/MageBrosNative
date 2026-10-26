@@ -259,6 +259,9 @@ void XGameScene::SetDeviceState(Device* d) {
 void XGameScene::Render(Device* d, BackBuffer* bb) {
     if (state_ == NON || !heroA_) return;
     camera_.DoSetTransform(d);
+    // native: the draw range grows with the 3D view, which widescreen widens by the window's width
+    // over 4:3 (the layout's width of the 480-high picture, over 640): 400 at 4:3, 533 at 16:9
+    loop_.SetVisibleRange(400.0f * std::max(1.0f, d->Layout().virtualW / 640.0f));
     // XGameObject::Render: the map, the heroes (with their shadows), the level's objects, then the
     // particles and the shots
     level_.Render(d, false);

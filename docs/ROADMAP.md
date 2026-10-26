@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-i done (below) |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done (below) |
 
 ## Stage 4, chunk by chunk
 
@@ -114,12 +114,17 @@ Mage Bros.' own and finishes the ones that need the game's help.
 | 2b | Exclusive fullscreen: a Refresh rate row (the rates the monitor has at the chosen size, or Desktop: `fullscreen_refresh`); the resolution list drops modes below 640 x 480 and the copy of Desktop, and stops at its ends (Desktop last) instead of wrapping round; `*` only on the rows that will change | choosing a mode and a refresh rate, keep and revert | Done (0.4.2, tested by the owner) |
 | 2c | Monitors: remembered by name (`display_name`; when that monitor isn't connected the primary is used and the name kept); the Monitor row shows number and resolution, its help the full name and rate; F11 goes fullscreen on the monitor the window has just moved to; a saved window position counts only on the chosen monitor; borderless lays the picture out on the visible rows (not its hidden extra one); the monitors listed in the log at start; Window and Borderless checked on the owner's three monitors (each at its own refresh rate) | moving between monitors in each mode | Done (0.4.3, tested by the owner) |
 | 2d-i | VSync: Off / On / Adaptive (adaptive only where the driver can do it, else On, and said so); what took effect read back and logged; a driver overriding it (NVIDIA Control Panel, AMD Software) noticed from the frame rate and shown in the help line; the frame limit made exact (60 gave 58); help text on how VSync, Smooth motion and Frame limit work together; every combination checked in Window and Borderless on the 144 Hz and 60 Hz monitors | VSync, Smooth motion and Frame limit together, with Show FPS | Done (0.4.4) |
-| 2d-ii | Widescreen: the Aspect modes checked on every screen (title, save slots, level select, shop, ending, the options menu); the HUD position, max width and size hooked into `XStatusDisplay` | the Video page, in widescreen | **Next** |
-| 2d-iii | Field of view: hooked into the level camera (`Device::SetGameplayView`), the menus and the ending keeping the original lens | Field of view in levels | |
+| 2d-ii | Widescreen culling: objects at the edges of a wide screen (tall pillars, hammers, any object at the back of a level or in its pits) popped in and out, because the original only draws objects within 400 along the level and its 4:3 view never reaches that; the draw range now grows with the view's width (533 at 16:9), the update range (game logic) is unchanged. Checked by comparing screenshots against a draw-everything build at 16:10, 16:9 and 21:9 in 1-1, 1-6, 2-4 and 3-5: identical | the edges of the screen in widescreen, 16:9 above all | Done (0.4.5; the owner played 21:9 too, with every object, enemy and boss normal to the edges) |
+| 2d-iii | Widescreen on the other screens: the Aspect modes checked on the logo, title, save slots, level select, shop, ending and options menu; the HUD position, max width and size hooked into `XStatusDisplay` | every screen in widescreen | **Next** |
+| 2d-iv | Field of view: hooked into the level camera (`Device::SetGameplayView`) and into the draw range, the menus and the ending keeping the original lens | Field of view in levels | |
 
 The rest is to be planned with the owner after chunk 2. Possible later, maybe more than a game of
-this size needs (the owner's note): a frame-limit choice for G-Sync / FreeSync (the monitor's
-refresh rate less 3), worth it only once smooth motion draws between ticks. Candidates: smooth motion (drawing the
+this size needs (the owner's notes): a frame-limit choice for G-Sync / FreeSync (the monitor's
+refresh rate less 3), worth it only once smooth motion draws between ticks; for 32:9 screens, an idle
+animation for the nine enemy types the update range pauses far away (at 21:9 that can only show
+for an enemy against the back wall or in a pit at the very edge of the screen, which the owner
+didn't see in play; at 32:9 the middle of the level reaches 501, past the 480 range), and
+perhaps a "widescreen max width" setting. Candidates: smooth motion (drawing the
 game's objects between ticks; it may become a stage of its own), moving the per-frame items in
 the table below onto ticks, the graphics options checked on Mage Bros.' scenes, Mage Bros.' own
 cheats, mods (add-ons and level packs, with `MODDING.md`), `--set`, `CONFIG.md` and the README

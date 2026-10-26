@@ -174,6 +174,50 @@ normals 1/s long, so the coins (scale 0.35 and 0.6) saturate to bright gold from
   and `9` Wizard. Bosses appear in level 10 of every world and also in World 4's levels 2
   (Dragon), 5 (Genie) and 8 (Nest), which therefore play the boss music too.
 
+### The camera and lens: the original and the port, side by side
+
+Checked against the listings on 2026-10-25 (`XCamera::ResetForGame`, `_UpdateViewMatrix`,
+`_UpdateLookAtPos`, `ProcessFrame`, `_UpdateShake`, `ResetForTitle`, `ResetForEnding`,
+`IsVisible`, `IsUpdatable`, `XApplication::InitDeviceObjects`) and the port's `XCamera.cpp`,
+`XGameScene::SetDeviceState` and `XGameContext.h`. Every value is the same:
+
+| Setting | Original | Port |
+|---|---|---|
+| Lens (vertical field of view) | 45° (0.785398 rad) | 45° (0.785398) |
+| Lens shape (aspect) | 0.75 (4:3) | 0.75 (4:3) |
+| Near / far plane | 10 / 1000 | 10 / 1000 |
+| Level camera: distance from the look-at point | 340 | 340 |
+| Level camera: angle above the horizontal | 35° (0.610865 rad) | 35° (0.610865) |
+| Level camera: horizontal angle | 90° (1.5708: looking from the +x side) | 90° (1.5708) |
+| Look-at point | (140, 120, z) | (140, 120, z) |
+| Look-at z limits | 160 to (rows − 4) × 40 | 160 to (rows − 4) × 40 |
+| Following | `MakeValueCloseTo` factor 0.1, at least 0.1, at most 5 a tick | the same |
+| Two players | further hero's z less half their gap, the gap at most 240 | the same |
+| Shake | look-at y 120 + sin(tick mod 8 / 8 × 2π) × m, m − 0.02 a tick | the same |
+| View matrix | eye = look-at base + (sin h · cos v, sin v, cos h · cos v) × distance, up (0, 1, 0) | the same |
+| Title camera | 500 away, angle 0, horizontal π, looking at (0, 0, 0) | the same |
+| Ending camera | 500 away, angle 0, horizontal π, looking at (0, −60, 0) | the same |
+| Draw range / update range | 400 / 480 along z | 400 / 480 at 4:3 (the draw range only grows in widescreen) |
+
+The resulting eye in levels is at (418.5, 315.0, z), looking down at (140, 120, z).
+
+History: until 0.2.2 the game view used the level viewer's own lens (42°, near 1, far 5000,
+`AssetViewerApp::SetViewerDeviceState` in `main.cpp`, still used by the Tab viewers, which are
+not part of the game). 0.2.2 gave the game the original's lens and light. The camera's position
+and angles have been the original's since stage 4 chunk 2.
+
+What the port's options do to the lens (all applied by the renderer, `Device` in
+`src/gfx/device.cpp`, on top of the game's projection; the game's camera itself never changes):
+
+- Aspect 4:3 (the default) and Stretch: the lens is untouched. 4:3 scales the picture up with
+  black bars; Stretch pulls the same picture wider.
+- Aspect Widescreen: only the horizontal part of the lens is widened (`proj._11 *= 640 /
+  virtualW`, virtualW being 480 × the window's aspect). The vertical view, the camera's place and
+  its angles stay the original's, so a 16:9 screen shows the same height of the level and more of
+  it to the left and right.
+- Field of view (greyed out until chunk 2d-iv): would divide both parts of the lens, in levels
+  only (`gameplayView_`, which nothing sets yet), so at 100% it changes nothing.
+
 A floor tile is a flat 40×40 `JObject3D_Rect` at height × 25, mapped to the top-left quarter of
 the floor texture with a half-texel inset. The J library is the same one Hopmon uses, one
 version newer: texture and UVs are set by separate calls (`SetTexture`, `SetUV`).
@@ -919,6 +963,21 @@ a simple shadow and a box.
   bursts at mid-height (explosion, large for KING/QUEEN), drops a coin and plays 0x26b.
 - Only enemies within 480 of the camera's Z move (`XCamera::IsUpdatable`); within 400 are drawn
   (`IsVisible`).
+- **Widescreen and the draw range (native).** `IsVisible` is used only to decide what to draw
+  (static objects, enemies, platforms, coins, wall candles; the map is always drawn whole). The
+  original's 4:3 lens (45 degrees, from 340 away at 35 degrees) sees at most 321 along Z from the
+  look-at point (at the bottom of the pits; 289 at the back wall, 188 where the camera looks), so
+  400 is never on screen. The port's widescreen widens the lens by the window's width over 4:3,
+  and at 16:9 the back of the level shows 386 and the pits 407 to 428: objects there popped in
+  and out at the screen's edges (the tall pillars in 1-1's water, for one). So the port's draw
+  range is 400 times that width factor (`XGameContext::visibleRange`, set by `XGameScene::Render`
+  from the layout: 400 at 4:3 and in Stretch, 533 at 16:9, 711 at 21:9). `IsUpdatable` (480)
+  stays: it pauses nine enemy types while far away (slime, bee, wallaby, mushroom, squid, kiwi,
+  turtle, ghost, fish; nothing else uses it), and widening it would wake them earlier, changing
+  the game. At 16:9 the view never reaches 480. At 21:9 it does only at the back wall (482 to 514)
+  and in the pits (542 to 570), so only an enemy there, at the very edge of the screen, could be
+  seen standing still (the owner played 21:9 and saw none); where enemies walk it shows at most
+  401. At 32:9 even the middle of the level reaches 501.
 
 **Enemy coins** (`XCoinList::CreateEnemyCoin`): SMALL drops a small coin (3 gold, 5 in two-
 player games, model 0x180 at 0.35), KING a medium one (30 / 50, 0.6), QUEEN a heart (0x2ac, a

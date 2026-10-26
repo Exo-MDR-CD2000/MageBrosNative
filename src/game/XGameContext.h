@@ -44,8 +44,13 @@ struct XGameContext {
     int world = 0;          // XLevelStatus: 0-based world
     bool useWater = false;  // XMap::UseWater
 
-    // XCamera::IsVisible / IsUpdatable: within 400 / 480 units of the look-at point along Z
-    bool IsVisible(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < 400.0f; }
+    // XCamera::IsVisible / IsUpdatable: within 400 / 480 units of the look-at point along Z. The
+    // original's 4:3 view never reaches 400, so its drawing test is never seen. Native: the draw
+    // range (only ever used to decide what to draw) widens with the 3D view, so in widescreen
+    // nothing on screen is left out (XGameScene::Render sets it each frame: 400 at 4:3). The
+    // update range, which pauses some enemies while far away, is game logic and stays 480.
+    float visibleRange = 400.0f;
+    bool IsVisible(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < visibleRange; }
     bool IsUpdatable(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < 480.0f; }
 
     // XGameObject::GetCloserHero: hero A unless hero B is strictly closer; only heroes in the

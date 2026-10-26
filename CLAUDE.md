@@ -315,9 +315,11 @@ Conventions:
 - `XEnemyBase` and the others keep the original's member names, with a trailing `_`.
 - Model and sound IDs are the resource IDs in hex, for example `0x179` (MageCOL) and `0x26b`.
 - Object y = floor level × 25.
-- Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
+- Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update. The
+  port's draw range grows with widescreen (`XGameContext::visibleRange`); the update range never
+  changes (it is game logic).
 
-## Where we are (last updated: 2026-10-25, version 0.4.4, stage 7 chunk 2d-i done)
+## Where we are (last updated: 2026-10-25, version 0.4.5, stage 7 chunk 2d-ii done)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -327,7 +329,13 @@ opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) 
 release; a push to `menu-dev` doesn't). Chunk 2 (the Video page) is split into small chunks
 for thoroughness: 2a windowed mode (0.4.1, tested by the owner, on `menu-dev`), 2b exclusive fullscreen (0.4.2,
 tested by the owner, on `menu-dev`), 2c monitors (0.4.3, tested by the owner, on
-`menu-dev`), 2d-i VSync (0.4.4, on `menu-dev`), **2d-ii widescreen and the HUD next**, then 2d-iii field of view. The owner set aside a
+`menu-dev`), 2d-i VSync (0.4.4, on `menu-dev`), 2d-ii widescreen culling (0.4.5, tested by the owner, on
+`menu-dev`), **2d-iii widescreen on the other screens and the HUD next**, then 2d-iv field of view. The owner's must: 16:9 with no culling or pop-in at all
+(verified by screenshot comparison with a draw-everything build). The owner then played 21:9
+(a 2560 x 1080 window): every object, enemy and boss showed and behaved normally to the edges, so
+native 21:9 is feasible. The camera and lens were checked value by value against the original
+(all the same): see "The camera and lens: the original and the port, side by side" in
+`docs/REVERSE_ENGINEERING.md`. The owner set aside a
 G-Sync / FreeSync frame-limit choice as a possible later feature (noted in the ROADMAP). The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
 its own).
 Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
@@ -492,7 +500,10 @@ proposed before reading it didn't fit; the wizard waits for each attack, so it s
 The owner's full play-through of 0.3.6 covered everything built up to stage 6. From stage 7:
 the options menu of 0.4.0 (tested by the owner: works as expected; MP3/FLAC music was not
 tried, as there were no files to try). The window of 0.4.1 was tested by the owner too, F11 into
-exclusive fullscreen and back included (2026-10-25).
+exclusive fullscreen and back included (2026-10-25), and so were 0.4.2 (refresh rate), 0.4.3
+(monitors) and 0.4.5 (widescreen, at 16:9 and 21:9). Nothing from stage 7 waits for the owner's
+check now; MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
+override warning can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
 
 ### Notes from earlier stages
 
