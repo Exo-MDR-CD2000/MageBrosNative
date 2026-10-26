@@ -343,7 +343,11 @@ colour key, an `XCamera` with `ResetForTitle` (distance 500, vertical angle 0, h
 correction, texture 0x13c; then `StartProcess(0)`. Each tick it counts; at tick 50 it plays sound
 0x2d0 unpanned (`PlayMono`, volume 1); at tick 950 it asks for state 4. `Render`: the camera, the
 backdrop, then the logo centred on the 640 × 480 screen (`DrawScale(1)`). It has no fade and
-takes no keys.
+takes no keys. Texture 0x13c is a 64 × 64 bitmap of plain white, and the logo bitmap has a white
+background, so the screen is white wherever the backdrop reaches: at 4:3 a little past the
+screen's edges. (Native: in widescreen the backdrop is scaled across by the view's width over
+640, from the window's shape each frame, so the white reaches the sides; 600 × 600 at 4:3 and in
+Stretch.)
 
 **`XTitleObject`**: plays Music01 (`JMidiList::Play(0)`), makes its bitmaps (all colour-keyed
 but the background tile 0x1fc), an `XCamera` with `ResetForTitle`, and:

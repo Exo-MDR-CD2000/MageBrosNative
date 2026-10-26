@@ -7,6 +7,12 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.10] - 2026-10-25
+
+- **The Saito Games logo fills widescreen**: the white behind the logo at start-up now reaches
+  the edges of a wide screen (16:9, 21:9 and wider) instead of stopping with black bars at the
+  sides. The logo itself is unchanged, and in 4:3 nothing changes.
+
 ## [0.4.9] - 2026-10-25
 
 - **The shop takes your usual keys**: buying an item or choosing EXIT now works with any key

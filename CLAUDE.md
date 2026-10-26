@@ -322,7 +322,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-25, version 0.4.9, stage 7 chunk 2d-iii under way)
+## Where we are (last updated: 2026-10-25, version 0.4.10, stage 7 chunk 2d-iii under way)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -334,7 +334,15 @@ for thoroughness: 2a windowed mode (0.4.1, tested by the owner, on `menu-dev`), 
 tested by the owner, on `menu-dev`), 2c monitors (0.4.3, tested by the owner, on
 `menu-dev`), 2d-i VSync (0.4.4, on `menu-dev`), 2d-ii widescreen culling (0.4.5, tested by the owner, on
 `menu-dev`) and widescreen sound panning (0.4.6, tested by the owner, on `menu-dev`; at 4:3 and
-Stretch the panning is the original's bit for bit), then 2d-iii widescreen on the other screens and the HUD, taken a step at a time with the owner: its first step, the title's tile background filled out to the view's width on the title, save slots and level select, with the fade strips spanning the whole view (0.4.7, on `menu-dev`; 4:3 screenshots byte for byte the same as before), and the shop sliding in from the view's edges over a full-width dim, the dim only wider than 4:3 (0.4.8, on `menu-dev`; 4:3 byte for byte the same), are done (and in 0.4.9 the shop's button takes every fire / jump key of the shopper and Enter, which the owner couldn't find); **the rest of 2d-iii (the logo, ending, options menu and HUD) next**, then 2d-iv field of view. The owner's must: 16:9 with no culling or pop-in at all
+Stretch the panning is the original's bit for bit), then 2d-iii, widescreen on the other screens and the HUD, taken one screen at a time with the
+owner. Done so far, all on `menu-dev` with 4:3 screenshots byte for byte the same as before:
+the title's tile background filled out to the view's width on the title, save slots and level
+select, with the fade strips spanning the whole view (0.4.7); the shop sliding in from the view's
+edges over a full-width dim, the dim only when wider than 4:3 (0.4.8); the Saito Games logo's
+white backdrop widened with the view (0.4.10, Stretch also unchanged). Beside them, 0.4.9 made
+the shop's button take every fire / jump key of the shopper and Enter (the owner couldn't find
+how to buy or leave with the keyboard). **The rest of 2d-iii (the ending, options menu and HUD)
+next**, then 2d-iv field of view. The owner's must: 16:9 with no culling or pop-in at all
 (verified by screenshot comparison with a draw-everything build). The owner then played 21:9
 (a 2560 x 1080 window): every object, enemy and boss showed and behaved normally to the edges, so
 native 21:9 is feasible. The camera and lens were checked value by value against the original
@@ -510,8 +518,9 @@ the options menu of 0.4.0 (tested by the owner: works as expected; MP3/FLAC musi
 tried, as there were no files to try). The window of 0.4.1 was tested by the owner too, F11 into
 exclusive fullscreen and back included (2026-10-25), and so were 0.4.2 (refresh rate), 0.4.3
 (monitors), 0.4.5 (widescreen, at 16:9 and 21:9) and 0.4.6 (widescreen sound, by ear).
-Nothing from stage 7 waits for the owner's
-check now; MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
+Waiting for the owner's check: 0.4.7 (the menus' background and fades in widescreen), 0.4.8 (the
+shop in widescreen), 0.4.9 (the shop's keys) and 0.4.10 (the logo in widescreen), all checked
+here by screenshots only. MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
 override warning can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
 
 ### Notes from earlier stages
