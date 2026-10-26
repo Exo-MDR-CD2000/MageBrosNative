@@ -34,6 +34,11 @@ protected:
     void ProcessFadeIn();
     void ProcessFadeOut();
     void RenderFade(BackBuffer* bb) const;  // the strips, while fading in or out
+    // The title's scrolling background (the title, the save slots and level select): the 120 x 120
+    // tile in a 7 x 5 grid, scrolling up and left a quarter pixel a tick. Native: in widescreen
+    // the grid takes in as many more columns as the view's width needs, on both sides, in step
+    // with the original's (exactly the original's 7 x 5 at 4:3 and in Stretch).
+    static void RenderTiledBackground(JSprite& tile, unsigned counter, BackBuffer* bb);
 
     XApplication* app_;
     STATE state_ = NON;    // +0x08

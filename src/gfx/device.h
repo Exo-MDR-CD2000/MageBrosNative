@@ -72,6 +72,10 @@ public:
     // outward (left items by -HudEdgeShift(), right items by +HudEdgeShift()). 0 unless
     // aspect = widescreen and hud_layout = 1.
     int HudEdgeShift() const;
+    // The x range the view shows this frame, in the original's 640 x 480 pixels: 0 to 640 at 4:3
+    // and in Stretch, beyond both edges in widescreen (the window's shape as laid out, so any
+    // window size counts, resized or not).
+    void ViewXRange(int* left, int* right) const;
     // HUD size (enhancement): while set, 2D blits are scaled by `scale` around the virtual-space
     // point (anchorX, anchorY). The game's HUD code wraps each HUD group with these.
     void BeginHudScale(float scale, float anchorX, float anchorY);

@@ -40,6 +40,10 @@ public:
     void Start(XHero* hero);        // opens the shop for that hero
     void ProcessFrame(unsigned n);  // the fades, then the input and buying
     void Render(Device* d, BackBuffer* bb);
+    // Native (widescreen): the level dimmed across the whole view while the shop is open, drawn
+    // before the status display (which stays bright). Only when the view is wider than 4:3:
+    // the original has no dim.
+    void RenderDim(Device* d) const;
 
 private:
     // XShopItemType
@@ -64,6 +68,7 @@ private:
 
     void _UpdateInput();        // the shopper's keys and gamepad
     void _CheckEnabledItems();  // grey out what the shopper can't buy
+    float _SlideIn() const;     // how far in: 0..1 over each fade, 1 while open
 
     XApplication* app_;
     const XCamera* camera_;

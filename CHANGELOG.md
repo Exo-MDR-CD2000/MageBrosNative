@@ -7,6 +7,30 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.9] - 2026-10-25
+
+- **The shop takes your usual keys**: buying an item or choosing EXIT now works with any key
+  that fires or jumps for you in the level, and with Enter. Before, only Right Shift and Right
+  Ctrl worked on the keyboard (player 2: Left Shift and Left Ctrl), as in the original, so the
+  `[` and `]` keys, the one-player Left Shift / Left Ctrl and Enter did nothing in the shop.
+  Keys you changed in Options > Controls count too.
+
+## [0.4.8] - 2026-10-25
+
+- **The shop in widescreen**: the shop's board and items now slide in from the edges of a wide
+  screen (and back out to them) instead of popping up at the sides, and the level behind the shop
+  is dimmed across the whole screen while it is open, so the menu stands out. The life, gold and
+  magic display stays bright. In 4:3 the shop is exactly the original, without the dimming.
+
+## [0.4.7] - 2026-10-25
+
+- **The green background fills widescreen**: the scrolling green tiles behind the title, the save
+  slots and level select now cover the whole screen in widescreen (16:9, 21:9 and wider), where
+  before the left edge was black and the right edge partly so. The middle is exactly the
+  original's, and in 4:3 nothing changes.
+- **Fades cover the whole screen**: the striped fade between screens (and when a level starts or
+  ends) now reaches the edges of a wide screen instead of only the middle.
+
 ## [0.4.6] - 2026-10-25
 
 - **Widescreen sound**: sounds are panned left and right by where they happen, as in the

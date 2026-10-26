@@ -310,6 +310,12 @@ row 16i + k with height 16 − k (it opens downwards), fading out gives it heigh
 (it closes downwards). Everything is covered or clear by tick 229; the screens wait for tick 254.
 `RenderFade` draws the strips while fading in or out, last of all.
 
+**Widescreen and the fade (native).** The strips are the 640-wide screen's, so in widescreen the
+view's sides stayed uncovered while a screen faded (the 3D level and the title's background
+showing through beside the black). The port lays each strip from the view's left edge across its
+whole width, the window's shape as laid out each tick (`ViewXRange` in `XProcessObject.cpp`):
+x 0, width 640 at 4:3 and in Stretch, as the original.
+
 **The game's flow** (`XGameObject::ProcessFrame(n)`): `tick += n`, then
 
 - FADEIN: `ProcessFadeIn`; at tick 254 `StartProcess(0)`.
@@ -365,7 +371,10 @@ down moves it down if below 2 (both with sound 0xec, unpanned), else the button 
 
 `Render`: the camera; the background tile in a 7 × 5 grid at (120x − s, 120y − s), s =
 (int)(counter × 0.25) mod 120 (DirectDraw dropped the tiles crossing the screen edge; the port
-clips them, as all its blits); the mages' alpha 0 up to counter 200, (counter − 200) / 500 up
+clips them, as all its blits; native: in widescreen the grid takes in more columns either side,
+x from ⌊(left + s) / 120⌋ to ⌈(right + s) / 120⌉ − 1 for the view's x range, never fewer than the
+original's 0 to 6, so the middle is the original's and the pattern carries on to the edges:
+`XProcessObject::RenderTiledBackground`, shared with the save slots and level select); the mages' alpha 0 up to counter 200, (counter − 200) / 500 up
 to 700, then 1, times 0.8, each drawn facing the camera (`Render2`); the logo's alpha
 (sin((counter mod 300) / 300 · 2π) × 0.5 + 0.5) × 0.4 + 0.5; the two captions; the items
 centred at x 320 from y 386, each the next item's centre after its height + 4, on frame 0 when
@@ -543,7 +552,10 @@ leaves the cheaper one on sale.)
 `_UpdateInput` (pressed this frame, through the application's `JDInput`; the joystick unless
 `RegInfo_GetDisableJoystick`): hero A (`IsHeroA`, vtable +4) the arrows and gamepad 0, button
 Right Shift, Right Ctrl, or pad 0's button 0 or 1; hero B D, A, W, S and gamepad 1, Left Shift,
-Left Ctrl or pad 1's buttons. Enter does nothing in the shop.
+Left Ctrl or pad 1's buttons. Enter does nothing in the shop. (Native, 0.4.9: the button also
+takes the shopper's other fire and jump keys from the level, player 1's `[` and `]` and, in a
+one-player game, Left Ctrl and Left Shift, player 2's `1` and `2`, and Enter; remapped keys
+stand in for these codes, so they count too.)
 
 `ProcessFrame(n)` (after the game's ticks, see below): nothing when NON; counter += n. FADEIN /
 FADEOUT: at 40 the counter is 0 and the state PROCESS / NON. PROCESS: `_UpdateInput`; Escape
@@ -562,6 +574,14 @@ name 4 after it. Right x = 640 − (int)(t · 260): the items at (x, 147), (x + 
 (x, 271), (x + 107, 271), frame 1 when off; exit at (x + 107, 395). While PROCESS the cursor (or
 the small cursor on exit) 11 up and left of the item, frame `counter % 40 < 20 ? 0 : 1`. The
 shopkeeper at (100, 480 − (int)(height · t)).
+
+**Widescreen and the shop (native).** The slides start at the 4:3 screen's edges (the board's
+left at −280, the items' at 640), which a wide view shows. The port measures them from the
+view's edges instead (`Device::ViewXRange`, left ≤ 0, right ≥ 640): left x = 50 −
+(int)((1 − t) · (330 − view left)), right x = view right − (int)(t · (view right − 380)), the
+original's numbers at 4:3. When the view is wider than 4:3 the level is also dimmed across the
+whole view (black, alpha 0.4 t) before the status display, which stays bright (`XShop::RenderDim`,
+from `XGameScene::Render`); the original has no dim, so 4:3 and Stretch have none.
 
 In `XGameObject::ProcessFrame`, after the level's own logic: when `XShop::GetState` is NON, `n`
 ticks of play; otherwise `n` ticks of only the status display and the camera, then

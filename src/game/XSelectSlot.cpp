@@ -203,13 +203,8 @@ void XSelectSlot::Render(Device* d, BackBuffer* bb) {
     if (state_ == NON) return;
     camera_->DoSetTransform(d);
     // the title's background: the tile in a 7 x 5 grid, scrolling up and left a quarter pixel a
-    // tick (clipped at the screen edge, as every blit of the port)
-    int scroll = (int)((float)counter_ * 0.25f) % 120;
-    for (int y = 0; y < 5; y++)
-        for (int x = 0; x < 7; x++) {
-            background_->SetPosition(x * 120 - scroll, y * 120 - scroll);
-            background_->Draw(bb);
-        }
+    // tick (native: wider in widescreen)
+    RenderTiledBackground(*background_, counter_, bb);
     (app_->OnePlayer() ? headingOne_ : headingTwo_)->Draw(bb);
 
     // each slot: its bar (frame 0 when chosen), its number, then "no data", or the date (month

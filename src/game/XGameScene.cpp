@@ -304,6 +304,7 @@ void XGameScene::Render(Device* d, BackBuffer* bb) {
     info.statusB = &app_->HeroStatus(false);
     info.heroADead = heroA_->GetLiveState() == XHero::DEAD;
     info.heroBDead = heroB_->GetLiveState() == XHero::DEAD;
+    if (shop_->GetState() != XShop::NON) shop_->RenderDim(d);  // native: widescreen only
     app_->StatusDisplay().Render(bb, info);
     if (shop_->GetState() != XShop::NON) shop_->Render(d, bb);
     RenderFade(bb);

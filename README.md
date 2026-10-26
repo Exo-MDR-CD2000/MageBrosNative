@@ -5,14 +5,16 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.6).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.9).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
 > Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
 > pause and FPS counter, rebinding both players' keys, replacement music); the window, monitors,
 > exclusive fullscreen and VSync are done; widescreen, 16:9 and 21:9 included, shows the levels
-> without pop-in at the edges, with the sound panned to match. The game's logic and speed are the original's at any resolution,
-> refresh rate and frame rate. Next: widescreen on the other screens and the HUD. See
+> without pop-in at the edges, with the sound panned to match, and the title, save slots and level
+> select with their green background filled out to the edges, and the shop sliding in from the edges
+> over a dimmed level. The game's logic and speed are the original's at any resolution,
+> refresh rate and frame rate. Next: widescreen on the remaining screens and the HUD. See
 > [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
 > changed in each version.
 
@@ -77,9 +79,11 @@ other, and one can stand on the other's head and be carried along, or up and dow
 4-5, 4-8) and the original's MAGIC SHOP opens, pausing the level. The shopper buys with their own
 gold: a heal potion (20 gold, one more heart), a magic potion (100, a faster magic refill) and
 two wands that depend on the world. What you can't afford or already have is greyed out. Move
-with the shopper's own direction keys and buy with their fire or jump key (player 1: arrows,
-Right Shift or Right Ctrl; player 2: W A S D, Left Shift or Left Ctrl; or their gamepad). Choose
-EXIT to leave. As in the original, Escape also leaves the shop, but it gives up the level too.
+with the shopper's own direction keys and buy with any of their fire or jump keys or Enter
+(player 1: arrows, Right Shift, Right Ctrl, `[` or `]`, and in a one-player game Left Shift or
+Left Ctrl too; player 2: W A S D, Left Shift, Left Ctrl, `1` or `2`; or their gamepad; changed
+keys count). The original took only Right Shift / Right Ctrl (player 2: Left Shift / Left Ctrl).
+Choose EXIT to leave. As in the original, Escape also leaves the shop, but it gives up the level too.
 Each wand fires its own pattern: the double wand two shots side by side, the triple wand a
 shot and two smaller ones spread wider, and the X wands the same in homing shots that curve
 towards the nearest enemy (or the boss).
@@ -119,7 +123,10 @@ With Smooth motion on, Frame limit caps the frames a second.
 pulls it wider, and Widescreen widens the 3D view of the levels to fill the screen (16:9, 16:10,
 21:9 and so on), showing more of the level to the left and right with nothing popping in at the
 edges. The camera is the original's (45° lens, 340 away, 35° above) in every mode; widescreen only
-widens it. Sounds are panned to match the wider screen too, whatever shape the window is. The menus and the HUD stay in a 4:3 area in the middle for now.
+widens it. Sounds are panned to match the wider screen too, whatever shape the window is. The scrolling green background of the title, save slots and level select fills the whole width,
+and the fades between screens cover it. The shop slides in from the screen's edges and dims the
+level across the whole width while it is open. The menus themselves and the HUD stay in a 4:3
+area in the middle for now.
 
 In the game view N / B change level and F2 switches between one and two players (test keys:
 a game started with them is not saved). Tab switches to the **level viewer**: every one of the 40

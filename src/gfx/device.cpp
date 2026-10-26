@@ -4,6 +4,7 @@
 #include "../core/log.h"
 #include <SDL3/SDL.h>
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 
 static Device g_device;
@@ -841,6 +842,12 @@ void Device::BeginHudScale(float scale, float anchorX, float anchorY) {
 }
 
 void Device::EndHudScale() { hudScale_ = 1.f; }
+
+void Device::ViewXRange(int* left, int* right) const {
+    int side = (int)std::ceil(layout_.offsetX);
+    *left = -side;
+    *right = 640 + side;
+}
 
 int Device::HudEdgeShift() const {
     const Config& cfg = GetConfig();

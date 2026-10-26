@@ -319,9 +319,10 @@ Conventions:
   port's draw range grows with widescreen (`XGameContext::visibleRange`); the update range never
   changes (it is game logic). Sound panning grows the same way (`XGameScene::PlaySound`). Both
   use `ViewWidthFactor` in `XGameScene.cpp`, the window's shape as laid out each frame: never
-  hardcode an aspect ratio (the owner: the window can be resized to anything).
+  hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
+  `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-25, version 0.4.6, stage 7 chunk 2d-ii done)
+## Where we are (last updated: 2026-10-25, version 0.4.9, stage 7 chunk 2d-iii under way)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -333,7 +334,7 @@ for thoroughness: 2a windowed mode (0.4.1, tested by the owner, on `menu-dev`), 
 tested by the owner, on `menu-dev`), 2c monitors (0.4.3, tested by the owner, on
 `menu-dev`), 2d-i VSync (0.4.4, on `menu-dev`), 2d-ii widescreen culling (0.4.5, tested by the owner, on
 `menu-dev`) and widescreen sound panning (0.4.6, tested by the owner, on `menu-dev`; at 4:3 and
-Stretch the panning is the original's bit for bit), **2d-iii widescreen on the other screens and the HUD next**, then 2d-iv field of view. The owner's must: 16:9 with no culling or pop-in at all
+Stretch the panning is the original's bit for bit), then 2d-iii widescreen on the other screens and the HUD, taken a step at a time with the owner: its first step, the title's tile background filled out to the view's width on the title, save slots and level select, with the fade strips spanning the whole view (0.4.7, on `menu-dev`; 4:3 screenshots byte for byte the same as before), and the shop sliding in from the view's edges over a full-width dim, the dim only wider than 4:3 (0.4.8, on `menu-dev`; 4:3 byte for byte the same), are done (and in 0.4.9 the shop's button takes every fire / jump key of the shopper and Enter, which the owner couldn't find); **the rest of 2d-iii (the logo, ending, options menu and HUD) next**, then 2d-iv field of view. The owner's must: 16:9 with no culling or pop-in at all
 (verified by screenshot comparison with a draw-everything build). The owner then played 21:9
 (a 2560 x 1080 window): every object, enemy and boss showed and behaved normally to the edges, so
 native 21:9 is feasible. The camera and lens were checked value by value against the original
@@ -457,8 +458,12 @@ makes any other keyed); `XLevelStatus` has its play part (`IncreaseLevel` / `Wor
 
 **The shop (chunk 6, 0.3.5)** is in: `XShop` (see "The shop (`XShop`)" in
 `docs/REVERSE_ENGINEERING.md`). Testing it: the shops stand at x 60 in 1-3, 1-6, 1-9, 2-3, 2-6,
-2-9, 3-3, 3-6, 3-9, 4-2, 4-5 and 4-8. The door is at x 120, at the shop's z (1-3: z 6460). In 4-2
-a wooden gate stands in front of the door. In 1-3, `place=100,6400` first, wait about 14 s for
+2-9, 3-3, 3-6, 3-9, 4-2, 4-5 and 4-8. The door is at x 120, at the shop's z (1-3: z 6460; 4-2:
+z 340, right by the start: the quickest by hand (the owner's tip)). In 4-2 a breakable fence panel
+(the 'w' fence door, an enemy: `XEnemy.cpp`'s `case 'w'`) stands in front of the door and keeps
+the shop shut; to test there, comment that case out temporarily (the owner's way), then
+`place=180,340` at 4.5 s and `place=120,340` at 6.5 s: the shop opens about 2 s later. Put the
+line back before the release build. In 1-3, `place=100,6400` first, wait about 14 s for
 the camera, then `place=120,6460`. The mage is pushed out to x 129 and the shop opens as it
 lands. The shop's menu answers from about 0.4 s after it opens (the 40-tick fade). Test-hook
 games start with 0 gold, so every item is greyed out. To test buying, temporarily set the gold
