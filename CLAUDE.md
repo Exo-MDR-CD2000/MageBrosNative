@@ -334,8 +334,11 @@ opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) 
 0.4.0, tested by the owner. **Branches:** 0.4.0 to 0.4.13 were built on a `menu-dev` branch,
 apart from `main`; the owner merged it into `main` on 2026-10-26 (pull request #1, released as
 v0.4.13). **Work goes on `main` again**: commit and push there (each push publishes the
-version's release; see "GitHub releases"). The owner plans no new branch for now, perhaps one
-for the modding work. Chunk 2 (the Video page) is split into small chunks for thoroughness: 2a
+version's release; see "GitHub releases"). **Exception: smooth motion (interpolation) is built
+and tested on the `interpolation-test` branch** (created from `main` at 0.4.15 on 2026-10-26),
+merged into `main` only when the owner says so; its research and plan are in
+`docs/SMOOTH_MOTION.md`, and no code has been written for it yet. Perhaps a branch for the
+modding work later. Chunk 2 (the Video page) is split into small chunks for thoroughness: 2a
 windowed mode (0.4.1, tested by the owner), 2b exclusive fullscreen (0.4.2, tested by the
 owner), 2c monitors (0.4.3, tested by the owner), 2d-i VSync (0.4.4), 2d-ii widescreen culling
 (0.4.5, tested by the owner) and widescreen sound panning (0.4.6, tested by the owner; at 4:3 and
@@ -400,7 +403,9 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
 - `OptionsMenu::NotYet` greys out what isn't built: Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
   menu's mod pages still speak of Hopmon's assets).
 - Smooth motion (`interpolation`, on by default, from Hopmon) only sets how often the picture is
-  drawn: no game object takes part in `Interp::Tracked`, so frames repeat between ticks. Off, the
+  drawn: no game object takes part in `Interp::Tracked`, so frames repeat between ticks. The plan
+  to blend between ticks (and what is wrong with Hopmon's `interp.cpp`: snapshots once a frame
+  instead of once a tick, alpha in whole milliseconds) is in `docs/SMOOTH_MOTION.md`. Off, the
   framework draws only on frames with a tick (at most 100 a second, the original's pace).
 - `config_version` 15 rewrote the ini notes for Mage Bros.' keys and dropped Hopmon's two
   cheats; `unlock_all_levels` is still read but nothing uses it.

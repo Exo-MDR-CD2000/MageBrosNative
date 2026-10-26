@@ -247,7 +247,8 @@ third_party  ColDet 1.2 (the original's collision library), TinySoundFont, dr_li
 tools        MageBrosAssets
 tests        format and collision tests; map and hero tests on your copy (-DMBN_GAME_EXE)
 docs         REVERSE_ENGINEERING.md (what the original is made of, and at its end the
-             original's bugs and quirks with what the port does about each), ROADMAP.md
+             original's bugs and quirks with what the port does about each), ROADMAP.md,
+             SMOOTH_MOTION.md (the plan for smooth motion between ticks)
 CLAUDE.md    contributor handoff: project rules, build/test/RE workflow, current status, next steps
 ```
 

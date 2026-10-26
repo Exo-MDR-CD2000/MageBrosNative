@@ -128,7 +128,10 @@ Mage Bros.' own and finishes the ones that need the game's help.
 | 2d-iv | Field of view: `XGameScene::Render` turns `Device::SetGameplayView` on for the level's 3D and off before the shop and the HUD, so the renderer's lens scaling (both parts of the lens divided by the setting) applies to levels only; the title, level select, the shop's panel (sized to its 2D board), the HUD and the ending keep the original lens. Zoomed out, the draw range and the sound panning grow by the setting (`ViewReachFactor` = widescreen factor × the setting above 100%); zoomed in they keep the original's. The update range (game logic) is unchanged. The menu row offers 50% to 200% (the owner's choice) and shows the angle; the setting is marked experimental, with players advised to leave it at 100% (the owner: help line, ini comment, README and CHANGELOG); the help line warns that above 100% the level's unbuilt edges show (black below the near edge from about 105%, above the back wall and past the ends further out), as the original's levels are built only as far as its own view. Checked: at 100% levels at 4:3 and 16:9 and the open shop byte for byte the same as 0.4.14; at 200%, 16:9 and 21:9, in 1-1, 1-6, 2-4 and 3-5, the same objects as a draw-everything build (the only differences, a few pixels, were a slug caught a moment apart); the shop's panel lined up at 50% and 150% | Field of view in levels | Done (0.4.15) |
 
 Chunk 2 is done but the options menu in widescreen, left as it is. The rest is to be planned with
-the owner. For the field of view, possibly with mods: scenery beyond the original's view (deeper
+the owner. **Smooth motion (interpolation) is researched and planned** in
+[SMOOTH_MOTION.md](SMOOTH_MOTION.md): four chunks (A timing and camera, B everything in a level,
+C other screens, D polish), to be built and tested on the `interpolation-test` branch, perhaps as
+a stage of its own; not started. For the field of view, possibly with mods: scenery beyond the original's view (deeper
 cliffs below the near edge, taller walls, something past the ends) so zooming out holds up. Possible later, maybe more than a game of
 this size needs (the owner's notes): a frame-limit choice for G-Sync / FreeSync (the monitor's
 refresh rate less 3), worth it only once smooth motion draws between ticks; for 32:9 screens, an idle
@@ -141,7 +144,8 @@ the table below onto ticks, the graphics options checked on Mage Bros.' scenes, 
 cheats, mods (add-ons and level packs, with `MODDING.md`), `--set`, `CONFIG.md` and the README
 sections Hopmon Native has.
 
-What the Video page's Smooth motion does today: on (the default, from Hopmon Native), the
+What the Video page's Smooth motion does today (the plan to make it really smooth is in
+[SMOOTH_MOTION.md](SMOOTH_MOTION.md)): on (the default, from Hopmon Native), the
 picture is drawn at the monitor's rate but repeats between ticks; off, it is drawn only on a
 tick boundary, at most 100 times a second, as the original. The game's speed is the same either
 way.
