@@ -174,6 +174,50 @@ normals 1/s long, so the coins (scale 0.35 and 0.6) saturate to bright gold from
   and `9` Wizard. Bosses appear in level 10 of every world and also in World 4's levels 2
   (Dragon), 5 (Genie) and 8 (Nest), which therefore play the boss music too.
 
+### The camera and lens: the original and the port, side by side
+
+Checked against the listings on 2026-10-25 (`XCamera::ResetForGame`, `_UpdateViewMatrix`,
+`_UpdateLookAtPos`, `ProcessFrame`, `_UpdateShake`, `ResetForTitle`, `ResetForEnding`,
+`IsVisible`, `IsUpdatable`, `XApplication::InitDeviceObjects`) and the port's `XCamera.cpp`,
+`XGameScene::SetDeviceState` and `XGameContext.h`. Every value is the same:
+
+| Setting | Original | Port |
+|---|---|---|
+| Lens (vertical field of view) | 45° (0.785398 rad) | 45° (0.785398) |
+| Lens shape (aspect) | 0.75 (4:3) | 0.75 (4:3) |
+| Near / far plane | 10 / 1000 | 10 / 1000 |
+| Level camera: distance from the look-at point | 340 | 340 |
+| Level camera: angle above the horizontal | 35° (0.610865 rad) | 35° (0.610865) |
+| Level camera: horizontal angle | 90° (1.5708: looking from the +x side) | 90° (1.5708) |
+| Look-at point | (140, 120, z) | (140, 120, z) |
+| Look-at z limits | 160 to (rows − 4) × 40 | 160 to (rows − 4) × 40 |
+| Following | `MakeValueCloseTo` factor 0.1, at least 0.1, at most 5 a tick | the same |
+| Two players | further hero's z less half their gap, the gap at most 240 | the same |
+| Shake | look-at y 120 + sin(tick mod 8 / 8 × 2π) × m, m − 0.02 a tick | the same |
+| View matrix | eye = look-at base + (sin h · cos v, sin v, cos h · cos v) × distance, up (0, 1, 0) | the same |
+| Title camera | 500 away, angle 0, horizontal π, looking at (0, 0, 0) | the same |
+| Ending camera | 500 away, angle 0, horizontal π, looking at (0, −60, 0) | the same |
+| Draw range / update range | 400 / 480 along z | 400 / 480 at 4:3 (the draw range only grows in widescreen) |
+
+The resulting eye in levels is at (418.5, 315.0, z), looking down at (140, 120, z).
+
+History: until 0.2.2 the game view used the level viewer's own lens (42°, near 1, far 5000,
+`AssetViewerApp::SetViewerDeviceState` in `main.cpp`, still used by the Tab viewers, which are
+not part of the game). 0.2.2 gave the game the original's lens and light. The camera's position
+and angles have been the original's since stage 4 chunk 2.
+
+What the port's options do to the lens (all applied by the renderer, `Device` in
+`src/gfx/device.cpp`, on top of the game's projection; the game's camera itself never changes):
+
+- Aspect 4:3 (the default) and Stretch: the lens is untouched. 4:3 scales the picture up with
+  black bars; Stretch pulls the same picture wider.
+- Aspect Widescreen: only the horizontal part of the lens is widened (`proj._11 *= 640 /
+  virtualW`, virtualW being 480 × the window's aspect). The vertical view, the camera's place and
+  its angles stay the original's, so a 16:9 screen shows the same height of the level and more of
+  it to the left and right.
+- Field of view (greyed out until chunk 2d-iv): would divide both parts of the lens, in levels
+  only (`gameplayView_`, which nothing sets yet), so at 100% it changes nothing.
+
 A floor tile is a flat 40×40 `JObject3D_Rect` at height × 25, mapped to the top-left quarter of
 the floor texture with a half-texel inset. The J library is the same one Hopmon uses, one
 version newer: texture and UVs are set by separate calls (`SetTexture`, `SetUV`).
@@ -184,7 +228,66 @@ version newer: texture and UVs are set by separate calls (`SetTexture`, `SetUV`)
 calls the current screen's `ProcessFrame(n)` (+0x1c8). Any other state is a request: the old
 screen is deleted, the state's screen is made, and the state becomes 2; the new screen runs from
 the next frame. `Create` sets state 3, so the game opens on the logo. `Render` clears to the
-background colour (black) and draws the running screen.
+background colour (black) and, while the state is 2, draws the running screen, then the FPS
+display (below).
+
+**The frame loop and the frame rate** (`CD3DApplication::Run`, `Render3DEnvironment`,
+`CD3DFramework7::ShowFrame`):
+
+- `Run` spins on `PeekMessage` and calls `Render3DEnvironment` whenever the window is active and
+  ready (no sleep).
+- `Render3DEnvironment`: `now = timeGetTime()`; a clock that went back resets the last frame
+  time. With less than 10 ms since the last frame it returns at once: nothing is drawn, so the
+  game never draws more than 100 frames a second. Otherwise ticks = elapsed / 10 and the last
+  frame time becomes `now - elapsed % 10` (the remainder carries over). While `m_bFrameMoving`
+  (+0x10) or single-stepping (+0x14), `FrameMove(ticks)`, which `XApplication::FrameMove` caps
+  at 10 (past 100 ms a frame the game slows rather than skips). Then `Render`, `UpdateStats`,
+  `ShowFrame`.
+- `ShowFrame`: fullscreen, `Flip(NULL, DDFLIP_WAIT)` (with DDFLIP_STEREO for stereo), which waits
+  for the monitor's refresh: VSync; windowed, `Blt` with DDBLT_WAIT only (no wait for the
+  refresh).
+- `XApplication::XApplication` sets +0xd8, which makes `CD3DApplication::Create` pass flag 2 to
+  `D3DEnum_SelectDefaultDevice`: the device is fullscreen (`bWindowed` +0x494 = 0). The
+  framework's mode is 640 x 480 (+0xdc / +0xde). So the original normally ran exclusive 640 x 480
+  fullscreen with VSync: on a 60 Hz mode, about 60 frames a second of 1 or 2 ticks each (100
+  ticks a second on average). The settings (`RegInfo_*`) have no display, VSync or refresh
+  option: only the joystick, the FPS display and the registration.
+- Everything the game simulates counts ticks (`ProcessFrame(n)` adds `n`, or loops `n` times), so
+  its speed never depends on the frame rate. No drawing function changes game state or draws a
+  random number. Done once a frame instead: each screen's `JDInput::UpdateInputState` and its
+  state machine's step, the ending's `textureOffset` (the corridor scrolls faster with more
+  frames), and the heroes' presses (next point).
+- `XHeroA::_UpdateInput` / `XHeroB::_UpdateInput` read the application's `JDInput`
+  (`GetKeyboardState`, `GetKeyboardPressed`, `GetJoyButtonPressed`), updated once a frame by
+  `XGameObject::ProcessFrame`. So a fresh fire or jump press counts as pressed on every tick of
+  that frame: one tick at 100 frames a second, sometimes two at 60. Firing can't repeat (the wand
+  stays out while the button is held), but a jump pressed one tick before landing jumps when both
+  ticks fall in one frame. **The port reads the heroes' keys every tick** (`XGameScene::
+  UpdateInput`, with its own previous state), so a press counts for one tick: the original at 100
+  frames a second, at any frame rate. Deliberate (the owner's decision, 2026-10-25): the game
+  must play the same whatever the refresh rate.
+
+**`XApplication::MsgProc`** (before `CD3DApplication::MsgProc`):
+
+- WM_SYSCOMMAND SC_KEYMENU (0xf100): swallowed, so Alt doesn't open the window menu.
+- WM_KEYDOWN `'P'` (0x50): posts WM_COMMAND 0x9c44. That is the DX7 framework's
+  IDM_TOGGLESTART (entry 3 of `CD3DApplication::MsgProc`'s command table at 0x410a30). It toggles
+  `m_bFrameMoving` (+0x10) and moves the time base on resume. This is the manual's "P: Pause":
+  nothing ticks and the last picture stays. The music plays on. It is a window message, so it
+  works on every screen, and the key's auto-repeat toggles it again. The port toggles once per
+  press (`AssetViewerApp::OnKeyDown`) and lets the key be rebound (DIK 0x19).
+- WM_ACTIVATEAPP (0x1c): with wParam 1, `JMidiList::Resume` and `JDInput::SetAcquireKeyboard` /
+  `SetAcquireJoystick(1)`; otherwise `JMidiList::Pause` and both set to 0. Losing the focus
+  pauses the music and the input; the game itself keeps ticking.
+- MM_MCINOTIFY (0x3b9) with wParam 1 (successful): `JMidiList::Replay`, the music's loop.
+
+**`XFPSDisplay`** (+0x1cc, made in `XApplication::Create` after model 0x18d): a
+`JSprite` of bitmap 0xbf, the "FPS" label (one frame, colour-keyed), and a `JNumber` of digits
+0xbb (ten frames) with `SetDisplayZero(1)` and `SetNumDigits(3)`. `Render`, when
+`RegInfo_GetDisplayFPS` (byte +0x2c of the settings) is set: the label at (552, 454), then the
+number at (552 + label width + 4, 454) showing `CD3DApplication::GetFPS`. The port's setting is
+`[video] show_fps`. The number is the framework's frames per second, so with the port's Smooth
+motion on it counts the frames drawn, not the game's ticks (always 100 a second).
 
 | State | Screen | Asks for next |
 |---|---|---|
@@ -206,6 +309,12 @@ t = max(tick − 20, 0) and k = (t > 5i ? min(t − 5i, 64) : 0) / 4, fading in 
 row 16i + k with height 16 − k (it opens downwards), fading out gives it height k from row 16i
 (it closes downwards). Everything is covered or clear by tick 229; the screens wait for tick 254.
 `RenderFade` draws the strips while fading in or out, last of all.
+
+**Widescreen and the fade (native).** The strips are the 640-wide screen's, so in widescreen the
+view's sides stayed uncovered while a screen faded (the 3D level and the title's background
+showing through beside the black). The port lays each strip from the view's left edge across its
+whole width, the window's shape as laid out each tick (`ViewXRange` in `XProcessObject.cpp`):
+x 0, width 640 at 4:3 and in Stretch, as the original.
 
 **The game's flow** (`XGameObject::ProcessFrame(n)`): `tick += n`, then
 
@@ -234,7 +343,11 @@ colour key, an `XCamera` with `ResetForTitle` (distance 500, vertical angle 0, h
 correction, texture 0x13c; then `StartProcess(0)`. Each tick it counts; at tick 50 it plays sound
 0x2d0 unpanned (`PlayMono`, volume 1); at tick 950 it asks for state 4. `Render`: the camera, the
 backdrop, then the logo centred on the 640 × 480 screen (`DrawScale(1)`). It has no fade and
-takes no keys.
+takes no keys. Texture 0x13c is a 64 × 64 bitmap of plain white, and the logo bitmap has a white
+background, so the screen is white wherever the backdrop reaches: at 4:3 a little past the
+screen's edges. (Native: in widescreen the backdrop is scaled across by the view's width over
+640, from the window's shape each frame, so the white reaches the sides; 600 × 600 at 4:3 and in
+Stretch.)
 
 **`XTitleObject`**: plays Music01 (`JMidiList::Play(0)`), makes its bitmaps (all colour-keyed
 but the background tile 0x1fc), an `XCamera` with `ResetForTitle`, and:
@@ -262,7 +375,10 @@ down moves it down if below 2 (both with sound 0xec, unpanned), else the button 
 
 `Render`: the camera; the background tile in a 7 × 5 grid at (120x − s, 120y − s), s =
 (int)(counter × 0.25) mod 120 (DirectDraw dropped the tiles crossing the screen edge; the port
-clips them, as all its blits); the mages' alpha 0 up to counter 200, (counter − 200) / 500 up
+clips them, as all its blits; native: in widescreen the grid takes in more columns either side,
+x from ⌊(left + s) / 120⌋ to ⌈(right + s) / 120⌉ − 1 for the view's x range, never fewer than the
+original's 0 to 6, so the middle is the original's and the pattern carries on to the edges:
+`XProcessObject::RenderTiledBackground`, shared with the save slots and level select); the mages' alpha 0 up to counter 200, (counter − 200) / 500 up
 to 700, then 1, times 0.8, each drawn facing the camera (`Render2`); the logo's alpha
 (sin((counter mod 300) / 300 · 2π) × 0.5 + 0.5) × 0.4 + 0.5; the two captions; the items
 centred at x 320 from y 386, each the next item's centre after its height + 4, on frame 0 when
@@ -440,7 +556,10 @@ leaves the cheaper one on sale.)
 `_UpdateInput` (pressed this frame, through the application's `JDInput`; the joystick unless
 `RegInfo_GetDisableJoystick`): hero A (`IsHeroA`, vtable +4) the arrows and gamepad 0, button
 Right Shift, Right Ctrl, or pad 0's button 0 or 1; hero B D, A, W, S and gamepad 1, Left Shift,
-Left Ctrl or pad 1's buttons. Enter does nothing in the shop.
+Left Ctrl or pad 1's buttons. Enter does nothing in the shop. (Native, 0.4.9: the button also
+takes the shopper's other fire and jump keys from the level, player 1's `[` and `]` and, in a
+one-player game, Left Ctrl and Left Shift, player 2's `1` and `2`, and Enter; remapped keys
+stand in for these codes, so they count too.)
 
 `ProcessFrame(n)` (after the game's ticks, see below): nothing when NON; counter += n. FADEIN /
 FADEOUT: at 40 the counter is 0 and the state PROCESS / NON. PROCESS: `_UpdateInput`; Escape
@@ -459,6 +578,14 @@ name 4 after it. Right x = 640 − (int)(t · 260): the items at (x, 147), (x + 
 (x, 271), (x + 107, 271), frame 1 when off; exit at (x + 107, 395). While PROCESS the cursor (or
 the small cursor on exit) 11 up and left of the item, frame `counter % 40 < 20 ? 0 : 1`. The
 shopkeeper at (100, 480 − (int)(height · t)).
+
+**Widescreen and the shop (native).** The slides start at the 4:3 screen's edges (the board's
+left at −280, the items' at 640), which a wide view shows. The port measures them from the
+view's edges instead (`Device::ViewXRange`, left ≤ 0, right ≥ 640): left x = 50 −
+(int)((1 − t) · (330 − view left)), right x = view right − (int)(t · (view right − 380)), the
+original's numbers at 4:3. When the view is wider than 4:3 the level is also dimmed across the
+whole view (black, alpha 0.4 t) before the status display, which stays bright (`XShop::RenderDim`,
+from `XGameScene::Render`); the original has no dim, so 4:3 and Stretch have none.
 
 In `XGameObject::ProcessFrame`, after the level's own logic: when `XShop::GetState` is NON, `n`
 ticks of play; otherwise `n` ticks of only the status display and the camera, then
@@ -490,7 +617,8 @@ same place. All face the camera (yaw π), at scale 1. A 40 × 40 shadow (texture
 above each mage's feet. `creditIndex` −1, `creditPosX` 0, `creditState` 1, `StartFadeIn(0)`.
 
 `ProcessFrame(n)`: tick and `localCounter` += n, `textureOffset` += 0.008 (once per call, so per
-frame, not per tick: see "Stage 7: frame-rate dependence" in `ROADMAP.md`), `JDInput::UpdateInputState`. FADEIN: at 254 `StartProcess(0)`. FADEOUT:
+frame, not per tick: at refresh / 60 of its 60 Hz speed, up to 1.67x where the 100-a-second
+frame cap stops it; kept as the original, see "Stage 7: frame-rate dependence" in `ROADMAP.md`), `JDInput::UpdateInputState`. FADEIN: at 254 `StartProcess(0)`. FADEOUT:
 at 254 state 3 (the logo). PROCESS: with no credit yet and tick ≥ 300, credit 0 in WAIT1 (tick
 0). Then for credits 0–3: WAIT1 sets x 820 and after 200 ticks APPEAR; APPEAR sets x =
 820 − (int)(tick / 200 · 500) and after 200 ticks WAIT2, or WAIT_FOR_INPUT for the last credit;
@@ -503,6 +631,13 @@ or Escape plays 0xed and `StartFadeOut(0)`. Each change of state sets the tick b
 shadows; the two wands; the bodies on frame ((`localCounter` − 1) / 9 + 1) % 4 (unsigned); the
 film strips, 9 tiles 80 apart, x = i · 80 − ((int)(`localCounter` · 0.25) % 80), the upper at y 0
 and the lower at y 360; the current credit centred at (`creditPosX`, 240); `RenderFade`.
+The film strips are black bands with a row of sprocket holes along their inner edge: at 4:3 they
+letterbox the corridor, which is drawn under them. (Native: in widescreen the strips take in more
+tiles either side, i from ⌊(view left + s) / 80⌋ to ⌈(view right + s) / 80⌉ − 1, never fewer
+than 0 to 8, so the bands cover the corridor to the edges; the credit is drawn at x + (x − 320) ·
+(view right − 640) / 500 right of the middle and x + (320 − x) · view left / 500 left of it, so it
+waits and leaves past the wide view's edges on the original's ticks. Both are the original's at
+4:3.)
 
 ## Behaviour to preserve
 
@@ -787,6 +922,19 @@ z) / 240, positive to the right (the camera looks down −X, so +Z is screen rig
   0x262, 4 of 0x270, 0x278, 0x279 and 0x2a5, 2 of eleven others), so a sound can overlap itself
   that many times before the oldest is cut off.
 
+**Widescreen and the panning (native).** In the original's 4:3 view the screen's edge is 188
+along Z where enemies walk (289 at the back wall, 321 in the pits), so a sound at the edge plays
+at full volume and all but fully to that side (pan 0.78: the other channel −39 dB). With the
+port's wider view and the original's 240, the edges of a wide screen fell further out: at 16:9
+the back wall's edge played at −30 dB and the pits' at −39 dB; at 21:9 the middle's edge at
+−20 dB, and the back wall and pits beyond 480, silent although on screen. So the port divides
+by 240 × the view's width factor (`XGameScene::PlaySound`, `ViewWidthFactor`: the layout's width
+of the 480-high picture over 640, read when each sound plays, so it follows the window's shape
+as it is resized; 1 at 4:3 and in Stretch, which stay exactly the original). A sound at the edge
+of any wide screen is then placed and faded as one at the edge of the 4:3 screen, and the
+480 cut-off widens by the same factor. Sounds never feed back into the game, so nothing about
+play changes. The draw range uses the same factor.
+
 ## Enemies and static objects (`XEnemyList`, `XStaticObjList`)
 
 **Level codes** (`XMap::_ConstructObjects`, each cell in turn, at the cell centre and
@@ -859,6 +1007,21 @@ a simple shadow and a box.
   bursts at mid-height (explosion, large for KING/QUEEN), drops a coin and plays 0x26b.
 - Only enemies within 480 of the camera's Z move (`XCamera::IsUpdatable`); within 400 are drawn
   (`IsVisible`).
+- **Widescreen and the draw range (native).** `IsVisible` is used only to decide what to draw
+  (static objects, enemies, platforms, coins, wall candles; the map is always drawn whole). The
+  original's 4:3 lens (45 degrees, from 340 away at 35 degrees) sees at most 321 along Z from the
+  look-at point (at the bottom of the pits; 289 at the back wall, 188 where the camera looks), so
+  400 is never on screen. The port's widescreen widens the lens by the window's width over 4:3,
+  and at 16:9 the back of the level shows 386 and the pits 407 to 428: objects there popped in
+  and out at the screen's edges (the tall pillars in 1-1's water, for one). So the port's draw
+  range is 400 times that width factor (`XGameContext::visibleRange`, set by `XGameScene::Render`
+  from the layout: 400 at 4:3 and in Stretch, 533 at 16:9, 711 at 21:9). `IsUpdatable` (480)
+  stays: it pauses nine enemy types while far away (slime, bee, wallaby, mushroom, squid, kiwi,
+  turtle, ghost, fish; nothing else uses it), and widening it would wake them earlier, changing
+  the game. At 16:9 the view never reaches 480. At 21:9 it does only at the back wall (482 to 514)
+  and in the pits (542 to 570), so only an enemy there, at the very edge of the screen, could be
+  seen standing still (the owner played 21:9 and saw none); where enemies walk it shows at most
+  401. At 32:9 even the middle of the level reaches 501.
 
 **Enemy coins** (`XCoinList::CreateEnemyCoin`): SMALL drops a small coin (3 gold, 5 in two-
 player games, model 0x180 at 0.35), KING a medium one (30 / 50, 0.6), QUEEN a heart (0x2ac, a
@@ -1566,7 +1729,39 @@ the digit sprite's width (17 px) per digit.
 | GOLD and gold (4 digits) | 409 | 492, LIFE y + height + 2 (31); number at x + width + 4 |
 | MP and 10 lights | 413, 415 (2 frames) | 492, GOLD y + height + 2 (58); lights from x + width + 4, y + 2, each width / 4 on; lit while i < magic points, all dark while DEAD |
 | Player 2 (two-player games): face, LIFE, GOLD, MP | 510, 412, 410, 414 | the same at x 260 / 302 |
-| Lost-gold messages (500 ticks) | 0x230 (player 1), 0x231 (player 2), amounts in 3 digits | centred on (320, 240) and (320, 267); amount at x + 198, y + 10 |
+| Lost-gold messages (500 ticks) | 0x230 (player 1), 0x231 (player 2), amounts in 3 digits | centred on (320, 240) and (320, 267); amount at x + 198, y + 10. Both bitmaps are 311 × 35, so the two overlap by 8 rows and player 1's, drawn last, covers the top of player 2's (its mage icon): a slip in the original. (Native: player 2's at (320, 279), 2 below player 1's.) |
 
 The counter and the two message timers advance in `ProcessFrame`; `InitForGame` clears them.
 The world and level numbers are shown 1-based.
+
+At 4:3 the HUD is tight: on a two-player boss level the boss's hearts end about 35 pixels short
+of player 2's panel (x 260).
+
+**The HUD settings (native).** In levels (not on level select), `Render` draws the groups between
+`Device::BeginHudScale(scale, anchor x, anchor y, shift)` and `EndHudScale`, which scale each blit
+around the anchor and then move it across: the level info (rows A and B) around (0, 0), moved
+−`HudEdgeShift`; both players' panels as one block around (640, 0), moved +`HudEdgeShift`; the
+lost-gold messages around (320, 240), not moved. `HudEdgeShift` is 0 unless Aspect is Widescreen
+and HUD position is Edges; HUD max width caps it. The scale is HUD size, limited by `FitScale` to
+(640 + 2 · shift − 8) / (level info's width + panels' width), so the two stay 8 apart: the level
+info's width is the widest of row A, TORCH's row, or BOSS and the most hearts the boss has had
+on this level; the panels' width is 640 − the leftmost face's x (450, or 260 with two players).
+The limit never goes below 1. `XFPSDisplay` does the same around (640, 480), moved +shift, on
+every screen. At scale 1 and shift 0 the blits are the original's.
+
+## Bugs and quirks in the original
+
+Slips in the original game, and behaviour that depends on its once-a-frame loop, with what the
+port does about each. The rule (`CLAUDE.md`): the port keeps the original's behaviour, quirks
+included; a fix is made only when the owner chooses it, and then it is listed here. Add every
+new one found, kept or not. (The widescreen work of stage 7 isn't listed: the original was made
+for 4:3 only, so those are additions, not fixes.)
+
+| What | In the original | In the port | Since |
+|---|---|---|---|
+| The lost-gold messages overlap | In a two-player game, when both mages lose gold together, the two "you have lost ... gold" messages (311 × 35 each) are centred only 27 apart: player 1's, drawn last, covers the top 8 rows of player 2's, clipping its mage icon (see "The status display") | **Fixed in every mode** (the owner's choice): player 2's message centred at y 279 instead of 267, 2 below player 1's | 0.4.13 |
+| The shop's keyboard keys | The shop takes only Right Shift / Right Ctrl (player 2: Left Shift / Left Ctrl) to buy or leave, although `[` `]`, the one-player Left Shift / Left Ctrl (player 2: `1` `2`) and Enter fire, jump or confirm elsewhere, so a player using those keys can't buy or leave | **Changed** (the owner's choice): the shop also takes every other fire and jump key of the shopper, remapped keys and Enter; the original's keys work as before | 0.4.9 |
+| Escape in the shop | Escape leaves the shop and, because the level's own Escape check still runs, gives up the level too once play resumes (see "The shop") | **Kept** as the original | 0.3.5 |
+| Blits crossing the screen's edge | DirectDraw, used without a clipper, refuses any blit whose rectangle crosses the screen's edge, so a sprite partly off screen isn't drawn at all (the title background's edge tiles, for one) | **Changed**: the port clips such blits, so partly-off-screen sprites show their visible part (`Device::BltToBackBuffer`) | stage 2 |
+| The ending's corridor scroll | Advances once a frame, not once a tick, so the corridor scrolls faster above 60 Hz (up to 1.67 times at 100 Hz or more); see "Stage 7: frame-rate dependence" in `ROADMAP.md` | **Kept** as the original (the owner's decision, 2026-10-25: hardly noticeable) | 0.3.6 |
+| Fire and jump presses | Read once a frame, so at 60 frames a second a fresh press can count on two ticks of one frame (a 10 ms jump buffer on landing), at 100 on one (see "The frame loop and the frame rate") | **Changed** (the owner's decision, 2026-10-25): the heroes' keys are read every tick, as the original at 100 frames a second, at any frame rate | 0.4.4 |

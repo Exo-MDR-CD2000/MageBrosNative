@@ -6,7 +6,9 @@
 #include "game/JSprite.h"
 #include "game/XApplication.h"
 #include "game/XCamera.h"
+#include "gfx/device.h"
 #include "input/input.h"
+#include <algorithm>
 
 namespace {
 // bitmaps: the film strips and the last credit are not colour-keyed
@@ -191,15 +193,27 @@ void XEndingObject::Render(Device* d, BackBuffer* bb) {
     mageBodyB_->SetCurrentFrame(frame);
     mageBodyB_->Render(d);
 
+    // native (widescreen): the film strips take in as many more tiles as the view's width needs on
+    // both sides (the original's 9 at 4:3), so their black bands cover the corridor to the edges
+    int viewLeft, viewRight;
+    d->ViewXRange(&viewLeft, &viewRight);
     const int film = (int)((float)localCounter_ * 0.25f) % 80;
-    for (int i = 0; i < 9; i++) {
+    const int first = std::min(0, -((-viewLeft + 79 - film) / 80));
+    const int last = std::max(8, (viewRight + film + 79) / 80 - 1);
+    for (int i = first; i <= last; i++) {
         filmUpper_->SetPosition(i * 80 - film, 0);
         filmUpper_->Draw(bb);
         filmLower_->SetPosition(i * 80 - film, 360);
         filmLower_->Draw(bb);
     }
     if (creditIndex_ >= 0 && creditIndex_ <= 3) {
-        credit_[creditIndex_]->SetCenterPos(creditPosX_, 240);
+        // native (widescreen): the credit waits and leaves as far past the view's edges as the
+        // original's x 820 and -180 are past the 4:3 screen's, on the same ticks (so it slides a
+        // little faster); the original's x at 4:3
+        int x = creditPosX_;
+        if (x > 320) x += (x - 320) * (viewRight - 640) / 500;
+        else x += (320 - x) * viewLeft / 500;
+        credit_[creditIndex_]->SetCenterPos(x, 240);
         credit_[creditIndex_]->Draw(bb);
     }
     RenderFade(bb);

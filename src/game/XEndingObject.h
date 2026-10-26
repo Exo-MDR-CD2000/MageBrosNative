@@ -8,6 +8,9 @@
 // slide out to the left; the last one stays until a button (or Escape) is pressed, which fades
 // out to the logo.
 //
+// Native (widescreen): the film strips run the view's whole width and the credits wait and leave
+// past the wide view's edges (both the original's at 4:3).
+//
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
 #include "game/XProcessObject.h"

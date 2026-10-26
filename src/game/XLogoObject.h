@@ -5,6 +5,8 @@
 // tick 50 it plays the jingle (0x2d0, unpanned); at tick 950 it hands over to the title. It has
 // no fade of its own and nothing skips it.
 //
+// Native (widescreen): the backdrop is widened with the view, so the white reaches the sides.
+//
 // Part of the reconstructed game code (src/game, LICENSE part 2).
 #pragma once
 #include "game/XProcessObject.h"

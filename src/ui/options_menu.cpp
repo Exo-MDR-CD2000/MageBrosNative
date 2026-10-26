@@ -57,11 +57,23 @@ float StepFloat(const std::vector<float>& list, float cur, int d) {
 
 std::string Pct(int pct) { return std::to_string(pct) + "%"; }
 
-struct KeyAction { const char* label; int dik; };
+// The keys the game reads (XHeroA / XHeroB::_UpdateInput, the menus' CheckButtonPressed and
+// friends, XApplication::MsgProc), in the manual's groups. Each row rebinds one original key:
+// every place the game reads that key follows it (player 2's W A S D also move the menus' cursor,
+// and in a one-player game player 1 also fires and jumps with player 2's Left Ctrl and Left Shift).
+struct KeyAction { const char* group; const char* label; int dik; };
+enum { kDik2 = 0x03, kDikLBracket = 0x1A, kDikRBracket = 0x1B };
 const KeyAction kKeyActions[] = {
-    {"Move up", DIK_UP},          {"Move down", DIK_DOWN},   {"Move left", DIK_LEFT},
-    {"Move right", DIK_RIGHT},    {"Fire", DIK_Z},           {"Camera modifier", DIK_X},
-    {"Menu confirm", DIK_RETURN}, {"Back / give up", DIK_ESCAPE}, {"Pause", DIK_P},
+    {"Player 1", "Move up", DIK_UP},          {"Player 1", "Move down", DIK_DOWN},
+    {"Player 1", "Move left", DIK_LEFT},      {"Player 1", "Move right", DIK_RIGHT},
+    {"Player 1", "Fire", DIK_RCONTROL},       {"Player 1", "Fire (second key)", kDikLBracket},
+    {"Player 1", "Jump", DIK_RSHIFT},         {"Player 1", "Jump (second key)", kDikRBracket},
+    {"Player 2", "Move up", DIK_W},           {"Player 2", "Move down", DIK_S},
+    {"Player 2", "Move left", DIK_A},         {"Player 2", "Move right", DIK_D},
+    {"Player 2", "Fire", DIK_LCONTROL},       {"Player 2", "Fire (second key)", DIK_1},
+    {"Player 2", "Jump", DIK_LSHIFT},         {"Player 2", "Jump (second key)", kDik2},
+    {"General", "Select", DIK_RETURN},        {"General", "Pause", DIK_P},
+    {"General", "Back / give up", DIK_ESCAPE},
 };
 
 std::string BaseName(const std::string& p) {
@@ -102,6 +114,12 @@ void OptionsMenu::Close() {
     Input::SetBlocked(false);
 }
 
+void OptionsMenu::NotYet(Item& it) {
+    it.enabled = [] { return false; };
+    it.focusWhenDisabled = true;
+    it.helpFn = [] { return std::string("Not available yet: this comes in a later version of Mage Bros. Native."); };
+}
+
 void OptionsMenu::Save() {
     if (!GetConfig().Save()) Log("Options: could not save %s", GetConfig().path.c_str());
 }
@@ -119,12 +137,14 @@ void OptionsMenu::ResetAllSettings() {
     fresh.savePath = old.savePath;  // resetting must not move where progress is saved
     fresh.mods = old.mods;          // installed mods and the chosen level pack stay as they are
     fresh.modPack = old.modPack;
+    app_->DefaultWindowSize(fresh.displayIndex, &fresh.windowWidth, &fresh.windowHeight);  // as a first start
     c = fresh;
     pendingActive_ = false;
     // apply everything that is not read live every frame
     if (old.fullscreen != c.fullscreen || old.windowWidth != c.windowWidth || old.windowHeight != c.windowHeight ||
         old.displayIndex != c.displayIndex || old.fullscreenWidth != c.fullscreenWidth ||
-        old.fullscreenHeight != c.fullscreenHeight)
+        old.fullscreenHeight != c.fullscreenHeight || old.maximized != c.maximized ||
+        old.windowPosSet != c.windowPosSet)
         app_->ApplyDisplaySettings();
     app_->ApplyVSync();
     GetDevice().OnSettingsChanged();  // antialiasing, render scale, aspect
@@ -156,7 +176,7 @@ void OptionsMenu::BeginDisplayChange() {
     const Config& c = GetConfig();
     if (mode_ != Mode::ConfirmDisplay)
         snapshot_ = {(int)c.fullscreen, c.windowWidth, c.windowHeight, c.fullscreenWidth, c.fullscreenHeight,
-                     c.displayIndex};
+                     c.displayIndex, (int)c.lastFullscreen, c.fullscreenRefresh};
 }
 
 void OptionsMenu::ApplyDisplay() {
@@ -174,8 +194,10 @@ void OptionsMenu::RevertDisplay() {
     c.windowHeight = snapshot_.h;
     c.fullscreenWidth = snapshot_.fw;
     c.fullscreenHeight = snapshot_.fh;
-    c.displayIndex = snapshot_.display;
+    CD3DApplication::SetDisplay(snapshot_.display);
+    c.fullscreenRefresh = snapshot_.hz;
     app_->ApplyDisplaySettings();
+    c.lastFullscreen = (FullscreenMode)snapshot_.lastFullscreen;  // (a reverted exclusive mode isn't F11's)
     Save();
     mode_ = Mode::Normal;
     SetMessage("Display settings reverted.");
@@ -207,9 +229,14 @@ static std::string AspectName(int w, int h) {
     return std::to_string(w / x) + ":" + std::to_string(h / x);
 }
 
+// "1920x1440 4:3 3x": a whole multiple of the game's 640 x 480 says so (its 2D art then scales evenly)
 static std::string SizeName(int w, int h) {
-    return std::to_string(w) + "x" + std::to_string(h) + " " + AspectName(w, h);
+    std::string s = std::to_string(w) + "x" + std::to_string(h) + " " + AspectName(w, h);
+    if (w % 640 == 0 && h % 480 == 0 && w / 640 == h / 480 && w > 640) s += " " + std::to_string(w / 640) + "x";
+    return s;
 }
+
+static bool Is4x3(int w, int h) { return w * 3 == h * 4; }
 
 std::vector<std::pair<int, int>> OptionsMenu::ResolutionList(FullscreenMode mode, int display) const {
     const Config& c = GetConfig();
@@ -219,10 +246,14 @@ std::vector<std::pair<int, int>> OptionsMenu::ResolutionList(FullscreenMode mode
         return a.first * a.second < b.first * b.second || (a.first * a.second == b.first * b.second && a.first < b.first);
     };
     if (mode == FullscreenMode::Exclusive) {
+        // the monitor's modes, one per size (the refresh rate has its own row), none smaller than
+        // the game's 640 x 480 and none the same size as Desktop, which ends the list
+        const SDL_DisplayMode* desk = SDL_GetDesktopDisplayMode(disp);
         int n = 0;
         SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(disp, &n);
         for (int i = 0; i < n; i++) {
             std::pair<int, int> r{modes[i]->w, modes[i]->h};
+            if (r.first < 640 || r.second < 480 || (desk && r.first == desk->w && r.second == desk->h)) continue;
             if (std::find(out.begin(), out.end(), r) == out.end()) out.push_back(r);
         }
         SDL_free(modes);
@@ -231,25 +262,65 @@ std::vector<std::pair<int, int>> OptionsMenu::ResolutionList(FullscreenMode mode
         std::sort(out.begin(), out.end(), byArea);
         out.push_back({0, 0});  // "Desktop": the monitor's own resolution, the largest choice
     } else {
-        SDL_Rect usable{0, 0, 1920, 1080};
-        SDL_GetDisplayUsableBounds(disp, &usable);
-        static const int common[][2] = {{640, 480},   {800, 600},   {1024, 768},  {1280, 720},  {1280, 960},
-                                        {1366, 768},  {1440, 1080}, {1600, 900},  {1600, 1200}, {1920, 1080},
-                                        {1920, 1440}, {2560, 1080}, {2560, 1440}, {3440, 1440}, {3840, 2160}};
-        for (auto& r : common)
-            if (r[0] <= usable.w && r[1] <= usable.h) out.push_back({r[0], r[1]});
+        // the window sizes that fit the monitor with the title bar and frame: the game's own 4:3
+        // first (multiples of 640 x 480), then wider ones; each group smallest first, and the
+        // current size (dragged to anything) in its group
+        int fitW = 0, fitH = 0;
+        app_->WindowFitArea(display, &fitW, &fitH);
+        for (float s : CD3DApplication::kWindowScales) {
+            std::pair<int, int> r{(int)(640 * s + 0.5f), (int)(480 * s + 0.5f)};
+            if (r.first <= fitW && r.second <= fitH) out.push_back(r);
+        }
+        static const int wide[][2] = {{1280, 720},  {1366, 768},  {1600, 900},  {1920, 1080},
+                                      {2560, 1080}, {2560, 1440}, {3440, 1440}, {3840, 2160}};
+        for (auto& r : wide)
+            if (r[0] <= fitW && r[1] <= fitH) out.push_back({r[0], r[1]});
         std::pair<int, int> cur{c.windowWidth, c.windowHeight};
         if (std::find(out.begin(), out.end(), cur) == out.end()) out.push_back(cur);
-        std::sort(out.begin(), out.end(), byArea);
+        std::sort(out.begin(), out.end(), [&](auto& a, auto& b) {
+            bool a43 = Is4x3(a.first, a.second), b43 = Is4x3(b.first, b.second);
+            return a43 != b43 ? a43 : byArea(a, b);
+        });
     }
     return out;
+}
+
+std::vector<float> OptionsMenu::RefreshList(int fw, int fh, int display) const {
+    SDL_DisplayID disp = DisplayIdFor(display);
+    if (fw <= 0 || fh <= 0) {
+        const SDL_DisplayMode* desk = SDL_GetDesktopDisplayMode(disp);
+        if (!desk) return {0.f};
+        fw = desk->w, fh = desk->h;
+    }
+    std::vector<float> rates;
+    int n = 0;
+    SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(disp, &n);
+    for (int i = 0; i < n; i++) {
+        float r = modes[i]->refresh_rate;
+        if (modes[i]->w != fw || modes[i]->h != fh || r <= 0.f) continue;
+        bool seen = false;
+        for (float o : rates) seen |= std::fabs(o - r) < 0.01f;
+        if (!seen) rates.push_back(r);
+    }
+    SDL_free(modes);
+    std::sort(rates.begin(), rates.end());
+    rates.insert(rates.begin(), 0.f);  // "Desktop"
+    return rates;
+}
+
+// "144 Hz", or "59.94 Hz" for a rate that isn't a whole number
+static std::string RateName(float hz) {
+    char b[32];
+    if (std::fabs(hz - std::round(hz)) < 0.05f) snprintf(b, sizeof b, "%d Hz", (int)std::lround(hz));
+    else snprintf(b, sizeof b, "%.2f Hz", hz);
+    return b;
 }
 
 // ------------------------------------------------------------------ display settings
 OptionsMenu::DisplayCfg OptionsMenu::CurrentDisplay() const {
     const Config& c = GetConfig();
     return {c.fullscreen, c.fullscreenWidth > 0 ? c.fullscreenWidth : 0, c.fullscreenWidth > 0 ? c.fullscreenHeight : 0,
-            c.displayIndex};
+            c.displayIndex, c.fullscreenRefresh};
 }
 
 OptionsMenu::DisplayCfg OptionsMenu::ShownDisplay() const { return pendingActive_ ? pending_ : CurrentDisplay(); }
@@ -259,8 +330,9 @@ void OptionsMenu::ProposeDisplay(const DisplayCfg& d) {
         // Window / Borderless can't leave the screen unusable: apply straight away, no confirmation
         Config& c = GetConfig();
         pendingActive_ = false;
+        if (d.display != c.displayIndex) c.windowPosSet = false;  // centred on the new monitor
         c.fullscreen = d.mode;
-        c.displayIndex = d.display;
+        CD3DApplication::SetDisplay(d.display);
         app_->ApplyDisplaySettings();
         Save();
         return;
@@ -278,7 +350,9 @@ void OptionsMenu::ApplyPending() {
     c.fullscreen = pending_.mode;
     c.fullscreenWidth = pending_.fw;
     c.fullscreenHeight = pending_.fh;
-    c.displayIndex = pending_.display;
+    c.fullscreenRefresh = pending_.hz;
+    if (pending_.display != c.displayIndex) c.windowPosSet = false;
+    CD3DApplication::SetDisplay(pending_.display);
     pendingActive_ = false;
     ApplyDisplay();  // asks "Keep these display settings?"
 }
@@ -367,18 +441,28 @@ OptionsMenu::Page OptionsMenu::MainPage() {
                        [this] { PushPage(AudioPage()); }, nullptr});
     p.items.push_back({"Controls", "Keyboard and gamepad bindings, stick dead zone.", nullptr, nullptr,
                        [this] { PushPage(ControlsPage()); }, nullptr});
-    p.items.push_back({"Cheats", "Game modifiers: unlock all levels, infinite fire, no crystal slowdown.", nullptr,
-                       nullptr, [this] { PushPage(CheatsPage()); }, nullptr});
-    p.items.push_back({"Mods", "Choose the level pack to play, and switch add-ons on or off.", nullptr, nullptr,
-                       [this] { PushPage(ModsPage()); }, nullptr});
+    p.items.push_back({"Cheats", "", nullptr, nullptr, [this] { PushPage(CheatsPage()); }, nullptr});
+    NotYet(p.items.back());
+    p.items.push_back({"Mods", "", nullptr, nullptr, [this] { PushPage(ModsPage()); }, nullptr});
+    NotYet(p.items.back());
     p.items.push_back({"Reset all settings",
                        "Restore every setting to its default. Saved progress, the game path and the save folder are kept.", nullptr,
                        nullptr,
                        [this] {
-                           AskConfirm("Reset all settings?", "Video, graphics, audio, controls and cheats go back to defaults.",
+                           AskConfirm("Reset all settings?", "Video, graphics, audio and controls go back to defaults.",
                                       [this] { ResetAllSettings(); });
                        },
                        nullptr});
+    if (app_->InLevel())
+        p.items.push_back({"Level select", "Leave this level and return to level select, as you were when it started.",
+                           nullptr, nullptr,
+                           [this] {
+                               AskConfirm("Return to level select?", LostLine(), [this] {
+                                   Close();
+                                   app_->ReturnToLevelSelect();
+                               });
+                           },
+                           nullptr});
     if (!onTitle)
         p.items.push_back({"Main menu", "Leave the current screen and return to the title screen.", nullptr, nullptr,
                            [this] {
@@ -388,7 +472,7 @@ OptionsMenu::Page OptionsMenu::MainPage() {
                                });
                            },
                            [this] { return app_->CanReturnToMainMenu(); }});
-    p.items.push_back({"Quit game", "Close Hopmon. Settings are already saved.", nullptr, nullptr,
+    p.items.push_back({"Quit game", "Close Mage Bros. Native. Settings are already saved.", nullptr, nullptr,
                        [this] {
                            AskConfirm("Quit the game?", LostLine(), [this] {
                                Close();
@@ -410,9 +494,9 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
             default: return std::string("Exclusive");
         }
     };
-    auto star = [this] { return pendingActive_ ? std::string(" *") : std::string(); };
     {
-        Item it{"Display mode", "", [this, modeName, star] { return modeName(ShownDisplay().mode) + star(); },
+        Item it{"Display mode", "",
+                [this, modeName] { return modeName(ShownDisplay().mode) + PendingMark(ShownDisplay().mode != CurrentDisplay().mode); },
                 [this](int d) {
                     DisplayCfg p = ShownDisplay();
                     p.mode = (FullscreenMode)((((int)p.mode + d) % 3 + 3) % 3);
@@ -432,12 +516,14 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
     }
     {
         Item it{"Resolution", "",
-                [this, star] {
-                    DisplayCfg p = ShownDisplay();
+                [this] {
+                    DisplayCfg p = ShownDisplay(), cur = CurrentDisplay();
                     const Config& c = GetConfig();
                     if (p.mode == FullscreenMode::Borderless) return std::string("Desktop");
                     if (p.mode == FullscreenMode::Exclusive)
-                        return (p.fw <= 0 ? std::string("Desktop") : SizeName(p.fw, p.fh)) + star();
+                        return (p.fw <= 0 ? std::string("Desktop") : SizeName(p.fw, p.fh)) +
+                               PendingMark(p.fw != cur.fw || p.fh != cur.fh);
+                    if (c.maximized) return std::string("Maximized");
                     return SizeName(c.windowWidth, c.windowHeight);
                 },
                 [this](int d) {
@@ -445,13 +531,21 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                     Config& c = GetConfig();
                     auto list = ResolutionList(p.mode, p.display);
                     if (p.mode == FullscreenMode::Exclusive) {
-                        int i = CycleIndex(list, std::pair<int, int>{p.fw, p.fh}, d);
+                        // stops at both ends (Desktop is the last), never wrapping round to the smallest
+                        int i = std::clamp(CycleIndex(list, std::pair<int, int>{p.fw, p.fh}, 0) + d, 0,
+                                           (int)list.size() - 1);
                         p.fw = list[(size_t)i].first;
                         p.fh = list[(size_t)i].second;
+                        // a refresh rate this size doesn't have goes back to the desktop's
+                        auto rates = RefreshList(p.fw, p.fh, p.display);
+                        bool have = false;
+                        for (float r : rates) have |= std::fabs(r - p.hz) < 0.01f;
+                        if (!have) p.hz = 0.f;
                         ProposeDisplay(p);
-                    } else {  // window size: resize right away
-                        int i = std::clamp(CycleIndex(list, std::pair<int, int>{c.windowWidth, c.windowHeight}, 0) + d, 0,
-                                           (int)list.size() - 1);
+                    } else {  // window size: resize right away (a maximized window first goes back to its own size)
+                        int i = CycleIndex(list, std::pair<int, int>{c.windowWidth, c.windowHeight}, 0);
+                        if (!c.maximized) i = std::clamp(i + d, 0, (int)list.size() - 1);
+                        c.maximized = false;
                         c.windowWidth = list[(size_t)i].first;
                         c.windowHeight = list[(size_t)i].second;
                         app_->ApplyDisplaySettings();
@@ -476,29 +570,52 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
             }
             std::string base = p.mode == FullscreenMode::Exclusive
                                    ? "Screen mode for exclusive fullscreen; press Enter to apply. " + deskNote
-                                   : "Window size; changes at once. " + deskNote;
+                                   : "Window size in screen pixels, at once. 2x, 3x...: the game's 640x480 scaled evenly.";
             return DisplayHelp(base);
         };
         v.push_back(it);
     }
     {
+        // exclusive fullscreen only: Window and Borderless run at the desktop's rate
+        Item it{"Refresh rate", "",
+                [this] {
+                    DisplayCfg p = ShownDisplay();
+                    std::string mark = PendingMark(p.hz != CurrentDisplay().hz);
+                    if (p.mode == FullscreenMode::Exclusive && p.hz > 0.f) return RateName(p.hz) + mark;
+                    const SDL_DisplayMode* desk = SDL_GetDesktopDisplayMode(DisplayIdFor(p.display));
+                    return (desk && desk->refresh_rate > 0.f ? "Desktop " + RateName(desk->refresh_rate) : std::string("Desktop")) +
+                           mark;
+                },
+                [this](int d) {
+                    DisplayCfg p = ShownDisplay();
+                    auto rates = RefreshList(p.fw, p.fh, p.display);
+                    int i = 0;
+                    for (size_t k = 0; k < rates.size(); k++)
+                        if (std::fabs(rates[k] - p.hz) < 0.01f) i = (int)k;
+                    p.hz = rates[(size_t)std::clamp(i + d, 0, (int)rates.size() - 1)];
+                    ProposeDisplay(p);
+                },
+                [this] { ApplyPending(); }, [this] { return ShownDisplay().mode == FullscreenMode::Exclusive; }};
+        it.focusWhenDisabled = true;
+        it.helpFn = [this] {
+            if (ShownDisplay().mode != FullscreenMode::Exclusive)
+                return std::string("Exclusive fullscreen only: Window and Borderless use the desktop's refresh rate.");
+            return DisplayHelp("How often the screen refreshes in exclusive fullscreen; press Enter to apply.");
+        };
+        v.push_back(it);
+    }
+    {
         Item it{"Monitor", "",
-                [this, star] {
+                // "Primary" or "2: 2560x1440" (names are long; the help line has the whole of it)
+                [this] {
                     int idx = ShownDisplay().display;
-                    std::string s;
-                    if (idx == 0) {
-                        s = "Primary";
-                    } else {
-                        int n = 0;
-                        SDL_DisplayID* ids = SDL_GetDisplays(&n);
+                    std::string s = "Primary";
+                    if (idx > 0) {
                         s = std::to_string(idx);
-                        if (ids && idx <= n) {
-                            const char* name = SDL_GetDisplayName(ids[idx - 1]);
-                            if (name) s += ": " + std::string(name);
-                        }
-                        SDL_free(ids);
+                        if (const SDL_DisplayMode* m = SDL_GetDesktopDisplayMode(DisplayIdFor(idx)))
+                            s += ": " + std::to_string(m->w) + "x" + std::to_string(m->h);
                     }
-                    return Fit(s, 13) + star();
+                    return s + PendingMark(idx != CurrentDisplay().display);
                 },
                 [this](int d) {
                     int n = 0;
@@ -510,25 +627,54 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                     ProposeDisplay(p);
                 },
                 [this] { ApplyPending(); }, nullptr};
-        it.helpFn = [this] { return DisplayHelp("Which display the game uses."); };
+        it.helpFn = [this] {
+            // "Monitor 2 of 3: DELL U2723QE, 2560x1440, 144 Hz." (the primary: Windows' main monitor)
+            int idx = ShownDisplay().display, n = CD3DApplication::DisplayCount();
+            SDL_DisplayID id = DisplayIdFor(idx);
+            std::string s = idx == 0 ? "Windows' main monitor: " : "Monitor " + std::to_string(idx) + " of " + std::to_string(n) + ": ";
+            const char* name = SDL_GetDisplayName(id);
+            s += name && *name ? name : "(no name)";
+            if (const SDL_DisplayMode* m = SDL_GetDesktopDisplayMode(id))
+                s += ", " + std::to_string(m->w) + "x" + std::to_string(m->h) + ", " + RateName(m->refresh_rate);
+            return DisplayHelp(s + ".");
+        };
         v.push_back(it);
     }
-    v.push_back({"VSync", "Sync to the monitor refresh rate (prevents tearing).",
-                 [] { return OnOff(GetConfig().vsync); },
-                 [this](int) {
-                     GetConfig().vsync = !GetConfig().vsync;
-                     app_->ApplyVSync();
-                     Save();
-                 },
-                 nullptr, nullptr});
-    v.push_back({"Smooth motion", "Draw in-between frames so motion is fluid at any refresh rate.",
+    {
+        // Off / On / Adaptive (Adaptive only where the driver can do it)
+        Item it{"VSync", "",
+                [] {
+                    int m = GetConfig().vsync;
+                    return std::string(m == 2 ? "Adaptive" : m == 1 ? "On" : "Off");
+                },
+                [this](int d) {
+                    std::vector<int> l{0, 1};
+                    if (app_->AdaptiveVSyncSupported() || GetConfig().vsync == 2) l.push_back(2);
+                    GetConfig().vsync = l[(size_t)CycleIndex(l, GetConfig().vsync, d)];
+                    app_->ApplyVSync();
+                    Save();
+                },
+                nullptr, nullptr};
+        it.helpFn = [this] {
+            int want = GetConfig().vsync, got = app_->VSyncInEffect(), over = app_->VSyncOverride();
+            if (over > 0) return std::string("VSync is on here, but your graphics driver's own setting seems to keep it off.");
+            if (over < 0) return std::string("VSync is off here, but your graphics driver's own setting seems to force it on.");
+            if (want == 2 && got != 2) return std::string("Your graphics driver can't do adaptive VSync, so it is on (as On).");
+            if (want == 2) return std::string("As On, but a late picture shows at once: a little tearing instead of a stutter.");
+            if (want == 1) return std::string("Waits for each screen refresh: no tearing. Off: shows pictures at once (tearing).");
+            return std::string("Off: pictures show as soon as drawn (tearing). With Smooth motion, set a Frame limit.");
+        };
+        v.push_back(it);
+    }
+    v.push_back({"Smooth motion",
+                 "On: draws at the monitor's rate (in-between pictures come later). Off: on game ticks, max 100, as the original.",
                  [] { return OnOff(GetConfig().interpolation); },
                  [this](int) {
                      GetConfig().interpolation = !GetConfig().interpolation;
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Frame limit", "Maximum frames per second (needs Smooth motion; without it the cap is 100).",
+    v.push_back({"Frame limit", "Most frames a second with Smooth motion (without it: 100). With VSync, the refresh rate.",
                  [] {
                      int f = GetConfig().maxFps;
                      return f == 0 ? std::string("Unlimited") : std::to_string(f);
@@ -554,14 +700,14 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"HUD position", "Widescreen only: HUD at the screen edges or in the 4:3 area.",
+    v.push_back({"HUD position", "Widescreen only: the HUD and FPS counter in the original's 4:3 area or at the screen edges.",
                  [] { return std::string(GetConfig().hudLayout ? "Edges" : "Centered"); },
                  [this](int) {
                      GetConfig().hudLayout = GetConfig().hudLayout ? 0 : 1;
                      Save();
                  },
                  nullptr, [] { return GetConfig().aspect == AspectMode::Widescreen; }});
-    v.push_back({"HUD max width", "How far the edge HUD may spread on ultrawide screens.",
+    v.push_back({"HUD max width", "How far the edge HUD may spread on ultrawide screens (21:9 keeps it off a 32:9 screen's far corners).",
                  [] {
                      float a = GetConfig().hudMaxAspect;
                      if (a <= 0) return std::string("Unlimited");
@@ -582,7 +728,7 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                  },
                  nullptr,
                  [] { return GetConfig().aspect == AspectMode::Widescreen && GetConfig().hudLayout == 1; }});
-    v.push_back({"HUD size", "Size of the in-game HUD. Each part grows from its corner. 100% = original.",
+    v.push_back({"HUD size", "Size of the in-game HUD and FPS counter, from their corners. Limited when parts would meet. 100% = original.",
                  [] { return std::to_string((int)std::lround(GetConfig().hudScale * 100)) + "%"; },
                  [this](int d) {
                      Config& c = GetConfig();
@@ -598,13 +744,18 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Show FPS", "The original frames-per-second counter.",
+    v.push_back({"Show FPS", "The original's frames-per-second counter, at the bottom right of every screen.",
                  [] { return OnOff(GetConfig().showFps); },
                  [this](int) {
                      GetConfig().showFps = !GetConfig().showFps;
                      Save();
                  },
                  nullptr, nullptr});
+    // not built for Mage Bros. yet: the field of view needs the game to tell the renderer where
+    // its level camera is. (Smooth motion already sets how often the picture is drawn; drawing the
+    // game's objects between ticks comes later.)
+    for (Item& it : v)
+        if (it.label == "Field of view") NotYet(it);
     v.push_back({"Back", "", nullptr, nullptr, [this] { Back(false); }, nullptr});
     return p;
 }
@@ -754,9 +905,9 @@ OptionsMenu::Page OptionsMenu::ControlsPage() {
     Page p;
     p.title = "OPTIONS > CONTROLS";
     auto& v = p.items;
-    v.push_back({"Keyboard", "Change which keys move, fire, rotate the camera and so on.", nullptr, nullptr,
-                 [this] { PushPage(KeysPage()); }, nullptr});
-    v.push_back({"Gamepad buttons", "Change the fire and camera buttons. Movement is the stick and d-pad.",
+    v.push_back({"Keyboard", "Change each player's keys to move, fire and jump, and the pause and back keys.",
+                 nullptr, nullptr, [this] { PushPage(KeyGroupsPage()); }, nullptr});
+    v.push_back({"Gamepad buttons", "Change the fire and jump buttons. Movement is the stick and d-pad.",
                  nullptr, nullptr, [this] { PushPage(PadPage()); }, nullptr});
     v.push_back({"Stick dead zone", "How far the analog stick must move before it counts.",
                  [] { return std::to_string(GetConfig().gamepadDeadzone) + "%"; },
@@ -765,7 +916,7 @@ OptionsMenu::Page OptionsMenu::ControlsPage() {
                      Save();
                  },
                  [] {}, nullptr});
-    v.push_back({"Reset controls", "Restore the original keys and buttons and the default dead zone.", nullptr,
+    v.push_back({"Reset controls", "Restore the original keys and buttons (as in the manual) and the default dead zone.", nullptr,
                  nullptr,
                  [this] {
                      Config& c = GetConfig();
@@ -881,13 +1032,13 @@ OptionsMenu::Page OptionsMenu::LevelPackPage() {
     };
     {
         const Mods::Pack* orig = Mods::FindPack("original");
-        size_t n = orig ? orig->levels.size() : 45;
+        size_t n = orig ? orig->levels.size() : 40;
         Item it{"Original game", "", [n] { return Mods::ActivePackId() == "original" ? std::string("Playing") : LevelCount(n); },
                 nullptr, choose("original", "the original game"), unlocked};
         it.focusWhenDisabled = true;
         it.helpFn = [this, n] {
             if (ModsLocked()) return std::string(kLockedHelp);
-            return "Hopmon by Saito Games. " + LevelCount(n) + " in 3 worlds." +
+            return "Mage Bros. by Saito Games. " + LevelCount(n) + " in 4 worlds." +
                    (Mods::ActivePackId() == "original" ? " You're playing it." : " Enter: play it.");
         };
         p.items.push_back(it);
@@ -1094,10 +1245,6 @@ OptionsMenu::Page OptionsMenu::CheatsPage() {
         {"Unlock all levels",
          "Every level can be picked on level select. Your saved progress is not changed.",
          &Config::unlockAllLevels},
-        {"Infinite fire energy",
-         "The fire gauge stays full: fire on every press (still max 3 shots on screen).",
-         &Config::infiniteFireEnergy},
-        {"No crystal slowdown", "Carrying crystals no longer slows Hopmon's hops.", &Config::noCrystalSlowdown},
     };
     for (const Cheat& ch : cheats) {
         bool Config::*f = ch.field;
@@ -1123,31 +1270,55 @@ OptionsMenu::Page OptionsMenu::CheatsPage() {
     return p;
 }
 
-OptionsMenu::Page OptionsMenu::KeysPage() {
+// OPTIONS > CONTROLS > KEYBOARD: one page for each group of keys
+OptionsMenu::Page OptionsMenu::KeyGroupsPage() {
     Page p;
     p.title = "OPTIONS > KEYBOARD";
+    struct G { const char* group; const char* help; };
+    static const G groups[] = {
+        {"Player 1", "Player 1's keys: the arrows, fire Right Ctrl or [, jump Right Shift or ]."},
+        {"Player 2", "Player 2's keys: W A S D, fire Left Ctrl or 1, jump Left Shift or 2."},
+        {"General", "Select (Enter), pause (P) and back or give up the level (Esc)."},
+    };
+    for (const G& g : groups) {
+        std::string group = g.group;
+        Item it{group, g.help, nullptr, nullptr, [this, group] { PushPage(KeysPage(group)); }, nullptr};
+        p.items.push_back(it);
+    }
+    p.items.push_back({"Back", "", nullptr, nullptr, [this] { Back(false); }, nullptr});
+    return p;
+}
+
+OptionsMenu::Page OptionsMenu::KeysPage(const std::string& group) {
+    Page p;
+    std::string upper = group;
+    for (char& c : upper) c = (char)std::toupper((unsigned char)c);
+    p.title = "KEYBOARD > " + upper;
+    if (group == "Player 2") p.note = "In a one-player game player 1 also fires and jumps with these.";
+    else if (group == "General") p.note = "Menus also select with Shift or Ctrl and move with W / S.";
     for (const KeyAction& a : kKeyActions) {
+        if (group != a.group) continue;
         int dik = a.dik;
-        std::string label = a.label;
+        std::string label = a.label, capture = group + ": " + a.label;
         p.items.push_back({label, "Enter: press a new key.  Backspace: restore the default.",
                            [this, dik] { return Fit(KeyNamesFor(dik), 13); }, nullptr,
-                           [this, dik, label] {
+                           [this, dik, capture] {
                                mode_ = Mode::CaptureKey;
                                captureDik_ = dik;
-                               captureLabel_ = label;
+                               captureLabel_ = capture;
                            },
                            nullptr});
     }
-    p.items.push_back({"Back", "Shift also fires and Ctrl is also the camera modifier, as in the original.", nullptr,
-                       nullptr, [this] { Back(false); }, nullptr});
+    p.items.push_back({"Back", "", nullptr, nullptr, [this] { Back(false); }, nullptr});
     return p;
 }
 
 OptionsMenu::Page OptionsMenu::PadPage() {
     Page p;
     p.title = "OPTIONS > GAMEPAD";
+    p.note = "Gamepad 1 plays player 1 and gamepad 2 player 2. Both use these.";
     struct B { const char* label; int button; };
-    static const B buttons[] = {{"Fire / confirm", 0}, {"Camera / confirm", 1}};
+    static const B buttons[] = {{"Fire / select", 0}, {"Jump / select", 1}};
     for (const B& b : buttons) {
         int btn = b.button;
         std::string label = b.label;
@@ -1238,7 +1409,7 @@ bool OptionsMenu::HandleEvent(const SDL_Event& e) {
         bool request = (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat && e.key.scancode == SDL_SCANCODE_F10) ||
                        (e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN && e.gbutton.button == SDL_GAMEPAD_BUTTON_START);
         if (!request) return false;
-        // during the intro, the ending, or while Hopmon isn't controllable the press is ignored
+        // during the logo, the ending, a fade, or while no mage is under the player's control the press is ignored
         if (app_->CanOpenOptions()) Open();
         return true;
     }
@@ -1269,7 +1440,7 @@ bool OptionsMenu::HandleEvent(const SDL_Event& e) {
             for (const KeyAction& a : kKeyActions) {
                 if (a.dik == captureDik_) continue;
                 std::string names = ", " + KeyNamesFor(a.dik) + ",";
-                if (names.find(", " + name + ",") != std::string::npos) also = a.label;
+                if (names.find(", " + name + ",") != std::string::npos) also = std::string(a.group) + ": " + a.label;
             }
             if (!also.empty()) SetMessage(name + " is also used for: " + also + ".", 5000);
             else SetMessage(captureLabel_ + " set to " + name + ".");
@@ -1314,12 +1485,14 @@ bool OptionsMenu::HandleEvent(const SDL_Event& e) {
             case SDL_SCANCODE_LEFT: act = Left; break;
             case SDL_SCANCODE_RIGHT: act = Right; break;
             case SDL_SCANCODE_SPACE: if (!e.key.repeat) act = Toggle; break;  // Ok on rows without a tick box
+            // select with Enter or Ctrl, as the game's own menus (Shift, which they also take, is
+            // the menu's reorder modifier here)
             case SDL_SCANCODE_RETURN:
             case SDL_SCANCODE_KP_ENTER:
-            case SDL_SCANCODE_Z: if (!e.key.repeat) act = Ok; break;
+            case SDL_SCANCODE_LCTRL:
+            case SDL_SCANCODE_RCTRL: if (!e.key.repeat) act = Ok; break;
             case SDL_SCANCODE_ESCAPE:
-            case SDL_SCANCODE_BACKSPACE:
-            case SDL_SCANCODE_X: if (!e.key.repeat) act = Cancel; break;
+            case SDL_SCANCODE_BACKSPACE: if (!e.key.repeat) act = Cancel; break;
             case SDL_SCANCODE_F10: if (!e.key.repeat) act = Exit; break;
             default: break;
         }
@@ -1554,7 +1727,7 @@ void OptionsMenu::Render(Device* d) {
         }
         // long names (mods can be called anything) are shortened to fit beside the value
         const bool arrow = !it.value && it.activate && it.label != "Back" && it.label != "Resume game" &&
-                           it.label != "Reset controls" && it.label != "Main menu" && it.label != "Quit game" &&
+                           it.label != "Reset controls" && it.label != "Main menu" && it.label != "Level select" && it.label != "Quit game" &&
                            it.label != "Reset all settings";
         std::string val;
         if (it.value) {

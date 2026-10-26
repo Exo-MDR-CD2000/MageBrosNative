@@ -8,9 +8,9 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 2 | Engine: window, OpenGL renderer, sound, MIDI music, keyboard/gamepad, options menu | Done |
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
 | 4 | First playable: World 1 with player 1 | Done |
-| 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Built: chunks 1–18 done; chunk 19's play-through waits for the owner's full test (below) |
-| **6** | **Front end: title, save slots, level select, shop, ending, saving** | **In progress**: chunks 1–8 of 9 done (below) |
-| 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | Planned (see "Stage 7: frame-rate dependence" below) |
+| 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
+| 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now (below) |
 
 ## Stage 4, chunk by chunk
 
@@ -60,7 +60,7 @@ is done.
 | 16 | Player 2 (`XHeroB`): its models, keys and gamepad, its own status, the camera midpoint, the two-player start and level end; every enemy, boss, bullet, coin, torch, platform and the shop check both heroes; each player's shot colour; player 2's HUD panel; F2 / `--two-player` | all | | Done |
 | 17 | Hero-on-hero collision and carrying: each hero's box blocks the other, standing on the other (`heroAbove`, not while a floor fan lifts), the lower hero carrying the upper, platforms lifting and carrying a stacked pair | all | | Done |
 | 18 | Player 2's platform shadow (`XShadowOnPlatform`'s second shadow); player 2's HUD panel checked against `XStatusDisplay::Render` (identical to player 1's) | all | | Done |
-| 19 | Checks and the whole-game zip, played start to finish by the owner | | | Deferred: the owner will play the whole game once the front end is in |
+| 19 | Checks and the whole-game zip, played start to finish by the owner | | | Done (with stage 6 chunk 9): the owner played the whole game, 0.3.6, and it plays fine (2026-10-25) |
 
 Chunk 7 was split in two (7a, 7b) because the genie is the largest piece of World 2. Chunk 14 was
 planned as two halves too, but the bird's five states form one loop that shares its steering, so
@@ -96,15 +96,60 @@ The front end is `XApplication`'s state machine (`FrameMove`, `SetState`): each 
 | 6 | The shop screen (`XShop`): opened by the shop building, life, magic level and wands for gold (`_CheckEnabledItems`), each player's own purchases | buying in the shop of each world | Done |
 | 7 | The other wands' shots (`XHeroFireList::_WandNormal2` / `3`, `_WandChase` / `2` / `3`, `XHeroFire_Chase`) | every wand bought in the shop fires its own pattern | Done |
 | 8 | The ending (`XEndingObject`, `XCamera::ResetForEnding`), then back to the logo | finishing 4-10 | Done |
-| 9 | Checks and the stage 6 zip: the whole flow from logo to ending by screenshot | the complete game, ready for the owner's full play-through (stage 5 chunk 19 and stage 6 together) | **Next** |
+| 9 | Checks and the stage 6 zip: the whole flow from logo to ending | the complete game | Done: the owner played 0.3.6 from start to finish (2026-10-25) |
 
 Chunks 6 and 7 were released together, in 0.3.5, so the wands the shop sells fire their own
 patterns from the start.
 
+## Stage 7, chunk by chunk
+
+Every extra is opt-in: with every option at its default the game plays as the original. The
+options menu, the config and the renderer's extras came from Hopmon Native; stage 7 makes them
+Mage Bros.' own and finishes the ones that need the game's help.
+
+| Chunk | What it covers | What you can test | Status |
+|---|---|---|---|
+| 1 | The options menu made for Mage Bros.: the original's P pause and focus-loss music pause, the original's FPS counter (`XFPSDisplay`), the menu's sounds (the title's 0xec / 0xed), Main menu, and in a level Level select (back to the save as the level began), F10 only while a player has control, player 1 / player 2 / general key pages, gamepad fire and jump, MP3/FLAC music replacement wired in, Hopmon's text and cheats gone, unbuilt settings greyed out | every menu page; P; the FPS counter; Main menu; replacement music | Done |
+| 2a | Windowed mode: the window's size (dragged too), position, maximized state and monitor are saved and restored (a position no longer on any monitor falls back to centred); F11 / Alt+Enter goes to the fullscreen mode used last and is saved; the window size list has the game's 4:3 sizes (multiples of 640 x 480, "2x", "3x") first, then wider ones, all fitting the monitor with the title bar; the first start picks the largest 4:3 window that fits | resizing, maximizing, moving and closing the window, then reopening; F11; the Resolution list | Done (0.4.1, tested by the owner) |
+| 2b | Exclusive fullscreen: a Refresh rate row (the rates the monitor has at the chosen size, or Desktop: `fullscreen_refresh`); the resolution list drops modes below 640 x 480 and the copy of Desktop, and stops at its ends (Desktop last) instead of wrapping round; `*` only on the rows that will change | choosing a mode and a refresh rate, keep and revert | Done (0.4.2, tested by the owner) |
+| 2c | Monitors: remembered by name (`display_name`; when that monitor isn't connected the primary is used and the name kept); the Monitor row shows number and resolution, its help the full name and rate; F11 goes fullscreen on the monitor the window has just moved to; a saved window position counts only on the chosen monitor; borderless lays the picture out on the visible rows (not its hidden extra one); the monitors listed in the log at start; Window and Borderless checked on the owner's three monitors (each at its own refresh rate) | moving between monitors in each mode | Done (0.4.3, tested by the owner) |
+| 2d-i | VSync: Off / On / Adaptive (adaptive only where the driver can do it, else On, and said so); what took effect read back and logged; a driver overriding it (NVIDIA Control Panel, AMD Software) noticed from the frame rate and shown in the help line; the frame limit made exact (60 gave 58); help text on how VSync, Smooth motion and Frame limit work together; every combination checked in Window and Borderless on the 144 Hz and 60 Hz monitors | VSync, Smooth motion and Frame limit together, with Show FPS | Done (0.4.4) |
+| 2d-ii | Widescreen culling: objects at the edges of a wide screen (tall pillars, hammers, any object at the back of a level or in its pits) popped in and out, because the original only draws objects within 400 along the level and its 4:3 view never reaches that; the draw range now grows with the view's width (533 at 16:9), the update range (game logic) is unchanged. Checked by comparing screenshots against a draw-everything build at 16:10, 16:9 and 21:9 in 1-1, 1-6, 2-4 and 3-5: identical | the edges of the screen in widescreen, 16:9 above all | Done (0.4.5; the owner played 21:9 too, with every object, enemy and boss normal to the edges) |
+| 2d-ii (sound) | Widescreen sound: positioned sounds are panned and faded by their distance from the screen's centre over 240, made for 4:3, so at a wide screen's edges they were much quieter than at the original's (and at 21:9 some visible objects silent); the 240 now grows with the view's width, taken from the window's shape each time a sound plays (any window size, resized live); 4:3 and Stretch unchanged. Checked by logging pans at 1280 x 960, 1920 x 1080 and 2560 x 1080 and through a live resize | sounds at the left and right edges in widescreen | Done (0.4.6, tested by the owner) |
+| 2d-iii (backgrounds) | The title's scrolling tile background (the title, save slots and level select) filled out to the view's width: the original's 7 x 5 grid of the 120 x 120 tile, plus as many columns either side as the view needs, in step with it; the venetian-blind fade (`XProcessObject`) spanning the whole view (it covered only the middle 640, so a wide screen's edges stayed in view while fading, levels included). Checked by screenshots at 4:3 (byte for byte the same as before), 16:9, 21:9 and 32:9, fades included | the title, save slots and level select in widescreen, and their fades | Done (0.4.7) |
+| 2d-iii (shop) | The shop in widescreen: the board and the items slide in from just past the view's edges and back out to them in the same 40 ticks (they started and ended at the 4:3 screen's edges, x −280 and 640, in plain view at the sides of a wide screen, so they popped in and out); the level dimmed (black at 0.4, fading with the slide) across the whole view while the shop is open, under the status display, only when the view is wider than 4:3 (the owner's choice). The layout stays centred as the original. Checked by screenshots at 4:3 (byte for byte the same as before, sliding out included), 16:9 and 21:9 | opening and closing the shop in widescreen | Done (0.4.8) |
+| Shop keys | Not widescreen, found by the owner while testing the shop: the shop's buy / select button takes every key that fires or jumps for the shopper in the level (player 1's `[` `]`, the one-player Left Ctrl / Left Shift, player 2's `1` `2`, remaps) and Enter; the original took only Right Shift / Right Ctrl (player 2: Left Shift / Left Ctrl) | buying and leaving with each key | Done (0.4.9) |
+| 2d-iii (logo) | The Saito Games logo screen: its white backdrop (a 600 x 600 rectangle with texture 0x13c, a plain white 64 x 64 bitmap) widened by the view's width over 640, so it reaches the sides instead of leaving black bars; the logo bitmap (0x2d1) unchanged. Checked by screenshots: 4:3 and Stretch byte for byte the same as before, 16:9, 21:9 and 32:9 white to both edges | the logo at start-up in widescreen | Done (0.4.10) |
+| 2d-iii (ending) | The ending: the film strips (black bands with a sprocket row, 80-wide tiles) take in as many tiles as the view's width needs, so they cover the corridor to the edges (it showed above and below them at the sides); each credit waits and leaves as far past the view's edges as the original's x 820 and −180 are past the 4:3 screen's, on the original's ticks (it sat in view at the right for its 2-second wait and vanished on screen at the left). The corridor, mages and fade needed nothing. Checked: at 4:3 and Stretch a log over about 6,600 frames showed the original's 9 tiles and every credit at the original's x (screenshots can't match byte for byte here: the corridor scrolls once a frame); screenshots at 16:9, 21:9 and 32:9 | the ending in widescreen | Done (0.4.11, tested by the owner with F3) |
+| Ending test hook | F3 in a level and `--ending` on the command line go straight to the ending, for the owner to test 0.4.11 (beside `--auto ending`) | reaching the ending | Done (0.4.12) |
+| 2d-iii (HUD) | The HUD settings hooked into `XStatusDisplay` and `XFPSDisplay`: each group drawn as a unit through `Device::BeginHudScale(scale, anchor, shift)` (a shift added for this): the level info from the top-left corner, both players' panels as one block from the top-right corner, the lost-gold messages from the middle, the FPS counter from the bottom-right corner. HUD position Edges moves the level info and the panels by `HudEdgeShift` (capped by HUD max width), the FPS counter too; HUD size scales them, limited to the largest size where the level info (the boss's full row of hearts on a boss level) and the panels stay 8 apart, never below 100%. In levels only: level select keeps the original's layout; the FPS counter follows on every screen. HUD position defaults to Centered (the owner: the original's place by default); config_version 20 resets older files once. Also fixed, in every mode (found by the owner, a slip in the original too, listed in "Bugs and quirks in the original" in `REVERSE_ENGINEERING.md`): player 2's lost-gold message, 27 below player 1's while both are 35 high, was partly covered by it; it is now 12 lower. Checked: at 100%, 4:3, Stretch, 16:9 Centered and 4:3 with Edges byte for byte the same as before; screenshots of Edges at 16:9, 21:9 and 32:9 (HUD max width 21:9 and Unlimited), sizes 50% to 200%, one and two players, normal and boss levels | the HUD rows of Options > Video in levels | Done (0.4.13) |
+| 2d-iii (options menu) | The options menu in widescreen | the options menu in widescreen | Left as it is for now (the owner) |
+| 2d-iv | Field of view: hooked into the level camera (`Device::SetGameplayView`) and into the draw range, the menus and the ending keeping the original lens | Field of view in levels | **Next** |
+
+The rest is to be planned with the owner after chunk 2. Possible later, maybe more than a game of
+this size needs (the owner's notes): a frame-limit choice for G-Sync / FreeSync (the monitor's
+refresh rate less 3), worth it only once smooth motion draws between ticks; for 32:9 screens, an idle
+animation for the nine enemy types the update range pauses far away (at 21:9 that can only show
+for an enemy against the back wall or in a pit at the very edge of the screen, which the owner
+didn't see in play; at 32:9 the middle of the level reaches 501, past the 480 range), and
+perhaps a "widescreen max width" setting. Candidates: smooth motion (drawing the
+game's objects between ticks; it may become a stage of its own), moving the per-frame items in
+the table below onto ticks, the graphics options checked on Mage Bros.' scenes, Mage Bros.' own
+cheats, mods (add-ons and level packs, with `MODDING.md`), `--set`, `CONFIG.md` and the README
+sections Hopmon Native has.
+
+What the Video page's Smooth motion does today: on (the default, from Hopmon Native), the
+picture is drawn at the monitor's rate but repeats between ticks; off, it is drawn only on a
+tick boundary, at most 100 times a second, as the original. The game's speed is the same either
+way.
+
 ## Stage 7: frame-rate dependence
 
 The game logic runs in fixed 10 ms ticks (`XApplication::FrameMove(n)` with up to 10 ticks a
-frame), so its speed doesn't depend on the frame rate. High refresh rates must stay that way:
+frame), so its speed doesn't depend on the frame rate. The original drew at most 100 frames a
+second and normally ran 640 x 480 exclusive fullscreen with VSync, about 60 frames a second (see
+"The frame loop and the frame rate" in `REVERSE_ENGINEERING.md`). Nothing the game simulates is
+tied to the frame rate, so no speed-ups at high refresh rates. High refresh rates must stay that way:
 more frames drawn, with the game's speed and behaviour unchanged.
 
 A few things in the original advance once per frame instead of once per tick. The port keeps them
@@ -114,7 +159,19 @@ part of high-refresh support. Add each new one to this table as it's found.
 
 | Where | What advances per frame | Found in |
 |---|---|---|
-| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks) | stage 6 chunk 8 (0.3.6) |
+| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks). `ProcessFrame` runs only on frames with at least one tick, so at most 100 times a second. **Kept as the original** (the owner's decision, 2026-10-25: a minor visual effect, hardly noticeable in play); the details are under the table | stage 6 chunk 8 (0.3.6) |
+| The heroes' fire and jump presses (`XHeroA` / `XHeroB::_UpdateInput` read the once-a-frame `JDInput`) | A press counts on every tick of its frame: one at 100 frames a second, sometimes two at 60 (a 10 ms jump buffer on landing). **Already handled**: the port reads the heroes' keys every tick, as the original at 100 frames a second, whatever the frame rate (the owner's decision) | the frame-loop review, stage 7 chunk 2d-i (0.4.4) |
+| The menus and the shop (`JDInput::UpdateInputState`, `XShop::GetState` in `XGameObject::ProcessFrame`) | The menus' keys are read once a frame ("pressed" = held now and not at the last read), and the shop's state once a frame. This changes no speed; drawing between ticks must keep it on frames that tick | stage 7 chunk 1 (0.4.0) |
+
+**The ending's corridor, for reference.** The original updates the corridor once a frame, and
+with VSync its frames followed the monitor's refresh, so the scroll ran at refresh / 60 of its
+60 Hz speed: 1x at 60 Hz (LCDs, most setups), 1.25x at 75 Hz and about 1.4x at 85 Hz (common
+CRT settings in 2003), and 1.67x at 100 Hz or more, where the 100-a-second cap of the frame loop
+stops it. The port behaves the same: on the owner's 60 Hz receiver 1x, on the 144 Hz monitors
+1.67x, with Smooth motion on or off (extra frames between ticks repeat the last position).
+Only the textures move faster: the mages' walk, the credits, the music and the ending's length
+run on ticks. Had it been changed, the scroll would have been `0.008 x 60 / 100 = 0.0048` per
+tick (`textureOffset += 0.0048f * n`), the 60 Hz speed at any frame rate.
 
 ## Open items
 

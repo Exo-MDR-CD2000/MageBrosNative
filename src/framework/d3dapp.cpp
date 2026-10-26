@@ -8,6 +8,7 @@
 #include "../audio/midi.h"
 #include "../ui/options_menu.h"
 #include <SDL3/SDL.h>
+#include <cmath>
 #include <cstdlib>
 #include <sstream>
 
@@ -40,11 +41,48 @@ void CD3DApplication::OpenOptions() {
     if (menu_) menu_->Open();
 }
 
-void CD3DApplication::ApplyVSync() { SDL_GL_SetSwapInterval(GetConfig().vsync ? 1 : 0); }
+void CD3DApplication::ApplyVSync() {
+    int want = GetConfig().vsync;
+    bool ok = false;
+    if (want == 2) ok = adaptiveSupported_ && SDL_GL_SetSwapInterval(-1);
+    if (!ok) ok = SDL_GL_SetSwapInterval(want == 0 ? 0 : 1);
+    if (!ok) Log("VSync: the driver refused it: %s", SDL_GetError());
+    int got = 1;
+    if (!SDL_GL_GetSwapInterval(&got)) got = want == 0 ? 0 : 1;
+    vsyncInEffect_ = got < 0 ? 2 : got > 0 ? 1 : 0;
+    vsyncOverride_ = vsyncVote_ = vsyncVotes_ = 0;  // judged afresh
+    int key = want * 10 + vsyncInEffect_;
+    if (key != vsyncLogged_) {
+        static const char* names[] = {"off", "on", "adaptive"};
+        Log("VSync: %s%s", names[vsyncInEffect_],
+            want == 2 && vsyncInEffect_ != 2 ? " (adaptive isn't supported by the driver)" : "");
+        vsyncLogged_ = key;
+    }
+}
 
-// Monitor selected in the config (0 = primary).
-static SDL_DisplayID ConfigDisplay() {
-    int idx = GetConfig().displayIndex;
+void CD3DApplication::JudgeVSync() {
+    const Config& cfg = GetConfig();
+    if (!cfg.interpolation || cfg.maxFps > 0 || (menu_ && menu_->IsOpen()) || !window_) return;  // (keep the verdict)
+    const SDL_DisplayMode* m = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window_));
+    float hz = m ? m->refresh_rate : 0.f;
+    if (hz <= 0.f) return;
+    // VSync on (or adaptive) never goes above the refresh rate; off, drawing freely, it lands on it
+    // only when something else holds it there
+    int vote = 0;
+    if (vsyncInEffect_ > 0 && m_fFPS > hz * 1.15f) vote = 1;
+    else if (vsyncInEffect_ == 0 && std::fabs(m_fFPS - hz) < hz * 0.03f) vote = -1;
+    vsyncVotes_ = vote == vsyncVote_ ? vsyncVotes_ + 1 : 1;
+    vsyncVote_ = vote;
+    if (vsyncVotes_ >= 2 && vsyncOverride_ != vote) {
+        vsyncOverride_ = vote;
+        if (vote) Log("VSync: %.0f frames a second on a %.0f Hz monitor: the graphics driver seems to have VSync %s", m_fFPS,
+                      hz, vote > 0 ? "off" : "forced on");
+    }
+}
+
+// A monitor by its [video] display number (0 = primary, 1..n in SDL's order; the primary if
+// that one isn't connected).
+static SDL_DisplayID DisplayFor(int idx) {
     SDL_DisplayID d = SDL_GetPrimaryDisplay();
     if (idx > 0) {
         int n = 0;
@@ -53,6 +91,166 @@ static SDL_DisplayID ConfigDisplay() {
         SDL_free(ids);
     }
     return d;
+}
+
+// Monitor selected in the config (0 = primary).
+static SDL_DisplayID ConfigDisplay() { return DisplayFor(GetConfig().displayIndex); }
+
+std::string CD3DApplication::DisplayName(int index) {
+    const char* n = SDL_GetDisplayName(DisplayFor(index));
+    return n ? n : "";
+}
+
+int CD3DApplication::DisplayCount() {
+    int n = 0;
+    SDL_free(SDL_GetDisplays(&n));
+    return n;
+}
+
+// The [video] display number (1..n) of the one monitor called `name`; 0 for none, or for more
+// than one (two identical monitors: then the number decides).
+static int DisplayIndexForName(const std::string& name) {
+    int n = 0, found = 0, count = 0;
+    SDL_DisplayID* ids = SDL_GetDisplays(&n);
+    for (int i = 0; ids && i < n; i++) {
+        const char* dn = SDL_GetDisplayName(ids[i]);
+        if (dn && name == dn) found = i + 1, count++;
+    }
+    SDL_free(ids);
+    return count == 1 ? found : 0;
+}
+
+void CD3DApplication::ResolveDisplay() {
+    Config& cfg = GetConfig();
+    if (cfg.displayName.empty()) {
+        // an older ini with only the number: take that monitor's name from now on
+        if (cfg.displayIndex > 0 && cfg.displayIndex <= DisplayCount()) SetDisplay(cfg.displayIndex);
+        return;
+    }
+    int i = DisplayIndexForName(cfg.displayName);
+    if (i > 0) {
+        if (i != cfg.displayIndex) Log("Display: \"%s\" is now monitor %d (was %d)", cfg.displayName.c_str(), i, cfg.displayIndex);
+        cfg.displayIndex = i;
+    } else if (cfg.displayIndex != 0) {
+        // not connected (or not told apart): the primary for now; the name stays, so the game goes
+        // back to that monitor once it is there again
+        Log("Display: \"%s\" not found, using the primary monitor", cfg.displayName.c_str());
+        cfg.displayIndex = 0;
+    }
+}
+
+void CD3DApplication::SetDisplay(int index) {
+    Config& cfg = GetConfig();
+    cfg.displayIndex = index;
+    cfg.displayName = index > 0 ? DisplayName(index) : std::string();
+}
+
+static void LogDisplays() {
+    int n = 0;
+    SDL_DisplayID* ids = SDL_GetDisplays(&n);
+    SDL_DisplayID primary = SDL_GetPrimaryDisplay();
+    for (int i = 0; ids && i < n; i++) {
+        const SDL_DisplayMode* m = SDL_GetDesktopDisplayMode(ids[i]);
+        SDL_Rect b{};
+        SDL_GetDisplayBounds(ids[i], &b);
+        const char* name = SDL_GetDisplayName(ids[i]);
+        Log("Monitor %d: \"%s\", %dx%d at %.2f Hz, scale %.0f%%, at (%d, %d)%s", i + 1, name ? name : "",
+            m ? m->w : 0, m ? m->h : 0, m ? m->refresh_rate : 0.f, SDL_GetDisplayContentScale(ids[i]) * 100.f, b.x, b.y,
+            ids[i] == primary ? ", primary" : "");
+    }
+    SDL_free(ids);
+}
+
+// A window whose inside starts at (x, y) and is w wide is on monitor d and can be grabbed there:
+// the top of its inside lies on it, with at least 40 pixels of it across. (A saved position on
+// another monitor than the one chosen, or on one no longer connected, isn't used.)
+static bool WindowPosOn(SDL_DisplayID d, int x, int y, int w) {
+    SDL_Rect b;
+    if (!SDL_GetDisplayBounds(d, &b)) return false;
+    return y >= b.y && y < b.y + b.h - 40 && x + w > b.x + 40 && x < b.x + b.w - 40;
+}
+
+void CD3DApplication::WindowFitArea(int display, int* w, int* h) const {
+    SDL_DisplayID d = DisplayFor(display);
+    SDL_Rect u{0, 0, 1920, 1080};
+    SDL_GetDisplayUsableBounds(d, &u);
+    int top = 0, left = 0, bottom = 0, right = 0;
+    bool known = window_ && !(SDL_GetWindowFlags(window_) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS)) &&
+                 SDL_GetWindowBordersSize(window_, &top, &left, &bottom, &right) && (top | left | bottom | right);
+    if (!known) {
+        // no bordered window to measure: a Windows 10/11 title bar and frame at that monitor's scale
+        float s = SDL_GetDisplayContentScale(d);
+        if (s <= 0.f) s = 1.f;
+        top = (int)(40 * s + 0.5f);
+        left = right = bottom = (int)(8 * s + 0.5f);
+    }
+    *w = std::max(320, u.w - left - right);
+    *h = std::max(240, u.h - top - bottom);
+}
+
+void CD3DApplication::DefaultWindowSize(int display, int* w, int* h) const {
+    int fw = 0, fh = 0;
+    WindowFitArea(display, &fw, &fh);
+    *w = 640;
+    *h = 480;
+    for (float s : kWindowScales) {
+        int sw = (int)(640 * s + 0.5f), sh = (int)(480 * s + 0.5f);
+        if (sw <= fw && sh <= fh) *w = sw, *h = sh;
+    }
+}
+
+// The window at its saved size, where it was last if that is on the chosen monitor, otherwise
+// centred on that monitor. Twice: moving to a monitor with another display scale makes Windows
+// resize the window for that scale (keeping the old scale's frame), so the size is set again
+// once it is there, and a centred window centred again at that size.
+void CD3DApplication::PlaceWindow() {
+    const Config& cfg = GetConfig();
+    SDL_DisplayID target = ConfigDisplay();
+    bool saved = cfg.windowPosSet && WindowPosOn(target, cfg.windowX, cfg.windowY, cfg.windowWidth);
+    for (int pass = 0; pass < 2; pass++) {
+        SDL_SetWindowSize(window_, cfg.windowWidth, cfg.windowHeight);
+        if (saved) SDL_SetWindowPosition(window_, cfg.windowX, cfg.windowY);
+        else SDL_SetWindowPosition(window_, SDL_WINDOWPOS_CENTERED_DISPLAY(target), SDL_WINDOWPOS_CENTERED_DISPLAY(target));
+        SDL_SyncWindow(window_);
+    }
+}
+
+void CD3DApplication::SaveWindowState() {
+    windowChangedAt_ = 0;
+    Config& cfg = GetConfig();
+    if (!window_ || cfg.fullscreen != FullscreenMode::Windowed) return;
+    SDL_WindowFlags f = SDL_GetWindowFlags(window_);
+    if (f & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN)) return;
+    bool changed = false;
+    bool max = (f & SDL_WINDOW_MAXIMIZED) != 0;
+    if (max != cfg.maximized) cfg.maximized = max, changed = true;
+    if (!max) {
+        // the size and place to come back to (a maximized window keeps the ones from before)
+        int w = 0, h = 0, x = 0, y = 0;
+        SDL_GetWindowSize(window_, &w, &h);
+        SDL_GetWindowPosition(window_, &x, &y);
+        if (w >= 320 && h >= 240 && (w != cfg.windowWidth || h != cfg.windowHeight))
+            cfg.windowWidth = w, cfg.windowHeight = h, changed = true;
+        if (!cfg.windowPosSet || x != cfg.windowX || y != cfg.windowY)
+            cfg.windowPosSet = true, cfg.windowX = x, cfg.windowY = y, changed = true;
+    }
+    // the monitor it is on now (kept as 0 while that is the primary)
+    SDL_DisplayID d = SDL_GetDisplayForWindow(window_);
+    if (d && d != DisplayFor(cfg.displayIndex)) {
+        int idx = 0;
+        if (d != SDL_GetPrimaryDisplay()) {
+            int n = 0;
+            SDL_DisplayID* ids = SDL_GetDisplays(&n);
+            for (int i = 0; ids && i < n; i++)
+                if (ids[i] == d) idx = i + 1;
+            SDL_free(ids);
+        }
+        SetDisplay(idx), changed = true;
+    }
+    if (!changed) return;
+    if (!cfg.Save()) Log("Config: could not save %s", cfg.path.c_str());
+    Log("Display: window %dx%d at (%d, %d)%s, monitor %d", cfg.windowWidth, cfg.windowHeight, cfg.windowX, cfg.windowY,
+        cfg.maximized ? ", maximized" : "", cfg.displayIndex);
 }
 
 // Borderless mode on Windows is a plain borderless window rather than SDL's "desktop fullscreen":
@@ -71,17 +269,23 @@ static bool UseBorderlessWindow() {
 void CD3DApplication::ApplyDisplaySettings() {
     const Config& cfg = GetConfig();
     SDL_DisplayID target = ConfigDisplay();
-    // leave fullscreen first so size and monitor changes take effect cleanly
+    // leave fullscreen (and a maximized window) first so size and monitor changes take effect cleanly
     SDL_SetWindowFullscreen(window_, false);
+    SDL_RestoreWindow(window_);
+    GetDevice().SetHiddenBottomRows(0);  // (the borderless window sets its own)
     SDL_SyncWindow(window_);
+    if (cfg.fullscreen != FullscreenMode::Windowed) GetConfig().lastFullscreen = cfg.fullscreen;  // for F11
 
     if (cfg.fullscreen == FullscreenMode::Windowed) {
         SDL_SetWindowBordered(window_, true);
         SDL_SetWindowResizable(window_, true);
-        SDL_SetWindowSize(window_, cfg.windowWidth, cfg.windowHeight);
-        SDL_SetWindowPosition(window_, SDL_WINDOWPOS_CENTERED_DISPLAY(target), SDL_WINDOWPOS_CENTERED_DISPLAY(target));
-        SDL_SyncWindow(window_);
-        Log("Display: window %dx%d, monitor %d", cfg.windowWidth, cfg.windowHeight, cfg.displayIndex);
+        PlaceWindow();
+        if (cfg.maximized) {
+            SDL_MaximizeWindow(window_);
+            SDL_SyncWindow(window_);
+        }
+        Log("Display: window %dx%d%s, monitor %d", cfg.windowWidth, cfg.windowHeight, cfg.maximized ? " (maximized)" : "",
+            cfg.displayIndex);
     } else if (cfg.fullscreen == FullscreenMode::Borderless) {
         SDL_Rect b{0, 0, cfg.windowWidth, cfg.windowHeight};
         SDL_GetDisplayBounds(target, &b);
@@ -90,6 +294,7 @@ void CD3DApplication::ApplyDisplaySettings() {
             SDL_SetWindowBordered(window_, false);
             SDL_SetWindowPosition(window_, b.x, b.y);
             SDL_SetWindowSize(window_, b.w, b.h + 1);
+            GetDevice().SetHiddenBottomRows(1);
             SDL_SyncWindow(window_);
             SDL_RaiseWindow(window_);
         } else {
@@ -106,27 +311,34 @@ void CD3DApplication::ApplyDisplaySettings() {
         SDL_SetWindowResizable(window_, true);
         SDL_SetWindowPosition(window_, SDL_WINDOWPOS_CENTERED_DISPLAY(target), SDL_WINDOWPOS_CENTERED_DISPLAY(target));
         SDL_SyncWindow(window_);
+        // the chosen size (or the desktop's) at the chosen refresh rate (or the desktop's): SDL
+        // picks the closest mode the monitor has
         SDL_DisplayMode mode{};
         bool have = false;
-        if (cfg.fullscreenWidth > 0 && cfg.fullscreenHeight > 0)
-            have = SDL_GetClosestFullscreenDisplayMode(target, cfg.fullscreenWidth, cfg.fullscreenHeight, 0.f, true, &mode);
-        if (!have) {
-            if (const SDL_DisplayMode* desk = SDL_GetDesktopDisplayMode(target)) {
-                mode = *desk;
-                have = true;
-            }
+        const SDL_DisplayMode* desk = SDL_GetDesktopDisplayMode(target);
+        int w = cfg.fullscreenWidth, h = cfg.fullscreenHeight;
+        if ((w <= 0 || h <= 0) && desk) w = desk->w, h = desk->h;
+        if (w > 0 && h > 0) have = SDL_GetClosestFullscreenDisplayMode(target, w, h, cfg.fullscreenRefresh, true, &mode);
+        if (!have && desk) {
+            mode = *desk;
+            have = true;
         }
         SDL_SetWindowFullscreenMode(window_, have ? &mode : nullptr);
         SDL_SetWindowFullscreen(window_, true);
         SDL_SyncWindow(window_);
         Log("Display: exclusive %dx%d @ %.0f Hz, monitor %d", mode.w, mode.h, mode.refresh_rate, cfg.displayIndex);
     }
+    if (glContext_) ApplyVSync();  // (the monitor and its refresh rate may have changed: judged afresh)
 }
 
+// Alt+Enter / F11: from a window to the fullscreen mode used last (borderless, or exclusive at its
+// chosen resolution), from either fullscreen back to the window; saved like a menu change.
 void CD3DApplication::ToggleFullscreen() {
     Config& cfg = GetConfig();
-    cfg.fullscreen = cfg.fullscreen == FullscreenMode::Windowed ? FullscreenMode::Borderless : FullscreenMode::Windowed;
+    if (windowChangedAt_) SaveWindowState();  // a window just moved to another monitor goes fullscreen there
+    cfg.fullscreen = cfg.fullscreen == FullscreenMode::Windowed ? cfg.lastFullscreen : FullscreenMode::Windowed;
     ApplyDisplaySettings();
+    if (!cfg.Save()) Log("Config: could not save %s", cfg.path.c_str());
 }
 
 HRESULT CD3DApplication::Create(const std::vector<std::string>& args) {
@@ -163,27 +375,40 @@ HRESULT CD3DApplication::Create(const std::vector<std::string>& args) {
         return E_FAIL;
     }
     SDL_SetWindowMinimumSize(window_, 320, 240);
+    LogDisplays();
+    {
+        int before = cfg.displayIndex;
+        std::string name = cfg.displayName;
+        ResolveDisplay();
+        if (cfg.displayIndex != before || cfg.displayName != name) cfg.Save();
+    }
     if (cfg.displayIndex > 0) {
         int n = 0;
         SDL_DisplayID* ids = SDL_GetDisplays(&n);
-        if (ids && cfg.displayIndex <= n) {
-            SDL_DisplayID d = ids[cfg.displayIndex - 1];
-            SDL_SetWindowPosition(window_, SDL_WINDOWPOS_CENTERED_DISPLAY(d), SDL_WINDOWPOS_CENTERED_DISPLAY(d));
-        } else {
+        if (!ids || cfg.displayIndex > n)
             Log("Config: display %d not found (%d connected), using the primary monitor", cfg.displayIndex, n);
-        }
         SDL_free(ids);
     }
+    if (cfg.firstRun) {
+        // a fresh ini: the largest 4:3 window that fits the monitor, kept from now on
+        DefaultWindowSize(cfg.displayIndex, &cfg.windowWidth, &cfg.windowHeight);
+        SDL_SetWindowSize(window_, cfg.windowWidth, cfg.windowHeight);
+        cfg.Save();
+        Log("Display: first start, window %dx%d", cfg.windowWidth, cfg.windowHeight);
+    }
+    PlaceWindow();
     glContext_ = SDL_GL_CreateContext(window_);
     if (!glContext_) {
         Log("OpenGL 3.3 context creation failed: %s", SDL_GetError());
         return E_FAIL;
     }
     SDL_GL_MakeCurrent(window_, (SDL_GLContext)glContext_);
-    SDL_GL_SetSwapInterval(cfg.vsync ? 1 : 0);
+    adaptiveSupported_ = SDL_GL_SetSwapInterval(-1);  // can the driver do adaptive VSync?
+    ApplyVSync();
     if (!GetDevice().Init(window_)) return E_FAIL;
     if (cfg.fullscreen != FullscreenMode::Windowed) ApplyDisplaySettings();
     SDL_ShowWindow(window_);
+    if (cfg.fullscreen == FullscreenMode::Windowed && cfg.maximized) SDL_MaximizeWindow(window_);
     m_bActive = true;
 
     g_timeBase = SDL_GetTicks();
@@ -208,6 +433,7 @@ void CD3DApplication::UpdateStats() {
         m_fFPS = statsFrames_ / (t - statsLastTime_);
         statsFrames_ = 0;
         statsLastTime_ = t;
+        JudgeVSync();
     }
 }
 
@@ -331,9 +557,19 @@ int CD3DApplication::Run() {
                 case SDL_EVENT_WINDOW_MINIMIZED: m_bActive = false; break;
                 case SDL_EVENT_WINDOW_RESTORED:
                 case SDL_EVENT_WINDOW_MAXIMIZED:
+                    WindowChanged(AppTimeMs());
+                    [[fallthrough]];
                 case SDL_EVENT_WINDOW_SHOWN:
                     if (!m_bActive) m_dwLastFrameTime = AppTimeMs();
                     m_bActive = true;
+                    break;
+                case SDL_EVENT_WINDOW_RESIZED:
+                case SDL_EVENT_WINDOW_MOVED:
+                case SDL_EVENT_WINDOW_DISPLAY_CHANGED: WindowChanged(AppTimeMs()); break;
+                case SDL_EVENT_DISPLAY_ADDED:
+                case SDL_EVENT_DISPLAY_REMOVED:
+                    LogDisplays();
+                    ResolveDisplay();  // (the numbers may have moved)
                     break;
                 case SDL_EVENT_KEY_DOWN:
                     if (!e.key.repeat && ((e.key.scancode == SDL_SCANCODE_RETURN && (e.key.mod & SDL_KMOD_ALT)) ||
@@ -370,6 +606,7 @@ int CD3DApplication::Run() {
         if (quit_) break;
         if (Midi::PollFinished()) OnMidiNotifySuccessful();
         DWORD now = AppTimeMs();
+        if (windowChangedAt_ && now - windowChangedAt_ >= kWindowSettleMs) SaveWindowState();
         if (!auto_.empty()) HandleAutomation(now);
         if (!m_bActive || !m_bReady) continue;
 
@@ -377,19 +614,26 @@ int CD3DApplication::Run() {
         bool menuOpen = menu_->IsOpen();
         bool force = cfg.interpolation || menuOpen;
         int cap = menuOpen ? 60 : cfg.maxFps;
-        if (force && cap > 0) {
+        bool capped = force && cap > 0;
+        if (capped) {
             double minDt = 1.0 / cap;
-            double dt = (double)(SDL_GetPerformanceCounter() - lastPresent) / perfFreq;
+            uint64_t counter = SDL_GetPerformanceCounter();
+            double dt = (double)(counter - lastPresent) / perfFreq;
             if (dt < minDt) {
                 SDL_DelayPrecise((uint64_t)((minDt - dt) * 1e9 * 0.9));
                 continue;
             }
+            // the next frame is due one interval after this one was due, not after it is drawn
+            // (else the drawing time adds to every frame: a limit of 60 gave 58); a frame more
+            // than an interval late starts the count again from now
+            lastPresent = dt < 2 * minDt ? lastPresent + (uint64_t)(minDt * perfFreq) : counter;
         }
         DWORD before = m_dwLastFrameTime;
         if (FAILED(Render3DEnvironment(now, force))) quit_ = true;
         if (!force && m_dwLastFrameTime == before) SDL_Delay(1);  // original only renders on tick boundaries
-        else lastPresent = SDL_GetPerformanceCounter();
+        else if (!capped) lastPresent = SDL_GetPerformanceCounter();
     }
+    if (windowChangedAt_) SaveWindowState();  // a resize or move just before quitting
     DeleteDeviceObjects();
     FinalCleanup();
     return 0;

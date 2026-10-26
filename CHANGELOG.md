@@ -7,6 +7,165 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.13] - 2026-10-26
+
+- **HUD settings**: Options > Video > HUD position, HUD max width and HUD size now work.
+  - **HUD position** (widescreen): Centered keeps the HUD where the original has it, inside the
+    middle 4:3 area (the default); Edges moves the level information to the left edge, the
+    players' panels to the right edge and the FPS counter to the bottom-right corner.
+  - **HUD max width**: with Edges, how far the HUD may spread on very wide screens (21:9 by
+    default, so a 32:9 screen keeps it off the far corners).
+  - **HUD size**: 50% to 200%, each part growing from its corner (the FPS counter too). When the
+    level information and the panels would meet (two players on a boss level, or a narrow
+    screen), the HUD stops at the largest size that fits.
+- HUD position now starts as Centered. Settings files from earlier versions are set back to
+  Centered once (the setting did nothing before).
+- Fixed: in a two-player game, when both mages lost gold at once, player 1's "you have lost ...
+  gold" message covered the top of player 2's, clipping its mage icon (a slip in the original
+  game too). Player 2's message is now a little lower, so both show in full.
+- The original game's known slips and quirks, and what this port does about each, are now listed
+  at the end of `docs/REVERSE_ENGINEERING.md`.
+
+## [0.4.12] - 2026-10-26
+
+- **Test shortcut to the ending**: press F3 during a level to jump straight to the ending, or
+  start the game with `--ending` to open on it. Like the other test keys (N / B, F2), nothing
+  is saved.
+
+## [0.4.11] - 2026-10-26
+
+- **The ending in widescreen**: the black film-strip bands at the top and bottom of the ending now
+  run the whole width of a wide screen, where before the corridor showed through above and below
+  them at the sides. The credits now slide in from the edge of the wide screen and out past the
+  other edge, instead of waiting in view at the right and vanishing at the left. In 4:3 nothing
+  changes.
+
+## [0.4.10] - 2026-10-25
+
+- **The Saito Games logo fills widescreen**: the white behind the logo at start-up now reaches
+  the edges of a wide screen (16:9, 21:9 and wider) instead of stopping with black bars at the
+  sides. The logo itself is unchanged, and in 4:3 nothing changes.
+
+## [0.4.9] - 2026-10-25
+
+- **The shop takes your usual keys**: buying an item or choosing EXIT now works with any key
+  that fires or jumps for you in the level, and with Enter. Before, only Right Shift and Right
+  Ctrl worked on the keyboard (player 2: Left Shift and Left Ctrl), as in the original, so the
+  `[` and `]` keys, the one-player Left Shift / Left Ctrl and Enter did nothing in the shop.
+  Keys you changed in Options > Controls count too.
+
+## [0.4.8] - 2026-10-25
+
+- **The shop in widescreen**: the shop's board and items now slide in from the edges of a wide
+  screen (and back out to them) instead of popping up at the sides, and the level behind the shop
+  is dimmed across the whole screen while it is open, so the menu stands out. The life, gold and
+  magic display stays bright. In 4:3 the shop is exactly the original, without the dimming.
+
+## [0.4.7] - 2026-10-25
+
+- **The green background fills widescreen**: the scrolling green tiles behind the title, the save
+  slots and level select now cover the whole screen in widescreen (16:9, 21:9 and wider), where
+  before the left edge was black and the right edge partly so. The middle is exactly the
+  original's, and in 4:3 nothing changes.
+- **Fades cover the whole screen**: the striped fade between screens (and when a level starts or
+  ends) now reaches the edges of a wide screen instead of only the middle.
+
+## [0.4.6] - 2026-10-25
+
+- **Widescreen sound**: sounds are panned left and right by where they happen, as in the
+  original. In widescreen, things at the edges of the wider screen sounded much quieter than at
+  the edges of the original screen, and on 21:9 some objects you could see made no sound at all.
+  The panning now follows the shape of the window (any size, even while you resize it), so a
+  sound at the edge of a wide screen is as loud and as far to that side as one at the edge of the
+  original. In 4:3 nothing changes.
+
+## [0.4.5] - 2026-10-25
+
+- **No more pop-in at the edges in widescreen**: tall pillars, hammers and other objects near the
+  back of a level or down in its pits could appear and vanish at the left and right edges of a
+  wide screen. The original only draws objects close to the middle of its 4:3 view; the game now
+  draws as far as the wider view reaches (at 4:3 it is exactly the original). What objects do,
+  and when enemies wake up, is unchanged.
+- Ultrawide (21:9) now plays properly: every object, enemy and boss shows and behaves normally
+  right to the edges of the screen.
+
+## [0.4.4] - 2026-10-25
+
+- **Adaptive VSync**: Options > Video > VSync is now Off, On or Adaptive. Adaptive waits for the
+  screen like On, but a picture that comes too late shows at once (a little tearing instead of
+  a stutter). It is offered when your graphics driver supports it.
+- **VSync tells you when it isn't in charge**: your graphics driver's own setting (NVIDIA
+  Control Panel, AMD Software) can override the game's. When the frame rate shows that it does,
+  the VSync row's help line says so. The log records what took effect.
+- Fixed: the frame limit ran slightly slow (60 gave 58 frames a second); it is exact now.
+- The help lines for VSync, Smooth motion and Frame limit explain how the three work together.
+
+## [0.4.3] - 2026-10-25
+
+- **Monitors are remembered by name**: if you plug monitors in or out, or Windows renumbers
+  them, the game still opens on the monitor you chose. If that monitor isn't connected, the game
+  uses your main monitor and goes back to the chosen one once it is there again.
+- **Clearer Monitor row**: Options > Video > Monitor shows the monitor's number and resolution,
+  and the line below it the full name and refresh rate. The log (`magebros_native.log`) lists
+  every monitor at each start.
+- Fixed: going back to a window could put it on another monitor than the one chosen (where it
+  had been before), and F11 then went fullscreen there. A remembered position now only counts on
+  the chosen monitor, and F11 goes fullscreen on the monitor the window has just been moved to.
+- Fixed: in borderless fullscreen the picture was laid out one row taller than the screen
+  (an extra row kept off the screen so graphics drivers don't switch to exclusive mode). It now
+  fits the screen exactly.
+
+## [0.4.2] - 2026-10-25
+
+- **Refresh rate for exclusive fullscreen**: Options > Video has a new Refresh rate row. In
+  exclusive fullscreen you can pick any rate your monitor offers at the chosen resolution (60,
+  120, 144, 165 Hz...), or Desktop, your desktop's own rate (the default, as before). It is
+  applied with Enter and the usual keep / revert question. The game itself still runs at the
+  same speed; this only sets how often the screen refreshes.
+- **A shorter resolution list** for exclusive fullscreen: modes smaller than the game's
+  640 x 480 are gone, Desktop comes last, and the list stops at its ends instead of jumping from
+  Desktop to the smallest mode.
+- While a display change waits for Enter, the `*` now marks only the rows that will change.
+
+## [0.4.1] - 2026-10-25
+
+- **The window remembers itself**: its size (resizing it by dragging the edges too), where it
+  was, whether it was maximized and which monitor it was on are saved and restored on the next
+  start. If that spot is no longer on a monitor (one was unplugged, say) it opens centred.
+- **F11 / Alt+Enter** now goes from the window to the fullscreen mode you used last, borderless
+  or exclusive, and the choice is saved.
+- **Window sizes**: Options > Video > Resolution lists the game's own 4:3 sizes first, from
+  640 x 480 up, with whole multiples marked "2x", "3x" and so on (the 2D art scales evenly at
+  those), then wider sizes. Only sizes that fit your monitor with the title bar are offered.
+- **The first start** opens the largest 4:3 window that fits your monitor, instead of always
+  1280 x 960 (2560 x 1920 on a 4K screen). "Reset all settings" does the same.
+- A window on a monitor with a different Windows display scale no longer grows a little every
+  time the game starts.
+
+## [0.4.0] - 2026-10-25
+
+Stage 7 begins: the options menu (F10 or gamepad Start), brought over from Hopmon Native, is
+now made for Mage Bros.
+
+- **Pause**: P pauses and resumes the game, as in the original (the manual's "P: Pause").
+- **FPS counter**: Options > Video > Show FPS now shows the original's own frames-per-second
+  counter in the bottom right of every screen.
+- **Music pauses** while the game window is in the background, as in the original.
+- **Replacement music works**: MP3 or FLAC files named `Music01` to `Music06` in a `music`
+  folder next to `MageBros.exe` now play instead of the MIDI tracks (Options > Audio > Music
+  source).
+- **Controls**: the keyboard page now has player 1's keys, player 2's keys and the general keys
+  (select, pause, back), each of which can be rebound. The gamepad page sets the fire and jump
+  buttons. In the menu, Ctrl now selects as Enter does (Z and X, Hopmon's keys, no longer do).
+- **The menu** plays the title menu's sounds. It offers **Main menu**, back to the title, and
+  in a level also **Level select**, which leaves the level for the world map with your gold,
+  life, magic and wand as they were when the level started (neither saves the level you leave). It opens only
+  while you can play: not during the logo, the ending, the fades or a mage's death.
+- Settings that aren't ready for Mage Bros. yet are greyed out: the HUD options, the field of
+  view, cheats and mods. Hopmon's two cheats are gone. The ini's notes on keys, buttons, the HUD
+  and cheats describe Mage Bros. now; an older ini is rewritten with them, keeping your settings.
+- The whole game has been played from start to finish on 0.3.6: stages 5 and 6 are complete.
+
 ## [0.3.6] - 2026-10-24
 
 - **The ending**: clearing World 4's last level now plays the original's ending instead of

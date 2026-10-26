@@ -26,6 +26,7 @@
 class BackBuffer;
 class Device;
 class XEndingObject;
+class XFPSDisplay;
 class XLogoObject;
 class XTitleObject;
 class XSelectSlot;
@@ -48,9 +49,23 @@ public:
     // XApplication::FrameMove: `n` ticks of the running screen (at most 10), then any change of
     // screen
     void FrameMove(unsigned n);
-    // XApplication::Render: the running screen (the device state set by the caller)
-    void Render(Device* d, BackBuffer* bb);
+    // XApplication::Render: the running screen, then the FPS display when it is on (`fps`: the
+    // framework's frames per second; the device state set by the caller)
+    void Render(Device* d, BackBuffer* bb, bool showFps, int fps);
     bool QuitRequested() const { return quit_; }
+    // Native additions for the options menu: the logo or the title is running (or about to);
+    // a screen waits for the player (running, not fading, not the logo or the ending; in a level,
+    // a mage under the player's control)
+    bool OnLogoOrTitle() const;
+    bool PlayerHasControl() const;
+    // Native addition (the options menu's "Level select"): leave the level being played for
+    // level select, with the save as it was when the level started (no gold, life, magic or
+    // purchases from the abandoned level are kept, and nothing is written)
+    void MarkLevelStart() { levelStart_ = saveData_; }
+    void LeaveLevel() {
+        saveData_ = levelStart_;
+        state_ = SELECT_LEVEL;
+    }
 
     JSoundList& Sounds() { return sounds_; }
     JDInput& GetDInput() { return dinput_; }  // the menus' input, updated by each screen
@@ -63,6 +78,7 @@ public:
     }
     // JMidiList::Stop: the music stops, and the next PlayMusic starts its track again
     void StopMusic();
+    int CurrentMusic() const { return currentMusic_; }  // the track playing (1..6), 0 for none
     int TakeMusicRequest() {
         int t = musicRequest_;
         musicRequest_ = 0;
@@ -108,7 +124,9 @@ private:
     int musicRequest_ = 0;
     int currentMusic_ = 0;  // JMidiList's current track (0: none)
     std::unique_ptr<XStatusDisplay> statusDisplay_;
+    std::unique_ptr<XFPSDisplay> fpsDisplay_;  // +0x1cc
     XSaveData saveData_;  // +0x1d4
+    XSaveData levelStart_;  // (native) saveData_ as the current level began
     int slot_ = -1;       // +0x1a8: the slot of the save being played, -1 for none
     bool onePlayer_ = true;
 };

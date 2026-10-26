@@ -1,5 +1,5 @@
 // A Direct3D 7 style immediate-mode device implemented on OpenGL 3.3.
-// Only the subset of D3D7 / DirectDraw used by Hopmon is provided, but it is
+// Only the subset of D3D7 / DirectDraw used by the Saito engine is provided, but it is
 // emulated faithfully (fixed-function lighting, flat/gouraud shading, blend
 // modes, cull mode, texture stage 0 ops). Rendering enhancements live here too.
 #pragma once
@@ -72,12 +72,20 @@ public:
     // outward (left items by -HudEdgeShift(), right items by +HudEdgeShift()). 0 unless
     // aspect = widescreen and hud_layout = 1.
     int HudEdgeShift() const;
-    // HUD size (enhancement): while set, 2D blits are scaled by `scale` around the virtual-space
-    // point (anchorX, anchorY). The game's HUD code wraps each HUD group with these.
-    void BeginHudScale(float scale, float anchorX, float anchorY);
+    // The x range the view shows this frame, in the original's 640 x 480 pixels: 0 to 640 at 4:3
+    // and in Stretch, beyond both edges in widescreen (the window's shape as laid out, so any
+    // window size counts, resized or not).
+    void ViewXRange(int* left, int* right) const;
+    // HUD size and position (enhancement): while set, 2D blits are scaled by `scale` around the
+    // point (anchorX, anchorY) in the original's 640 x 480 pixels, then moved `shiftX` across. The
+    // game's HUD code wraps each HUD group with these (scale 1 and shift 0 draw as without them).
+    void BeginHudScale(float scale, float anchorX, float anchorY, float shiftX = 0.f);
     void EndHudScale();
     // fov_scale applies only while a level is on screen (set by the game every frame).
     void SetGameplayView(bool on) { gameplayView_ = on; }
+    // Rows at the bottom of the window that are off the screen (the borderless window's extra
+    // row): the picture is laid out on the rows above them (from the next frame on).
+    void SetHiddenBottomRows(int n) { hiddenBottomRows_ = n; }
     // Screen area used by the top-left HUD group this frame (virtual space), so the FPS counter
     // can step out of its way at large HUD sizes. Reset every frame.
     void SetHudTopLeftExtent(float right, float bottom) { hudTLRight_ = right; hudTLBottom_ = bottom; }
@@ -121,8 +129,9 @@ public:
     void SetWorldOffset(const D3DVECTOR& v) { worldOffset_ = v; }
 
 private:
-    float hudScale_ = 1.f, hudAnchorX_ = 0.f, hudAnchorY_ = 0.f;
+    float hudScale_ = 1.f, hudAnchorX_ = 0.f, hudAnchorY_ = 0.f, hudShiftX_ = 0.f;
     bool gameplayView_ = false;
+    int hiddenBottomRows_ = 0;
     float hudTLRight_ = -1e9f, hudTLBottom_ = 0.f;
     void ComputeLayout();
     void CreateTargets();

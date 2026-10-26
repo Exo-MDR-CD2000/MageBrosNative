@@ -63,6 +63,7 @@ public:
     void SetNumDigits(int n) { numDigits_ = n; }
     void SetDisplayZero(bool z) { displayZero_ = z; }
     void SetPosition(int x, int y) { x_ = x, y_ = y; }
+    int GetPosIntX() const { return x_; }
     int GetDigitWidth() const { return digits_.GetWidth() / 3; }
     int GetWidth() const { return GetDigitWidth() * numDigits_; }
     int GetHeight() const { return digits_.GetHeight(); }

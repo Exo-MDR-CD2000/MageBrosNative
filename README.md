@@ -5,14 +5,19 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 6 of 7 in progress (version 0.3.6).** The engine runs (window, OpenGL
-> renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
-> explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
-> boss included, by one player or two. The front end has begun: the game opens on the
-> original's logo, title screen, save slots and level select, levels fade in and out,
-> progress is saved, the shop sells potions and wands, each with its own shots, and clearing
-> 4-10 plays the ending. Next: checks of the whole front end (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
-> for what changed in each version.
+> **Status: stage 7 of 7 in progress (version 0.4.13).** The whole original game is in and plays
+> from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
+> two, with the original's logo, title, save slots, level select, shop, saving and ending.
+> Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
+> pause and FPS counter, rebinding both players' keys, replacement music); the window, monitors,
+> exclusive fullscreen and VSync are done; widescreen, 16:9 and 21:9 included, shows the levels
+> without pop-in at the edges, with the sound panned to match, and the title, save slots and level
+> select with their green background filled out to the edges, the shop sliding in from the edges
+> over a dimmed level, the start-up logo white to the edges, and the ending's film strips across the
+> whole width; the HUD can be moved to the screen's edges and resized. The game's logic and speed
+> are the original's at any resolution, refresh rate and frame rate. Next: the field of view. See
+> [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
+> changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
 > images, models, levels, sounds, music or text. Everything is read at runtime from the original
@@ -75,9 +80,11 @@ other, and one can stand on the other's head and be carried along, or up and dow
 4-5, 4-8) and the original's MAGIC SHOP opens, pausing the level. The shopper buys with their own
 gold: a heal potion (20 gold, one more heart), a magic potion (100, a faster magic refill) and
 two wands that depend on the world. What you can't afford or already have is greyed out. Move
-with the shopper's own direction keys and buy with their fire or jump key (player 1: arrows,
-Right Shift or Right Ctrl; player 2: W A S D, Left Shift or Left Ctrl; or their gamepad). Choose
-EXIT to leave. As in the original, Escape also leaves the shop, but it gives up the level too.
+with the shopper's own direction keys and buy with any of their fire or jump keys or Enter
+(player 1: arrows, Right Shift, Right Ctrl, `[` or `]`, and in a one-player game Left Shift or
+Left Ctrl too; player 2: W A S D, Left Shift, Left Ctrl, `1` or `2`; or their gamepad; changed
+keys count). The original took only Right Shift / Right Ctrl (player 2: Left Shift / Left Ctrl).
+Choose EXIT to leave. As in the original, Escape also leaves the shop, but it gives up the level too.
 Each wand fires its own pattern: the double wand two shots side by side, the triple wand a
 shot and two smaller ones spread wider, and the X wands the same in homing shots that curve
 towards the nearest enemy (or the boss).
@@ -89,8 +96,51 @@ button (Enter, Shift, Ctrl, a gamepad button or Escape) to return to the logo.
 Defeated enemies drop coins. After a lost level, or a world's last level, the game saves and
 returns to level select; world 4 opens once worlds 1 to 3 are cleared.
 
-In the game view N / B change level and F2 switches between one and two players (test keys:
-a game started with them is not saved). Tab switches to the **level viewer**: every one of the 40
+**Pause and options**: P pauses and resumes, as in the original. F10 (or gamepad Start) opens
+the options menu whenever you can play (not during the logo, the ending, a fade or a death): video,
+graphics, audio and controls, Main menu (back to the title), Level select in a level (leaving it
+as you were when it started) and Quit. The controls page rebinds
+player 1's keys, player 2's keys, the general keys (select, pause, back) and the gamepad's fire and
+jump buttons. Options > Video > Show FPS shows the original's frames-per-second counter. Smooth
+motion (on by default) draws at the monitor's refresh rate; off, the picture is drawn only when the
+game ticks, at most 100 times a second, as the original. The game's speed is the same either way.
+Settings not ready for Mage Bros. yet (the field of view, cheats and mods) are greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
+to replace the MIDI music.
+
+**The window** opens where you left it, at the size you left it (maximized too), on the same
+monitor; the first start opens the largest 4:3 window that fits the monitor. Alt+Enter or F11
+switches between the window and the fullscreen mode you used last (borderless or exclusive), and
+is remembered. Exclusive fullscreen can run at any resolution and refresh rate your monitor has
+(Options > Video > Resolution and Refresh rate). Window sizes are real screen pixels: with Windows display scaling above 100% the
+window looks smaller than its numbers suggest. Monitors are remembered by name, so the game finds
+the right one even after they are plugged in or out.
+
+**VSync** (Options > Video) is Off, On or Adaptive (on, but a late picture shows at once instead of
+waiting); the line under it tells you if your graphics driver's own setting seems to override it.
+With Smooth motion on, Frame limit caps the frames a second.
+
+**Widescreen** (Options > Video > Aspect): 4:3 is the original picture with black bars, Stretch
+pulls it wider, and Widescreen widens the 3D view of the levels to fill the screen (16:9, 16:10,
+21:9 and so on), showing more of the level to the left and right with nothing popping in at the
+edges. The camera is the original's (45° lens, 340 away, 35° above) in every mode; widescreen only
+widens it. Sounds are panned to match the wider screen too, whatever shape the window is. The
+start-up logo is white to the edges, the scrolling green background of the title, save slots and
+level select fills the whole width, and the fades between screens cover it. The shop slides in
+from the screen's edges and dims the level across the whole width while it is open, and the
+ending's film strips run edge to edge with the credits sliding in from the screen's edge. The
+menus themselves stay in a 4:3 area in the middle.
+
+**HUD** (Options > Video): HUD position (widescreen) is Centered, the original's place inside the
+middle 4:3 area (the default), or Edges: the level and torches at the left edge, the players'
+panels at the right edge and the FPS counter in the bottom-right corner. HUD max width keeps the
+Edges HUD within 16:9, 16:10, 21:9 or 32:9 on wider screens (21:9 by default). HUD size, 50% to
+200%, grows each part from its corner, in any aspect mode; when the level information and the
+players' panels would meet (two players on a boss level, or a 4:3 screen), the HUD stops at the
+largest size that fits. Level select keeps the original's layout.
+
+In the game view N / B change level, F2 switches between one and two players and F3 jumps to the
+ending (test keys: a game started with them is not saved; `--ending` on the command line starts
+the game at the ending). Tab switches to the **level viewer**: every one of the 40
 levels, built by the original's own map code with each world's textures. The goal, coins and
 torches use their real models; other objects are colour-coded markers (blue platforms, brown objects, grey
 fences, red enemies, large magenta bosses).
@@ -187,7 +237,8 @@ third_party  ColDet 1.2 (the original's collision library), TinySoundFont, dr_li
              font8x8
 tools        MageBrosAssets
 tests        format and collision tests; map and hero tests on your copy (-DMBN_GAME_EXE)
-docs         REVERSE_ENGINEERING.md (what the original is made of), ROADMAP.md
+docs         REVERSE_ENGINEERING.md (what the original is made of, and at its end the
+             original's bugs and quirks with what the port does about each), ROADMAP.md
 CLAUDE.md    contributor handoff: project rules, build/test/RE workflow, current status, next steps
 ```
 

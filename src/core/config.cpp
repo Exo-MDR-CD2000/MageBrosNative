@@ -54,10 +54,22 @@ bool Config::Load(const std::string& file) {
             if (k == "width") windowWidth = std::max(320, iv);
             else if (k == "height") windowHeight = std::max(240, iv);
             else if (k == "fullscreen_width") fullscreenWidth = iv <= 0 ? 0 : std::max(320, iv);
+            else if (k == "fullscreen_refresh") fullscreenRefresh = std::clamp((float)atof(v.c_str()), 0.f, 1000.f);
             else if (k == "fullscreen_height") fullscreenHeight = iv <= 0 ? 0 : std::max(240, iv);
             else if (k == "fullscreen") fullscreen = (FullscreenMode)std::clamp(iv, 0, 2);
+            else if (k == "last_fullscreen") lastFullscreen = iv == 2 ? FullscreenMode::Exclusive : FullscreenMode::Borderless;
+            else if (k == "maximized") maximized = toBool(v);
+            else if (k == "window_x" || k == "window_y") {
+                // both must be numbers; an empty value means "centred"
+                if (v.empty()) windowPosSet = false;
+                else {
+                    (k == "window_x" ? windowX : windowY) = iv;
+                    windowPosSet = true;
+                }
+            }
             else if (k == "display") displayIndex = std::max(0, iv);
-            else if (k == "vsync") vsync = toBool(v);
+            else if (k == "display_name") displayName = v;
+            else if (k == "vsync") vsync = iv == 2 || v == "adaptive" ? 2 : toBool(v) ? 1 : 0;
             else if (k == "max_fps") maxFps = std::max(0, iv);
             else if (k == "interpolation") interpolation = toBool(v);
             else if (k == "msaa") msaa = std::clamp(iv, 0, 16);
@@ -107,8 +119,6 @@ bool Config::Load(const std::string& file) {
             else seen = before;
         } else if (section == "cheats") {
             if (k == "unlock_all_levels") unlockAllLevels = toBool(v);
-            else if (k == "infinite_fire_energy") infiniteFireEnergy = toBool(v);
-            else if (k == "no_crystal_slowdown") noCrystalSlowdown = toBool(v);
             else seen = before;
         } else if (section == "mods") {
             if (k == "pack") modPack = v.empty() ? "original" : v;
@@ -132,6 +142,16 @@ bool Config::Load(const std::string& file) {
             Log("Config: ignoring unknown setting '%s' in [%s]", k.c_str(), section.c_str());
     }
     fclose(f);
+    // config_version 20: [video] hud_layout defaults to 0 (the original's place); files written
+    // before it had 1 (Hopmon Native's default) while the setting did nothing, so it is reset
+    if (version > 0 && version < 20) hudLayout = 0;
+    // config_version 19: [video] vsync 2 (adaptive)
+    // config_version 18: [video] display_name
+    // config_version 17: [video] fullscreen_refresh
+    // config_version 16: [video] window_x / window_y, maximized and last_fullscreen; the window's
+    // size, position and monitor and Alt+Enter / F11 are saved
+    // config_version 15: the [keys] and [gamepad] notes describe Mage Bros.' keys, and Hopmon's
+    // two cheats are gone
     // config_version 14: [mods] lists add-ons with the winner first (it was last before)
     if (version > 0 && version < 14) std::reverse(mods.begin(), mods.end());
     return true;
@@ -174,29 +194,64 @@ bool Config::Save() const {
     fprintf(f, "save_path = %s\n\n", savePath.c_str());
 
     P("[video]\n"
-      "; width / height: window size in pixels when fullscreen = 0 (the window can\n"
-      ";   also be resized by dragging; that size is not saved). Minimum 320 x 240.\n"
-      ";   Default 1280 x 960.\n");
+      "; width / height: window size when fullscreen = 0, in screen pixels (with\n"
+      ";   Windows display scaling above 100% a window looks smaller than these\n"
+      ";   numbers suggest). Resizing the window by dragging its edges is saved here.\n"
+      ";   Minimum 320 x 240. The first start picks the largest 4:3 size that fits\n"
+      ";   the monitor (the game is 640 x 480: 1280 x 960 is 2x, 1920 x 1440 3x).\n");
     fprintf(f, "width = %d\nheight = %d\n\n", windowWidth, windowHeight);
+    P("; window_x / window_y: where the window was last (its inside's top-left corner,\n"
+      ";   in desktop coordinates). Empty = centred on the monitor. Kept up to date\n"
+      ";   when you move the window; ignored if that spot is no longer on a monitor.\n");
+    if (windowPosSet) fprintf(f, "window_x = %d\nwindow_y = %d\n\n", windowX, windowY);
+    else fprintf(f, "window_x =\nwindow_y =\n\n");
+    P("; maximized: 1 = the window was maximized and opens maximized again; width and\n"
+      ";   height keep its size from before. 0 = not maximized (default).\n");
+    fprintf(f, "maximized = %d\n\n", maximized ? 1 : 0);
     P("; fullscreen: 0 = window (default)\n"
       ";             1 = borderless: a window without borders covering the whole\n"
       ";                 monitor at its desktop resolution. Alt+Tab works instantly.\n"
       ";                 (recommended)\n"
       ";             2 = exclusive fullscreen at fullscreen_width x fullscreen_height.\n"
       ";                 Alt+Tab minimizes the game.\n"
-      "; Alt+Enter or F11 switches between window and borderless while playing\n"
-      "; (not saved).\n");
+      "; Alt+Enter or F11 switches between the window and the fullscreen mode used\n"
+      "; last (last_fullscreen), and is saved.\n");
     fprintf(f, "fullscreen = %d\n\n", (int)fullscreen);
+    P("; last_fullscreen: the fullscreen mode Alt+Enter / F11 goes to from a window:\n"
+      ";   1 = borderless (default), 2 = exclusive. Set by itself whenever you use\n"
+      ";   one of them.\n");
+    fprintf(f, "last_fullscreen = %d\n\n", lastFullscreen == FullscreenMode::Exclusive ? 2 : 1);
     P("; fullscreen_width / fullscreen_height: the screen resolution used by\n"
       ";   exclusive fullscreen (fullscreen = 2). 0 = your desktop resolution\n"
       ";   (default). Other values pick the closest mode the monitor supports.\n");
     fprintf(f, "fullscreen_width = %d\nfullscreen_height = %d\n\n", fullscreenWidth, fullscreenHeight);
+    P("; fullscreen_refresh: the refresh rate (Hz) used by exclusive fullscreen.\n"
+      ";   0 = your desktop's refresh rate (default). Other values, e.g. 60, 144 or\n"
+      ";   165, pick the closest rate the monitor has at that resolution. Window and\n"
+      ";   borderless always run at the desktop's rate. The game itself always runs\n"
+      ";   100 steps a second; this only sets how often the screen is refreshed.\n");
+    fprintf(f, "fullscreen_refresh = %g\n\n", fullscreenRefresh);
     P("; display: which monitor to use. 0 = primary monitor (default),\n"
-      ";   1 = first monitor, 2 = second, ... in the order Windows lists them.\n");
+      ";   1 = first monitor, 2 = second, ... in the order Windows lists them (the\n"
+      ";   log, magebros_native.log, lists them at every start).\n"
+      ";   Moving the window to another monitor updates it.\n");
     fprintf(f, "display = %d\n\n", displayIndex);
-    P("; vsync: 1 = sync to the monitor's refresh rate, no tearing (default)\n"
-      ";        0 = render as fast as possible\n");
-    fprintf(f, "vsync = %d\n\n", vsync ? 1 : 0);
+    P("; display_name: that monitor's name, set by itself. While a monitor of that name\n"
+      ";   is connected it is used, whatever its number has become (after plugging\n"
+      ";   monitors in or out, say); while it isn't, the primary monitor is used.\n"
+      ";   Empty = go by the number alone.\n");
+    fprintf(f, "display_name = %s\n\n", displayName.c_str());
+    P("; vsync: 1 = wait for the monitor's refresh before showing each picture: no\n"
+      ";            tearing (default)\n"
+      ";        2 = adaptive: as 1, but a picture that is late shows at once (a\n"
+      ";            little tearing instead of a stutter); where the graphics driver\n"
+      ";            can't do it, the game uses 1 and says so in the log\n"
+      ";        0 = off: show each picture as soon as it is drawn (tearing). With\n"
+      ";            interpolation = 1 and max_fps = 0 that is as fast as the graphics\n"
+      ";            card can go; set max_fps to keep it down.\n"
+      "; Your graphics driver's own setting (NVIDIA Control Panel, AMD Software) can\n"
+      "; override this one; the options menu tells you when it seems to.\n");
+    fprintf(f, "vsync = %d\n\n", vsync);
     P("; max_fps: frame-rate cap. 0 = no cap (default). Any positive number, e.g. 60,\n"
       ";   144. Only applies when interpolation = 1; without interpolation the game\n"
       ";   draws at most 100 frames per second, like the original.\n");
@@ -241,12 +296,12 @@ bool Config::Save() const {
       ";   (default). Higher lifts dark and middle tones (whites stay white), lower\n"
       ";   darkens them.\n");
     fprintf(f, "brightness = %d\n\n", brightness);
-    P("; show_fps: 1 = show the original frames-per-second counter. 0 = hide\n"
-      ";   (default).\n");
+    P("; show_fps: 1 = show the original frames-per-second counter, at the bottom\n"
+      ";   right of every screen. 0 = hide (default).\n");
     fprintf(f, "show_fps = %d\n\n", showFps ? 1 : 0);
-    P("; hud_layout: where the in-game HUD (level, crystals, fire energy, FPS) goes\n"
-      ";   when aspect = 2. 1 = at the screen edges (default). 0 = original\n"
-      ";   position inside the centred 4:3 area. No effect with aspect 0 or 1.\n");
+    P("; hud_layout: where the in-game HUD (status display, FPS counter) goes\n"
+      ";   when aspect = 2. 0 = the original's place inside the centred 4:3 area\n"
+      ";   (default). 1 = at the screen edges. No effect with aspect 0 or 1.\n");
     fprintf(f, "hud_layout = %d\n\n", hudLayout);
     P("; hud_max_aspect: with hud_layout = 1, how far the HUD may spread on very\n"
       ";   wide screens, as an aspect ratio. 2.4 (default) = about 21:9, so on a\n"
@@ -254,9 +309,8 @@ bool Config::Save() const {
       ";   the far corners. 1.78 = 16:9. 0 = always use the full screen width.\n");
     fprintf(f, "hud_max_aspect = %.2f\n\n", hudMaxAspect);
     P("; hud_scale: size of the in-game HUD, 0.5 to 2.0. 1.0 = original size\n"
-      ";   (default). Each part grows or shrinks from its own screen corner: level\n"
-      ";   and crystals from the top-left, the fire gauge from the bottom-right,\n"
-      ";   the FPS counter from the top-right. Works with every aspect setting.\n");
+      ";   (default). Each part grows or shrinks from its own screen corner.\n"
+      ";   Works with every aspect setting.\n");
     fprintf(f, "hud_scale = %.2f\n\n", hudScale);
 
     P("[audio]\n"
@@ -304,27 +358,29 @@ bool Config::Save() const {
       "; (F10, F11 and F12 are reserved for the options menu, fullscreen and screenshots.)\n"
       ";\n"
       ";   code  original key   used for\n"
-      ";   0xC8  Up arrow       move up / menu up      (also camera tilt with modifier)\n"
-      ";   0xD0  Down arrow     move down / menu down  (also camera tilt with modifier)\n"
-      ";   0xCB  Left arrow     move left / menu left  (also camera turn with modifier)\n"
-      ";   0xCD  Right arrow    move right / menu right(also camera turn with modifier)\n"
-      ";   0x2C  Z              fire / menu confirm\n"
-      ";   0x2A  Left Shift     fire / menu confirm\n"
-      ";   0x36  Right Shift    fire / menu confirm\n"
-      ";   0x2D  X              camera modifier (hold) / menu confirm\n"
-      ";   0x1D  Left Ctrl      camera modifier (hold) / menu confirm\n"
-      ";   0x9D  Right Ctrl     camera modifier (hold) / menu confirm\n"
-      ";   0x1C  Return         menu confirm\n"
-      ";   0x9C  Keypad Enter   menu confirm\n"
-      ";   0x01  Escape         menu back / give up the current level\n"
+      ";   0xC8  Up arrow       player 1 up / menu up\n"
+      ";   0xD0  Down arrow     player 1 down / menu down\n"
+      ";   0xCB  Left arrow     player 1 left / menu left\n"
+      ";   0xCD  Right arrow    player 1 right / menu right\n"
+      ";   0x9D  Right Ctrl     player 1 fire / menu select\n"
+      ";   0x1A  [              player 1 fire\n"
+      ";   0x36  Right Shift    player 1 jump / menu select\n"
+      ";   0x1B  ]              player 1 jump\n"
+      ";   0x11  W              player 2 up / menu up\n"
+      ";   0x1F  S              player 2 down / menu down\n"
+      ";   0x1E  A              player 2 left / menu left\n"
+      ";   0x20  D              player 2 right / menu right\n"
+      ";   0x1D  Left Ctrl      player 2 fire / menu select (player 1's too, alone)\n"
+      ";   0x02  1              player 2 fire\n"
+      ";   0x2A  Left Shift     player 2 jump / menu select (player 1's too, alone)\n"
+      ";   0x03  2              player 2 jump\n"
+      ";   0x1C  Return         menu select\n"
       ";   0x19  P              pause\n"
+      ";   0x01  Escape         menu back / give up the current level\n"
       ";\n"
       "; Examples (remove the leading ; to use):\n"
-      ";dik_0xC8 = Up, W\n"
-      ";dik_0xD0 = Down, S\n"
-      ";dik_0xCB = Left, A\n"
-      ";dik_0xCD = Right, D\n"
-      ";dik_0x2C = Z, Space\n");
+      ";dik_0x9D = Right Ctrl, Space\n"
+      ";dik_0x36 = Right Shift, Up\n");
     for (auto& kv : keyBinds) {
         fprintf(f, "dik_0x%02X = ", kv.first);
         for (size_t i = 0; i < kv.second.size(); i++) fprintf(f, "%s%s", i ? ", " : "", kv.second[i].c_str());
@@ -333,8 +389,9 @@ bool Config::Save() const {
     P("\n[gamepad]\n"
       "; Gamepad remapping. Format:  button_<n> = <button>[, <button>, ...]\n"
       "; <n> is the original joystick button number. The game uses only two:\n"
-      ";   button_0  fire / menu confirm        default: a (bottom face button)\n"
-      ";   button_1  camera modifier / confirm  default: b (right face button)\n"
+      ";   button_0  fire / menu select   default: a (bottom face button)\n"
+      ";   button_1  jump / menu select   default: b (right face button)\n"
+      "; Gamepad 1 plays player 1 and gamepad 2 player 2; both use these.\n"
       "; Movement is always the left stick and the d-pad.\n"
       "; Button names: a, b, x, y (positions as on an Xbox pad, same buttons on\n"
       "; PlayStation/Switch pads), back, start, leftshoulder, rightshoulder,\n"
@@ -350,25 +407,17 @@ bool Config::Save() const {
     }
     P("\n[cheats]\n"
       "; Game modifiers. All off by default; with them off the game plays exactly\n"
-      "; like the original.\n"
+      "; like the original. (Not used yet: the cheats come in a later version.)\n"
       ";\n"
       "; unlock_all_levels: 1 = every level can be chosen on the level-select\n"
       ";   screen, in the original game and in level packs. Your real progress (the\n"
       ";   highest level you have reached) is not changed, so turning this off again\n"
       ";   brings back exactly the levels you had unlocked. Default 0.\n");
-    fprintf(f, "unlock_all_levels = %d\n\n", unlockAllLevels ? 1 : 0);
-    P("; infinite_fire_energy: 1 = the fire gauge is always full, so Hopmon can\n"
-      ";   fire on every press instead of waiting for it to recharge. The game's\n"
-      ";   own limit of 3 shots on screen at once still applies. Default 0.\n");
-    fprintf(f, "infinite_fire_energy = %d\n\n", infiniteFireEnergy ? 1 : 0);
-    P("; no_crystal_slowdown: 1 = carrying crystals no longer slows Hopmon down;\n"
-      ";   every hop takes the normal 0.4 seconds however many he carries.\n"
-      ";   Default 0.\n");
-    fprintf(f, "no_crystal_slowdown = %d\n", noCrystalSlowdown ? 1 : 0);
+    fprintf(f, "unlock_all_levels = %d\n", unlockAllLevels ? 1 : 0);
     P("\n[mods]\n"
       "; Level packs go in mods/levelpacks/, add-ons in mods/addons/ (next to this program);\n"
-      ";   see MODDING.md. Easiest: Options > Mods on the title screen.\n"
-      "; pack: the level pack to play. original = the original 45 levels (default);\n"
+      ";   (not used yet: mods come in a later version).\n"
+      "; pack: the level pack to play. original = the original 40 levels (default);\n"
       ";   otherwise the id of an installed level pack.\n");
     fprintf(f, "pack = %s\n", modPack.c_str());
     P("; One line per installed add-on, in load order: <add-on id> = on / off. When two\n"

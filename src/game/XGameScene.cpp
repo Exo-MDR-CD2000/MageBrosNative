@@ -53,6 +53,7 @@ void XGameScene::Start() {
 bool XGameScene::InitLevel() {
     const XLevelStatus& ls = app_->LevelStatus();
     if (!level_.Load(ls.currentWorld, ls.currentLevel)) return false;
+    app_->MarkLevelStart();  // (native: what the options menu's "Level select" goes back to)
     // objects not reconstructed yet keep their coloured markers
     level_.FilterMarkers([](const XLevelView::Object& o) { return !XLevelLoop::IsReconstructed(o.code); });
     // XGameObject::XGameObject makes both heroes; XGameObject::InitLevel resets hero B only in a
@@ -138,9 +139,17 @@ void XGameScene::UpdateInput() {
     std::copy(keys, keys + 256, prevKeys_);
 }
 
+// Native (widescreen): how much wider than the original's 4:3 the 3D view is, from the window's
+// shape as the renderer lays it out this frame (the width of the 480-high picture over 640), so
+// any window size or monitor counts, resized or not. 1 at 4:3 and in Stretch, 4/3 at 16:9.
+static float ViewWidthFactor() { return std::max(1.0f, GetDevice().Layout().virtualW / 640.0f); }
+
 void XGameScene::PlaySound(uint16_t waveId, float z) {
-    // XApplication::PlaySound: panned by the Z offset from the camera, silent beyond 480 units
-    float pan = (z - camera_.LookAt().z) / 240.0f;
+    // XApplication::PlaySound: panned by the Z offset from the camera, silent beyond 480 units.
+    // Native: the 240 (and so the 480) grows with the view's width, so a sound at the edge of a
+    // wide screen is placed and faded as one at the edge of the original's 4:3 screen (exactly
+    // the original at 4:3).
+    float pan = (z - camera_.LookAt().z) / (240.0f * ViewWidthFactor());
     if (!(pan > -2.0f && pan < 2.0f)) return;
     app_->Sounds().PlayStereo(waveId, pan, 1.0f);
 }
@@ -221,6 +230,13 @@ void XGameScene::ProcessFrame(unsigned n) {
     }
 }
 
+bool XGameScene::PlayerHasControl() const {
+    if (state_ != PROCESS || processType_ != PLAYING || !heroA_) return false;
+    XShop::STATE shop = shop_->GetState();
+    if (shop != XShop::NON && shop != XShop::PROCESS) return false;
+    return heroA_->GetLiveState() == XHero::NORMAL || heroB_->GetLiveState() == XHero::NORMAL;
+}
+
 void XGameScene::Tick() {
     UpdateInput();
     app_->StatusDisplay().ProcessFrame();  // the status display first
@@ -251,6 +267,8 @@ void XGameScene::SetDeviceState(Device* d) {
 void XGameScene::Render(Device* d, BackBuffer* bb) {
     if (state_ == NON || !heroA_) return;
     camera_.DoSetTransform(d);
+    // native: the draw range grows with the 3D view (ViewWidthFactor): 400 at 4:3, 533 at 16:9
+    loop_.SetVisibleRange(400.0f * ViewWidthFactor());
     // XGameObject::Render: the map, the heroes (with their shadows), the level's objects, then the
     // particles and the shots
     level_.Render(d, false);
@@ -286,6 +304,7 @@ void XGameScene::Render(Device* d, BackBuffer* bb) {
     info.statusB = &app_->HeroStatus(false);
     info.heroADead = heroA_->GetLiveState() == XHero::DEAD;
     info.heroBDead = heroB_->GetLiveState() == XHero::DEAD;
+    if (shop_->GetState() != XShop::NON) shop_->RenderDim(d);  // native: widescreen only
     app_->StatusDisplay().Render(bb, info);
     if (shop_->GetState() != XShop::NON) shop_->Render(d, bb);
     RenderFade(bb);

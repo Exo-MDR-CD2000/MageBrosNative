@@ -6,6 +6,7 @@
 #include "game/XApplication.h"
 #include "game/XCamera.h"
 #include "game/XHero.h"
+#include "gfx/device.h"
 #include "input/input.h"
 
 namespace {
@@ -22,6 +23,8 @@ const uint16_t kTextureBack = 0x218;
 // sounds
 const uint16_t kSoundMove = 0xec, kSoundDecide = 0xed;
 constexpr unsigned kFadeTicks = 40;
+// DirectInput codes not named in input.h
+enum { DIK_2_ = 0x03, DIK_LBRACKET_ = 0x1A, DIK_RBRACKET_ = 0x1B };
 }  // namespace
 
 // XShop::XShop
@@ -121,20 +124,33 @@ void XShop::_CheckEnabledItems() {
 // RegInfo_GetDisableJoystick says otherwise: always, here.)
 void XShop::_UpdateInput() {
     const JDInput& in = app_->GetDInput();
+    // native: the button also takes every other key that fires or jumps for the shopper in the
+    // level (player 1's [ and ], and in a one-player game Left Ctrl and Left Shift; player 2's 1
+    // and 2), and Enter, as the title and level select do. The original read only the two keys
+    // below, so the keys a player used in the level could do nothing in the shop. Remapped keys
+    // count, as they stand in for these codes.
+    bool extra = in.GetKeyboardPressed(DIK_RETURN) || in.GetKeyboardPressed(DIK_NUMPADENTER);
+    if (pHero_->IsHeroA()) {
+        extra = extra || in.GetKeyboardPressed(DIK_LBRACKET_) || in.GetKeyboardPressed(DIK_RBRACKET_);
+        if (app_->OnePlayer())
+            extra = extra || in.GetKeyboardPressed(DIK_LCONTROL) || in.GetKeyboardPressed(DIK_LSHIFT);
+    } else {
+        extra = extra || in.GetKeyboardPressed(DIK_1) || in.GetKeyboardPressed(DIK_2_);
+    }
     if (pHero_->IsHeroA()) {
         keyRightPressed_ = in.GetKeyboardPressed(DIK_RIGHT) || in.GetJoyDirPressed(0, 1);
         keyLeftPressed_ = in.GetKeyboardPressed(DIK_LEFT) || in.GetJoyDirPressed(0, 3);
         keyUpPressed_ = in.GetKeyboardPressed(DIK_UP) || in.GetJoyDirPressed(0, 0);
         keyDownPressed_ = in.GetKeyboardPressed(DIK_DOWN) || in.GetJoyDirPressed(0, 2);
         keyButtonPressed_ = in.GetKeyboardPressed(DIK_RSHIFT) || in.GetKeyboardPressed(DIK_RCONTROL) ||
-                            in.GetJoyButtonPressed(0, 0) || in.GetJoyButtonPressed(0, 1);
+                            in.GetJoyButtonPressed(0, 0) || in.GetJoyButtonPressed(0, 1) || extra;
     } else {
         keyRightPressed_ = in.GetKeyboardPressed(DIK_D) || in.GetJoyDirPressed(1, 1);
         keyLeftPressed_ = in.GetKeyboardPressed(DIK_A) || in.GetJoyDirPressed(1, 3);
         keyUpPressed_ = in.GetKeyboardPressed(DIK_W) || in.GetJoyDirPressed(1, 0);
         keyDownPressed_ = in.GetKeyboardPressed(DIK_S) || in.GetJoyDirPressed(1, 2);
         keyButtonPressed_ = in.GetKeyboardPressed(DIK_LSHIFT) || in.GetKeyboardPressed(DIK_LCONTROL) ||
-                            in.GetJoyButtonPressed(1, 0) || in.GetJoyButtonPressed(1, 1);
+                            in.GetJoyButtonPressed(1, 0) || in.GetJoyButtonPressed(1, 1) || extra;
     }
 }
 
@@ -203,14 +219,32 @@ void XShop::ProcessFrame(unsigned n) {
 // XShop::Render: the panel, the board with the shopper's mage, magic level and wand sliding in
 // from the left, the items and exit from the right, the shopkeeper rising from the bottom; the
 // blinking cursor while open
-void XShop::Render(Device* d, BackBuffer* bb) {
-    if (state_ == NON) return;
-    float t = 1.0f;  // how far in: 0..1 over each fade
+float XShop::_SlideIn() const {
+    float t = 1.0f;
     if (state_ == FADEIN) t = localCounter_ / 40.0f;
     else if (state_ == FADEOUT) t = (40 - (int)localCounter_) / 40.0f;
     if (t < 0.0f) t = 0.0f;
     else if (t > 1.0f) t = 1.0f;
+    return t;
+}
+
+void XShop::RenderDim(Device* d) const {
+    if (state_ == NON) return;
+    int viewLeft, viewRight;
+    d->ViewXRange(&viewLeft, &viewRight);
+    if (viewLeft >= 0) return;  // 4:3 or Stretch: as the original
+    const float black[4] = {0.0f, 0.0f, 0.0f, 0.4f * _SlideIn()};
+    d->DrawUIQuad((float)viewLeft, 0.0f, (float)viewRight, 480.0f, 0, 0, 0, 0, nullptr, black);
+}
+
+void XShop::Render(Device* d, BackBuffer* bb) {
+    if (state_ == NON) return;
+    float t = _SlideIn();  // how far in: 0..1 over each fade
     const XHeroStatus& s = app_->HeroStatus(pHero_->IsHeroA());
+    // native (widescreen): the board and the items slide in from just past the view's edges (the
+    // original's x -280 and 640 at 4:3), so they don't pop up in a wide view's sides
+    int viewLeft, viewRight;
+    d->ViewXRange(&viewLeft, &viewRight);
 
     back_->SetWorldPos(D3DVECTOR(220.0f, 150.0f, camera_->LookAt().z));
     back_->SetAlphaFactor(t * 0.75f);
@@ -218,7 +252,7 @@ void XShop::Render(Device* d, BackBuffer* bb) {
 
     // the board, then under it the mage, "magic level" and its number, and below that "wand" and
     // the wand's name
-    const int left = 50 - (int)((1.0f - t) * 330.0f), top = 152;
+    const int left = 50 - (int)((1.0f - t) * (float)(330 - viewLeft)), top = 152;
     bmpShopBoard_->SetPosition(left, top);
     bmpShopBoard_->Draw(bb);
     bool heroA = pHero_->IsHeroA();
@@ -246,7 +280,7 @@ void XShop::Render(Device* d, BackBuffer* bb) {
 
     // the items, 107 across and 124 down, greyed out (frame 1) when off; exit under the right
     // column
-    const int right = 640 - (int)(t * 260.0f), itemTop = 147;
+    const int right = viewRight - (int)(t * (float)(viewRight - 380)), itemTop = 147;
     const int itemX[kItems] = {right, right + 107, right, right + 107};
     const int itemY[kItems] = {itemTop, itemTop, itemTop + 124, itemTop + 124};
     for (int i = 0; i < kItems; i++) {

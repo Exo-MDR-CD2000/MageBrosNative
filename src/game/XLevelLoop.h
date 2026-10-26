@@ -54,6 +54,8 @@ public:
     // The level's objects (drawn after the heroes), then the particles and shots (drawn last;
     // `view` turns them to face the camera).
     void RenderObjects(Device* d, const D3DMATRIX& view);
+    // Native (widescreen): how far along Z from the look-at point objects are drawn (400 at 4:3)
+    void SetVisibleRange(float range);
     void RenderEffects(Device* d, const D3DMATRIX& view);
 
     // Whether this port builds the object with this level code yet (the rest stay markers).

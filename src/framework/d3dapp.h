@@ -13,7 +13,7 @@ struct SDL_Window;
 // What the game sees as IDirectDrawSurface7* for the back buffer.
 class BackBuffer {
 public:
-    // DDBLT_KEYSRC is the only flag that matters for Hopmon
+    // DDBLT_KEYSRC is the only flag that matters for the game
     HRESULT Blt(const RECT* dst, Surface* src, const RECT* srcRect, bool keySrc);
     HRESULT ColorFill(const RECT* dst, uint32_t rgb);
 };
@@ -40,7 +40,31 @@ public:
     void RequestQuit() { quit_ = true; }
     // Re-apply window mode, size and monitor from the config (used by the options menu).
     void ApplyDisplaySettings();
+    // [video] vsync to the swap interval: 0 off, 1 on, 2 adaptive (-1), which falls back to on where
+    // the driver refuses it. What took effect is read back (VSyncInEffect).
     void ApplyVSync();
+    bool AdaptiveVSyncSupported() const { return adaptiveSupported_; }
+    int VSyncInEffect() const { return vsyncInEffect_; }  // 0, 1 or 2
+    // What the frame rate says about the driver (NVIDIA Control Panel, AMD Software) overriding
+    // VSync: +1 = VSync is on here but frames come faster than the monitor refreshes; -1 = it is
+    // off here but frames stop at the refresh rate; 0 = nothing seen. Judged only while frames are
+    // drawn freely (Smooth motion on, no frame limit, the menu closed), from two seconds running.
+    int VSyncOverride() const { return vsyncOverride_; }
+    // The room a window's inside has on a monitor (0 = primary, as [video] display): its usable
+    // area (without the taskbar) less the window's title bar and borders.
+    void WindowFitArea(int display, int* w, int* h) const;
+    // The largest 4:3 window from kWindowScales (multiples of the game's 640 x 480) that fits
+    // that monitor; at least 640 x 480. The first start and "Reset all settings" use it.
+    void DefaultWindowSize(int display, int* w, int* h) const;
+    // Monitors by [video] display number (1..n in SDL's order; 0 = the primary).
+    static std::string DisplayName(int index);
+    static int DisplayCount();
+    // Choose a monitor: its number and its name (kept, so it is found again under another number).
+    static void SetDisplay(int index);
+    // display_name, when that monitor is connected, decides the number (at start and whenever a
+    // monitor is plugged in or out); when it isn't, the primary is used for now.
+    static void ResolveDisplay();
+    static constexpr float kWindowScales[] = {1.f, 1.25f, 1.5f, 1.6f, 2.f, 2.5f, 3.f, 3.5f, 4.f, 4.5f, 5.f, 6.f};
     bool OptionsOpen() const;
     void OpenOptions();  // e.g. from the title screen's OPTIONS entry
     // Hooks for the options/pause menu, implemented by the game.
@@ -48,9 +72,10 @@ public:
     virtual void PlayUISound(UISound s) { (void)s; }
     virtual bool CanReturnToMainMenu() const { return false; }
     virtual void ReturnToMainMenu() {}
+    virtual void ReturnToLevelSelect() {}  // from a level (offered beside the main menu when InLevel)
     virtual bool InLevel() const { return false; }
     // Whether F10 / Start may open the options menu right now (false during the intro logo,
-    // the ending, and in-game whenever Hopmon isn't under the player's control).
+    // the ending and the fades, and in a level whenever no mage is under the player's control).
     virtual bool CanOpenOptions() const { return true; }
     virtual void ReloadMusic() {}                       // music source changed: restart the current track
     virtual void ApplyModChanges() {}                   // mods or level pack changed (title screen only)
@@ -85,6 +110,13 @@ private:
     void UpdateStats();
     void ToggleFullscreen();
     void HandleAutomation(DWORD now);
+    // A window event (resized, moved, maximized, restored, another monitor): once things have
+    // been still for kWindowSettleMs, the window's state is read and saved (SaveWindowState).
+    void WindowChanged(DWORD now) { windowChangedAt_ = now ? now : 1; }
+    void SaveWindowState();
+    void PlaceWindow();
+    static constexpr DWORD kWindowSettleMs = 500;
+    DWORD windowChangedAt_ = 0;  // 0 = nothing to save
 
     SDL_Window* window_ = nullptr;
     void* glContext_ = nullptr;
@@ -92,6 +124,12 @@ private:
     bool quit_ = false;
     DWORD statsFrames_ = 0;
     float statsLastTime_ = 0.f;
+    void JudgeVSync();  // each second's frame rate against the monitor's refresh rate
+    bool adaptiveSupported_ = false;
+    int vsyncInEffect_ = 1;
+    int vsyncOverride_ = 0;
+    int vsyncVote_ = 0, vsyncVotes_ = 0;  // the last second's verdict and how many in a row
+    int vsyncLogged_ = -1;
 
     // scripted run for automated testing: "time_ms:action[=arg]" entries
     struct AutoStep { DWORD t; std::string action, arg; bool done; };

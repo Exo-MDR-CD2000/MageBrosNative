@@ -26,6 +26,12 @@ repository contains no game content.
   1.2 (`third_party/coldet`, LGPL, built as a separate static library), never a rewrite. Keep
   this in mind for every module, and revisit it whenever a choice comes up between the
   original's own code or library and a substitute.
+- **The owner's aim for the port (2026-10-25):** it must work flawlessly at any resolution,
+  refresh rate and frame rate without that affecting the game logic or speed, and play and feel
+  identical to the original, enhanced with modern features. Where the original itself behaved
+  differently at different frame rates (the heroes' presses, the ending's scroll), the port takes
+  the frame-rate-independent behaviour. See "The frame loop and the frame rate" in
+  `docs/REVERSE_ENGINEERING.md`.
 - **High refresh rates must not change the game.** The port will add upgrades over the original
   (stage 7), including high refresh-rate support that leaves the game logic and speed untouched.
   Whenever the original advances something once per frame instead of once per tick, keep it as
@@ -33,7 +39,10 @@ repository contains no game content.
   `docs/ROADMAP.md`.
 - **One-to-one faithful by default.** The original's behaviour is unchanged when every option is
   at its default: the same tick order, constants, slot counts and quirks, including ones that
-  look like bugs. Any modern extras (stage 7) must be opt-in options.
+  look like bugs. Any modern extras (stage 7) must be opt-in options. The exception: a slip in
+  the original that the owner chooses to fix (so far the overlapping lost-gold messages, 0.4.13,
+  and the shop's keys, 0.4.9). Every bug or quirk of the original found, fixed or kept, goes in
+  the "Bugs and quirks in the original" table at the end of `docs/REVERSE_ENGINEERING.md`.
 - **Never commit game material:**
   - `MageBros.exe`, `MageBros.pdb`, `.mid` files, or anything exported from them;
   - screenshots of the game;
@@ -235,6 +244,11 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
 `AssetViewerApp::OnAutomation` in `src/main.cpp`:
 
 - `key=<SDL key name>`: press a key. `down=` and `up=` hold and release one.
+- `sdlkey=<SDL key name>`: a real key event through SDL's queue, which the options menu reads
+  (`key=` never reaches it). Driving the menu: `sdlkey=F10` opens it (only while a player has
+  control, so not on the logo: the title answers from about 13 s), then `sdlkey=Down`,
+  `sdlkey=Return`, `sdlkey=Escape` about 200 ms apart. `focus=0` / `focus=1` fake the window
+  losing and getting back the focus.
 - `shot=<file.bmp>`: write a screenshot.
 - `quit`: exit.
 - `level=<world>,<level>`: start that level (1-based), from any screen (the logo included).
@@ -245,11 +259,12 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
 - `place=<x>,<z>`: move hero A there with `XGameScene::TestPlaceHero`, which calls
   `SetStartPos` then `Reset`. `placeB=<x>,<z>` does the same for hero B (two-player games only).
 - `players=1` or `players=2`: the number of players for the next `level=`.
-- `ending`: go to the ending from any screen. The first credit slides in about 8 s later. The
+- `ending`: go to the ending from any screen (also F3 in a level, or `--ending` on the command
+  line, which starts there instead of the logo). The first credit slides in about 8 s later. The
   last one stops in the middle about 45 s later and waits for a button (allow a little more:
   startup takes time).
 
-`level`, `place`, `placeB`, `players` and `ending` are test hooks only. Key names are SDL's (`Left Ctrl`,
+`level`, `place`, `placeB`, `players` and `ending` (and F3, `--ending`) are test hooks only. Key names are SDL's (`Left Ctrl`,
 `Right Ctrl`, `Left Shift`, `D`, `1`); a wrong name does nothing, silently.
 
 Screenshots are game images: view them, then delete them. Never commit them.
@@ -304,19 +319,138 @@ Conventions:
 - `XEnemyBase` and the others keep the original's member names, with a trailing `_`.
 - Model and sound IDs are the resource IDs in hex, for example `0x179` (MageCOL) and `0x26b`.
 - Object y = floor level × 25.
-- Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
+- Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update. The
+  port's draw range grows with widescreen (`XGameContext::visibleRange`); the update range never
+  changes (it is game logic). Sound panning grows the same way (`XGameScene::PlaySound`). Both
+  use `ViewWidthFactor` in `XGameScene.cpp`, the window's shape as laid out each frame: never
+  hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
+  `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-24, version 0.3.6, stage 6 chunk 8 done)
+## Where we are (last updated: 2026-10-26, version 0.4.13, stage 7 chunk 2d-iii done but the options menu)
 
-**Stage 6 (the front end) is under way: chunks 1 (the screen framework, fades and logo), 2
-(the title), 3 (saving), 4 (the save slots), 5 (level select and the real level ends), 6
-(the shop), 7 (the wands' shots) and 8 (the ending) are done; chunk 9, the checks of the whole
-front end, is next.** Stage 5 built every object of the 40 levels and
-two-player co-op (player 2, hero on hero, player 2's platform shadow and HUD panel). Wait for
-the owner to say "start the next chunk". The chunk tables are in `docs/ROADMAP.md` ("Stage 6,
-chunk by chunk" for the front end, "Stage 5" for the game); what each version changed is in
-`CHANGELOG.md`. The latest release is v0.3.5 (chunks 6 and 7, GitHub); 0.3.6 (chunk 8) is built and waiting
-for "commit and push".
+**Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
+plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
+opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) is done in
+0.4.0, tested by the owner and pushed to the **`menu-dev` branch**: stage 7's menu work stays on
+`menu-dev`, apart from `main`, until the owner says to merge it (a push to `main` publishes a
+release; a push to `menu-dev` doesn't). Chunk 2 (the Video page) is split into small chunks
+for thoroughness: 2a windowed mode (0.4.1, tested by the owner, on `menu-dev`), 2b exclusive fullscreen (0.4.2,
+tested by the owner, on `menu-dev`), 2c monitors (0.4.3, tested by the owner, on
+`menu-dev`), 2d-i VSync (0.4.4, on `menu-dev`), 2d-ii widescreen culling (0.4.5, tested by the owner, on
+`menu-dev`) and widescreen sound panning (0.4.6, tested by the owner, on `menu-dev`; at 4:3 and
+Stretch the panning is the original's bit for bit), then 2d-iii, widescreen on the other screens and the HUD, taken one screen at a time with the
+owner. Done so far, all on `menu-dev` with 4:3 screenshots byte for byte the same as before:
+the title's tile background filled out to the view's width on the title, save slots and level
+select, with the fade strips spanning the whole view (0.4.7); the shop sliding in from the view's
+edges over a full-width dim, the dim only when wider than 4:3 (0.4.8); the Saito Games logo's
+white backdrop widened with the view (0.4.10, Stretch also unchanged); the ending's film strips
+across the whole view and its credits waiting and leaving past the view's edges (0.4.11; the
+ending can't be compared byte for byte, as the corridor scrolls once a frame, so a temporary log
+showed the original's tiles and credit positions at 4:3 and Stretch); 0.4.12 added F3 in a level
+and `--ending` to reach the ending, for the owner to test it; the HUD settings (HUD position,
+HUD max width, HUD size) hooked into `XStatusDisplay` and `XFPSDisplay` (0.4.13; HUD position
+defaults to Centered, the owner's call, and config_version 20 resets older files once; tried by
+the owner, who also had the original's overlapping lost-gold messages fixed in every mode, the
+first entry of the "Bugs and quirks in the original" table in `docs/REVERSE_ENGINEERING.md`). The
+options menu in widescreen is left as it is for now (the owner: the menus and level select are
+fine). Beside them, 0.4.9 made
+the shop's button take every fire / jump key of the shopper and Enter (the owner couldn't find
+how to buy or leave with the keyboard). **2d-iv, the field of view, next.** The owner's must: 16:9 with no culling or pop-in at all
+(verified by screenshot comparison with a draw-everything build). The owner then played 21:9
+(a 2560 x 1080 window): every object, enemy and boss showed and behaved normally to the edges, so
+native 21:9 is feasible. The camera and lens were checked value by value against the original
+(all the same): see "The camera and lens: the original and the port, side by side" in
+`docs/REVERSE_ENGINEERING.md`. The owner set aside a
+G-Sync / FreeSync frame-limit choice as a possible later feature (noted in the ROADMAP). The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
+its own).
+Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
+7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.
+
+**The options menu** (`src/ui/options_menu.*`, F10 / gamepad Start) came from Hopmon Native
+almost line for line, with its config (`src/core/config.*`), input remapping (`src/input`) and
+the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
+
+- `AssetViewerApp` (`main.cpp`) implements the menu hooks of `CD3DApplication`:
+  - `PlayUISound`: the title's 0xec / 0xed.
+  - `CanReturnToMainMenu` / `ReturnToMainMenu`: any screen but the logo and the title, to state 4;
+    in a level the menu also shows "Level select" (`ReturnToLevelSelect` ->
+    `XApplication::LeaveLevel`: the save as `XGameScene::InitLevel` found it, kept by
+    `MarkLevelStart`, then state 6; nothing is written, so leaving can't dodge Escape's gold loss
+    and keep the level's gold).
+  - `InLevel`.
+  - `CanOpenOptions`: `XApplication::PlayerHasControl`, which needs a running screen in PROCESS
+    that isn't the logo or the ending; in a level, `XGameScene::PlayerHasControl` (PLAYING, a
+    NORMAL mage, the shop not fading).
+  - `ReloadMusic` / `MusicSource`.
+  - `OnActivateApp`: the original's WM_ACTIVATEAPP music pause.
+  - `OnKeyDown(DIK_P)`: the original's pause, toggling `m_bFrameMoving`.
+- `PlayMusic` in `main.cpp` is `JMidiList::Play` with Hopmon Native's MP3/FLAC replacement
+  (`MusicStream::FindReplacement`); `XApplication::StopMusic` closes both players.
+- `XFPSDisplay` (`src/game`) is the original's counter, drawn by `XApplication::Render(d, bb,
+  showFps, fps)`.
+- The key pages are built from `kKeyActions` in `options_menu.cpp` (group, label, DIK):
+  rebinding a DIK moves every place the game reads it (the menus' W / S too).
+- `OptionsMenu::NotYet` greys out what isn't built: Field of view (nothing calls
+  `Device::SetGameplayView` yet), Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
+  menu's mod pages still speak of Hopmon's assets).
+- Smooth motion (`interpolation`, on by default, from Hopmon) only sets how often the picture is
+  drawn: no game object takes part in `Interp::Tracked`, so frames repeat between ticks. Off, the
+  framework draws only on frames with a tick (at most 100 a second, the original's pace).
+- `config_version` 15 rewrote the ini notes for Mage Bros.' keys and dropped Hopmon's two
+  cheats; `unlock_all_levels` is still read but nothing uses it.
+
+**The window (chunk 2a, 0.4.1)**, in `src/framework/d3dapp.cpp`:
+
+- SDL's window events (resized, moved, maximized, restored, display changed) call
+  `WindowChanged`. `kWindowSettleMs` (500 ms) after the last one, `SaveWindowState` reads the
+  window and saves `width` / `height`, `window_x` / `window_y`, `maximized` and `display` (only in
+  Window mode, not minimized). A maximized window keeps its earlier size and place.
+- `PlaceWindow` (at start and when switching to Window) sets the size and position twice:
+  moving a window onto a monitor with another Windows display scale makes Windows resize it with
+  the old scale's frame, which grew the window a little on every start before.
+- `WindowPosVisible` drops a saved position no longer on any monitor (then centred).
+- `WindowFitArea` is a monitor's usable area less the title bar and frame (measured, or
+  estimated at the monitor's scale when no bordered window exists). `DefaultWindowSize` is the
+  largest `kWindowScales` multiple of 640 x 480 within it: the first start (`Config::firstRun`)
+  and Reset all settings use it.
+- `ToggleFullscreen` goes to `lastFullscreen` (set by `ApplyDisplaySettings` whenever a
+  fullscreen mode is applied; the menu's revert puts it back) and saves.
+- Window sizes are SDL window coordinates, which are real pixels on Windows here: at the
+  owner's 150% scaling a 1280 x 960 window is 1280 x 960 pixels.
+- The owner's monitors, as SDL lists them (and the log, at every start): 1 "LS28AG700N",
+  3840 x 2160 at 143.86 Hz, 150%, primary; 2 "PA278CGV", 2560 x 1440 at 143.97 Hz, 100%, left of
+  it (Windows lists it on the AMD graphics; it still runs at 144 fps); 3 "TX-NR646", 1920 x 1080
+  at 60 Hz, 100%, right of it (an Onkyo receiver, most likely a TV; it offers 3840 x 2160 modes).
+
+**VSync (chunk 2d-i, 0.4.4)**: `vsync` is 0 / 1 / 2 (adaptive = swap interval -1, probed once
+at start: `adaptiveSupported_`); `ApplyVSync` falls back to 1, reads back the interval
+(`VSyncInEffect`) and runs after every display change. `JudgeVSync` (each second, only with Smooth
+motion on, no limit, menu closed) sets `VSyncOverride` after two seconds of frames above 115% of
+the refresh rate with VSync on (+1), or within 3% of it with VSync off (-1). Measured on the
+owner's NVIDIA (Smooth motion on): VSync on or adaptive 144 / 60; off about 980 in a window, 490
+in 4K borderless; Smooth motion off 100 (60 on the 60 Hz monitor with VSync). The frame limiter
+schedules each frame from when the last was due (`lastPresent += interval`).
+
+**Monitors (chunk 2c, 0.4.3)**: `CD3DApplication::SetDisplay` sets `display` and
+`display_name` together (the menu and the window tracking use it); `ResolveDisplay` (at start
+and on SDL_EVENT_DISPLAY_ADDED / REMOVED) finds the number by name, takes the primary for now
+when that monitor is missing (keeping the name), and gives an older ini its name. `PlaceWindow`
+uses a saved position only on the chosen monitor (`WindowPosOn`). The borderless window's extra
+row is `Device::SetHiddenBottomRows(1)`: the layout uses the rows above it.
+
+**Exclusive fullscreen (chunk 2b, 0.4.2)**: `fullscreen_refresh` (0 = the desktop's rate) goes
+to `SDL_GetClosestFullscreenDisplayMode` with the chosen size (or the desktop's).
+`OptionsMenu::RefreshList` gives a size's rates; `DisplayCfg::hz` carries the pending choice and
+the keep / revert snapshot. `PendingMark` puts `*` only on rows that differ from what is applied.
+The exclusive resolution list drops modes below 640 x 480 and the desktop's own size (Desktop
+is last) and is clamped. Never press Enter on an exclusive mode in a test run: it changes the
+owner's real screen mode; preview with Left / Right only. Testing window
+  moves: a DPI-unaware PowerShell's `MoveWindow` works in 150%-scaled coordinates on the primary.
+
+Stage 6 (the front end), for reference: `XApplication`'s states 3 logo, 4 title, 5 save slots,
+6 level select, 7 game, 9 ending (8, the register screen, is never reached:
+`RegInfo_Registered` returns 1 in the freeware build); `XProcessObject`'s fades; saving in
+`core/saves` (no import of the original's registry saves, the owner's decision).
 
 Playable now, with nothing left unbuilt (no marker cubes):
 
@@ -334,28 +468,8 @@ Playable now, with nothing left unbuilt (no marker cubes):
   World 4 level by level and found nothing wrong (2026-10-24). A script over the 40 levels' object fields found no code outside
   `kDone` but `!` (the invisible block, never drawn).
 
-Stage 5's code is complete (chunks 1 to 18). Chunk 19, the owner playing the whole game, is
-deferred: the owner will test once the front end is in, so stage 6 goes ahead first.
-
-**Stage 6 (the front end) has 9 chunks; chunks 1 (0.3.0), 2 (0.3.1), 3 (0.3.2), 4 (0.3.3),
-5 (0.3.4), 6 and 7 (0.3.5) are done, chunk 8 is next.** The table,
-with the original's screen states, is in `docs/ROADMAP.md`, "Stage 6, chunk by chunk":
-
-| Chunk | What |
-|---|---|
-| 1 | Screen framework: `XApplication` states, `XProcessObject` fades, the logo (done, 0.3.0) |
-| 2 | Title (`XTitleObject`): one / two players, quit (done, 0.3.1) |
-| 3 | Saving: `XSaveData`, `XLevelStatus`, `DoSaveData`; the port's own save files in AppData (`core/saves`, behind the ini's `save_path`); no import of the original's registry saves (owner's decision) (done, 0.3.2) |
-| 4 | Save slots (`XSelectSlot`) (done, 0.3.3) |
-| 5 | Level select (`XSelectLevelObject`) and the game's real level ends (done, 0.3.4) |
-| 6 | Shop screen (`XShop`) (done, 0.3.5) |
-| 7 | The other wands' shots (`XHeroFireList::_Wand*`, `XHeroFire_Chase`) (done, 0.3.5) |
-| 8 | Ending (`XEndingObject`) (done, 0.3.6) |
-| 9 | Checks and the stage 6 zip |
-
-`XRegisterInfoObject` (state 8) is never reached: `RegInfo_Registered` returns 1 in the
-freeware build. Keep the Tab viewers and the test hooks (`--auto`, N / B, F2) working alongside
-the front end. Chunk 1 notes: the sound cache moved to `JSoundList` (the application's);
+Keep the Tab viewers and the test hooks (`--auto`, N / B, F2) working alongside
+the front end. Stage 6 chunk 1 notes: the sound cache moved to `JSoundList` (the application's);
 `JSurfaceList::Create(id, colorKey)` makes a bitmap with or without the colour key, as the
 original's `CreateSurface` flag (the fade strips 0x1f7 and the logo 0x2d1 have none; `Get` still
 makes any other keyed); `XLevelStatus` has its play part (`IncreaseLevel` / `World`,
@@ -364,8 +478,12 @@ makes any other keyed); `XLevelStatus` has its play part (`IncreaseLevel` / `Wor
 
 **The shop (chunk 6, 0.3.5)** is in: `XShop` (see "The shop (`XShop`)" in
 `docs/REVERSE_ENGINEERING.md`). Testing it: the shops stand at x 60 in 1-3, 1-6, 1-9, 2-3, 2-6,
-2-9, 3-3, 3-6, 3-9, 4-2, 4-5 and 4-8. The door is at x 120, at the shop's z (1-3: z 6460). In 4-2
-a wooden gate stands in front of the door. In 1-3, `place=100,6400` first, wait about 14 s for
+2-9, 3-3, 3-6, 3-9, 4-2, 4-5 and 4-8. The door is at x 120, at the shop's z (1-3: z 6460; 4-2:
+z 340, right by the start: the quickest by hand (the owner's tip)). In 4-2 a breakable fence panel
+(the 'w' fence door, an enemy: `XEnemy.cpp`'s `case 'w'`) stands in front of the door and keeps
+the shop shut; to test there, comment that case out temporarily (the owner's way), then
+`place=180,340` at 4.5 s and `place=120,340` at 6.5 s: the shop opens about 2 s later. Put the
+line back before the release build. In 1-3, `place=100,6400` first, wait about 14 s for
 the camera, then `place=120,6460`. The mage is pushed out to x 129 and the shop opens as it
 lands. The shop's menu answers from about 0.4 s after it opens (the 40-tick fade). Test-hook
 games start with 0 gold, so every item is greyed out. To test buying, temporarily set the gold
@@ -381,12 +499,9 @@ the island (z 1300 to 1460); the dragon becomes a target about 10 s in.
 
 **The ending (chunk 8, 0.3.6)** is in: `XEndingObject` and `XCamera::ResetForEnding` (see "The
 ending" in `docs/REVERSE_ENGINEERING.md`). `--auto ending` jumps there. Its corridor scrolls once
-a frame (`textureOffset`, as the original), so it scrolls faster at higher frame rates. It is in
-the "Stage 7: frame-rate dependence" table in `docs/ROADMAP.md`.
-
-**Starting chunk 9 (checks and the stage 6 zip)**: play the whole flow by screenshot: logo,
-title, save slots, level select, a level, the shop, a cleared world, the ending, back to the
-logo. Then the owner's full play-through (stage 5 chunk 19 and stage 6 together).
+a frame (`textureOffset`, as the original), so it scrolls faster at higher frame rates. The owner chose
+to keep it so (2026-10-25: minor and visual only); the details are under the "Stage 7:
+frame-rate dependence" table in `docs/ROADMAP.md`.
 
 Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
 status, shot colour, warp photons, lost-gold line and platform mark; `XGameScene::UpdateInput`
@@ -408,25 +523,23 @@ platforms of 1-5 move, so a `place` onto them drops into the pit). Before
 splitting any future large piece, read every state's transitions first: the nest's bird turned out to be one loop sharing its steering, so a split
 proposed before reading it didn't fit; the wizard waits for each attack, so it split cleanly.
 
-After stage 6: **stage 7**, opt-in modern extras.
-
 ### Waiting for the owner to check in play
 
-Not caught by screenshot, so worth the owner's eye: the king mushroom (2-4, 2-7); the camera
-shake (hammers in World 2, stalactites in World 3); the genie opening its mouth before an attack,
-and whether it looks as pale as the original while it is small and rising; the jump needles
-springing up (3-1); how the floor fan floats the mage (3-4: it bobs about 120 above the fan,
-and touching the blades from beside it hurts); the ghost (3-5: its warning, swoop and flinch,
-and how it looks); two players (0.2.22: player 2's keys and second gamepad, the camera between
-the mages, enemies turning to the closer one, the level ending when both are done); standing on
-and carrying each other (0.2.23: on a lift in 1-4 to 1-9, over a floor fan in 3-4, jumping off
-the other's head and bumping into it from below); the front end (0.3.0–0.3.4: logo, title,
-save slots, level select, saving; the owner has been playing these versions); the shop (0.3.5:
-buying in each world, both players, and Escape leaving it and giving up the level, as the original);
-the wands' shots (0.3.5: the spreads and how strongly the X wands' shots home); the
-ending (0.3.6: the corridor's scrolling speed, the credits' timing). Already confirmed
-by the owner: World 1 start to finish, the dragon fight, the third-barrel heart, the carrying
-between the two mages (0.2.23).
+The owner's full play-through of 0.3.6 covered everything built up to stage 6. From stage 7:
+the options menu of 0.4.0 (tested by the owner: works as expected; MP3/FLAC music was not
+tried, as there were no files to try). The window of 0.4.1 was tested by the owner too, F11 into
+exclusive fullscreen and back included (2026-10-25), and so were 0.4.2 (refresh rate), 0.4.3
+(monitors), 0.4.5 (widescreen, at 16:9 and 21:9) and 0.4.6 (widescreen sound, by ear).
+The ending in widescreen (0.4.11) was checked by the owner with 0.4.12's F3 (2026-10-26: "seems to
+work"). Waiting for the owner's check: 0.4.7 (the menus' background and fades in widescreen), 0.4.8
+(the shop in widescreen), 0.4.9 (the shop's keys) and 0.4.10 (the logo in widescreen), checked here
+by screenshots only. The widescreen screenshots so far are at 16:9, 21:9 and 32:9; 16:10 wasn't
+captured (the owner judged it fine: every fix works from the view's width, so 16:10, between 4:3
+and 16:9, needs nothing of its own). The HUD settings of 0.4.13 were tried by the owner ("seems to
+work fine"), who then found the lost-gold messages overlapping in two-player games, a slip in the
+original as well: fixed in every mode in 0.4.13 (player 2's message 12 lower), seen on screen
+here through a temporary `ShowLostGoldMessage` call in `InitForGame` (removed). MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
+override warning can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
 
 ### Notes from earlier stages
 

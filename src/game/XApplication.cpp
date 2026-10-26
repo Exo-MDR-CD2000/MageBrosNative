@@ -9,6 +9,8 @@
 #include "game/XSelectSlot.h"
 #include "game/XTitleObject.h"
 #include "audio/midi.h"
+#include "audio/music_stream.h"
+#include "game/XFPSDisplay.h"
 #include "game/XStatusDisplay.h"
 
 namespace {
@@ -23,6 +25,7 @@ void XApplication::Init() {
     // the logo
     JSurfaceList::Create(kBitmapFade, false);
     statusDisplay_ = std::make_unique<XStatusDisplay>();
+    fpsDisplay_ = std::make_unique<XFPSDisplay>();
     game_ = std::make_unique<XGameScene>(this);
     state_ = LOGO;
 }
@@ -88,6 +91,7 @@ void XApplication::StopMusic() {
     currentMusic_ = 0;
     musicRequest_ = 0;
     Midi::Close();  // "close all"
+    MusicStream::Close();  // (and an MP3/FLAC replacement playing instead)
 }
 
 void XApplication::EnterGame() {
@@ -117,6 +121,19 @@ void XApplication::StartGameAt(int world, int level) {
     EnterGame();
 }
 
-void XApplication::Render(Device* d, BackBuffer* bb) {
-    if (state_ == RUNNING && current_) current_->Render(d, bb);
+void XApplication::Render(Device* d, BackBuffer* bb, bool showFps, int fps) {
+    if (state_ != RUNNING || !current_) return;
+    current_->Render(d, bb);
+    if (showFps) fpsDisplay_->Render(bb, fps);  // XFPSDisplay::Render (RegInfo_GetDisplayFPS)
+}
+
+bool XApplication::OnLogoOrTitle() const {
+    if (state_ == NON || state_ == LOGO || state_ == TITLE) return true;
+    return state_ == RUNNING && current_ && (current_ == logo_.get() || current_ == title_.get());
+}
+
+bool XApplication::PlayerHasControl() const {
+    if (state_ != RUNNING || !current_ || current_->GetState() != XProcessObject::PROCESS) return false;
+    if (current_ == logo_.get() || current_ == ending_.get()) return false;
+    return current_ != game_.get() || game_->PlayerHasControl();
 }

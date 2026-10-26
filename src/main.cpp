@@ -56,7 +56,7 @@ bool WaveData(const std::vector<uint8_t>& w, const uint8_t** pcm, size_t* len, i
 
 class AssetViewerApp : public CD3DApplication {
 public:
-    explicit AssetViewerApp(bool twoPlayer) {
+    AssetViewerApp(bool twoPlayer, bool ending) : startAtEnding_(ending) {
         m_strWindowTitle = "Mage Bros. Native";
         app_.SetTwoPlayer(twoPlayer);
     }
@@ -83,6 +83,7 @@ protected:
         LoadModel();
         levelView_.Load(0, 0);
         app_.Init();  // the original's screens, from the logo
+        if (startAtEnding_) app_.SetState(XApplication::ENDING);  // test hook: --ending
         ResetCamera();
         PlayMusic(levelView_.MusicTrack());
         return S_OK;
@@ -173,7 +174,7 @@ protected:
         d->BeginScene();
         if (mode_ == Mode::Game) {
             XGameScene::SetDeviceState(d);
-            app_.Render(d, GetBackBuffer());
+            app_.Render(d, GetBackBuffer(), DisplayFPS() != 0, GetFPS());
             d->EndScene();
             return S_OK;
         }
@@ -206,6 +207,13 @@ protected:
     }
 
     void OnKeyDown(int dik) override {
+        if (dik == DIK_P) {
+            // XApplication::MsgProc: WM_KEYDOWN 'P' posts IDM_TOGGLESTART, the framework's pause
+            // (nothing ticks, the last picture stays). The original also toggles on the key's
+            // auto-repeat; here a held P toggles once.
+            m_bFrameMoving = !m_bFrameMoving;
+            return;
+        }
         if (dik == DIK_TAB) {
             // game -> level viewer -> model viewer -> game
             mode_ = mode_ == Mode::Game ? Mode::LevelViewer : mode_ == Mode::LevelViewer ? Mode::ModelViewer : Mode::Game;
@@ -223,6 +231,9 @@ protected:
                 i = (i % n + n) % n;
                 app_.StartGameAt(i / GameFiles::kLevelsPerWorld, i % GameFiles::kLevelsPerWorld);
                 UpdateTitle();
+            } else if (dik == DIK_F3) {
+                // test hook: straight to the ending (as --ending and --auto ending)
+                app_.SetState(XApplication::ENDING);
             } else if (dik == DIK_F2) {
                 // one or two players (the title's choice, until it exists): restarts the level
                 app_.SetTwoPlayer(app_.OnePlayer());
@@ -265,7 +276,50 @@ protected:
         }
     }
 
-    void OnMidiNotifySuccessful() override { Midi::PlayFromStart(); }  // loop, as the game does
+    void OnMidiNotifySuccessful() override {
+        // MM_MCINOTIFY: JMidiList::Replay, the loop (MP3/FLAC replacements loop by themselves)
+        if (streaming_) return;
+        Midi::PlayFromStart();
+        if (musicPaused_) Midi::Pause();
+    }
+
+    // XApplication::MsgProc, WM_ACTIVATEAPP: losing the focus pauses the music (and releases the
+    // keyboard and gamepads, which Input::SetFocus does); getting it back resumes it
+    void OnActivateApp(bool active) override {
+        musicPaused_ = !active;
+        if (streaming_) active ? MusicStream::Resume() : MusicStream::Pause();
+        else active ? Midi::Resume() : Midi::Pause();
+    }
+
+    // ---- the options menu's hooks (native additions)
+    // the title menu's own sounds: 0xec moving, 0xed choosing
+    void PlayUISound(UISound s) override { app_.Sounds().PlayMono(s == UISound::Move ? 0xec : 0xed, 1.0f); }
+    // "Main menu" goes to the title from any screen but the logo and the title themselves
+    bool CanReturnToMainMenu() const override { return mode_ == Mode::Game && !app_.OnLogoOrTitle(); }
+    void ReturnToMainMenu() override {
+        if (!CanReturnToMainMenu()) return;
+        m_bFrameMoving = true;  // (a P pause would leave the title frozen)
+        app_.SetState(XApplication::TITLE);
+    }
+    bool InLevel() const override { return mode_ == Mode::Game && app_.InGame(); }
+    // in a level the menu offers "Level select" instead of "Main menu"
+    void ReturnToLevelSelect() override {
+        if (!InLevel()) return;
+        m_bFrameMoving = true;
+        app_.LeaveLevel();
+    }
+    // F10 / Start: in the viewers at any time; in the game only while a screen waits for the
+    // player (not the logo or the ending, not during a fade, in a level only while a mage is
+    // under the player's control)
+    bool CanOpenOptions() const override { return mode_ != Mode::Game || app_.PlayerHasControl(); }
+    void ReloadMusic() override {
+        int t = mode_ == Mode::Game ? app_.CurrentMusic() : track_;
+        if (t > 0) PlayMusic(t);
+    }
+    const char* MusicSource() const override {
+        if (streaming_ && MusicStream::IsOpen()) return "MP3/FLAC file";
+        return Midi::IsLoaded() ? "MIDI" : "";
+    }
 
 private:
     void LoadModel() {
@@ -300,14 +354,31 @@ private:
         UpdateTitle();
     }
 
+    // JMidiList::Play: Music01..06, or (a native addition, as Hopmon Native's) its MP3/FLAC
+    // replacement from the "music" folder when the music source allows it
     void PlayMusic(int track) {
-        std::string path = GameFiles::MusicPath(track);
-        if (path.empty()) {
-            Log("Viewer: Music%02d.mid not found next to MageBros.exe", track);
-            return;
-        }
-        if (Midi::Open(path)) Midi::PlayFromStart();
+        MusicStream::Close();
+        Midi::Close();
+        streaming_ = false;
         track_ = track;
+        char midiName[16];
+        std::snprintf(midiName, sizeof midiName, "Music%02d.mid", track);
+        std::string file = MusicStream::FindReplacement(track - 1, midiName);
+        if (!file.empty() && MusicStream::Open(file)) {
+            streaming_ = true;
+            Log("Music: track %d plays %s (%s)", track, file.c_str(), MusicStream::Describe().c_str());
+            MusicStream::PlayFromStart();
+            if (musicPaused_) MusicStream::Pause();
+        } else {
+            if (!file.empty()) Log("Music: track %d falls back to %s", track, midiName);
+            std::string path = GameFiles::MusicPath(track);
+            if (path.empty()) {
+                Log("Music: %s not found next to MageBros.exe", midiName);
+            } else if (Midi::Open(path)) {
+                Midi::PlayFromStart();
+                if (musicPaused_) Midi::Pause();
+            }
+        }
         UpdateTitle();
     }
 
@@ -332,12 +403,12 @@ private:
                 std::snprintf(title, sizeof title,
                               "Mage Bros. Native %s - World %d-%d, 2 players   [P1: arrows, R.Shift / ] jump, "
                               "R.Ctrl / [ fire; P2: WASD, L.Shift / 2 jump, L.Ctrl / 1 fire; Esc give up, "
-                              "N/B level, F2 one player, Tab viewer, F10 options]",
+                              "N/B level, F2 one player, F3 ending, Tab viewer, F10 options]",
                               MBN_VERSION_STRING, lv.World() + 1, lv.Level() + 1);
             else
                 std::snprintf(title, sizeof title,
                               "Mage Bros. Native %s - World %d-%d   [arrows move, Shift / ] jump, Ctrl / [ fire, "
-                              "Esc give up, N/B level, F2 two players, Tab viewer, F10 options]",
+                              "Esc give up, N/B level, F2 two players, F3 ending, Tab viewer, F10 options]",
                               MBN_VERSION_STRING, lv.World() + 1, lv.Level() + 1);
             SDL_SetWindowTitle(GetWindow(), title);
             return;
@@ -363,6 +434,8 @@ private:
     std::vector<int> soundHandles_;
     std::unique_ptr<CD3DFile> mesh_;
     int modelIndex_ = 0, soundIndex_ = -1, track_ = 0;
+    bool streaming_ = false;    // the current track is an MP3/FLAC replacement
+    bool musicPaused_ = false;  // the window is in the background
     float angle_ = 0, zoom_ = 1.f, radius_ = 10.f;
     D3DVECTOR center_{0, 0, 0};
     XLevelView levelView_;
@@ -370,6 +443,7 @@ private:
     enum class Mode { Game, LevelViewer, ModelViewer };
     Mode mode_ = Mode::Game;  // Tab cycles game -> level viewer -> model viewer
     bool levelMode_ = false;
+    bool startAtEnding_ = false;  // --ending
     float camZ_ = 160.0f, camDist_ = 340.0f, camPitch_ = 0.610865f;
 };
 
@@ -388,21 +462,24 @@ int main(int argc, char** argv) {
     Config& cfg = GetConfig();
     if (!cfg.Load(basePath + "magebros_native.ini")) {
         cfg.path = basePath + "magebros_native.ini";
+        cfg.firstRun = true;  // the window is then sized to the monitor (CD3DApplication::Create)
         cfg.Save();
     } else if (cfg.version < Config::kCurrentVersion) {
         cfg.Save();  // rewrite older files with the current comments, keeping their values
     }
     std::string gamePath = cfg.gamePath;
-    bool allowUnverified = false, twoPlayer = false;
+    bool allowUnverified = false, twoPlayer = false, ending = false;
     for (size_t i = 0; i < args.size(); i++) {
         if (args[i] == "--game" && i + 1 < args.size()) gamePath = args[++i];
         else if (args[i] == "--allow-unverified") allowUnverified = true;
         else if (args[i] == "--two-player") twoPlayer = true;
+        else if (args[i] == "--ending") ending = true;  // test hook: start at the ending
         else if (args[i] == "--windowed") cfg.fullscreen = FullscreenMode::Windowed;
         else if (args[i] == "--fullscreen") cfg.fullscreen = FullscreenMode::Borderless;
         else if (args[i] == "--size" && i + 2 < args.size()) {
             cfg.windowWidth = atoi(args[++i].c_str());
             cfg.windowHeight = atoi(args[++i].c_str());
+            cfg.firstRun = false;  // (a size given on the command line wins)
         }
     }
 
@@ -427,7 +504,7 @@ int main(int argc, char** argv) {
 
     int res = 0;
     {
-        AssetViewerApp app(twoPlayer);
+        AssetViewerApp app(twoPlayer, ending);
         if (FAILED(app.Create(args)))
             FatalError("Mage Bros. Native", "Could not create the game window (OpenGL 3.3 is required).");
         res = app.Run();

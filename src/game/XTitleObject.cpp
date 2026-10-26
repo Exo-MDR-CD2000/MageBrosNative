@@ -118,14 +118,8 @@ void XTitleObject::Render(Device* d, BackBuffer* bb) {
     if (state_ == NON) return;
     camera_->DoSetTransform(d);
     // the background: the tile in a 7 x 5 grid, scrolling up and left a quarter pixel a tick
-    // (DirectDraw dropped the tiles that crossed the screen edge; the port clips them, as it does
-    // every blit: see Device::BltToBackBuffer)
-    int scroll = (int)((float)counter_ * 0.25f) % 120;
-    for (int y = 0; y < 5; y++)
-        for (int x = 0; x < 7; x++) {
-            background_->SetPosition(x * 120 - scroll, y * 120 - scroll);
-            background_->Draw(bb);
-        }
+    // (native: wider in widescreen)
+    RenderTiledBackground(*background_, counter_, bb);
     // the pictures fade in from tick 200 to 700, to 0.8
     float alpha = 0.0f;
     if (counter_ > 200) alpha = counter_ < 700 ? (float)(counter_ - 200) / 500.0f : 1.0f;

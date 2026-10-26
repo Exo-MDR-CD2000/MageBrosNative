@@ -4,6 +4,8 @@
 #include "game/JSprite.h"
 #include "game/XApplication.h"
 #include "game/XCamera.h"
+#include "gfx/device.h"
+#include <algorithm>
 
 namespace {
 const uint16_t kBitmapLogo = 0x2d1;
@@ -43,6 +45,10 @@ void XLogoObject::ProcessFrame(unsigned n) {
 void XLogoObject::Render(Device* d, BackBuffer* bb) {
     if (state_ == NON) return;
     camera_->DoSetTransform(d);
+    // native (widescreen): the backdrop (plain white) widened with the view, as much wider than
+    // 4:3 as the view is, so it reaches the sides (600 x 600 at 4:3 and in Stretch, as the original)
+    backdrop_->SetScaleVector(D3DVECTOR(std::max(1.0f, d->Layout().virtualW / 640.0f), 1.0f, 1.0f));
+    backdrop_->UpdateWorldMatrix();
     backdrop_->Render(d);
     // centred on the 640 x 480 screen (CD3DApplication::GetScreenWidth / Height)
     logo_->SetCenterPos(640 / 2, 480 / 2);
