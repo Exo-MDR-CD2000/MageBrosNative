@@ -13,7 +13,7 @@ struct SDL_Window;
 // What the game sees as IDirectDrawSurface7* for the back buffer.
 class BackBuffer {
 public:
-    // DDBLT_KEYSRC is the only flag that matters for Hopmon
+    // DDBLT_KEYSRC is the only flag that matters for the game
     HRESULT Blt(const RECT* dst, Surface* src, const RECT* srcRect, bool keySrc);
     HRESULT ColorFill(const RECT* dst, uint32_t rgb);
 };
@@ -48,9 +48,10 @@ public:
     virtual void PlayUISound(UISound s) { (void)s; }
     virtual bool CanReturnToMainMenu() const { return false; }
     virtual void ReturnToMainMenu() {}
+    virtual void ReturnToLevelSelect() {}  // from a level (offered beside the main menu when InLevel)
     virtual bool InLevel() const { return false; }
     // Whether F10 / Start may open the options menu right now (false during the intro logo,
-    // the ending, and in-game whenever Hopmon isn't under the player's control).
+    // the ending and the fades, and in a level whenever no mage is under the player's control).
     virtual bool CanOpenOptions() const { return true; }
     virtual void ReloadMusic() {}                       // music source changed: restart the current track
     virtual void ApplyModChanges() {}                   // mods or level pack changed (title screen only)

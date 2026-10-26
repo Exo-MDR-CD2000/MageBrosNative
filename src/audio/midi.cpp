@@ -451,6 +451,11 @@ void Close() {
     g_next = 0;
 }
 
+bool IsLoaded() {
+    std::lock_guard<std::mutex> lk(g_mutex);
+    return g_loaded;
+}
+
 bool PollFinished() { return g_finished.exchange(false); }
 
 void SetVolume(float v) {

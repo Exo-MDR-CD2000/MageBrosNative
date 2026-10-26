@@ -184,7 +184,30 @@ version newer: texture and UVs are set by separate calls (`SetTexture`, `SetUV`)
 calls the current screen's `ProcessFrame(n)` (+0x1c8). Any other state is a request: the old
 screen is deleted, the state's screen is made, and the state becomes 2; the new screen runs from
 the next frame. `Create` sets state 3, so the game opens on the logo. `Render` clears to the
-background colour (black) and draws the running screen.
+background colour (black) and, while the state is 2, draws the running screen, then the FPS
+display (below).
+
+**`XApplication::MsgProc`** (before `CD3DApplication::MsgProc`):
+
+- WM_SYSCOMMAND SC_KEYMENU (0xf100): swallowed, so Alt doesn't open the window menu.
+- WM_KEYDOWN `'P'` (0x50): posts WM_COMMAND 0x9c44. That is the DX7 framework's
+  IDM_TOGGLESTART (entry 3 of `CD3DApplication::MsgProc`'s command table at 0x410a30). It toggles
+  `m_bFrameMoving` (+0x10) and moves the time base on resume. This is the manual's "P: Pause":
+  nothing ticks and the last picture stays. The music plays on. It is a window message, so it
+  works on every screen, and the key's auto-repeat toggles it again. The port toggles once per
+  press (`AssetViewerApp::OnKeyDown`) and lets the key be rebound (DIK 0x19).
+- WM_ACTIVATEAPP (0x1c): with wParam 1, `JMidiList::Resume` and `JDInput::SetAcquireKeyboard` /
+  `SetAcquireJoystick(1)`; otherwise `JMidiList::Pause` and both set to 0. Losing the focus
+  pauses the music and the input; the game itself keeps ticking.
+- MM_MCINOTIFY (0x3b9) with wParam 1 (successful): `JMidiList::Replay`, the music's loop.
+
+**`XFPSDisplay`** (+0x1cc, made in `XApplication::Create` after model 0x18d): a
+`JSprite` of bitmap 0xbf, the "FPS" label (one frame, colour-keyed), and a `JNumber` of digits
+0xbb (ten frames) with `SetDisplayZero(1)` and `SetNumDigits(3)`. `Render`, when
+`RegInfo_GetDisplayFPS` (byte +0x2c of the settings) is set: the label at (552, 454), then the
+number at (552 + label width + 4, 454) showing `CD3DApplication::GetFPS`. The port's setting is
+`[video] show_fps`. The number is the framework's frames per second, so with the port's Smooth
+motion on it counts the frames drawn, not the game's ticks (always 100 a second).
 
 | State | Screen | Asks for next |
 |---|---|---|

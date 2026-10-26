@@ -5,14 +5,13 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 6 of 7 in progress (version 0.3.6).** The engine runs (window, OpenGL
-> renderer, sound, MIDI music, keyboard and gamepad, options menu) and all 40 levels can be
-> explored in the level viewer. All four worlds and all 40 levels can be played, every enemy and
-> boss included, by one player or two. The front end has begun: the game opens on the
-> original's logo, title screen, save slots and level select, levels fade in and out,
-> progress is saved, the shop sells potions and wands, each with its own shots, and clearing
-> 4-10 plays the ending. Next: checks of the whole front end (stage 6). See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md)
-> for what changed in each version.
+> **Status: stage 7 of 7 in progress (version 0.4.0).** The whole original game is in and plays
+> from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
+> two, with the original's logo, title, save slots, level select, shop, saving and ending.
+> Stage 7 adds optional modern extras: the options menu is now made for Mage Bros. (the
+> original's pause and FPS counter, rebinding both players' keys, replacement music). Next: the
+> video options (widescreen HUD, field of view). See [docs/ROADMAP.md](docs/ROADMAP.md) for the
+> plan and [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
 > **You need your own copy of the original game.** This repository contains no game content: no
 > images, models, levels, sounds, music or text. Everything is read at runtime from the original
@@ -88,6 +87,18 @@ button (Enter, Shift, Ctrl, a gamepad button or Escape) to return to the logo.
 
 Defeated enemies drop coins. After a lost level, or a world's last level, the game saves and
 returns to level select; world 4 opens once worlds 1 to 3 are cleared.
+
+**Pause and options**: P pauses and resumes, as in the original. F10 (or gamepad Start) opens
+the options menu whenever you can play (not during the logo, the ending, a fade or a death): video,
+graphics, audio and controls, Main menu (back to the title), Level select in a level (leaving it
+as you were when it started) and Quit. The controls page rebinds
+player 1's keys, player 2's keys, the general keys (select, pause, back) and the gamepad's fire and
+jump buttons. Options > Video > Show FPS shows the original's frames-per-second counter. Smooth
+motion (on by default) draws at the monitor's refresh rate; off, the picture is drawn only when the
+game ticks, at most 100 times a second, as the original. The game's speed is the same either way.
+Settings not ready for Mage Bros. yet (the HUD options, the field of view, cheats and mods) are
+greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
+to replace the MIDI music.
 
 In the game view N / B change level and F2 switches between one and two players (test keys:
 a game started with them is not saved). Tab switches to the **level viewer**: every one of the 40

@@ -53,6 +53,7 @@ void XGameScene::Start() {
 bool XGameScene::InitLevel() {
     const XLevelStatus& ls = app_->LevelStatus();
     if (!level_.Load(ls.currentWorld, ls.currentLevel)) return false;
+    app_->MarkLevelStart();  // (native: what the options menu's "Level select" goes back to)
     // objects not reconstructed yet keep their coloured markers
     level_.FilterMarkers([](const XLevelView::Object& o) { return !XLevelLoop::IsReconstructed(o.code); });
     // XGameObject::XGameObject makes both heroes; XGameObject::InitLevel resets hero B only in a
@@ -219,6 +220,13 @@ void XGameScene::ProcessFrame(unsigned n) {
         }
         shop_->ProcessFrame(n);
     }
+}
+
+bool XGameScene::PlayerHasControl() const {
+    if (state_ != PROCESS || processType_ != PLAYING || !heroA_) return false;
+    XShop::STATE shop = shop_->GetState();
+    if (shop != XShop::NON && shop != XShop::PROCESS) return false;
+    return heroA_->GetLiveState() == XHero::NORMAL || heroB_->GetLiveState() == XHero::NORMAL;
 }
 
 void XGameScene::Tick() {

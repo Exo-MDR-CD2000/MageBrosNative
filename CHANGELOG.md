@@ -7,6 +7,30 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.0] - 2026-10-25
+
+Stage 7 begins: the options menu (F10 or gamepad Start), brought over from Hopmon Native, is
+now made for Mage Bros.
+
+- **Pause**: P pauses and resumes the game, as in the original (the manual's "P: Pause").
+- **FPS counter**: Options > Video > Show FPS now shows the original's own frames-per-second
+  counter in the bottom right of every screen.
+- **Music pauses** while the game window is in the background, as in the original.
+- **Replacement music works**: MP3 or FLAC files named `Music01` to `Music06` in a `music`
+  folder next to `MageBros.exe` now play instead of the MIDI tracks (Options > Audio > Music
+  source).
+- **Controls**: the keyboard page now has player 1's keys, player 2's keys and the general keys
+  (select, pause, back), each of which can be rebound. The gamepad page sets the fire and jump
+  buttons. In the menu, Ctrl now selects as Enter does (Z and X, Hopmon's keys, no longer do).
+- **The menu** plays the title menu's sounds. It offers **Main menu**, back to the title, and
+  in a level also **Level select**, which leaves the level for the world map with your gold,
+  life, magic and wand as they were when the level started (neither saves the level you leave). It opens only
+  while you can play: not during the logo, the ending, the fades or a mage's death.
+- Settings that aren't ready for Mage Bros. yet are greyed out: the HUD options, the field of
+  view, cheats and mods. Hopmon's two cheats are gone. The ini's notes on keys, buttons, the HUD
+  and cheats describe Mage Bros. now; an older ini is rewritten with them, keeping your settings.
+- The whole game has been played from start to finish on 0.3.6: stages 5 and 6 are complete.
+
 ## [0.3.6] - 2026-10-24
 
 - **The ending**: clearing World 4's last level now plays the original's ending instead of

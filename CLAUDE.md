@@ -235,6 +235,11 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
 `AssetViewerApp::OnAutomation` in `src/main.cpp`:
 
 - `key=<SDL key name>`: press a key. `down=` and `up=` hold and release one.
+- `sdlkey=<SDL key name>`: a real key event through SDL's queue, which the options menu reads
+  (`key=` never reaches it). Driving the menu: `sdlkey=F10` opens it (only while a player has
+  control, so not on the logo: the title answers from about 13 s), then `sdlkey=Down`,
+  `sdlkey=Return`, `sdlkey=Escape` about 200 ms apart. `focus=0` / `focus=1` fake the window
+  losing and getting back the focus.
 - `shot=<file.bmp>`: write a screenshot.
 - `quit`: exit.
 - `level=<world>,<level>`: start that level (1-based), from any screen (the logo included).
@@ -306,17 +311,56 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-24, version 0.3.6, stage 6 chunk 8 done)
+## Where we are (last updated: 2026-10-25, version 0.4.0, stage 7 chunk 1 done)
 
-**Stage 6 (the front end) is under way: chunks 1 (the screen framework, fades and logo), 2
-(the title), 3 (saving), 4 (the save slots), 5 (level select and the real level ends), 6
-(the shop), 7 (the wands' shots) and 8 (the ending) are done; chunk 9, the checks of the whole
-front end, is next.** Stage 5 built every object of the 40 levels and
-two-player co-op (player 2, hero on hero, player 2's platform shadow and HUD panel). Wait for
-the owner to say "start the next chunk". The chunk tables are in `docs/ROADMAP.md` ("Stage 6,
-chunk by chunk" for the front end, "Stage 5" for the game); what each version changed is in
-`CHANGELOG.md`. The latest release is v0.3.5 (chunks 6 and 7, GitHub); 0.3.6 (chunk 8) is built and waiting
-for "commit and push".
+**Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
+plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
+opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) is done in
+0.4.0, tested by the owner and pushed to the **`menu-dev` branch**: stage 7's menu work stays on
+`menu-dev`, apart from `main`, until the owner says to merge it (a push to `main` publishes a
+release; a push to `menu-dev` doesn't). **Chunk 2, the video options, is next**; the
+chunks after it are to be planned with the owner (smooth motion may become a stage of its own).
+Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
+7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.
+
+**The options menu** (`src/ui/options_menu.*`, F10 / gamepad Start) came from Hopmon Native
+almost line for line, with its config (`src/core/config.*`), input remapping (`src/input`) and
+the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
+
+- `AssetViewerApp` (`main.cpp`) implements the menu hooks of `CD3DApplication`:
+  - `PlayUISound`: the title's 0xec / 0xed.
+  - `CanReturnToMainMenu` / `ReturnToMainMenu`: any screen but the logo and the title, to state 4;
+    in a level the menu also shows "Level select" (`ReturnToLevelSelect` ->
+    `XApplication::LeaveLevel`: the save as `XGameScene::InitLevel` found it, kept by
+    `MarkLevelStart`, then state 6; nothing is written, so leaving can't dodge Escape's gold loss
+    and keep the level's gold).
+  - `InLevel`.
+  - `CanOpenOptions`: `XApplication::PlayerHasControl`, which needs a running screen in PROCESS
+    that isn't the logo or the ending; in a level, `XGameScene::PlayerHasControl` (PLAYING, a
+    NORMAL mage, the shop not fading).
+  - `ReloadMusic` / `MusicSource`.
+  - `OnActivateApp`: the original's WM_ACTIVATEAPP music pause.
+  - `OnKeyDown(DIK_P)`: the original's pause, toggling `m_bFrameMoving`.
+- `PlayMusic` in `main.cpp` is `JMidiList::Play` with Hopmon Native's MP3/FLAC replacement
+  (`MusicStream::FindReplacement`); `XApplication::StopMusic` closes both players.
+- `XFPSDisplay` (`src/game`) is the original's counter, drawn by `XApplication::Render(d, bb,
+  showFps, fps)`.
+- The key pages are built from `kKeyActions` in `options_menu.cpp` (group, label, DIK):
+  rebinding a DIK moves every place the game reads it (the menus' W / S too).
+- `OptionsMenu::NotYet` greys out what isn't built: HUD position, HUD max width, HUD size,
+  Field of view (chunk 2: nothing calls `Device::SetGameplayView`, `HudEdgeShift` or
+  `BeginHudScale` yet), Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
+  menu's mod pages still speak of Hopmon's assets).
+- Smooth motion (`interpolation`, on by default, from Hopmon) only sets how often the picture is
+  drawn: no game object takes part in `Interp::Tracked`, so frames repeat between ticks. Off, the
+  framework draws only on frames with a tick (at most 100 a second, the original's pace).
+- `config_version` 15 rewrote the ini notes for Mage Bros.' keys and dropped Hopmon's two
+  cheats; `unlock_all_levels` is still read but nothing uses it.
+
+Stage 6 (the front end), for reference: `XApplication`'s states 3 logo, 4 title, 5 save slots,
+6 level select, 7 game, 9 ending (8, the register screen, is never reached:
+`RegInfo_Registered` returns 1 in the freeware build); `XProcessObject`'s fades; saving in
+`core/saves` (no import of the original's registry saves, the owner's decision).
 
 Playable now, with nothing left unbuilt (no marker cubes):
 
@@ -334,28 +378,8 @@ Playable now, with nothing left unbuilt (no marker cubes):
   World 4 level by level and found nothing wrong (2026-10-24). A script over the 40 levels' object fields found no code outside
   `kDone` but `!` (the invisible block, never drawn).
 
-Stage 5's code is complete (chunks 1 to 18). Chunk 19, the owner playing the whole game, is
-deferred: the owner will test once the front end is in, so stage 6 goes ahead first.
-
-**Stage 6 (the front end) has 9 chunks; chunks 1 (0.3.0), 2 (0.3.1), 3 (0.3.2), 4 (0.3.3),
-5 (0.3.4), 6 and 7 (0.3.5) are done, chunk 8 is next.** The table,
-with the original's screen states, is in `docs/ROADMAP.md`, "Stage 6, chunk by chunk":
-
-| Chunk | What |
-|---|---|
-| 1 | Screen framework: `XApplication` states, `XProcessObject` fades, the logo (done, 0.3.0) |
-| 2 | Title (`XTitleObject`): one / two players, quit (done, 0.3.1) |
-| 3 | Saving: `XSaveData`, `XLevelStatus`, `DoSaveData`; the port's own save files in AppData (`core/saves`, behind the ini's `save_path`); no import of the original's registry saves (owner's decision) (done, 0.3.2) |
-| 4 | Save slots (`XSelectSlot`) (done, 0.3.3) |
-| 5 | Level select (`XSelectLevelObject`) and the game's real level ends (done, 0.3.4) |
-| 6 | Shop screen (`XShop`) (done, 0.3.5) |
-| 7 | The other wands' shots (`XHeroFireList::_Wand*`, `XHeroFire_Chase`) (done, 0.3.5) |
-| 8 | Ending (`XEndingObject`) (done, 0.3.6) |
-| 9 | Checks and the stage 6 zip |
-
-`XRegisterInfoObject` (state 8) is never reached: `RegInfo_Registered` returns 1 in the
-freeware build. Keep the Tab viewers and the test hooks (`--auto`, N / B, F2) working alongside
-the front end. Chunk 1 notes: the sound cache moved to `JSoundList` (the application's);
+Keep the Tab viewers and the test hooks (`--auto`, N / B, F2) working alongside
+the front end. Stage 6 chunk 1 notes: the sound cache moved to `JSoundList` (the application's);
 `JSurfaceList::Create(id, colorKey)` makes a bitmap with or without the colour key, as the
 original's `CreateSurface` flag (the fade strips 0x1f7 and the logo 0x2d1 have none; `Get` still
 makes any other keyed); `XLevelStatus` has its play part (`IncreaseLevel` / `World`,
@@ -384,10 +408,6 @@ ending" in `docs/REVERSE_ENGINEERING.md`). `--auto ending` jumps there. Its corr
 a frame (`textureOffset`, as the original), so it scrolls faster at higher frame rates. It is in
 the "Stage 7: frame-rate dependence" table in `docs/ROADMAP.md`.
 
-**Starting chunk 9 (checks and the stage 6 zip)**: play the whole flow by screenshot: logo,
-title, save slots, level select, a level, the shop, a cleared world, the ending, back to the
-logo. Then the owner's full play-through (stage 5 chunk 19 and stage 6 together).
-
 Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
 status, shot colour, warp photons, lost-gold line and platform mark; `XGameScene::UpdateInput`
 reads both players (XHeroB: D A W S, Left Ctrl / 1, Left Shift / 2, pad 1); every hero check in
@@ -408,25 +428,12 @@ platforms of 1-5 move, so a `place` onto them drops into the pit). Before
 splitting any future large piece, read every state's transitions first: the nest's bird turned out to be one loop sharing its steering, so a split
 proposed before reading it didn't fit; the wizard waits for each attack, so it split cleanly.
 
-After stage 6: **stage 7**, opt-in modern extras.
-
 ### Waiting for the owner to check in play
 
-Not caught by screenshot, so worth the owner's eye: the king mushroom (2-4, 2-7); the camera
-shake (hammers in World 2, stalactites in World 3); the genie opening its mouth before an attack,
-and whether it looks as pale as the original while it is small and rising; the jump needles
-springing up (3-1); how the floor fan floats the mage (3-4: it bobs about 120 above the fan,
-and touching the blades from beside it hurts); the ghost (3-5: its warning, swoop and flinch,
-and how it looks); two players (0.2.22: player 2's keys and second gamepad, the camera between
-the mages, enemies turning to the closer one, the level ending when both are done); standing on
-and carrying each other (0.2.23: on a lift in 1-4 to 1-9, over a floor fan in 3-4, jumping off
-the other's head and bumping into it from below); the front end (0.3.0–0.3.4: logo, title,
-save slots, level select, saving; the owner has been playing these versions); the shop (0.3.5:
-buying in each world, both players, and Escape leaving it and giving up the level, as the original);
-the wands' shots (0.3.5: the spreads and how strongly the X wands' shots home); the
-ending (0.3.6: the corridor's scrolling speed, the credits' timing). Already confirmed
-by the owner: World 1 start to finish, the dragon fight, the third-barrel heart, the carrying
-between the two mages (0.2.23).
+The owner's full play-through of 0.3.6 covered everything built up to stage 6. From stage 7:
+the options menu of 0.4.0 (each page, rebinding both players' keys and the gamepad buttons, P,
+Level select from a level, Main menu, the FPS counter at 165 Hz, MP3/FLAC music if the owner has any; replacement music was
+not tested here, as there were no MP3 or FLAC files to try).
 
 ### Notes from earlier stages
 

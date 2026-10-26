@@ -107,8 +107,6 @@ bool Config::Load(const std::string& file) {
             else seen = before;
         } else if (section == "cheats") {
             if (k == "unlock_all_levels") unlockAllLevels = toBool(v);
-            else if (k == "infinite_fire_energy") infiniteFireEnergy = toBool(v);
-            else if (k == "no_crystal_slowdown") noCrystalSlowdown = toBool(v);
             else seen = before;
         } else if (section == "mods") {
             if (k == "pack") modPack = v.empty() ? "original" : v;
@@ -132,6 +130,8 @@ bool Config::Load(const std::string& file) {
             Log("Config: ignoring unknown setting '%s' in [%s]", k.c_str(), section.c_str());
     }
     fclose(f);
+    // config_version 15: the [keys] and [gamepad] notes describe Mage Bros.' keys, and Hopmon's
+    // two cheats are gone
     // config_version 14: [mods] lists add-ons with the winner first (it was last before)
     if (version > 0 && version < 14) std::reverse(mods.begin(), mods.end());
     return true;
@@ -241,10 +241,10 @@ bool Config::Save() const {
       ";   (default). Higher lifts dark and middle tones (whites stay white), lower\n"
       ";   darkens them.\n");
     fprintf(f, "brightness = %d\n\n", brightness);
-    P("; show_fps: 1 = show the original frames-per-second counter. 0 = hide\n"
-      ";   (default).\n");
+    P("; show_fps: 1 = show the original frames-per-second counter, at the bottom\n"
+      ";   right of every screen. 0 = hide (default).\n");
     fprintf(f, "show_fps = %d\n\n", showFps ? 1 : 0);
-    P("; hud_layout: where the in-game HUD (level, crystals, fire energy, FPS) goes\n"
+    P("; hud_layout: where the in-game HUD (status display, FPS counter) goes\n"
       ";   when aspect = 2. 1 = at the screen edges (default). 0 = original\n"
       ";   position inside the centred 4:3 area. No effect with aspect 0 or 1.\n");
     fprintf(f, "hud_layout = %d\n\n", hudLayout);
@@ -254,9 +254,8 @@ bool Config::Save() const {
       ";   the far corners. 1.78 = 16:9. 0 = always use the full screen width.\n");
     fprintf(f, "hud_max_aspect = %.2f\n\n", hudMaxAspect);
     P("; hud_scale: size of the in-game HUD, 0.5 to 2.0. 1.0 = original size\n"
-      ";   (default). Each part grows or shrinks from its own screen corner: level\n"
-      ";   and crystals from the top-left, the fire gauge from the bottom-right,\n"
-      ";   the FPS counter from the top-right. Works with every aspect setting.\n");
+      ";   (default). Each part grows or shrinks from its own screen corner.\n"
+      ";   Works with every aspect setting.\n");
     fprintf(f, "hud_scale = %.2f\n\n", hudScale);
 
     P("[audio]\n"
@@ -304,27 +303,29 @@ bool Config::Save() const {
       "; (F10, F11 and F12 are reserved for the options menu, fullscreen and screenshots.)\n"
       ";\n"
       ";   code  original key   used for\n"
-      ";   0xC8  Up arrow       move up / menu up      (also camera tilt with modifier)\n"
-      ";   0xD0  Down arrow     move down / menu down  (also camera tilt with modifier)\n"
-      ";   0xCB  Left arrow     move left / menu left  (also camera turn with modifier)\n"
-      ";   0xCD  Right arrow    move right / menu right(also camera turn with modifier)\n"
-      ";   0x2C  Z              fire / menu confirm\n"
-      ";   0x2A  Left Shift     fire / menu confirm\n"
-      ";   0x36  Right Shift    fire / menu confirm\n"
-      ";   0x2D  X              camera modifier (hold) / menu confirm\n"
-      ";   0x1D  Left Ctrl      camera modifier (hold) / menu confirm\n"
-      ";   0x9D  Right Ctrl     camera modifier (hold) / menu confirm\n"
-      ";   0x1C  Return         menu confirm\n"
-      ";   0x9C  Keypad Enter   menu confirm\n"
-      ";   0x01  Escape         menu back / give up the current level\n"
+      ";   0xC8  Up arrow       player 1 up / menu up\n"
+      ";   0xD0  Down arrow     player 1 down / menu down\n"
+      ";   0xCB  Left arrow     player 1 left / menu left\n"
+      ";   0xCD  Right arrow    player 1 right / menu right\n"
+      ";   0x9D  Right Ctrl     player 1 fire / menu select\n"
+      ";   0x1A  [              player 1 fire\n"
+      ";   0x36  Right Shift    player 1 jump / menu select\n"
+      ";   0x1B  ]              player 1 jump\n"
+      ";   0x11  W              player 2 up / menu up\n"
+      ";   0x1F  S              player 2 down / menu down\n"
+      ";   0x1E  A              player 2 left / menu left\n"
+      ";   0x20  D              player 2 right / menu right\n"
+      ";   0x1D  Left Ctrl      player 2 fire / menu select (player 1's too, alone)\n"
+      ";   0x02  1              player 2 fire\n"
+      ";   0x2A  Left Shift     player 2 jump / menu select (player 1's too, alone)\n"
+      ";   0x03  2              player 2 jump\n"
+      ";   0x1C  Return         menu select\n"
       ";   0x19  P              pause\n"
+      ";   0x01  Escape         menu back / give up the current level\n"
       ";\n"
       "; Examples (remove the leading ; to use):\n"
-      ";dik_0xC8 = Up, W\n"
-      ";dik_0xD0 = Down, S\n"
-      ";dik_0xCB = Left, A\n"
-      ";dik_0xCD = Right, D\n"
-      ";dik_0x2C = Z, Space\n");
+      ";dik_0x9D = Right Ctrl, Space\n"
+      ";dik_0x36 = Right Shift, Up\n");
     for (auto& kv : keyBinds) {
         fprintf(f, "dik_0x%02X = ", kv.first);
         for (size_t i = 0; i < kv.second.size(); i++) fprintf(f, "%s%s", i ? ", " : "", kv.second[i].c_str());
@@ -333,8 +334,9 @@ bool Config::Save() const {
     P("\n[gamepad]\n"
       "; Gamepad remapping. Format:  button_<n> = <button>[, <button>, ...]\n"
       "; <n> is the original joystick button number. The game uses only two:\n"
-      ";   button_0  fire / menu confirm        default: a (bottom face button)\n"
-      ";   button_1  camera modifier / confirm  default: b (right face button)\n"
+      ";   button_0  fire / menu select   default: a (bottom face button)\n"
+      ";   button_1  jump / menu select   default: b (right face button)\n"
+      "; Gamepad 1 plays player 1 and gamepad 2 player 2; both use these.\n"
       "; Movement is always the left stick and the d-pad.\n"
       "; Button names: a, b, x, y (positions as on an Xbox pad, same buttons on\n"
       "; PlayStation/Switch pads), back, start, leftshoulder, rightshoulder,\n"
@@ -350,25 +352,17 @@ bool Config::Save() const {
     }
     P("\n[cheats]\n"
       "; Game modifiers. All off by default; with them off the game plays exactly\n"
-      "; like the original.\n"
+      "; like the original. (Not used yet: the cheats come in a later version.)\n"
       ";\n"
       "; unlock_all_levels: 1 = every level can be chosen on the level-select\n"
       ";   screen, in the original game and in level packs. Your real progress (the\n"
       ";   highest level you have reached) is not changed, so turning this off again\n"
       ";   brings back exactly the levels you had unlocked. Default 0.\n");
-    fprintf(f, "unlock_all_levels = %d\n\n", unlockAllLevels ? 1 : 0);
-    P("; infinite_fire_energy: 1 = the fire gauge is always full, so Hopmon can\n"
-      ";   fire on every press instead of waiting for it to recharge. The game's\n"
-      ";   own limit of 3 shots on screen at once still applies. Default 0.\n");
-    fprintf(f, "infinite_fire_energy = %d\n\n", infiniteFireEnergy ? 1 : 0);
-    P("; no_crystal_slowdown: 1 = carrying crystals no longer slows Hopmon down;\n"
-      ";   every hop takes the normal 0.4 seconds however many he carries.\n"
-      ";   Default 0.\n");
-    fprintf(f, "no_crystal_slowdown = %d\n", noCrystalSlowdown ? 1 : 0);
+    fprintf(f, "unlock_all_levels = %d\n", unlockAllLevels ? 1 : 0);
     P("\n[mods]\n"
       "; Level packs go in mods/levelpacks/, add-ons in mods/addons/ (next to this program);\n"
-      ";   see MODDING.md. Easiest: Options > Mods on the title screen.\n"
-      "; pack: the level pack to play. original = the original 45 levels (default);\n"
+      ";   (not used yet: mods come in a later version).\n"
+      "; pack: the level pack to play. original = the original 40 levels (default);\n"
       ";   otherwise the id of an installed level pack.\n");
     fprintf(f, "pack = %s\n", modPack.c_str());
     P("; One line per installed add-on, in load order: <add-on id> = on / off. When two\n"

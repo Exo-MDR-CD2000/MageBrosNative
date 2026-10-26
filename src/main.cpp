@@ -173,7 +173,7 @@ protected:
         d->BeginScene();
         if (mode_ == Mode::Game) {
             XGameScene::SetDeviceState(d);
-            app_.Render(d, GetBackBuffer());
+            app_.Render(d, GetBackBuffer(), DisplayFPS() != 0, GetFPS());
             d->EndScene();
             return S_OK;
         }
@@ -206,6 +206,13 @@ protected:
     }
 
     void OnKeyDown(int dik) override {
+        if (dik == DIK_P) {
+            // XApplication::MsgProc: WM_KEYDOWN 'P' posts IDM_TOGGLESTART, the framework's pause
+            // (nothing ticks, the last picture stays). The original also toggles on the key's
+            // auto-repeat; here a held P toggles once.
+            m_bFrameMoving = !m_bFrameMoving;
+            return;
+        }
         if (dik == DIK_TAB) {
             // game -> level viewer -> model viewer -> game
             mode_ = mode_ == Mode::Game ? Mode::LevelViewer : mode_ == Mode::LevelViewer ? Mode::ModelViewer : Mode::Game;
@@ -265,7 +272,50 @@ protected:
         }
     }
 
-    void OnMidiNotifySuccessful() override { Midi::PlayFromStart(); }  // loop, as the game does
+    void OnMidiNotifySuccessful() override {
+        // MM_MCINOTIFY: JMidiList::Replay, the loop (MP3/FLAC replacements loop by themselves)
+        if (streaming_) return;
+        Midi::PlayFromStart();
+        if (musicPaused_) Midi::Pause();
+    }
+
+    // XApplication::MsgProc, WM_ACTIVATEAPP: losing the focus pauses the music (and releases the
+    // keyboard and gamepads, which Input::SetFocus does); getting it back resumes it
+    void OnActivateApp(bool active) override {
+        musicPaused_ = !active;
+        if (streaming_) active ? MusicStream::Resume() : MusicStream::Pause();
+        else active ? Midi::Resume() : Midi::Pause();
+    }
+
+    // ---- the options menu's hooks (native additions)
+    // the title menu's own sounds: 0xec moving, 0xed choosing
+    void PlayUISound(UISound s) override { app_.Sounds().PlayMono(s == UISound::Move ? 0xec : 0xed, 1.0f); }
+    // "Main menu" goes to the title from any screen but the logo and the title themselves
+    bool CanReturnToMainMenu() const override { return mode_ == Mode::Game && !app_.OnLogoOrTitle(); }
+    void ReturnToMainMenu() override {
+        if (!CanReturnToMainMenu()) return;
+        m_bFrameMoving = true;  // (a P pause would leave the title frozen)
+        app_.SetState(XApplication::TITLE);
+    }
+    bool InLevel() const override { return mode_ == Mode::Game && app_.InGame(); }
+    // in a level the menu offers "Level select" instead of "Main menu"
+    void ReturnToLevelSelect() override {
+        if (!InLevel()) return;
+        m_bFrameMoving = true;
+        app_.LeaveLevel();
+    }
+    // F10 / Start: in the viewers at any time; in the game only while a screen waits for the
+    // player (not the logo or the ending, not during a fade, in a level only while a mage is
+    // under the player's control)
+    bool CanOpenOptions() const override { return mode_ != Mode::Game || app_.PlayerHasControl(); }
+    void ReloadMusic() override {
+        int t = mode_ == Mode::Game ? app_.CurrentMusic() : track_;
+        if (t > 0) PlayMusic(t);
+    }
+    const char* MusicSource() const override {
+        if (streaming_ && MusicStream::IsOpen()) return "MP3/FLAC file";
+        return Midi::IsLoaded() ? "MIDI" : "";
+    }
 
 private:
     void LoadModel() {
@@ -300,14 +350,31 @@ private:
         UpdateTitle();
     }
 
+    // JMidiList::Play: Music01..06, or (a native addition, as Hopmon Native's) its MP3/FLAC
+    // replacement from the "music" folder when the music source allows it
     void PlayMusic(int track) {
-        std::string path = GameFiles::MusicPath(track);
-        if (path.empty()) {
-            Log("Viewer: Music%02d.mid not found next to MageBros.exe", track);
-            return;
-        }
-        if (Midi::Open(path)) Midi::PlayFromStart();
+        MusicStream::Close();
+        Midi::Close();
+        streaming_ = false;
         track_ = track;
+        char midiName[16];
+        std::snprintf(midiName, sizeof midiName, "Music%02d.mid", track);
+        std::string file = MusicStream::FindReplacement(track - 1, midiName);
+        if (!file.empty() && MusicStream::Open(file)) {
+            streaming_ = true;
+            Log("Music: track %d plays %s (%s)", track, file.c_str(), MusicStream::Describe().c_str());
+            MusicStream::PlayFromStart();
+            if (musicPaused_) MusicStream::Pause();
+        } else {
+            if (!file.empty()) Log("Music: track %d falls back to %s", track, midiName);
+            std::string path = GameFiles::MusicPath(track);
+            if (path.empty()) {
+                Log("Music: %s not found next to MageBros.exe", midiName);
+            } else if (Midi::Open(path)) {
+                Midi::PlayFromStart();
+                if (musicPaused_) Midi::Pause();
+            }
+        }
         UpdateTitle();
     }
 
@@ -363,6 +430,8 @@ private:
     std::vector<int> soundHandles_;
     std::unique_ptr<CD3DFile> mesh_;
     int modelIndex_ = 0, soundIndex_ = -1, track_ = 0;
+    bool streaming_ = false;    // the current track is an MP3/FLAC replacement
+    bool musicPaused_ = false;  // the window is in the background
     float angle_ = 0, zoom_ = 1.f, radius_ = 10.f;
     D3DVECTOR center_{0, 0, 0};
     XLevelView levelView_;

@@ -73,10 +73,14 @@ private:
     Page LevelPackPage();
     Page AddonsPage();
     Page AddonDetailPage(const std::string& id);
-    Page KeysPage();
+    Page KeyGroupsPage();
+    Page KeysPage(const std::string& group);
     Page PadPage();
 
     // helpers
+    // a setting not built for Mage Bros. yet (stage 7 of docs/ROADMAP.md): shown greyed out,
+    // and the cursor can rest on it to read why
+    static void NotYet(Item& it);
     void Save();
     void ResetAllSettings();
     void BeginDisplayChange();      // snapshot before a display change

@@ -53,14 +53,12 @@ struct Config {
     // [mods]: installed add-ons in load order (first wins) with on/off, and the level pack to play
     std::vector<std::pair<std::string, bool>> mods;
     std::string modPack = "original";
-    // [cheats] (off by default; also in the pause menu)
+    // [cheats] (off by default; not used yet: Mage Bros.' own cheats come in stage 7)
     bool unlockAllLevels = false;     // every level selectable; saved progress is left untouched
-    bool infiniteFireEnergy = false;  // fire gauge always full: fire on every press (max 3 shots on screen)
-    bool noCrystalSlowdown = false;   // carried crystals don't slow Hopmon's hops
 
     std::string path;
     int version = 0;                    // config_version found in the file (0 = older file)
-    static constexpr int kCurrentVersion = 14;
+    static constexpr int kCurrentVersion = 15;
     bool Load(const std::string& file);
     bool Save() const;
 };

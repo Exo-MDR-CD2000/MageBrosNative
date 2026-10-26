@@ -1,4 +1,4 @@
-// Plain-data equivalents of the Direct3D 7 / DirectDraw types used by Hopmon.
+// Plain-data equivalents of the Direct3D 7 / DirectDraw types used by the game.
 // Layouts and semantics match the originals (row-vector math, left-handed).
 #pragma once
 #include <cstdint>

@@ -8,9 +8,9 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 2 | Engine: window, OpenGL renderer, sound, MIDI music, keyboard/gamepad, options menu | Done |
 | 3 | Level viewer: all 40 levels built by the original map code | Done |
 | 4 | First playable: World 1 with player 1 | Done |
-| 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Built: chunks 1–18 done; chunk 19's play-through waits for the owner's full test (below) |
-| **6** | **Front end: title, save slots, level select, shop, ending, saving** | **In progress**: chunks 1–8 of 9 done (below) |
-| 7 | Modern extras: widescreen, high refresh, MSAA, rebinding, music replacement, mods | Planned (see "Stage 7: frame-rate dependence" below) |
+| 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
+| 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunk 1 done (below) |
 
 ## Stage 4, chunk by chunk
 
@@ -60,7 +60,7 @@ is done.
 | 16 | Player 2 (`XHeroB`): its models, keys and gamepad, its own status, the camera midpoint, the two-player start and level end; every enemy, boss, bullet, coin, torch, platform and the shop check both heroes; each player's shot colour; player 2's HUD panel; F2 / `--two-player` | all | | Done |
 | 17 | Hero-on-hero collision and carrying: each hero's box blocks the other, standing on the other (`heroAbove`, not while a floor fan lifts), the lower hero carrying the upper, platforms lifting and carrying a stacked pair | all | | Done |
 | 18 | Player 2's platform shadow (`XShadowOnPlatform`'s second shadow); player 2's HUD panel checked against `XStatusDisplay::Render` (identical to player 1's) | all | | Done |
-| 19 | Checks and the whole-game zip, played start to finish by the owner | | | Deferred: the owner will play the whole game once the front end is in |
+| 19 | Checks and the whole-game zip, played start to finish by the owner | | | Done (with stage 6 chunk 9): the owner played the whole game, 0.3.6, and it plays fine (2026-10-25) |
 
 Chunk 7 was split in two (7a, 7b) because the genie is the largest piece of World 2. Chunk 14 was
 planned as two halves too, but the bird's five states form one loop that shares its steering, so
@@ -96,10 +96,32 @@ The front end is `XApplication`'s state machine (`FrameMove`, `SetState`): each 
 | 6 | The shop screen (`XShop`): opened by the shop building, life, magic level and wands for gold (`_CheckEnabledItems`), each player's own purchases | buying in the shop of each world | Done |
 | 7 | The other wands' shots (`XHeroFireList::_WandNormal2` / `3`, `_WandChase` / `2` / `3`, `XHeroFire_Chase`) | every wand bought in the shop fires its own pattern | Done |
 | 8 | The ending (`XEndingObject`, `XCamera::ResetForEnding`), then back to the logo | finishing 4-10 | Done |
-| 9 | Checks and the stage 6 zip: the whole flow from logo to ending by screenshot | the complete game, ready for the owner's full play-through (stage 5 chunk 19 and stage 6 together) | **Next** |
+| 9 | Checks and the stage 6 zip: the whole flow from logo to ending | the complete game | Done: the owner played 0.3.6 from start to finish (2026-10-25) |
 
 Chunks 6 and 7 were released together, in 0.3.5, so the wands the shop sells fire their own
 patterns from the start.
+
+## Stage 7, chunk by chunk
+
+Every extra is opt-in: with every option at its default the game plays as the original. The
+options menu, the config and the renderer's extras came from Hopmon Native; stage 7 makes them
+Mage Bros.' own and finishes the ones that need the game's help.
+
+| Chunk | What it covers | What you can test | Status |
+|---|---|---|---|
+| 1 | The options menu made for Mage Bros.: the original's P pause and focus-loss music pause, the original's FPS counter (`XFPSDisplay`), the menu's sounds (the title's 0xec / 0xed), Main menu, and in a level Level select (back to the save as the level began), F10 only while a player has control, player 1 / player 2 / general key pages, gamepad fire and jump, MP3/FLAC music replacement wired in, Hopmon's text and cheats gone, unbuilt settings greyed out | every menu page; P; the FPS counter; Main menu; replacement music | Done |
+| 2 | Video options: display mode, resolution, monitor and VSync checked; widescreen on every screen; the HUD position, max width and size hooked into `XStatusDisplay`; the field of view hooked into the level camera (`Device::SetGameplayView`) | the Video page, in widescreen | **Next** |
+
+The rest is to be planned with the owner after chunk 2. Candidates: smooth motion (drawing the
+game's objects between ticks; it may become a stage of its own), moving the per-frame items in
+the table below onto ticks, the graphics options checked on Mage Bros.' scenes, Mage Bros.' own
+cheats, mods (add-ons and level packs, with `MODDING.md`), `--set`, `CONFIG.md` and the README
+sections Hopmon Native has.
+
+What the Video page's Smooth motion does today: on (the default, from Hopmon Native), the
+picture is drawn at the monitor's rate but repeats between ticks; off, it is drawn only on a
+tick boundary, at most 100 times a second, as the original. The game's speed is the same either
+way.
 
 ## Stage 7: frame-rate dependence
 
@@ -114,7 +136,8 @@ part of high-refresh support. Add each new one to this table as it's found.
 
 | Where | What advances per frame | Found in |
 |---|---|---|
-| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks) | stage 6 chunk 8 (0.3.6) |
+| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks). `ProcessFrame` runs only on frames with at least one tick, so at most 100 times a second | stage 6 chunk 8 (0.3.6) |
+| The menus and the shop (`JDInput::UpdateInputState`, `XShop::GetState` in `XGameObject::ProcessFrame`) | The menus' keys are read once a frame ("pressed" = held now and not at the last read), and the shop's state once a frame. This changes no speed; drawing between ticks must keep it on frames that tick | stage 7 chunk 1 (0.4.0) |
 
 ## Open items
 

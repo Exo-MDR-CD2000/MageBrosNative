@@ -41,6 +41,9 @@ public:
 
     const XLevelView& Level() const { return level_; }
     const XHero& Hero() const { return *heroA_; }
+    // Native addition (the options menu): the level is being played and a mage is NORMAL, with
+    // the shop closed or open (not fading)
+    bool PlayerHasControl() const;
     // True when a level was loaded since the last call
     bool TakeLevelChanged() {
         bool c = levelChanged_;

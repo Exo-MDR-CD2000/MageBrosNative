@@ -57,11 +57,23 @@ float StepFloat(const std::vector<float>& list, float cur, int d) {
 
 std::string Pct(int pct) { return std::to_string(pct) + "%"; }
 
-struct KeyAction { const char* label; int dik; };
+// The keys the game reads (XHeroA / XHeroB::_UpdateInput, the menus' CheckButtonPressed and
+// friends, XApplication::MsgProc), in the manual's groups. Each row rebinds one original key:
+// every place the game reads that key follows it (player 2's W A S D also move the menus' cursor,
+// and in a one-player game player 1 also fires and jumps with player 2's Left Ctrl and Left Shift).
+struct KeyAction { const char* group; const char* label; int dik; };
+enum { kDik2 = 0x03, kDikLBracket = 0x1A, kDikRBracket = 0x1B };
 const KeyAction kKeyActions[] = {
-    {"Move up", DIK_UP},          {"Move down", DIK_DOWN},   {"Move left", DIK_LEFT},
-    {"Move right", DIK_RIGHT},    {"Fire", DIK_Z},           {"Camera modifier", DIK_X},
-    {"Menu confirm", DIK_RETURN}, {"Back / give up", DIK_ESCAPE}, {"Pause", DIK_P},
+    {"Player 1", "Move up", DIK_UP},          {"Player 1", "Move down", DIK_DOWN},
+    {"Player 1", "Move left", DIK_LEFT},      {"Player 1", "Move right", DIK_RIGHT},
+    {"Player 1", "Fire", DIK_RCONTROL},       {"Player 1", "Fire (second key)", kDikLBracket},
+    {"Player 1", "Jump", DIK_RSHIFT},         {"Player 1", "Jump (second key)", kDikRBracket},
+    {"Player 2", "Move up", DIK_W},           {"Player 2", "Move down", DIK_S},
+    {"Player 2", "Move left", DIK_A},         {"Player 2", "Move right", DIK_D},
+    {"Player 2", "Fire", DIK_LCONTROL},       {"Player 2", "Fire (second key)", DIK_1},
+    {"Player 2", "Jump", DIK_LSHIFT},         {"Player 2", "Jump (second key)", kDik2},
+    {"General", "Select", DIK_RETURN},        {"General", "Pause", DIK_P},
+    {"General", "Back / give up", DIK_ESCAPE},
 };
 
 std::string BaseName(const std::string& p) {
@@ -100,6 +112,12 @@ void OptionsMenu::Close() {
     ResetStick();
     stack_.clear();
     Input::SetBlocked(false);
+}
+
+void OptionsMenu::NotYet(Item& it) {
+    it.enabled = [] { return false; };
+    it.focusWhenDisabled = true;
+    it.helpFn = [] { return std::string("Not available yet: this comes in a later version of Mage Bros. Native."); };
 }
 
 void OptionsMenu::Save() {
@@ -367,18 +385,28 @@ OptionsMenu::Page OptionsMenu::MainPage() {
                        [this] { PushPage(AudioPage()); }, nullptr});
     p.items.push_back({"Controls", "Keyboard and gamepad bindings, stick dead zone.", nullptr, nullptr,
                        [this] { PushPage(ControlsPage()); }, nullptr});
-    p.items.push_back({"Cheats", "Game modifiers: unlock all levels, infinite fire, no crystal slowdown.", nullptr,
-                       nullptr, [this] { PushPage(CheatsPage()); }, nullptr});
-    p.items.push_back({"Mods", "Choose the level pack to play, and switch add-ons on or off.", nullptr, nullptr,
-                       [this] { PushPage(ModsPage()); }, nullptr});
+    p.items.push_back({"Cheats", "", nullptr, nullptr, [this] { PushPage(CheatsPage()); }, nullptr});
+    NotYet(p.items.back());
+    p.items.push_back({"Mods", "", nullptr, nullptr, [this] { PushPage(ModsPage()); }, nullptr});
+    NotYet(p.items.back());
     p.items.push_back({"Reset all settings",
                        "Restore every setting to its default. Saved progress, the game path and the save folder are kept.", nullptr,
                        nullptr,
                        [this] {
-                           AskConfirm("Reset all settings?", "Video, graphics, audio, controls and cheats go back to defaults.",
+                           AskConfirm("Reset all settings?", "Video, graphics, audio and controls go back to defaults.",
                                       [this] { ResetAllSettings(); });
                        },
                        nullptr});
+    if (app_->InLevel())
+        p.items.push_back({"Level select", "Leave this level and return to level select, as you were when it started.",
+                           nullptr, nullptr,
+                           [this] {
+                               AskConfirm("Return to level select?", LostLine(), [this] {
+                                   Close();
+                                   app_->ReturnToLevelSelect();
+                               });
+                           },
+                           nullptr});
     if (!onTitle)
         p.items.push_back({"Main menu", "Leave the current screen and return to the title screen.", nullptr, nullptr,
                            [this] {
@@ -388,7 +416,7 @@ OptionsMenu::Page OptionsMenu::MainPage() {
                                });
                            },
                            [this] { return app_->CanReturnToMainMenu(); }});
-    p.items.push_back({"Quit game", "Close Hopmon. Settings are already saved.", nullptr, nullptr,
+    p.items.push_back({"Quit game", "Close Mage Bros. Native. Settings are already saved.", nullptr, nullptr,
                        [this] {
                            AskConfirm("Quit the game?", LostLine(), [this] {
                                Close();
@@ -521,7 +549,8 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Smooth motion", "Draw in-between frames so motion is fluid at any refresh rate.",
+    v.push_back({"Smooth motion",
+                 "On: draws at the monitor's rate (in-between pictures come later). Off: on game ticks, max 100, as the original.",
                  [] { return OnOff(GetConfig().interpolation); },
                  [this](int) {
                      GetConfig().interpolation = !GetConfig().interpolation;
@@ -598,13 +627,20 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Show FPS", "The original frames-per-second counter.",
+    v.push_back({"Show FPS", "The original's frames-per-second counter, at the bottom right of every screen.",
                  [] { return OnOff(GetConfig().showFps); },
                  [this](int) {
                      GetConfig().showFps = !GetConfig().showFps;
                      Save();
                  },
                  nullptr, nullptr});
+    // not built for Mage Bros. yet: the HUD settings and the field of view need the game to tell
+    // the renderer where its HUD and its level camera are. (Smooth motion already sets how often
+    // the picture is drawn; drawing the game's objects between ticks comes later.)
+    for (Item& it : v)
+        if (it.label == "HUD position" || it.label == "HUD max width" || it.label == "HUD size" ||
+            it.label == "Field of view")
+            NotYet(it);
     v.push_back({"Back", "", nullptr, nullptr, [this] { Back(false); }, nullptr});
     return p;
 }
@@ -754,9 +790,9 @@ OptionsMenu::Page OptionsMenu::ControlsPage() {
     Page p;
     p.title = "OPTIONS > CONTROLS";
     auto& v = p.items;
-    v.push_back({"Keyboard", "Change which keys move, fire, rotate the camera and so on.", nullptr, nullptr,
-                 [this] { PushPage(KeysPage()); }, nullptr});
-    v.push_back({"Gamepad buttons", "Change the fire and camera buttons. Movement is the stick and d-pad.",
+    v.push_back({"Keyboard", "Change each player's keys to move, fire and jump, and the pause and back keys.",
+                 nullptr, nullptr, [this] { PushPage(KeyGroupsPage()); }, nullptr});
+    v.push_back({"Gamepad buttons", "Change the fire and jump buttons. Movement is the stick and d-pad.",
                  nullptr, nullptr, [this] { PushPage(PadPage()); }, nullptr});
     v.push_back({"Stick dead zone", "How far the analog stick must move before it counts.",
                  [] { return std::to_string(GetConfig().gamepadDeadzone) + "%"; },
@@ -765,7 +801,7 @@ OptionsMenu::Page OptionsMenu::ControlsPage() {
                      Save();
                  },
                  [] {}, nullptr});
-    v.push_back({"Reset controls", "Restore the original keys and buttons and the default dead zone.", nullptr,
+    v.push_back({"Reset controls", "Restore the original keys and buttons (as in the manual) and the default dead zone.", nullptr,
                  nullptr,
                  [this] {
                      Config& c = GetConfig();
@@ -881,13 +917,13 @@ OptionsMenu::Page OptionsMenu::LevelPackPage() {
     };
     {
         const Mods::Pack* orig = Mods::FindPack("original");
-        size_t n = orig ? orig->levels.size() : 45;
+        size_t n = orig ? orig->levels.size() : 40;
         Item it{"Original game", "", [n] { return Mods::ActivePackId() == "original" ? std::string("Playing") : LevelCount(n); },
                 nullptr, choose("original", "the original game"), unlocked};
         it.focusWhenDisabled = true;
         it.helpFn = [this, n] {
             if (ModsLocked()) return std::string(kLockedHelp);
-            return "Hopmon by Saito Games. " + LevelCount(n) + " in 3 worlds." +
+            return "Mage Bros. by Saito Games. " + LevelCount(n) + " in 4 worlds." +
                    (Mods::ActivePackId() == "original" ? " You're playing it." : " Enter: play it.");
         };
         p.items.push_back(it);
@@ -1094,10 +1130,6 @@ OptionsMenu::Page OptionsMenu::CheatsPage() {
         {"Unlock all levels",
          "Every level can be picked on level select. Your saved progress is not changed.",
          &Config::unlockAllLevels},
-        {"Infinite fire energy",
-         "The fire gauge stays full: fire on every press (still max 3 shots on screen).",
-         &Config::infiniteFireEnergy},
-        {"No crystal slowdown", "Carrying crystals no longer slows Hopmon's hops.", &Config::noCrystalSlowdown},
     };
     for (const Cheat& ch : cheats) {
         bool Config::*f = ch.field;
@@ -1123,31 +1155,55 @@ OptionsMenu::Page OptionsMenu::CheatsPage() {
     return p;
 }
 
-OptionsMenu::Page OptionsMenu::KeysPage() {
+// OPTIONS > CONTROLS > KEYBOARD: one page for each group of keys
+OptionsMenu::Page OptionsMenu::KeyGroupsPage() {
     Page p;
     p.title = "OPTIONS > KEYBOARD";
+    struct G { const char* group; const char* help; };
+    static const G groups[] = {
+        {"Player 1", "Player 1's keys: the arrows, fire Right Ctrl or [, jump Right Shift or ]."},
+        {"Player 2", "Player 2's keys: W A S D, fire Left Ctrl or 1, jump Left Shift or 2."},
+        {"General", "Select (Enter), pause (P) and back or give up the level (Esc)."},
+    };
+    for (const G& g : groups) {
+        std::string group = g.group;
+        Item it{group, g.help, nullptr, nullptr, [this, group] { PushPage(KeysPage(group)); }, nullptr};
+        p.items.push_back(it);
+    }
+    p.items.push_back({"Back", "", nullptr, nullptr, [this] { Back(false); }, nullptr});
+    return p;
+}
+
+OptionsMenu::Page OptionsMenu::KeysPage(const std::string& group) {
+    Page p;
+    std::string upper = group;
+    for (char& c : upper) c = (char)std::toupper((unsigned char)c);
+    p.title = "KEYBOARD > " + upper;
+    if (group == "Player 2") p.note = "In a one-player game player 1 also fires and jumps with these.";
+    else if (group == "General") p.note = "Menus also select with Shift or Ctrl and move with W / S.";
     for (const KeyAction& a : kKeyActions) {
+        if (group != a.group) continue;
         int dik = a.dik;
-        std::string label = a.label;
+        std::string label = a.label, capture = group + ": " + a.label;
         p.items.push_back({label, "Enter: press a new key.  Backspace: restore the default.",
                            [this, dik] { return Fit(KeyNamesFor(dik), 13); }, nullptr,
-                           [this, dik, label] {
+                           [this, dik, capture] {
                                mode_ = Mode::CaptureKey;
                                captureDik_ = dik;
-                               captureLabel_ = label;
+                               captureLabel_ = capture;
                            },
                            nullptr});
     }
-    p.items.push_back({"Back", "Shift also fires and Ctrl is also the camera modifier, as in the original.", nullptr,
-                       nullptr, [this] { Back(false); }, nullptr});
+    p.items.push_back({"Back", "", nullptr, nullptr, [this] { Back(false); }, nullptr});
     return p;
 }
 
 OptionsMenu::Page OptionsMenu::PadPage() {
     Page p;
     p.title = "OPTIONS > GAMEPAD";
+    p.note = "Gamepad 1 plays player 1 and gamepad 2 player 2. Both use these.";
     struct B { const char* label; int button; };
-    static const B buttons[] = {{"Fire / confirm", 0}, {"Camera / confirm", 1}};
+    static const B buttons[] = {{"Fire / select", 0}, {"Jump / select", 1}};
     for (const B& b : buttons) {
         int btn = b.button;
         std::string label = b.label;
@@ -1238,7 +1294,7 @@ bool OptionsMenu::HandleEvent(const SDL_Event& e) {
         bool request = (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat && e.key.scancode == SDL_SCANCODE_F10) ||
                        (e.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN && e.gbutton.button == SDL_GAMEPAD_BUTTON_START);
         if (!request) return false;
-        // during the intro, the ending, or while Hopmon isn't controllable the press is ignored
+        // during the logo, the ending, a fade, or while no mage is under the player's control the press is ignored
         if (app_->CanOpenOptions()) Open();
         return true;
     }
@@ -1269,7 +1325,7 @@ bool OptionsMenu::HandleEvent(const SDL_Event& e) {
             for (const KeyAction& a : kKeyActions) {
                 if (a.dik == captureDik_) continue;
                 std::string names = ", " + KeyNamesFor(a.dik) + ",";
-                if (names.find(", " + name + ",") != std::string::npos) also = a.label;
+                if (names.find(", " + name + ",") != std::string::npos) also = std::string(a.group) + ": " + a.label;
             }
             if (!also.empty()) SetMessage(name + " is also used for: " + also + ".", 5000);
             else SetMessage(captureLabel_ + " set to " + name + ".");
@@ -1314,12 +1370,14 @@ bool OptionsMenu::HandleEvent(const SDL_Event& e) {
             case SDL_SCANCODE_LEFT: act = Left; break;
             case SDL_SCANCODE_RIGHT: act = Right; break;
             case SDL_SCANCODE_SPACE: if (!e.key.repeat) act = Toggle; break;  // Ok on rows without a tick box
+            // select with Enter or Ctrl, as the game's own menus (Shift, which they also take, is
+            // the menu's reorder modifier here)
             case SDL_SCANCODE_RETURN:
             case SDL_SCANCODE_KP_ENTER:
-            case SDL_SCANCODE_Z: if (!e.key.repeat) act = Ok; break;
+            case SDL_SCANCODE_LCTRL:
+            case SDL_SCANCODE_RCTRL: if (!e.key.repeat) act = Ok; break;
             case SDL_SCANCODE_ESCAPE:
-            case SDL_SCANCODE_BACKSPACE:
-            case SDL_SCANCODE_X: if (!e.key.repeat) act = Cancel; break;
+            case SDL_SCANCODE_BACKSPACE: if (!e.key.repeat) act = Cancel; break;
             case SDL_SCANCODE_F10: if (!e.key.repeat) act = Exit; break;
             default: break;
         }
@@ -1554,7 +1612,7 @@ void OptionsMenu::Render(Device* d) {
         }
         // long names (mods can be called anything) are shortened to fit beside the value
         const bool arrow = !it.value && it.activate && it.label != "Back" && it.label != "Resume game" &&
-                           it.label != "Reset controls" && it.label != "Main menu" && it.label != "Quit game" &&
+                           it.label != "Reset controls" && it.label != "Main menu" && it.label != "Level select" && it.label != "Quit game" &&
                            it.label != "Reset all settings";
         std::string val;
         if (it.value) {

@@ -1,5 +1,5 @@
 // A Direct3D 7 style immediate-mode device implemented on OpenGL 3.3.
-// Only the subset of D3D7 / DirectDraw used by Hopmon is provided, but it is
+// Only the subset of D3D7 / DirectDraw used by the Saito engine is provided, but it is
 // emulated faithfully (fixed-function lighting, flat/gouraud shading, blend
 // modes, cull mode, texture stage 0 ops). Rendering enhancements live here too.
 #pragma once

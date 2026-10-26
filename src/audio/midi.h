@@ -20,6 +20,7 @@ void PlayFromStart();                 // "play MUSIC from 0 notify"
 void Pause();                         // "stop MUSIC"
 void Resume();                        // "play MUSIC notify"
 void Close();                         // "close all"
+bool IsLoaded();                      // a song is open (between Open and Close)
 
 // Returns true once each time playback reached the end (MM_MCINOTIFY / MCI_NOTIFY_SUCCESSFUL)
 bool PollFinished();

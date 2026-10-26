@@ -5,10 +5,10 @@
 class Texture;
 class Surface;
 
-// Note the argument order: Hopmon's variant takes the flags before the stage (the DX7 SDK's
+// Note the argument order: the Saito engine's variant takes the flags before the stage (the DX7 SDK's
 // CreateTextureFromFile is name, stage, flags). Confirmed by the PDB parameter names.
 // flags: D3DTEXTR_TRANSPARENTWHITE (1) / D3DTEXTR_TRANSPARENTBLACK (2) make pure white / black
-// pixels transparent. Hopmon uses TRANSPARENTBLACK for the steam puff (0xdc).
+// pixels transparent (Hopmon uses TRANSPARENTBLACK for its steam puff; Mage Bros. never does).
 HRESULT D3DTextr_CreateTextureFromResource(WORD resId, DWORD flags, DWORD stage);
 Texture* D3DTextr_GetSurface(WORD resId);
 HRESULT D3DTextr_DestroyTexture(WORD resId);
