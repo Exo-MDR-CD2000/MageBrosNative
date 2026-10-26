@@ -10,9 +10,13 @@ enum class FullscreenMode { Windowed = 0, Borderless = 1, Exclusive = 2 };
 
 struct Config {
     // video
-    int windowWidth = 1280;
+    int windowWidth = 1280;        // a fresh ini gets the largest 4:3 size that fits the monitor
     int windowHeight = 960;
+    bool windowPosSet = false;     // window_x / window_y given (otherwise the window is centred)
+    int windowX = 0, windowY = 0;  // the window's last position (its client area's top left)
+    bool maximized = false;        // the window was maximized (width / height: its size before)
     FullscreenMode fullscreen = FullscreenMode::Windowed;
+    FullscreenMode lastFullscreen = FullscreenMode::Borderless;  // where F11 / Alt+Enter goes from a window
     int fullscreenWidth = 0;       // exclusive fullscreen screen mode; 0 = desktop resolution
     int fullscreenHeight = 0;
     int displayIndex = 0;          // 0 = primary monitor, 1..n = monitors in system order
@@ -58,7 +62,8 @@ struct Config {
 
     std::string path;
     int version = 0;                    // config_version found in the file (0 = older file)
-    static constexpr int kCurrentVersion = 15;
+    static constexpr int kCurrentVersion = 16;
+    bool firstRun = false;              // no ini existed at start (not saved): size the window to the monitor
     bool Load(const std::string& file);
     bool Save() const;
 };

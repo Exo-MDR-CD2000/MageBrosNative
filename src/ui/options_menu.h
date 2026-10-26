@@ -124,7 +124,7 @@ private:
     int captureButton_ = 0;       // gamepad button being rebound
     std::string captureLabel_;
     // display confirmation
-    struct DisplaySnapshot { int fullscreen, w, h, fw, fh, display; } snapshot_{};
+    struct DisplaySnapshot { int fullscreen, w, h, fw, fh, display, lastFullscreen; } snapshot_{};
     DWORD confirmDeadline_ = 0;
     int confirmChoice_ = 1;       // 0 = keep / yes, 1 = revert / no (default)
     // yes/no confirmation (main menu, quit)

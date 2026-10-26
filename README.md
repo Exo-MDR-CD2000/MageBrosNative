@@ -100,6 +100,12 @@ Settings not ready for Mage Bros. yet (the HUD options, the field of view, cheat
 greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
 to replace the MIDI music.
 
+**The window** opens where you left it, at the size you left it (maximized too), on the same
+monitor; the first start opens the largest 4:3 window that fits the monitor. Alt+Enter or F11
+switches between the window and the fullscreen mode you used last (borderless or exclusive), and
+is remembered. Window sizes are real screen pixels: with Windows display scaling above 100% the
+window looks smaller than its numbers suggest.
+
 In the game view N / B change level and F2 switches between one and two players (test keys:
 a game started with them is not saved). Tab switches to the **level viewer**: every one of the 40
 levels, built by the original's own map code with each world's textures. The goal, coins and

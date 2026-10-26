@@ -311,15 +311,18 @@ Conventions:
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update.
 
-## Where we are (last updated: 2026-10-25, version 0.4.0, stage 7 chunk 1 done)
+## Where we are (last updated: 2026-10-25, version 0.4.1, stage 7 chunk 2a done)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
 opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) is done in
 0.4.0, tested by the owner and pushed to the **`menu-dev` branch**: stage 7's menu work stays on
 `menu-dev`, apart from `main`, until the owner says to merge it (a push to `main` publishes a
-release; a push to `menu-dev` doesn't). **Chunk 2, the video options, is next**; the
-chunks after it are to be planned with the owner (smooth motion may become a stage of its own).
+release; a push to `menu-dev` doesn't). Chunk 2 (the Video page) is split into small chunks
+for thoroughness: 2a windowed mode (done in 0.4.1, tested by the owner, F11 into exclusive included;
+waiting for "commit and push" to `menu-dev`), **2b exclusive fullscreen next**, then 2c monitors and 2d the rest of the
+page. The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
+its own).
 Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
 7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.
 
@@ -356,6 +359,28 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   framework draws only on frames with a tick (at most 100 a second, the original's pace).
 - `config_version` 15 rewrote the ini notes for Mage Bros.' keys and dropped Hopmon's two
   cheats; `unlock_all_levels` is still read but nothing uses it.
+
+**The window (chunk 2a, 0.4.1)**, in `src/framework/d3dapp.cpp`:
+
+- SDL's window events (resized, moved, maximized, restored, display changed) call
+  `WindowChanged`. `kWindowSettleMs` (500 ms) after the last one, `SaveWindowState` reads the
+  window and saves `width` / `height`, `window_x` / `window_y`, `maximized` and `display` (only in
+  Window mode, not minimized). A maximized window keeps its earlier size and place.
+- `PlaceWindow` (at start and when switching to Window) sets the size and position twice:
+  moving a window onto a monitor with another Windows display scale makes Windows resize it with
+  the old scale's frame, which grew the window a little on every start before.
+- `WindowPosVisible` drops a saved position no longer on any monitor (then centred).
+- `WindowFitArea` is a monitor's usable area less the title bar and frame (measured, or
+  estimated at the monitor's scale when no bordered window exists). `DefaultWindowSize` is the
+  largest `kWindowScales` multiple of 640 x 480 within it: the first start (`Config::firstRun`)
+  and Reset all settings use it.
+- `ToggleFullscreen` goes to `lastFullscreen` (set by `ApplyDisplaySettings` whenever a
+  fullscreen mode is applied; the menu's revert puts it back) and saves.
+- Window sizes are SDL window coordinates, which are real pixels on Windows here: at the
+  owner's 150% scaling a 1280 x 960 window is 1280 x 960 pixels.
+- The owner's monitors: a 4K primary at 150% (3840 x 2160, 143 Hz, NVIDIA), a 2560 x 1440
+  listed on the AMD graphics, and a 1920 x 1080 (`display = 3` in SDL's order). Testing window
+  moves: a DPI-unaware PowerShell's `MoveWindow` works in 150%-scaled coordinates on the primary.
 
 Stage 6 (the front end), for reference: `XApplication`'s states 3 logo, 4 title, 5 save slots,
 6 level select, 7 game, 9 ending (8, the register screen, is never reached:
@@ -431,9 +456,9 @@ proposed before reading it didn't fit; the wizard waits for each attack, so it s
 ### Waiting for the owner to check in play
 
 The owner's full play-through of 0.3.6 covered everything built up to stage 6. From stage 7:
-the options menu of 0.4.0 (each page, rebinding both players' keys and the gamepad buttons, P,
-Level select from a level, Main menu, the FPS counter at 165 Hz, MP3/FLAC music if the owner has any; replacement music was
-not tested here, as there were no MP3 or FLAC files to try).
+the options menu of 0.4.0 (tested by the owner: works as expected; MP3/FLAC music was not
+tried, as there were no files to try). The window of 0.4.1 was tested by the owner too, F11 into
+exclusive fullscreen and back included (2026-10-25).
 
 ### Notes from earlier stages
 

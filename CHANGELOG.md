@@ -7,6 +7,21 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.1] - 2026-10-25
+
+- **The window remembers itself**: its size (resizing it by dragging the edges too), where it
+  was, whether it was maximized and which monitor it was on are saved and restored on the next
+  start. If that spot is no longer on a monitor (one was unplugged, say) it opens centred.
+- **F11 / Alt+Enter** now goes from the window to the fullscreen mode you used last, borderless
+  or exclusive, and the choice is saved.
+- **Window sizes**: Options > Video > Resolution lists the game's own 4:3 sizes first, from
+  640 x 480 up, with whole multiples marked "2x", "3x" and so on (the 2D art scales evenly at
+  those), then wider sizes. Only sizes that fit your monitor with the title bar are offered.
+- **The first start** opens the largest 4:3 window that fits your monitor, instead of always
+  1280 x 960 (2560 x 1920 on a 4K screen). "Reset all settings" does the same.
+- A window on a monitor with a different Windows display scale no longer grows a little every
+  time the game starts.
+
 ## [0.4.0] - 2026-10-25
 
 Stage 7 begins: the options menu (F10 or gamepad Start), brought over from Hopmon Native, is

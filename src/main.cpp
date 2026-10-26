@@ -457,6 +457,7 @@ int main(int argc, char** argv) {
     Config& cfg = GetConfig();
     if (!cfg.Load(basePath + "magebros_native.ini")) {
         cfg.path = basePath + "magebros_native.ini";
+        cfg.firstRun = true;  // the window is then sized to the monitor (CD3DApplication::Create)
         cfg.Save();
     } else if (cfg.version < Config::kCurrentVersion) {
         cfg.Save();  // rewrite older files with the current comments, keeping their values
@@ -472,6 +473,7 @@ int main(int argc, char** argv) {
         else if (args[i] == "--size" && i + 2 < args.size()) {
             cfg.windowWidth = atoi(args[++i].c_str());
             cfg.windowHeight = atoi(args[++i].c_str());
+            cfg.firstRun = false;  // (a size given on the command line wins)
         }
     }
 

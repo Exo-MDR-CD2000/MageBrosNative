@@ -137,12 +137,14 @@ void OptionsMenu::ResetAllSettings() {
     fresh.savePath = old.savePath;  // resetting must not move where progress is saved
     fresh.mods = old.mods;          // installed mods and the chosen level pack stay as they are
     fresh.modPack = old.modPack;
+    app_->DefaultWindowSize(fresh.displayIndex, &fresh.windowWidth, &fresh.windowHeight);  // as a first start
     c = fresh;
     pendingActive_ = false;
     // apply everything that is not read live every frame
     if (old.fullscreen != c.fullscreen || old.windowWidth != c.windowWidth || old.windowHeight != c.windowHeight ||
         old.displayIndex != c.displayIndex || old.fullscreenWidth != c.fullscreenWidth ||
-        old.fullscreenHeight != c.fullscreenHeight)
+        old.fullscreenHeight != c.fullscreenHeight || old.maximized != c.maximized ||
+        old.windowPosSet != c.windowPosSet)
         app_->ApplyDisplaySettings();
     app_->ApplyVSync();
     GetDevice().OnSettingsChanged();  // antialiasing, render scale, aspect
@@ -174,7 +176,7 @@ void OptionsMenu::BeginDisplayChange() {
     const Config& c = GetConfig();
     if (mode_ != Mode::ConfirmDisplay)
         snapshot_ = {(int)c.fullscreen, c.windowWidth, c.windowHeight, c.fullscreenWidth, c.fullscreenHeight,
-                     c.displayIndex};
+                     c.displayIndex, (int)c.lastFullscreen};
 }
 
 void OptionsMenu::ApplyDisplay() {
@@ -194,6 +196,7 @@ void OptionsMenu::RevertDisplay() {
     c.fullscreenHeight = snapshot_.fh;
     c.displayIndex = snapshot_.display;
     app_->ApplyDisplaySettings();
+    c.lastFullscreen = (FullscreenMode)snapshot_.lastFullscreen;  // (a reverted exclusive mode isn't F11's)
     Save();
     mode_ = Mode::Normal;
     SetMessage("Display settings reverted.");
@@ -225,9 +228,14 @@ static std::string AspectName(int w, int h) {
     return std::to_string(w / x) + ":" + std::to_string(h / x);
 }
 
+// "1920x1440 4:3 3x": a whole multiple of the game's 640 x 480 says so (its 2D art then scales evenly)
 static std::string SizeName(int w, int h) {
-    return std::to_string(w) + "x" + std::to_string(h) + " " + AspectName(w, h);
+    std::string s = std::to_string(w) + "x" + std::to_string(h) + " " + AspectName(w, h);
+    if (w % 640 == 0 && h % 480 == 0 && w / 640 == h / 480 && w > 640) s += " " + std::to_string(w / 640) + "x";
+    return s;
 }
+
+static bool Is4x3(int w, int h) { return w * 3 == h * 4; }
 
 std::vector<std::pair<int, int>> OptionsMenu::ResolutionList(FullscreenMode mode, int display) const {
     const Config& c = GetConfig();
@@ -249,16 +257,25 @@ std::vector<std::pair<int, int>> OptionsMenu::ResolutionList(FullscreenMode mode
         std::sort(out.begin(), out.end(), byArea);
         out.push_back({0, 0});  // "Desktop": the monitor's own resolution, the largest choice
     } else {
-        SDL_Rect usable{0, 0, 1920, 1080};
-        SDL_GetDisplayUsableBounds(disp, &usable);
-        static const int common[][2] = {{640, 480},   {800, 600},   {1024, 768},  {1280, 720},  {1280, 960},
-                                        {1366, 768},  {1440, 1080}, {1600, 900},  {1600, 1200}, {1920, 1080},
-                                        {1920, 1440}, {2560, 1080}, {2560, 1440}, {3440, 1440}, {3840, 2160}};
-        for (auto& r : common)
-            if (r[0] <= usable.w && r[1] <= usable.h) out.push_back({r[0], r[1]});
+        // the window sizes that fit the monitor with the title bar and frame: the game's own 4:3
+        // first (multiples of 640 x 480), then wider ones; each group smallest first, and the
+        // current size (dragged to anything) in its group
+        int fitW = 0, fitH = 0;
+        app_->WindowFitArea(display, &fitW, &fitH);
+        for (float s : CD3DApplication::kWindowScales) {
+            std::pair<int, int> r{(int)(640 * s + 0.5f), (int)(480 * s + 0.5f)};
+            if (r.first <= fitW && r.second <= fitH) out.push_back(r);
+        }
+        static const int wide[][2] = {{1280, 720},  {1366, 768},  {1600, 900},  {1920, 1080},
+                                      {2560, 1080}, {2560, 1440}, {3440, 1440}, {3840, 2160}};
+        for (auto& r : wide)
+            if (r[0] <= fitW && r[1] <= fitH) out.push_back({r[0], r[1]});
         std::pair<int, int> cur{c.windowWidth, c.windowHeight};
         if (std::find(out.begin(), out.end(), cur) == out.end()) out.push_back(cur);
-        std::sort(out.begin(), out.end(), byArea);
+        std::sort(out.begin(), out.end(), [&](auto& a, auto& b) {
+            bool a43 = Is4x3(a.first, a.second), b43 = Is4x3(b.first, b.second);
+            return a43 != b43 ? a43 : byArea(a, b);
+        });
     }
     return out;
 }
@@ -277,6 +294,7 @@ void OptionsMenu::ProposeDisplay(const DisplayCfg& d) {
         // Window / Borderless can't leave the screen unusable: apply straight away, no confirmation
         Config& c = GetConfig();
         pendingActive_ = false;
+        if (d.display != c.displayIndex) c.windowPosSet = false;  // centred on the new monitor
         c.fullscreen = d.mode;
         c.displayIndex = d.display;
         app_->ApplyDisplaySettings();
@@ -296,6 +314,7 @@ void OptionsMenu::ApplyPending() {
     c.fullscreen = pending_.mode;
     c.fullscreenWidth = pending_.fw;
     c.fullscreenHeight = pending_.fh;
+    if (pending_.display != c.displayIndex) c.windowPosSet = false;
     c.displayIndex = pending_.display;
     pendingActive_ = false;
     ApplyDisplay();  // asks "Keep these display settings?"
@@ -466,6 +485,7 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                     if (p.mode == FullscreenMode::Borderless) return std::string("Desktop");
                     if (p.mode == FullscreenMode::Exclusive)
                         return (p.fw <= 0 ? std::string("Desktop") : SizeName(p.fw, p.fh)) + star();
+                    if (c.maximized) return std::string("Maximized");
                     return SizeName(c.windowWidth, c.windowHeight);
                 },
                 [this](int d) {
@@ -477,9 +497,10 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                         p.fw = list[(size_t)i].first;
                         p.fh = list[(size_t)i].second;
                         ProposeDisplay(p);
-                    } else {  // window size: resize right away
-                        int i = std::clamp(CycleIndex(list, std::pair<int, int>{c.windowWidth, c.windowHeight}, 0) + d, 0,
-                                           (int)list.size() - 1);
+                    } else {  // window size: resize right away (a maximized window first goes back to its own size)
+                        int i = CycleIndex(list, std::pair<int, int>{c.windowWidth, c.windowHeight}, 0);
+                        if (!c.maximized) i = std::clamp(i + d, 0, (int)list.size() - 1);
+                        c.maximized = false;
                         c.windowWidth = list[(size_t)i].first;
                         c.windowHeight = list[(size_t)i].second;
                         app_->ApplyDisplaySettings();
@@ -504,7 +525,7 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
             }
             std::string base = p.mode == FullscreenMode::Exclusive
                                    ? "Screen mode for exclusive fullscreen; press Enter to apply. " + deskNote
-                                   : "Window size; changes at once. " + deskNote;
+                                   : "Window size in screen pixels, at once. 2x, 3x...: the game's 640x480 scaled evenly.";
             return DisplayHelp(base);
         };
         v.push_back(it);

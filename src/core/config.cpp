@@ -56,6 +56,16 @@ bool Config::Load(const std::string& file) {
             else if (k == "fullscreen_width") fullscreenWidth = iv <= 0 ? 0 : std::max(320, iv);
             else if (k == "fullscreen_height") fullscreenHeight = iv <= 0 ? 0 : std::max(240, iv);
             else if (k == "fullscreen") fullscreen = (FullscreenMode)std::clamp(iv, 0, 2);
+            else if (k == "last_fullscreen") lastFullscreen = iv == 2 ? FullscreenMode::Exclusive : FullscreenMode::Borderless;
+            else if (k == "maximized") maximized = toBool(v);
+            else if (k == "window_x" || k == "window_y") {
+                // both must be numbers; an empty value means "centred"
+                if (v.empty()) windowPosSet = false;
+                else {
+                    (k == "window_x" ? windowX : windowY) = iv;
+                    windowPosSet = true;
+                }
+            }
             else if (k == "display") displayIndex = std::max(0, iv);
             else if (k == "vsync") vsync = toBool(v);
             else if (k == "max_fps") maxFps = std::max(0, iv);
@@ -130,6 +140,8 @@ bool Config::Load(const std::string& file) {
             Log("Config: ignoring unknown setting '%s' in [%s]", k.c_str(), section.c_str());
     }
     fclose(f);
+    // config_version 16: [video] window_x / window_y, maximized and last_fullscreen; the window's
+    // size, position and monitor and Alt+Enter / F11 are saved
     // config_version 15: the [keys] and [gamepad] notes describe Mage Bros.' keys, and Hopmon's
     // two cheats are gone
     // config_version 14: [mods] lists add-ons with the winner first (it was last before)
@@ -174,25 +186,40 @@ bool Config::Save() const {
     fprintf(f, "save_path = %s\n\n", savePath.c_str());
 
     P("[video]\n"
-      "; width / height: window size in pixels when fullscreen = 0 (the window can\n"
-      ";   also be resized by dragging; that size is not saved). Minimum 320 x 240.\n"
-      ";   Default 1280 x 960.\n");
+      "; width / height: window size when fullscreen = 0, in screen pixels (with\n"
+      ";   Windows display scaling above 100% a window looks smaller than these\n"
+      ";   numbers suggest). Resizing the window by dragging its edges is saved here.\n"
+      ";   Minimum 320 x 240. The first start picks the largest 4:3 size that fits\n"
+      ";   the monitor (the game is 640 x 480: 1280 x 960 is 2x, 1920 x 1440 3x).\n");
     fprintf(f, "width = %d\nheight = %d\n\n", windowWidth, windowHeight);
+    P("; window_x / window_y: where the window was last (its inside's top-left corner,\n"
+      ";   in desktop coordinates). Empty = centred on the monitor. Kept up to date\n"
+      ";   when you move the window; ignored if that spot is no longer on a monitor.\n");
+    if (windowPosSet) fprintf(f, "window_x = %d\nwindow_y = %d\n\n", windowX, windowY);
+    else fprintf(f, "window_x =\nwindow_y =\n\n");
+    P("; maximized: 1 = the window was maximized and opens maximized again; width and\n"
+      ";   height keep its size from before. 0 = not maximized (default).\n");
+    fprintf(f, "maximized = %d\n\n", maximized ? 1 : 0);
     P("; fullscreen: 0 = window (default)\n"
       ";             1 = borderless: a window without borders covering the whole\n"
       ";                 monitor at its desktop resolution. Alt+Tab works instantly.\n"
       ";                 (recommended)\n"
       ";             2 = exclusive fullscreen at fullscreen_width x fullscreen_height.\n"
       ";                 Alt+Tab minimizes the game.\n"
-      "; Alt+Enter or F11 switches between window and borderless while playing\n"
-      "; (not saved).\n");
+      "; Alt+Enter or F11 switches between the window and the fullscreen mode used\n"
+      "; last (last_fullscreen), and is saved.\n");
     fprintf(f, "fullscreen = %d\n\n", (int)fullscreen);
+    P("; last_fullscreen: the fullscreen mode Alt+Enter / F11 goes to from a window:\n"
+      ";   1 = borderless (default), 2 = exclusive. Set by itself whenever you use\n"
+      ";   one of them.\n");
+    fprintf(f, "last_fullscreen = %d\n\n", lastFullscreen == FullscreenMode::Exclusive ? 2 : 1);
     P("; fullscreen_width / fullscreen_height: the screen resolution used by\n"
       ";   exclusive fullscreen (fullscreen = 2). 0 = your desktop resolution\n"
       ";   (default). Other values pick the closest mode the monitor supports.\n");
     fprintf(f, "fullscreen_width = %d\nfullscreen_height = %d\n\n", fullscreenWidth, fullscreenHeight);
     P("; display: which monitor to use. 0 = primary monitor (default),\n"
-      ";   1 = first monitor, 2 = second, ... in the order Windows lists them.\n");
+      ";   1 = first monitor, 2 = second, ... in the order Windows lists them.\n"
+      ";   Moving the window to another monitor updates it.\n");
     fprintf(f, "display = %d\n\n", displayIndex);
     P("; vsync: 1 = sync to the monitor's refresh rate, no tearing (default)\n"
       ";        0 = render as fast as possible\n");

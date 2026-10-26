@@ -41,6 +41,13 @@ public:
     // Re-apply window mode, size and monitor from the config (used by the options menu).
     void ApplyDisplaySettings();
     void ApplyVSync();
+    // The room a window's inside has on a monitor (0 = primary, as [video] display): its usable
+    // area (without the taskbar) less the window's title bar and borders.
+    void WindowFitArea(int display, int* w, int* h) const;
+    // The largest 4:3 window from kWindowScales (multiples of the game's 640 x 480) that fits
+    // that monitor; at least 640 x 480. The first start and "Reset all settings" use it.
+    void DefaultWindowSize(int display, int* w, int* h) const;
+    static constexpr float kWindowScales[] = {1.f, 1.25f, 1.5f, 1.6f, 2.f, 2.5f, 3.f, 3.5f, 4.f, 4.5f, 5.f, 6.f};
     bool OptionsOpen() const;
     void OpenOptions();  // e.g. from the title screen's OPTIONS entry
     // Hooks for the options/pause menu, implemented by the game.
@@ -86,6 +93,13 @@ private:
     void UpdateStats();
     void ToggleFullscreen();
     void HandleAutomation(DWORD now);
+    // A window event (resized, moved, maximized, restored, another monitor): once things have
+    // been still for kWindowSettleMs, the window's state is read and saved (SaveWindowState).
+    void WindowChanged(DWORD now) { windowChangedAt_ = now ? now : 1; }
+    void SaveWindowState();
+    void PlaceWindow();
+    static constexpr DWORD kWindowSettleMs = 500;
+    DWORD windowChangedAt_ = 0;  // 0 = nothing to save
 
     SDL_Window* window_ = nullptr;
     void* glContext_ = nullptr;
