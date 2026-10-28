@@ -7,6 +7,16 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.18] - 2026-10-28
+
+- **Smooth motion, third part**: with Smooth motion on, the rest of a level now moves smoothly
+  too: smoke, sparkles, flashes, explosions and the other effects, your shots and their trails,
+  the dragon's flame, and the water's drifting ripples. Everything that moves in a level is now
+  drawn between the game's steps.
+- Effects that grow, shrink or fade still do so in the game's steps (in small steps of a few
+  percent), as do animated pictures such as the flame's flicker.
+- As before, Smooth motion changes only what you see: the game plays exactly the same.
+
 ## [0.4.17] - 2026-10-28
 
 - **Smooth motion, second part**: with Smooth motion on, everything with a model in a level is now

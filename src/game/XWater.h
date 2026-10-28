@@ -28,5 +28,8 @@ private:
     unsigned localCounter_ = 0;
     bool initialised_ = false;
     float waterU1_ = 0, waterV1_ = 0, waterU2_ = 0, waterV2_ = 0;
+    // native (smooth motion): the drift before tick prevTick_, to draw between
+    float prevU1_ = 0, prevV1_ = 0, prevU2_ = 0, prevV2_ = 0;
+    unsigned prevTick_ = ~0u;
     std::unique_ptr<JObject3DRect> water1_, water2_;
 };

@@ -26,6 +26,8 @@ public:
     virtual void ProcessFrame();
     void Render(Device* d, const D3DMATRIX& view);
     bool Finished() const { return state_ == NON; }
+    // native (smooth motion): XParticleList keeps the position before each tick, to draw from
+    void KeepPrevPos();
 
 protected:
     enum State { NON = 0, NORMAL = 1 };
@@ -35,6 +37,8 @@ protected:
     D3DVECTOR pos_;
     bool billboard_ = true;  // Render2 facing the camera; otherwise the rect's own transform
     std::unique_ptr<JObject3DRect> particle_;
+    D3DVECTOR prevPos_{0, 0, 0};  // native (smooth motion): pos_ before tick prevTick_
+    unsigned prevTick_ = ~0u;
 };
 
 class XParticleList {

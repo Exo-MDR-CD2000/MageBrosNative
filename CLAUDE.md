@@ -329,7 +329,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-28, version 0.4.17 on `interpolation-test`, smooth motion B1 built)
+## Where we are (last updated: 2026-10-28, version 0.4.18 on `interpolation-test`, smooth motion chunk B built)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -344,8 +344,9 @@ merged into `main` only when the owner says so; its research and plan are in
 in 0.4.16** on that branch ("Chunk A as built" in `docs/SMOOTH_MOTION.md`); the owner's first
 play test found it smooth, with nothing off. Chunk B is planned file by file in two parts: **B1
 (every model in a level) is built in 0.4.17**; the owner's play test found nothing wrong ("everything
-feels so smooth", 2026-10-28; to be revisited if a bug turns up); B2 (sprites:
-particles, shots, the flame, the water; 0.4.18) is next. Smooth motion is **off by default** from 0.4.16 (the owner;
+feels so smooth", 2026-10-28; to be revisited if a bug turns up); **B2 (sprites:
+particles, shots, the flame, the water) is built in 0.4.18**, waiting for the owner's play test.
+Chunk C (the shop's slide, the ending, the front-end screens) comes next, to be planned first. Smooth motion is **off by default** from 0.4.16 (the owner;
 config_version 21 turns it off once in older files). **Versions on the branch:** each build takes
 the next version, as on `main` (the owner, 2026-10-27; 0.4.16 is the branch's). A push to the
 branch publishes nothing; while it is open, work on `main` must not reuse its numbers. Perhaps a branch for the
@@ -423,8 +424,9 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   Every model blends (on by default; a model not drawn in the last frame, new or shown again,
   doesn't blend in its next tick: `snapTick_`, `Interp::BeginFrame` / `FramesDrawn`); shadows
   take the owner's position plus `BlendOffset()` (zero when not blending). A model drawn twice in
-  one frame is logged once ("drawn twice"). Sprites (particles, shots, the flame) still step until
-  B2. `--auto alpha=0.5` holds alpha (`alpha=off` frees it). Off, the framework draws
+  one frame is logged once ("drawn twice"). Sprites blend from their owners' positions
+  (`KeepPrevPos` / `prevPos`, drawn at `Interp::BlendPos`); the water blends its drift. Particle
+  sizes and fades, and animation frames, stay per tick. `--auto alpha=0.5` holds alpha (`alpha=off` frees it). Off, the framework draws
   only on frames with a tick (at most 100 a second, the original's pace). See
   `docs/SMOOTH_MOTION.md`.
 - `config_version` 15 rewrote the ini notes for Mage Bros.' keys and dropped Hopmon's two

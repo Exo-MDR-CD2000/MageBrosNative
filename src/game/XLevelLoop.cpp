@@ -1,6 +1,7 @@
 #include "XLevelLoop.h"
 #include "framework/d3dtextr.h"
 #include "framework/d3dutil.h"
+#include "framework/interp.h"
 #include "game/XLevelView.h"
 #include "game/XMath.h"
 #include "game/XBoss.h"
@@ -307,6 +308,8 @@ bool XLevelLoop::TorchCollisionCheckFire(const Fire& f) {
 }
 
 void XLevelLoop::ProcessFire(Fire& f) {
+    f.prevPos = f.pos;  // native (smooth motion): drawn from here
+    f.prevTick = Interp::CurrentTick();
     // XHeroFire_Chase::ProcessFrame: after 10 ticks, turn at most 1.6 degrees a tick towards the
     // target (wherever it is: the target is kept even once it has been defeated)
     if (f.chase && f.localTime > 10) {
@@ -540,7 +543,7 @@ void XLevelLoop::RenderEffects(Device* d, const D3DMATRIX& view) {
         if (!f.live) continue;
         JObject3DRect& sprite = f.owner->IsHeroA() ? (f.large ? *fireSpriteA_ : *fireSpriteSmallA_)
                                                    : (f.large ? *fireSpriteB_ : *fireSpriteSmallB_);
-        sprite.SetWorldPos(f.pos);
+        sprite.SetWorldPos(Interp::BlendPos(f.prevPos, f.pos, f.prevTick));  // (native: smooth motion)
         sprite.Render2(d, view);
     }
 }

@@ -32,5 +32,9 @@ inline D3DVECTOR Lerp(const D3DVECTOR& a, const D3DVECTOR& b, float t) {
 }
 // an angle in radians, the short way round
 float LerpAngle(float a, float b, float t);
+// Where to draw something whose owner keeps its position from before tick `prevTick` (sprites:
+// particles, shots, the flame): between `prev` and `cur` if that tick is the latest, else `cur`
+// (and `cur` itself at alpha 1, or after a jump of more than 40 in the tick).
+D3DVECTOR BlendPos(const D3DVECTOR& prev, const D3DVECTOR& cur, unsigned prevTick);
 
 }  // namespace Interp

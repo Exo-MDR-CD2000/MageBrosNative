@@ -1,4 +1,5 @@
 #include "game/XWater.h"
+#include "framework/interp.h"
 #include "game/JObject3D.h"
 
 namespace {
@@ -44,6 +45,9 @@ void XWater::Init(int cellsX, int cellsZ, int world) {
 
 void XWater::ProcessFrame() {
     if (!initialised_) return;
+    // native (smooth motion): the drift before this tick, to draw from
+    prevU1_ = waterU1_, prevV1_ = waterV1_, prevU2_ = waterU2_, prevV2_ = waterV2_;
+    prevTick_ = Interp::CurrentTick();
     localCounter_++;
     // the textures drift: the top sheet twice as fast as the lower one
     auto drift = [](float& v, float step) {
@@ -60,6 +64,21 @@ void XWater::ProcessFrame() {
 
 void XWater::Render(Device* d) {
     if (!initialised_) return;
+    // native (smooth motion): drawn with the drift between the last two ticks, then the tick's put
+    // back (the drift wraps at 1, so a smaller value has gone round once)
+    float a = Interp::Alpha();
+    bool blend = prevTick_ == Interp::CurrentTick() && a < 1.0f;
+    if (blend) {
+        auto mix = [a](float p, float c) { return p + (c < p ? c + 1.0f - p : c - p) * a; };
+        float u1 = mix(prevU1_, waterU1_), v1 = mix(prevV1_, waterV1_);
+        float u2 = mix(prevU2_, waterU2_), v2 = mix(prevV2_, waterV2_);
+        water1_->SetUV(u1, cellsX_ + u1, v1, cellsZ_ + v1, 0);
+        water2_->SetUV(u2, cellsX_ + u2, v2, cellsZ_ + v2, 0);
+    }
     water2_->Render(d);
     water1_->Render(d);
+    if (blend) {
+        water1_->SetUV(waterU1_, cellsX_ + waterU1_, waterV1_, cellsZ_ + waterV1_, 0);
+        water2_->SetUV(waterU2_, cellsX_ + waterU2_, waterV2_, cellsZ_ + waterV2_, 0);
+    }
 }

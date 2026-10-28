@@ -30,6 +30,14 @@ unsigned FramesDrawn() { return g_frames; }
 
 void HoldAlpha(float a) { g_held = a > 1.f ? 1.f : a; }
 
+D3DVECTOR BlendPos(const D3DVECTOR& prev, const D3DVECTOR& cur, unsigned prevTick) {
+    float a = Alpha();
+    if (prevTick != g_tick || a >= 1.f) return cur;
+    if (std::fabs(cur.x - prev.x) > 40.f || std::fabs(cur.y - prev.y) > 40.f || std::fabs(cur.z - prev.z) > 40.f)
+        return cur;
+    return Lerp(prev, cur, a);
+}
+
 float LerpAngle(float a, float b, float t) {
     if (t >= 1.f) return b;
     const float kTwoPi = 6.2831853f;

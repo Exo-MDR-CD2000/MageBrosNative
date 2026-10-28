@@ -120,7 +120,7 @@ already moves once a frame (kept as the original, the owner's decision of 2026-1
 | Chunk | What | What the owner would notice |
 |---|---|---|
 | A: timing and camera (done, 0.4.16) | Snapshots before every tick, alpha from the high-resolution clock, snaps at resets; the camera, both mages and their shadows blended | Scrolling and the player's mage smooth at 144 Hz, most of what is seen |
-| B: everything in a level (planned in detail below: B1 models, B2 sprites) | `JObject3DX` blending for enemies, bosses (the dragon's body, the nest's birds), platforms and riders, objects, bullets; sprites (particles, shots, the flame) blended from their owners' positions; the drawn-twice check | All motion in a level smooth |
+| B: everything in a level (done: B1 0.4.17, B2 0.4.18) | `JObject3DX` blending for enemies, bosses (the dragon's body, the nest's birds), platforms and riders, objects, bullets; sprites (particles, shots, the flame) blended from their owners' positions; the drawn-twice check | All motion in a level smooth |
 | C: other screens | The shop's slide, the ending's credits and film strips, moving parts of the title and front-end screens | Menus and the ending match |
 | D: polish | Frame pacing with the frame limit (the G-Sync / FreeSync "refresh minus 3" choice becomes worth having), help text, docs, the owner's play test at 60 and 144 Hz | Fine-tuning |
 
@@ -314,7 +314,7 @@ own with its own checks and play test:
 | Part | What | Version |
 |---|---|---|
 | **B1: models** (done, 0.4.17) | Every `JObject3DX` in a level: enemies, bosses (the dragon's head and body, the genie, the nest and its 40 birds, the wizard with its blade and wand), platforms, moving objects (cannons, the turning cannon, the genie's lamp), coins, enemy bullets drawn as models (cannonballs, needle balls, rockets, the wizard's fireballs). Their shadows, the mage's shadow on a platform, and the drawn-twice check | 0.4.17 |
-| **B2: sprites** | Everything drawn as a sprite from its owner's position: particles (smoke, flashes, explosions, rings, sparkles, the warp photons, the flames' flickers), the mages' shots, the dragon's flame; the water's drifting textures | 0.4.18 |
+| **B2: sprites** (done, 0.4.18) | Everything drawn as a sprite from its owner's position: particles (smoke, flashes, explosions, rings, sparkles, the warp photons, the flames' flickers), the mages' shots, the dragon's flame; the water's drifting textures | 0.4.18 |
 
 After B1, everything with a model moves smoothly. Effects and shots still step until B2. That
 is the order of what is noticed most.
@@ -524,6 +524,32 @@ Checked (2026-10-28):
 - The owner's play test (2026-10-28): everything looked fine and felt smooth. To be revisited if
   a bug turns up later.
 
+## B2 as built (0.4.18)
+
+Built as planned. Each sprite's owner keeps its position before the latest tick, stamped just
+before the owner's tick (`XParticleList` and `XBulletList` call `KeepPrevPos`; `ProcessFire`
+stamps the shot itself). The sprite is drawn at `Interp::BlendPos(prev, cur, prevTick)`, which
+also holds the 40-unit safety net. The water keeps its four drift offsets before the tick,
+draws with the blended ones (allowing for the wrap at 1), then puts the tick's back.
+
+Checked (2026-10-28):
+
+- **Byte for byte**, Smooth motion off and on at `alpha=1`, against 0.4.15: the same 16 shots as
+  B1, including 1-1 with a shot in flight and its smoke, the dragon fight and water levels.
+- **`alpha=0.5`, from a temporary log of every sprite drawn** (removed). Runs: 1-1 firing
+  repeatedly, the dragon fight (45 s, with its flame), the genie coming out (its steam), the nest
+  woken by shots, and the wizard (40 s). Over about 800,000 sprite draws (particles, about 5,000
+  shot draws, 12,000 flame draws): every blended draw exactly halfway, every earlier position
+  exactly the one from the tick before, and nothing moving without blending.
+- **The flash where a shot hits** is made where the shot was a tick before it hit, as in the
+  original. The shot's last frames are drawn between that point and the hit, so the flash
+  appears where the shot was last seen. The log shows no shot or particle out of place.
+- Screenshots at `alpha=0.5`: shots and their smoke in 1-1, the dragon's flame over the water in
+  1-10.
+- The water's drift wasn't logged (it moves at most 0.0014 of a texture a tick); at alpha 1 it is
+  byte for byte the same as before.
+
+## How the game logic is shown untouched
 
 - Smooth motion off: screenshots byte for byte the same as 0.4.15; `mbn_hero_tests` (800,000
   ticks) unchanged.

@@ -1,5 +1,6 @@
 #include "game/XParticle.h"
 #include "framework/d3dutil.h"
+#include "framework/interp.h"
 #include "game/XMapCollision.h"
 #include "game/XMath.h"
 #include <cmath>
@@ -440,9 +441,14 @@ void XParticleBase::ProcessFrame() {
     if (state_ != NON) localCounter_++;
 }
 
+void XParticleBase::KeepPrevPos() {
+    prevPos_ = pos_;
+    prevTick_ = Interp::CurrentTick();
+}
+
 void XParticleBase::Render(Device* d, const D3DMATRIX& view) {
     if (state_ == NON || !particle_) return;
-    particle_->SetWorldPos(pos_);
+    particle_->SetWorldPos(Interp::BlendPos(prevPos_, pos_, prevTick_));  // (native: smooth motion)
     if (billboard_) {
         particle_->Render2(d, view);
     } else {
@@ -480,6 +486,7 @@ void XParticleList::Add(std::unique_ptr<XParticleBase> p) {
 void XParticleList::ProcessFrame() {
     for (auto& s : slots_) {
         if (!s) continue;
+        s->KeepPrevPos();  // native (smooth motion)
         s->ProcessFrame();
         if (s->Finished()) s.reset();
     }
