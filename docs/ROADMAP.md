@@ -131,7 +131,10 @@ Chunk 2 is done but the options menu in widescreen, left as it is. The rest is t
 the owner. **Smooth motion (interpolation) is researched and planned** in
 [SMOOTH_MOTION.md](SMOOTH_MOTION.md): four chunks (A timing and camera, B everything in a level,
 C other screens, D polish), to be built and tested on the `interpolation-test` branch, perhaps as
-a stage of its own; not started. For the field of view, possibly with mods: scenery beyond the original's view (deeper
+a stage of its own; chunk A is planned file by file; not started. Smooth motion will be off by
+default (the owner, 2026-10-27). Set aside for later (the owner, 2026-10-27): an in-game debug
+overlay (ticks a second, ticks per frame, frame-time and alpha graphs, snaps, the display
+settings in effect), off by default, reading values only. For the field of view, possibly with mods: scenery beyond the original's view (deeper
 cliffs below the near edge, taller walls, something past the ends) so zooming out holds up. Possible later, maybe more than a game of
 this size needs (the owner's notes): a frame-limit choice for G-Sync / FreeSync (the monitor's
 refresh rate less 3), worth it only once smooth motion draws between ticks; for 32:9 screens, an idle

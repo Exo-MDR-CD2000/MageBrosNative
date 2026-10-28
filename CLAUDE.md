@@ -337,7 +337,8 @@ v0.4.13). **Work goes on `main` again**: commit and push there (each push publis
 version's release; see "GitHub releases"). **Exception: smooth motion (interpolation) is built
 and tested on the `interpolation-test` branch** (created from `main` at 0.4.15 on 2026-10-26),
 merged into `main` only when the owner says so; its research and plan are in
-`docs/SMOOTH_MOTION.md`, and no code has been written for it yet. Perhaps a branch for the
+`docs/SMOOTH_MOTION.md` (chunk A planned file by file, 2026-10-27), and no code has been written
+for it yet. Once it blends, Smooth motion is **off by default** (the owner, 2026-10-27). Perhaps a branch for the
 modding work later. Chunk 2 (the Video page) is split into small chunks for thoroughness: 2a
 windowed mode (0.4.1, tested by the owner), 2b exclusive fullscreen (0.4.2, tested by the
 owner), 2c monitors (0.4.3, tested by the owner), 2d-i VSync (0.4.4), 2d-ii widescreen culling
