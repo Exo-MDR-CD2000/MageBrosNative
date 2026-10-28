@@ -342,8 +342,8 @@ and tested on the `interpolation-test` branch** (created from `main` at 0.4.15 o
 merged into `main` only when the owner says so; its research and plan are in
 `docs/SMOOTH_MOTION.md`. **Chunk A (the clock, the camera, the mages and their shadows) is built
 in 0.4.16** on that branch ("Chunk A as built" in `docs/SMOOTH_MOTION.md`); the owner's first
-play test found it smooth, with nothing off. Chunk B (everything else in a level) is next, to be
-planned file by file first. Smooth motion is **off by default** from 0.4.16 (the owner;
+play test found it smooth, with nothing off. Chunk B (everything else in a level) is planned file
+by file in two parts, B1 models (0.4.17) and B2 sprites (0.4.18), not started. Smooth motion is **off by default** from 0.4.16 (the owner;
 config_version 21 turns it off once in older files). **Versions on the branch:** each build takes
 the next version, as on `main` (the owner, 2026-10-27; 0.4.16 is the branch's). A push to the
 branch publishes nothing; while it is open, work on `main` must not reuse its numbers. Perhaps a branch for the

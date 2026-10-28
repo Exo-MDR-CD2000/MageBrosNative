@@ -120,7 +120,7 @@ already moves once a frame (kept as the original, the owner's decision of 2026-1
 | Chunk | What | What the owner would notice |
 |---|---|---|
 | A: timing and camera (done, 0.4.16) | Snapshots before every tick, alpha from the high-resolution clock, snaps at resets; the camera, both mages and their shadows blended | Scrolling and the player's mage smooth at 144 Hz, most of what is seen |
-| B: everything in a level | `JObject3DX` / `JObject3DRect` blending for enemies, bosses (the dragon's spline body, the nest's birds), platforms and riders, objects, shots, bullets, particles; the drawn-twice check | All motion in a level smooth |
+| B: everything in a level (planned in detail below: B1 models, B2 sprites) | `JObject3DX` blending for enemies, bosses (the dragon's body, the nest's birds), platforms and riders, objects, bullets; sprites (particles, shots, the flame) blended from their owners' positions; the drawn-twice check | All motion in a level smooth |
 | C: other screens | The shop's slide, the ending's credits and film strips, moving parts of the title and front-end screens | Menus and the ending match |
 | D: polish | Frame pacing with the frame limit (the G-Sync / FreeSync "refresh minus 3" choice becomes worth having), help text, docs, the owner's play test at 60 and 144 Hz | Fine-tuning |
 
@@ -305,6 +305,186 @@ Checked (2026-10-27, 1280 x 960, 4:3):
 - A screenshot at `alpha=0.5` mid-jump in 2-4 shows the mage with its shadow under it.
 
 The owner's first play test (2026-10-27): "feels pretty smooth", nothing off.
+
+## Chunk B in detail (planned 2026-10-28)
+
+Chunk B blends everything else that moves in a level. It is split in two, each a version of its
+own with its own checks and play test:
+
+| Part | What | Version |
+|---|---|---|
+| **B1: models** | Every `JObject3DX` in a level: enemies, bosses (the dragon's head and body, the genie, the nest and its 40 birds, the wizard with its blade and wand), platforms, moving objects (cannons, the turning cannon, the genie's lamp), coins, enemy bullets drawn as models (cannonballs, needle balls, rockets, the wizard's fireballs). Their shadows, the mage's shadow on a platform, and the drawn-twice check | 0.4.17 |
+| **B2: sprites** | Everything drawn as a sprite from its owner's position: particles (smoke, flashes, explosions, rings, sparkles, the warp photons, the flames' flickers), the mages' shots, the dragon's flame; the water's drifting textures | 0.4.18 |
+
+After B1, everything with a model moves smoothly. Effects and shots still step until B2. That
+is the order of what is noticed most.
+
+### What the code showed (read for this plan)
+
+These findings replace guesses in the outline above:
+
+- **Nothing is reused in place.** Enemies, platforms, static objects and the boss are made once,
+  when the level loads (`XLevelLoop::Load`), and their slots are never refilled during play.
+  Particles (`XParticleList::Add`), enemy bullets (`XBulletList::Create*`) and coins
+  (`XLevelLoop::CreateCoin`) are each a new object when made. The mages' shots (`Fire`) are the
+  only reused slots (`XLevelLoop::NewFire` overwrites a dead one). So the risk is not a reused
+  slot. It is **a new object's first tick**: its constructor sets its pose with setters, which
+  would take the model's default pose (the origin) as the earlier pose.
+- **No platform wraps around.** The seven platform kinds move continuously (up and down,
+  back and forth, the elevator, the drop). There are no jumps to snap.
+- **No enemy respawns or teleports.** A dead enemy hops, spins and bursts, then is gone. Every
+  move is continuous (the jumpers interpolate their own arc each tick).
+- **Some models are hidden and shown again.** The wizard's blade and wand are drawn only while
+  it attacks. The genie is hidden while in its lamp. Any object can leave and re-enter the draw
+  range at the screen's edges. When one shows again, its earlier pose is from when it was last
+  seen.
+- **Sprites carry no history.** Particles, the shots and the dragon's flame are rectangles placed
+  at their owner's position while being drawn (`SetWorldPos(pos_)` in `Render`). The shots even
+  share one sprite per colour and size, drawn at each live shot in turn. So sprites blend from
+  their owner's position history, not inside `JObject3DRect`.
+- **Particle sizes and fades change the vertices** (`JObject3DRect::Scale`, `SetAlphaFactor`)
+  every tick. They can't be blended without rewriting each effect, and the steps are small (3% or
+  less a tick). They stay per tick (see "Kept per tick" below).
+- **Shadows are worked out at draw time** from their owner's position: `XShadowSimple::SetPosXZ`
+  (enemies, bosses, coins), `XShadow::SetPos` (the dragon, the birds, the wizard, the ghost,
+  bullets), and `XShadowOnPlatform` (the mage's shadow on a platform, from the mage's position
+  and the platform's box).
+- **Enemies outside the update range (480) don't tick**, so they don't blend; they are drawn
+  where they stand, as now.
+
+### B1.1 Blending on for every model (`src/game/JModel.{h,cpp}`)
+
+- `blend_` becomes **on by default** for every `JObject3DX`. This is safe because blending only
+  ever applies inside `XGameScene::Render`'s 3D (`Interp::SetScope`). The title, level select,
+  the ending and the Tab viewers draw exactly as now, and so does everything with Smooth motion
+  off. This replaces opting in object by object, which would mean touching some 60 classes.
+  `XHero`'s two `EnableBlending(true)` calls go; its `Snap()` calls in `Reset` stay.
+- **A model not drawn in the last frame doesn't blend in the next tick.** `Interp` gets a frame
+  count: `Interp::BeginFrame()`, called at the start of `XGameScene::Render`, and
+  `Interp::FramesDrawn()`. `JObject3DX::Render` records `lastDrawFrame_`. In `TouchPose` (the
+  first change in a tick), if `lastDrawFrame_` isn't the latest frame, the model is marked
+  `snapTick_ = CurrentTick()`, and `Blending()` is false for that tick. This one rule covers:
+  - **new objects** (coins, bullets, the level's objects): never drawn yet, so their first tick
+    shows them where they are made, not on the way from the origin;
+  - **objects shown again** (the wizard's blade and wand, the genie, anything coming back into
+    the draw range);
+  - at 60 Hz, two ticks in one frame still blend, because the model was drawn in the last
+    frame.
+- **The drawn-twice check:** if `Render` finds `lastDrawFrame_` already equal to this frame (the
+  same model drawn twice in one frame, at different places), it logs the model's resource id
+  once. Its history would be wrong. Nothing found in the code does this (the shots' shared
+  sprite is a rectangle, handled in B2); the check is there to catch what reading missed. It is a
+  log line only and stays in the release build (once per model id).
+- The 40-unit safety net stays.
+
+### B1.2 Shadows at the blended position
+
+Each shadow placed at draw time takes its owner's blended position:
+
+- `XEnemyBase::Render`, `XBossBase::Render`, the coins in `XLevelLoop::RenderObjects`:
+  `SetPosXZ(model_->BlendedPos())`.
+- `XBoss_Dragon`, `XBoss_DragonBody`, `XBoss_Bird`, `XBoss_Wizard`, the ghost (`XEnemy.cpp`,
+  `ghostShadow_`), `XBulletBase::Render`: `SetPos(model_->BlendedPos())`.
+- The fan and the floor fan keep their shadows at `startPos_` (they don't move); static objects'
+  shadows don't move either.
+- **The mage's shadow on a platform** (`XShadowOnPlatform::RenderShadow`): the mage's
+  `DrawPos()` instead of `GetPos()`, and the platform's box moved by the platform's blend
+  (`model_->BlendedPos() - pos_`, passed in by `XPlatformBase::Render`). The overlap of the
+  mage's square and the platform's top is then worked out between the two blended positions.
+  At alpha 1 both offsets are zero, so the shadow is the same as now.
+- `XBossBase::Render`'s shadow scale (`scale_`, the genie growing out of its lamp) stays per tick:
+  it changes the shadow's vertices, as the particle sizes do.
+
+### B1.3 Riders on platforms
+
+Nothing extra is needed. A platform pushes the mages standing on it by its own move in the same
+tick (`PushHeroX` / `Y` / `Z`), so once platforms blend, platform and mage blend together.
+That ends the small drift seen in 0.4.16. The mage's model takes the push at its next
+`UpdateWorldMatrix`, one tick behind the platform's, exactly as the original draws it. Blending
+both keeps that same offset at every tick.
+
+### B1.4 What B1 doesn't change
+
+- Animation frames (walk cycles, the dragon's jaw, the wizard's frames) switch on ticks as now.
+- The update and draw ranges use the tick's positions (game logic and the set of objects drawn
+  stay the same).
+- Objects that never move (pillars, fences, trees, the shop and its sign, torches, candles, the
+  fans' and hammers' bases) are untouched: their pose never changes, so they never blend.
+
+### B2.1 Particles (`src/game/XParticle.{h,cpp}`)
+
+- `XParticleBase` gets `prevPos_` and `prevTick_`. `XParticleList::ProcessFrame` copies `pos_` to
+  `prevPos_` and stamps `prevTick_ = Interp::CurrentTick()` just before each particle's
+  `ProcessFrame`.
+- `XParticleBase::Render` places the sprite at `Interp::Lerp(prevPos_, pos_, Alpha())` when
+  `prevTick_` is the latest tick, otherwise at `pos_`. A particle made during a tick has no
+  stamp yet, so it shows where it is made until its first tick of its own.
+- The 40-unit safety net applies here too.
+- The warp photons circle the mage using the mage's tick position. Blending their own `pos_`
+  makes them circle smoothly, and they follow the mage's blended path to within one tick's
+  movement of the mage, as now.
+
+### B2.2 The mages' shots (`src/game/XLevelLoop.{h,cpp}`)
+
+- `Fire` gets `prevPos` and `prevTick`. `ProcessFire` stamps them at its start (it already keeps
+  `prev` for the flash). `NewFire` clears the stamp, so a new shot shows at its starting point
+  20 out from the mage until its first tick.
+- `RenderEffects` sets the shared sprite to each shot's blended position before drawing it. The
+  shared sprite has no history of its own, so nothing else changes.
+
+### B2.3 The dragon's flame (`src/game/XBullet.cpp`)
+
+- `XBulletBase` gets `prevPos_` / `prevTick_`, stamped at the start of `XBulletList::ProcessFrame`'s
+  call for each bullet. `Flame::Render` uses the blended position. (The model bullets blend in
+  B1 through their models.) When the flame stops against a wall it goes back to where it was
+  (`pos_ = prev`), which is no move at all, so it simply stands.
+
+### B2.4 The water (`src/game/XWater.{h,cpp}`)
+
+- The four texture offsets (`waterU1_`, `waterV1_`, `waterU2_`, `waterV2_`) keep their values
+  before the latest tick. `XWater::Render` sets the UVs from the blended offsets (taking the wrap
+  at 1.0 into account: when the new value is smaller, 1 is added before blending), and the next
+  tick sets them from the tick's values as now. At alpha 1 the UVs are the tick's own, so the
+  pictures are the same as now. The drift is slow (at most 0.0014 of a texture a tick), so this
+  is the least noticeable item and is last.
+
+### Kept per tick (not blended)
+
+- **Particle sizes and fades**, and the boss shadow's scale: they change vertices each tick, in
+  steps of a few percent at most. Blending them would mean rewriting the 20-odd effects. If the
+  owner sees stepping in any effect, it can be looked at on its own.
+- **Animation frames** of models and sprite sheets (the flame's explosion frames, the torches'
+  flicker every 2 ticks): they are separate pictures.
+- **The HUD and 2D screens**: chunk C.
+
+### Checks (as in chunk A, for each of B1 and B2)
+
+1. **Byte for byte** against the build before, with Smooth motion off and on at `alpha=1`: the
+   six chunk A scenes (1-1, 1-6 settled, 3-5, two players in 2-4, the shop in 1-3), plus scenes
+   with things moving: slimes and bees in 1-1, the moving platforms of 1-5 and 1-6, the cannons,
+   the dragon in 1-10, the genie (2-10), the nest (3-10), the wizard (4-10), and fire and smoke
+   in the air.
+2. **`alpha=0.5` from a temporary log** of tick and drawn positions: every enemy, platform and
+   boss part (B1), every particle and shot (B2) drawn halfway between its last two ticks, apart
+   from the expected exceptions (first tick of a new object, first tick after reappearing). The
+   log also counts those exceptions, so none is unexpected.
+3. **The drawn-twice log**: run through every world's boss level and a few busy levels. It
+   should log nothing.
+4. **A mage on a moving platform**: the shadow on the platform and the mage stay together
+   (screenshots at `alpha=0.5` on 1-6's elevator and 1-5's platforms).
+5. **The wizard's attacks and the genie coming out**: no blade, wand or genie gliding in from
+   where it was last seen.
+6. `mbn_hero_tests` and the other tests unchanged.
+7. Then the owner's play test.
+
+### Risks
+
+- **Many more models blend at once.** Each builds a matrix a frame. A level draws at most a few
+  hundred models, which is cheap at any frame rate, but the frame rate with Show FPS is checked
+  in the busiest level (World 4) before and after.
+- **Something the reading missed** (a hidden jump under 40 units, a model drawn twice). The
+  drawn-twice log and the `alpha=0.5` log are there to find it. Smooth motion off is always the
+  way to confirm that a problem is in the drawing only.
 
 ## How the game logic is shown untouched
 
