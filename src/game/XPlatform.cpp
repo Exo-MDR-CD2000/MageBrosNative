@@ -245,19 +245,22 @@ XShadowOnPlatform::XShadowOnPlatform(const XGameContext* game) : game_(game) {
 }
 XShadowOnPlatform::~XShadowOnPlatform() = default;
 
-void XShadowOnPlatform::Render(Device* d) {
-    RenderShadow(d, game_->heroA, *shadow_[0]);
-    RenderShadow(d, game_->heroB, *shadow_[1]);
+void XShadowOnPlatform::Render(Device* d, const D3DVECTOR& drawOffset) {
+    RenderShadow(d, game_->heroA, *shadow_[0], drawOffset);
+    RenderShadow(d, game_->heroB, *shadow_[1], drawOffset);
 }
 
-void XShadowOnPlatform::RenderShadow(Device* d, const XHero* hero, JObject3DRect& shadow) {
+void XShadowOnPlatform::RenderShadow(Device* d, const XHero* hero, JObject3DRect& shadow, const D3DVECTOR& drawOffset) {
     if (!hero || !platformBox_) return;
     if (hero->GetLiveState() != XHero::NORMAL && hero->GetLiveState() != XHero::DYING) return;
-    const D3DVECTOR& hp = hero->GetPos();
-    if (platformBox_->Node2().y > hp.y) return;  // the hero is below the top
+    // native (smooth motion): the mage and the platform where they are drawn this frame (their
+    // own positions when not blending); whether to draw at all is decided by the tick's
+    if (platformBox_->Node2().y > hero->GetPos().y) return;  // the hero is below the top
+    const D3DVECTOR hp = hero->DrawPos();
+    const float top = platformBox_->Node2().y + drawOffset.y;
     // the hero's 35-unit square and the platform's 40-unit top
     float hx0 = hp.x - 17.5f, hx1 = hp.x + 17.5f, hz0 = hp.z - 17.5f, hz1 = hp.z + 17.5f;
-    const D3DVECTOR& bp = platformBox_->Pos();
+    const D3DVECTOR bp = platformBox_->Pos() + drawOffset;
     float px0 = bp.x - 20.0f, px1 = bp.x + 20.0f, pz0 = bp.z - 20.0f, pz1 = bp.z + 20.0f;
     if (px0 >= hx1 || hx0 >= px1 || pz0 >= hz1 || hz0 >= pz1) return;
     // the part of the shadow texture over the top
@@ -267,7 +270,7 @@ void XShadowOnPlatform::RenderShadow(Device* d, const XHero* hero, JObject3DRect
     float v1 = std::min(1.0f, 1.0f - (hz1 - pz1) / 35.0f);
     float xa = std::max(px0, hx0), xb = std::min(px1, hx1);
     float za = std::max(pz0, hz0), zb = std::min(pz1, hz1);
-    shadow.SetWorldPos(D3DVECTOR((xb - xa) * 0.5f + xa, platformBox_->Node2().y + 0.2f, (zb - za) * 0.5f + za));
+    shadow.SetWorldPos(D3DVECTOR((xb - xa) * 0.5f + xa, top + 0.2f, (zb - za) * 0.5f + za));
     shadow.SetUV(u0, u1, 1.0f - v1, 1.0f - v0, 0);
     shadow.SetScaleVector(D3DVECTOR(u1 - u0, 1.0f, (1.0f - v0) - (1.0f - v1)));
     shadow.UpdateWorldMatrix();
@@ -283,7 +286,7 @@ XPlatformBase::~XPlatformBase() = default;
 void XPlatformBase::Render(Device* d) {
     if (!game_->IsVisible(pos_)) return;
     model_->Render(d);
-    shadowOnPlatform_->Render(d);
+    shadowOnPlatform_->Render(d, model_->BlendOffset());
 }
 
 void XPlatformBase::UpdateWorldMatrix() {

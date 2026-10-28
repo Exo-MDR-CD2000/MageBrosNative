@@ -313,7 +313,7 @@ own with its own checks and play test:
 
 | Part | What | Version |
 |---|---|---|
-| **B1: models** | Every `JObject3DX` in a level: enemies, bosses (the dragon's head and body, the genie, the nest and its 40 birds, the wizard with its blade and wand), platforms, moving objects (cannons, the turning cannon, the genie's lamp), coins, enemy bullets drawn as models (cannonballs, needle balls, rockets, the wizard's fireballs). Their shadows, the mage's shadow on a platform, and the drawn-twice check | 0.4.17 |
+| **B1: models** (done, 0.4.17) | Every `JObject3DX` in a level: enemies, bosses (the dragon's head and body, the genie, the nest and its 40 birds, the wizard with its blade and wand), platforms, moving objects (cannons, the turning cannon, the genie's lamp), coins, enemy bullets drawn as models (cannonballs, needle balls, rockets, the wizard's fireballs). Their shadows, the mage's shadow on a platform, and the drawn-twice check | 0.4.17 |
 | **B2: sprites** | Everything drawn as a sprite from its owner's position: particles (smoke, flashes, explosions, rings, sparkles, the warp photons, the flames' flickers), the mages' shots, the dragon's flame; the water's drifting textures | 0.4.18 |
 
 After B1, everything with a model moves smoothly. Effects and shots still step until B2. That
@@ -486,7 +486,44 @@ both keeps that same offset at every tick.
   drawn-twice log and the `alpha=0.5` log are there to find it. Smooth motion off is always the
   way to confirm that a problem is in the drawing only.
 
-## How the game logic is shown untouched
+## B1 as built (0.4.17)
+
+Built as planned, with these points found while building and testing:
+
+- **Shadows take the owner's position plus the model's blend offset**
+  (`JObject3DX::BlendOffset()`, exactly zero when not blending), not the model's blended position.
+  An owner's position can differ from its model's: a platform pushes a mage after the mage has
+  placed its model for the tick. The original draws the shadow from the owner's position.
+- **0.4.16 had this slip for the mage's shadow** (`XHero::DrawPos` was the body model's position).
+  It applied with Smooth motion off too, while a moving platform carried the mage. Fixed: the
+  mage's own position plus the offset.
+- **The 40 nest birds wait at the origin** (their models aren't placed until the nest wakes),
+  far out of view, and move to the nest in one tick when it wakes. The 40-unit safety net draws
+  that tick as it is. This is the port's existing behaviour, unchanged.
+- No model was found drawn twice in a frame in any run (the log stayed empty).
+
+Checked (2026-10-28):
+
+- **Byte for byte**, Smooth motion off and on at `alpha=1`, against 0.4.15 and 0.4.16: the chunk A
+  scenes, plus the 1-6 elevator with the mage riding it, the dragon in 1-10, the wizard in 4-10,
+  and 1-1 with a shot fired (two shots each). The genie (2-10) and nest (3-10) scenes can't be
+  compared by screenshot: 0.4.15 itself gives different pictures run to run there, because the
+  time a level takes to load moves the tick a screenshot lands on.
+- **`alpha=0.5`, from a temporary log of every model drawn** (removed). Runs: 1-1, the 1-6
+  elevator, the dragon fight, the genie coming out of its lamp (the mage within 80 of the lamp),
+  the nest woken by shots, and two wizard fights (30 s and 60 s). Over about 650,000 model draws:
+  every blended draw exactly halfway, every earlier pose exactly the model's pose in the tick
+  before, and no model moving without blending except the expected cases. Those were new or
+  reappearing models (the wizard's wand and fireballs, the genie) and the birds' one jump. The
+  wizard's blade never came up in these runs (the wizard picks its attacks at random). It is
+  shown and hidden by the same code as the wand, which was checked.
+- **Frame rate:** the same build in the nest level (3-10, all 40 birds), VSync off, a temporary
+  per-second log: about 1,070 frames a second at `alpha=1` (no blending) and at `alpha=0.5`
+  (every model blending), two runs each. Blending costs nothing measurable.
+- The mage on the 1-6 elevator at `alpha=0.5`: mage, shadow and elevator drawn together.
+- The owner's play test (2026-10-28): everything looked fine and felt smooth. To be revisited if
+  a bug turns up later.
+
 
 - Smooth motion off: screenshots byte for byte the same as 0.4.15; `mbn_hero_tests` (800,000
   ticks) unchanged.

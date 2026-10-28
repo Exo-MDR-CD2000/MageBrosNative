@@ -5,6 +5,7 @@
 
 namespace {
 unsigned g_tick = 0;
+unsigned g_frames = 0;
 bool g_scope = false;
 float g_held = -1.f;
 }  // namespace
@@ -22,6 +23,10 @@ float Alpha() {
 }
 
 void SetScope(bool on) { g_scope = on; }
+bool InScope() { return g_scope; }
+
+void BeginFrame() { g_frames++; }
+unsigned FramesDrawn() { return g_frames; }
 
 void HoldAlpha(float a) { g_held = a > 1.f ? 1.f : a; }
 

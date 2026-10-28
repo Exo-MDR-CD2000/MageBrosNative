@@ -667,7 +667,7 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
         v.push_back(it);
     }
     v.push_back({"Smooth motion",
-                 "On: mages and camera drawn between game ticks, smooth at any refresh rate (up to 10 ms later). Off: as the original.",
+                 "On: the level is drawn between game ticks, smooth at any refresh rate (up to 10 ms later). Off: as the original.",
                  [] { return OnOff(GetConfig().interpolation); },
                  [this](int) {
                      GetConfig().interpolation = !GetConfig().interpolation;

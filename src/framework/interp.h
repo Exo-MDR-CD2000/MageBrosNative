@@ -17,6 +17,11 @@ bool Enabled();  // the Smooth motion setting
 float Alpha();
 // XGameScene::Render turns blending on for the level's 3D only.
 void SetScope(bool on);
+bool InScope();
+// A level's picture is about to be drawn (XGameScene::Render); FramesDrawn counts them, so a
+// model can tell whether it was drawn in the last one.
+void BeginFrame();
+unsigned FramesDrawn();
 // Test hook (--auto alpha=): hold alpha at `a` (0..1); a negative value frees it.
 void HoldAlpha(float a);
 

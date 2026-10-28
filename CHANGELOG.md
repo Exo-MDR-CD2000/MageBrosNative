@@ -7,6 +7,21 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.17] - 2026-10-28
+
+- **Smooth motion, second part**: with Smooth motion on, everything with a model in a level is now
+  drawn between the game's steps too: enemies, every boss (the dragon's whole body, the genie,
+  the nest and its birds, the wizard with its blade and wand), platforms, cannons, the genie's
+  lamp, coins, and cannonballs, needle balls, rockets and the wizard's fireballs. Their shadows
+  follow them smoothly.
+- A mage riding a moving platform now moves smoothly with it, with its shadow on the platform.
+- Things that appear (a coin popping out, a new cannonball, the wizard's wand, the genie leaving
+  its lamp) show up where they are, instead of gliding in.
+- Still in the game's steps for now: particle effects, the mages' shots, the dragon's flame and
+  the water's ripples (next part).
+- Fixed (0.4.16, Smooth motion on or off): a mage's shadow could sit up to a step behind the mage
+  while a moving platform carried it.
+
 ## [0.4.16] - 2026-10-27
 
 - **Smooth motion, first part** (Options > Video > Smooth motion): when it's on, your mage (or

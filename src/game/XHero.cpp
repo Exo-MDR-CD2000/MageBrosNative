@@ -44,9 +44,6 @@ XHero::XHero(bool heroA) : heroA_(heroA), box_(26.0f, 29.0f) {
     body_->SetCollisionModel(0x179);  // MageCOL: what enemies and coins touch
     wand_ = std::make_unique<JObject3DX>(kWandFirst);
     for (uint16_t f : kWandFrames) wand_->AppendFrame(f);
-    // native: smooth motion draws both models between ticks (drawing only)
-    body_->EnableBlending(true);
-    wand_->EnableBlending(true);
 }
 
 void XHero::SetPosX(float x) {
@@ -106,7 +103,11 @@ void XHero::Reset() {
     liveState_ = NORMAL;
 }
 
-D3DVECTOR XHero::DrawPos() const { return body_->BlendedPos(); }
+D3DVECTOR XHero::DrawPos() const {
+    // (the hero's own position, which a platform may have pushed since its model was placed)
+    D3DVECTOR o = body_->BlendOffset();
+    return D3DVECTOR(pos_.x + o.x, pos_.y + o.y, pos_.z + o.z);
+}
 
 void XHero::UpdateWorldMatrix() {
     for (JObject3DX* m : {body_.get(), wand_.get()}) {

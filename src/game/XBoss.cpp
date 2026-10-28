@@ -40,7 +40,7 @@ void XBossBase::Render(Device* d) {
     model_->Render(d);
     if (shadow_) {
         shadow_->SetScale(scale_);
-        shadow_->SetPosXZ(pos_);
+        shadow_->SetPosXZ(pos_ + model_->BlendOffset());  // (native: where the model is drawn)
         shadow_->Render(d);
     }
 }
@@ -194,7 +194,7 @@ void XBoss_DragonBody::Render(Device* d) {
     if (nextBody_) nextBody_->Render(d);
     if (liveState_ == NON || liveState_ == DEAD) return;
     model_->Render(d);
-    bodyShadow_->SetPos(pos_);
+    bodyShadow_->SetPos(pos_ + model_->BlendOffset());  // (native: where the model is drawn)
     bodyShadow_->Render(d, game_->level->Collision());
 }
 
@@ -526,7 +526,7 @@ void XBoss_Dragon::Render(Device* d) {
     if (liveState_ == XBossBase::NON || liveState_ == DEAD) return;
     model_->SetCurrentFrame(frame_);
     model_->Render(d);
-    bodyShadow_->SetPos(pos_);
+    bodyShadow_->SetPos(pos_ + model_->BlendOffset());  // (native: where the model is drawn)
     bodyShadow_->Render(d, game_->level->Collision());
 }
 
@@ -717,7 +717,7 @@ void XBoss_Bird::Render(Device* d) {
     if (liveState_ == NON) return;
     model_->SetCurrentFrame(frame_);
     model_->Render(d);
-    bodyShadow_->SetPos(pos_);
+    bodyShadow_->SetPos(pos_ + model_->BlendOffset());  // (native: where the model is drawn)
     bodyShadow_->Render(d, game_->level->Collision());
     // (the original also calls the box's debug draw)
 }
@@ -1142,7 +1142,7 @@ void XBoss_Wizard::Render(Device* d) {
     if (liveState_ == XBossBase::NON || liveState_ == DEAD) return;
     model_->SetCurrentFrame(frame_);
     model_->Render(d);
-    bodyShadow_->SetPos(pos_);
+    bodyShadow_->SetPos(pos_ + model_->BlendOffset());  // (native: where the model is drawn)
     bodyShadow_->Render(d, game_->level->Collision());
     // (the original also calls the box's debug draw)
     if (moveState_ == BLADE) blade_->Render(d);

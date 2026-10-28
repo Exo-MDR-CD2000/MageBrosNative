@@ -260,9 +260,9 @@ bool Config::Save() const {
       ";   144. Only applies when interpolation = 1; without interpolation the game\n"
       ";   draws at most 100 frames per second, like the original.\n");
     fprintf(f, "max_fps = %d\n\n", maxFps);
-    P("; interpolation: Smooth motion. 1 = draw at the monitor's rate, the mages and\n"
-      ";   the camera between the game's 100 Hz steps, so they move smoothly at any\n"
-      ";   refresh rate; the picture trails the game by up to 10 ms. The game itself\n"
+    P("; interpolation: Smooth motion. 1 = draw at the monitor's rate, with the level\n"
+      ";   between the game's 100 Hz steps, so it moves smoothly at any refresh\n"
+      ";   rate; the picture trails the game by up to 10 ms. The game itself\n"
       ";   runs exactly the same. 0 = draw only on the game's steps, like the\n"
       ";   original (default).\n");
     fprintf(f, "interpolation = %d\n\n", interpolation ? 1 : 0);

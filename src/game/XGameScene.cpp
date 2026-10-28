@@ -282,6 +282,7 @@ void XGameScene::Render(Device* d, BackBuffer* bb) {
     // native (smooth motion): the level's 3D is drawn between the last two ticks (the mages, their
     // shadows and the camera so far); the shop, the HUD and the fade as they are
     Interp::SetScope(true);
+    Interp::BeginFrame();
     D3DMATRIX view = camera_.BlendedView();
     d->SetTransform(D3DTRANSFORMSTATE_VIEW, &view);
     // native: the draw range grows with the 3D view (ViewReachFactor): 400 at 4:3, 533 at 16:9,

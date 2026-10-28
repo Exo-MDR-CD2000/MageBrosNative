@@ -6,6 +6,7 @@
 #include "framework/interp.h"
 #include "gfx/device.h"
 #include <cmath>
+#include <set>
 
 namespace {
 // XApplication::OneTimeSceneInit: JModelList::SetInitRotate((-pi/2, 0, 0)), SetInitScale(20)
@@ -42,7 +43,7 @@ void Clear() { Cache().clear(); }
 
 }  // namespace JModelList
 
-JObject3DX::JObject3DX(uint16_t firstModel) {
+JObject3DX::JObject3DX(uint16_t firstModel) : firstModel_(firstModel) {
     frames_.push_back(JModelList::Get(firstModel));
     UpdateWorldMatrix();
 }
@@ -106,6 +107,9 @@ void JObject3DX::UpdateWorldMatrix() {
 void JObject3DX::TouchPose() {
     if (!blend_ || poseTick_ == Interp::CurrentTick()) return;
     poseTick_ = Interp::CurrentTick();
+    // not drawn in the last frame (just made, or hidden until now): its earlier pose is from
+    // before it showed, so this tick is drawn as it is
+    if (lastDrawFrame_ != Interp::FramesDrawn()) snapTick_ = poseTick_;
     prevPos_ = pos_;
     prevScale_ = scale_;
     prevYaw_ = yaw_;
@@ -123,13 +127,20 @@ void JObject3DX::Snap() {
 }
 
 bool JObject3DX::Blending() const {
-    if (!blend_ || poseTick_ != Interp::CurrentTick() || Interp::Alpha() >= 1.f) return false;
+    if (!blend_ || poseTick_ != Interp::CurrentTick() || snapTick_ == poseTick_ || Interp::Alpha() >= 1.f)
+        return false;
     return std::fabs(pos_.x - prevPos_.x) <= kMaxBlendStep && std::fabs(pos_.y - prevPos_.y) <= kMaxBlendStep &&
            std::fabs(pos_.z - prevPos_.z) <= kMaxBlendStep;
 }
 
 D3DVECTOR JObject3DX::BlendedPos() const {
     return Blending() ? Interp::Lerp(prevPos_, pos_, Interp::Alpha()) : pos_;
+}
+
+D3DVECTOR JObject3DX::BlendOffset() const {
+    if (!Blending()) return D3DVECTOR(0, 0, 0);
+    D3DVECTOR b = Interp::Lerp(prevPos_, pos_, Interp::Alpha());
+    return D3DVECTOR(b.x - pos_.x, b.y - pos_.y, b.z - pos_.z);
 }
 
 namespace {
@@ -182,6 +193,16 @@ bool JObject3DX::CheckCollision_Sphere(const D3DVECTOR& centre, float radius) co
 void JObject3DX::Render(Device* d) {
     CD3DFile* mesh = frames_.empty() ? nullptr : frames_[current_];
     if (!mesh) return;
+    if (Interp::InScope()) {
+        // native (smooth motion): one model drawn twice in a frame would have one history for two
+        // places; logged once per model
+        if (lastDrawFrame_ == Interp::FramesDrawn()) {
+            static std::set<uint16_t> logged;
+            if (logged.insert(firstModel_).second)
+                Log("Smooth motion: model %#x drawn twice in one frame (its blend may be wrong)", firstModel_);
+        }
+        lastDrawFrame_ = Interp::FramesDrawn();
+    }
     if (Blending()) {
         float a = Interp::Alpha();
         D3DMATRIX world;

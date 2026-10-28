@@ -52,14 +52,20 @@ public:
 
     void Render(Device* d);
 
-    // Native (smooth motion, docs/SMOOTH_MOTION.md): with blending on, the model keeps its pose
-    // from before the latest tick and is drawn between that and its current pose, by
-    // Interp::Alpha. The world matrix (and so the collision model) is always the tick's own.
+    // Native (smooth motion, docs/SMOOTH_MOTION.md): the model keeps its pose from before the
+    // latest tick and, in a level's 3D, is drawn between that and its current pose, by
+    // Interp::Alpha. The world matrix (and so the collision model) is always the tick's own. On
+    // for every model; a model not drawn in the last frame (new, or shown again) doesn't blend
+    // in its next tick.
     void EnableBlending(bool on) { blend_ = on; }
     // A jump that must not blend (a reset, a drop-in): the earlier pose becomes the current one.
     void Snap();
     // Where the model is drawn this frame (its position when not blending).
     D3DVECTOR BlendedPos() const;
+    // How far the drawn position is from the model's own: exactly zero when not blending. Owners
+    // add it to their own position for what they place at draw time (shadows), so that with no
+    // blend those stay exactly where the original puts them.
+    D3DVECTOR BlendOffset() const;
 
     // ColDet collision against the object's collision mesh (a separate model resource), placed
     // by the world matrix as of the last UpdateWorldMatrix. Without a collision model both tests
@@ -79,8 +85,11 @@ private:
     D3DMATRIX world_;
     bool white_ = false;
     std::unique_ptr<CollisionModel3D> col_;
-    bool blend_ = false;
-    unsigned poseTick_ = 0;  // Interp::CurrentTick when the pose last changed
+    bool blend_ = true;
+    uint16_t firstModel_ = 0;  // (for the drawn-twice log)
+    unsigned poseTick_ = 0;    // Interp::CurrentTick when the pose last changed
+    unsigned snapTick_ = ~0u;  // a tick drawn without blending (not drawn in the frame before it)
+    unsigned lastDrawFrame_ = ~0u;  // Interp::FramesDrawn when last drawn
     D3DVECTOR prevPos_{0, 0, 0};
     float prevScale_ = 1.0f, prevYaw_ = 0, prevPitch_ = 0, prevRoll_ = 0;
 };

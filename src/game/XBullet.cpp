@@ -372,7 +372,8 @@ void XBulletBase::Render(Device* d, const D3DMATRIX&) {
     if (liveState_ == NON) return;
     if (model_) model_->Render(d);
     if (shadow_) {
-        shadow_->SetPos(pos_);
+        // (native: where the model is drawn)
+        shadow_->SetPos(model_ ? pos_ + model_->BlendOffset() : pos_);
         shadow_->Render(d, game_->level->Collision());
     }
 }

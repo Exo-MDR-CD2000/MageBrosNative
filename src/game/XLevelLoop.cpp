@@ -519,7 +519,7 @@ void XLevelLoop::RenderObjects(Device* d, const D3DMATRIX& view) {
     for (Coin& c : coins_) {  // XCoin::Render
         if (!c.live || !game_->IsVisible(c.pos)) continue;
         c.model->Render(d);
-        c.shadow->SetPosXZ(c.pos);
+        c.shadow->SetPosXZ(c.pos + c.model->BlendOffset());  // (native: where the model is drawn)
         c.shadow->Render(d);
     }
     for (Torch& t : torches_) t.model->Render(d);
