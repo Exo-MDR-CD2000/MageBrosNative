@@ -346,7 +346,9 @@ play test found it smooth, with nothing off. Chunk B is planned file by file in 
 (every model in a level) is built in 0.4.17**; the owner's play test found nothing wrong ("everything
 feels so smooth", 2026-10-28; to be revisited if a bug turns up); **B2 (sprites:
 particles, shots, the flame, the water) is built in 0.4.18**, waiting for the owner's play test.
-Chunk C (the shop's slide, the ending, the front-end screens) comes next, to be planned first. Smooth motion is **off by default** from 0.4.16 (the owner;
+Chunk C (the shop's slide and the ending's credits; 0.4.19) is planned file by file, not started;
+the 2D that moves in whole pixels (film strips, menu backgrounds, the venetian-blind fades) stays
+as the original (the owner, 2026-10-28). Smooth motion is **off by default** from 0.4.16 (the owner;
 config_version 21 turns it off once in older files). **Versions on the branch:** each build takes
 the next version, as on `main` (the owner, 2026-10-27; 0.4.16 is the branch's). A push to the
 branch publishes nothing; while it is open, work on `main` must not reuse its numbers. Perhaps a branch for the

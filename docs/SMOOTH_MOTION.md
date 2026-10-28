@@ -549,6 +549,90 @@ Checked (2026-10-28):
 - The water's drift wasn't logged (it moves at most 0.0014 of a texture a tick); at alpha 1 it is
   byte for byte the same as before.
 
+## Chunk C in detail (planned 2026-10-28)
+
+Chunk C covers what moves outside a level's 3D: the shop and the screens around the levels.
+Reading them showed that little of it slides smoothly in the original. Most of the 2D motion
+moves in whole 640 x 480 pixels, a pixel every few ticks.
+
+### What moves, screen by screen (read for this plan)
+
+| Screen | What moves | How | Plan |
+|---|---|---|---|
+| Shop (`XShop`) | The board and the shopper's line slide in from the left, the items and exit from the right, the shopkeeper rises from the bottom; the panel and the widescreen dim fade with them | `_SlideIn()`: the fade counter / 40, so about 8 pixels a tick across 40 ticks | **Blend** (C1) |
+| Ending (`XEndingObject`) | The credits slide in and out | `creditPosX_`: 2.5 pixels a tick | **Blend** (C2) |
+| Ending | The film strips scroll left | A whole pixel every 4 ticks (`localCounter_ * 0.25`) | Whole pixels, as the original (see the decision below) |
+| Ending | The corridor's textures | Once a frame (`textureOffset_`) | Kept, the owner's decision of 2026-10-25 |
+| Ending | The two mages | Walk frames only; they don't move | Nothing to do |
+| Title, save slots, level select | The tiled green background | A whole pixel every 4 ticks (`RenderTiledBackground`) | Whole pixels, as the original |
+| Title | The pictures fade in; the logo's glow pulses | Alpha, 0.002 a tick; a 300-tick sine | Too small to see as steps; kept |
+| Every screen | The venetian-blind fade | Each strip opens a whole pixel every 4 ticks | Whole pixels, as the original |
+| Every screen | Blinking arrows and cursors, the HUD's hearts | Picture frames | Kept (frames) |
+| Logo screen, HUD | Nothing moves | | Nothing to do |
+
+### C1 The shop's slide (`src/game/XShop.{h,cpp}`, `XGameScene.cpp`)
+
+- `_SlideIn()` gets a blended form. During FADEIN and FADEOUT the counter used is
+  `localCounter_ - 1 + alpha` instead of `localCounter_`. `XShop::ProcessFrame(n)` adds `n`
+  ticks at once, but each tick adds one, so `localCounter_ - 1` is the count one tick earlier.
+  When the fade-in has just turned into PROCESS (the counter reset to 0 in the latest tick),
+  the slide is drawn from 39/40 to 1, so the board doesn't jump its last 8 pixels. That case is
+  marked by a flag set when the state changes, cleared at the next tick.
+- Everything placed from `t` follows: the board's and items' x (still whole pixels, as now), the
+  shopkeeper's rise, the panel's alpha (`back_`) and the widescreen dim (`RenderDim`).
+- `XGameScene::Render` turns the blending scope on around `RenderDim` and `XShop::Render` (it is
+  off there today, so `Interp::Alpha()` gives 1). The shop's panel stays placed by the tick's
+  camera, as in chunk A.
+- At alpha 1 the counter is the tick's own, so the shop is drawn exactly as now. The blinking
+  cursor stays on ticks.
+
+### C2 The ending's credits (`src/game/XEndingObject.{h,cpp}`)
+
+- The credit's x is worked out at draw time from the state and a fractional tick: APPEAR
+  `820 - (tick_ - 1 + alpha) / 200 * 500` and DISAPPEAR likewise from 320, rounded down to whole
+  pixels as now. In WAIT1 and WAIT2 it stands still. When the state changed in the latest tick
+  (`tick_` reset to 0), the earlier value is the end of the phase before, so APPEAR → WAIT2 blends
+  from 322 to 320 and the credit doesn't jump. DISAPPEAR → the next credit's WAIT1 is a jump from
+  past the left edge to past the right one, off screen, so it isn't blended.
+- `XEndingObject::Render` turns the blending scope on for the credits. The corridor, the mages
+  and the film strips are drawn as now.
+- At alpha 1 the credit's x is the tick's own, as now. (The ending can't be compared screenshot
+  by screenshot because of the corridor; the check is a log of the credit's x, as in 0.4.11.)
+
+### Decided (the owner, 2026-10-28): whole pixels, as the original
+
+The film strips, the green background and the fade strips move a whole 640 x 480 pixel every 4
+ticks, 25 pixels a second, in the original at any frame rate. On a 1280 x 960 window each of
+those pixels is 2 screen pixels; on a 4K screen about 4.5. Blending can't smooth them while the
+2D is drawn at whole pixels, because between ticks they have nowhere to go: the blended position
+rounds to the same pixel.
+
+- **Keep whole pixels (chosen):** the screens look exactly like the original's, a slow scroll
+  in visible pixel steps. Chunk C then only touches the shop and the credits.
+- **Sub-pixel 2D (possible later):** `Device::BltToBackBuffer` would take fractional positions,
+  so these scroll smoothly at high resolutions. It changes the original's pixel look (the tiles'
+  edges would blend across pixels), touches every 2D draw path, and would be a setting of its
+  own. Not part of chunk C; not planned.
+
+### What chunk C doesn't change
+
+- The HUD, the blinking arrows and cursors, the heart animation: frames on ticks.
+- The corridor's once-a-frame scroll (the owner's decision).
+- With Smooth motion off, and at `alpha=1`, every screen is drawn exactly as now.
+
+### Checks
+
+1. **Byte for byte**, Smooth motion off and on at `alpha=1`, against 0.4.15: the shop scene (open)
+   plus new shots **while the shop is sliding in and out** (1-3), the title, save slots and
+   level select (their backgrounds and fades), and the earlier level scenes.
+2. **`alpha=0.5`, from a temporary log**: the shop's slide fraction each frame halfway between its
+   last two ticks, through FADEIN, the turn into PROCESS and FADEOUT; the credits' x through
+   APPEAR, WAIT2 and DISAPPEAR for all four credits.
+3. Screenshots at `alpha=0.5` of the shop half open and a credit mid-slide.
+4. The owner's play test: opening and leaving a shop, and the ending (F3 in a level reaches it).
+
+Version 0.4.19. Chunk C is small enough to build in one part.
+
 ## How the game logic is shown untouched
 
 - Smooth motion off: screenshots byte for byte the same as 0.4.15; `mbn_hero_tests` (800,000
