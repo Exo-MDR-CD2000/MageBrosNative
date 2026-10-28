@@ -264,7 +264,10 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
   last one stops in the middle about 45 s later and waits for a button (allow a little more:
   startup takes time).
 
-`level`, `place`, `placeB`, `players` and `ending` (and F3, `--ending`) are test hooks only. Key names are SDL's (`Left Ctrl`,
+- `alpha=<0..1>`: hold smooth motion's blend there (only with Smooth motion on, in a level's 3D);
+  `alpha=off` frees it. `alpha=1` must give the same pictures as Smooth motion off.
+
+`level`, `place`, `placeB`, `players`, `ending` and `alpha` (and F3, `--ending`) are test hooks only. Key names are SDL's (`Left Ctrl`,
 `Right Ctrl`, `Left Shift`, `D`, `1`); a wrong name does nothing, silently.
 
 Screenshots are game images: view them, then delete them. Never commit them.
@@ -326,7 +329,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-26, version 0.4.15, stage 7 chunk 2 done but the options menu)
+## Where we are (last updated: 2026-10-27, version 0.4.16 on `interpolation-test`, smooth motion chunk A built)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -337,8 +340,13 @@ v0.4.13). **Work goes on `main` again**: commit and push there (each push publis
 version's release; see "GitHub releases"). **Exception: smooth motion (interpolation) is built
 and tested on the `interpolation-test` branch** (created from `main` at 0.4.15 on 2026-10-26),
 merged into `main` only when the owner says so; its research and plan are in
-`docs/SMOOTH_MOTION.md` (chunk A planned file by file, 2026-10-27), and no code has been written
-for it yet. Once it blends, Smooth motion is **off by default** (the owner, 2026-10-27). Perhaps a branch for the
+`docs/SMOOTH_MOTION.md`. **Chunk A (the clock, the camera, the mages and their shadows) is built
+in 0.4.16** on that branch ("Chunk A as built" in `docs/SMOOTH_MOTION.md`); the owner's first
+play test found it smooth, with nothing off. Chunk B (everything else in a level) is next, to be
+planned file by file first. Smooth motion is **off by default** from 0.4.16 (the owner;
+config_version 21 turns it off once in older files). **Versions on the branch:** each build takes
+the next version, as on `main` (the owner, 2026-10-27; 0.4.16 is the branch's). A push to the
+branch publishes nothing; while it is open, work on `main` must not reuse its numbers. Perhaps a branch for the
 modding work later. Chunk 2 (the Video page) is split into small chunks for thoroughness: 2a
 windowed mode (0.4.1, tested by the owner), 2b exclusive fullscreen (0.4.2, tested by the
 owner), 2c monitors (0.4.3, tested by the owner), 2d-i VSync (0.4.4), 2d-ii widescreen culling
@@ -403,11 +411,17 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   rebinding a DIK moves every place the game reads it (the menus' W / S too).
 - `OptionsMenu::NotYet` greys out what isn't built: Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
   menu's mod pages still speak of Hopmon's assets).
-- Smooth motion (`interpolation`, on by default, from Hopmon) only sets how often the picture is
-  drawn: no game object takes part in `Interp::Tracked`, so frames repeat between ticks. The plan
-  to blend between ticks (and what is wrong with Hopmon's `interp.cpp`: snapshots once a frame
-  instead of once a tick, alpha in whole milliseconds) is in `docs/SMOOTH_MOTION.md`. Off, the
-  framework draws only on frames with a tick (at most 100 a second, the original's pace).
+- Smooth motion (`interpolation`, off by default from 0.4.16): on, the picture is drawn at the
+  monitor's rate and `Interp::Alpha` (`src/framework/interp.*`, from the nanosecond clock) places
+  it between the last two ticks. `XGameScene` calls `Interp::BeginTick` before each tick.
+  `JObject3DX` models with `EnableBlending` keep their pose from before the latest tick (taken at
+  the first change in a tick, `poseTick_`) and draw between the two, leaving `world_` (and the
+  collision) the tick's; `Snap()` after a jump. `XCamera::BlendedView` does the same for the view.
+  Only drawing is touched, and only inside `XGameScene::Render`'s 3D (`Interp::SetScope`).
+  Chunk A blends the mages, their shadows and the camera; the rest still repeats between ticks
+  until chunk B. `--auto alpha=0.5` holds alpha (`alpha=off` frees it). Off, the framework draws
+  only on frames with a tick (at most 100 a second, the original's pace). See
+  `docs/SMOOTH_MOTION.md`.
 - `config_version` 15 rewrote the ini notes for Mage Bros.' keys and dropped Hopmon's two
   cheats; `unlock_all_levels` is still read but nothing uses it.
 

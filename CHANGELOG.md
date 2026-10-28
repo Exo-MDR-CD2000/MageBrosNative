@@ -7,6 +7,21 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.16] - 2026-10-27
+
+- **Smooth motion, first part** (Options > Video > Smooth motion): when it's on, your mage (or
+  both mages), their shadows and the camera are drawn between the game's steps, so walking,
+  jumping, falling and the screen's scrolling are smooth at any refresh rate (144 Hz, 240 Hz,
+  and 60 Hz too). Everything else in a level still moves in the game's steps for now; it follows
+  in the next parts. A mage riding a moving platform can drift slightly against it until then.
+- Smooth motion changes only what you see: the game runs exactly as before, at the same speed,
+  with your keys read at the same moments. The picture trails the game by at most 10 ms (about
+  5 ms on average).
+- **Smooth motion is now off by default**, so the game looks and feels like the original unless
+  you turn it on. It was on before but only repeated pictures. Your setting is switched off once
+  when you update; turn it back on in Options > Video if you want it.
+- Pausing (P) and the options menu no longer make the picture jump when the game carries on.
+
 ## [0.4.15] - 2026-10-26
 
 - **Field of view (experimental)**: Options > Video > Field of view now works, from 50% (zoomed in) to 200%

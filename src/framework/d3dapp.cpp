@@ -13,9 +13,11 @@
 #include <sstream>
 
 static float g_tickAlpha = 0.f;
-static uint64_t g_timeBase = 0;
+static uint64_t g_timeBase = 0;  // ns
+static constexpr uint64_t kTickNs = 10000000;  // a tick: 10 ms
 
-DWORD AppTimeMs() { return (DWORD)(SDL_GetTicks() - g_timeBase + 1000); }
+uint64_t AppTimeNs() { return SDL_GetTicksNS() - g_timeBase + 1000000000ull; }
+DWORD AppTimeMs() { return (DWORD)(AppTimeNs() / 1000000); }
 float AppTickAlpha() { return g_tickAlpha; }
 
 HRESULT BackBuffer::Blt(const RECT* dst, Surface* src, const RECT* srcRect, bool keySrc) {
@@ -411,13 +413,13 @@ HRESULT CD3DApplication::Create(const std::vector<std::string>& args) {
     if (cfg.fullscreen == FullscreenMode::Windowed && cfg.maximized) SDL_MaximizeWindow(window_);
     m_bActive = true;
 
-    g_timeBase = SDL_GetTicks();
+    g_timeBase = SDL_GetTicksNS();
     HRESULT hr = OneTimeSceneInit();
     if (FAILED(hr)) return hr;
     hr = InitDeviceObjects();
     if (FAILED(hr)) return hr;
     m_bReady = true;
-    m_dwLastFrameTime = AppTimeMs();
+    SetLastTick((uint64_t)AppTimeMs() * 1000000);  // (ticks on whole milliseconds, as before)
     autoStart_ = AppTimeMs();
     return S_OK;
 }
@@ -437,13 +439,31 @@ void CD3DApplication::UpdateStats() {
     }
 }
 
+// With Smooth motion on, the game standing still keeps the alpha of the last frame drawn: the
+// latest tick is moved along so that the next one comes due that far on. (With it off, alpha is
+// 1 anyway and the next tick comes due a full tick from the frame's time, as before.)
+void CD3DApplication::HoldTickPhase(uint64_t nowNs, uint64_t tickNow) {
+    if (!GetConfig().interpolation) {
+        SetLastTick(tickNow);
+        return;
+    }
+    uint64_t phase = (uint64_t)(g_tickAlpha * kTickNs);
+    if (phase >= kTickNs) phase = kTickNs - 1;
+    SetLastTick(nowNs - phase);
+}
+
 HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
-    if (now < m_dwLastFrameTime) m_dwLastFrameTime = now;
+    // the ticks are counted from `now`, the frame's time in milliseconds (the time the test
+    // automation and the menu see), as before; the nanosecond clock only places the picture
+    // between two ticks
+    uint64_t nowNs = AppTimeNs();
+    if (nowNs < lastTickNs_) SetLastTick(nowNs);
+    uint64_t tickNow = (uint64_t)now * 1000000;
     menu_->Update(now);
     if (menu_->IsOpen()) {
         // game paused underneath: keep showing the last frame, don't accumulate catch-up time
-        m_dwLastFrameTime = now;
-        g_tickAlpha = 1.f;
+        HoldTickPhase(nowNs, tickNow);
+        heldLastFrame_ = true;
         GetDevice().BeginFrame();
         HRESULT hr = Render();
         if (FAILED(hr)) return hr;
@@ -453,22 +473,32 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
         SDL_GL_SwapWindow(window_);
         return S_OK;
     }
-    DWORD elapsed = now - m_dwLastFrameTime;
-    DWORD ticks = elapsed / 10;
+    // with Smooth motion, the first frame after the menu or a pause carries on from the held
+    // picture (the menu draws at 60 a second: up to 16 ms would otherwise be caught up at once)
+    if (heldLastFrame_ && GetConfig().interpolation) {
+        HoldTickPhase(nowNs, tickNow);
+        tickNow = lastTickNs_;
+    }
+    heldLastFrame_ = !m_bFrameMoving;
+    uint64_t elapsed = tickNow > lastTickNs_ ? tickNow - lastTickNs_ : 0;
+    DWORD ticks = (DWORD)(elapsed / kTickNs);
     if (ticks == 0 && !forceRender) return S_OK;
     if (ticks > 0) {
-        m_dwLastFrameTime = now - elapsed % 10;
+        SetLastTick(tickNow - elapsed % kTickNs);
         if (m_bFrameMoving || m_bSingleStep) {
-            Interp::BeginFrameMove();
             HRESULT hr = FrameMove(ticks);
-            Interp::EndFrameMove();
             if (FAILED(hr)) return hr;
             m_bSingleStep = false;
         }
     }
-    g_tickAlpha = (float)(now - m_dwLastFrameTime) / 10.f;
-    if (g_tickAlpha > 1.f) g_tickAlpha = 1.f;
-    if (!m_bFrameMoving) g_tickAlpha = 1.f;
+    if (m_bFrameMoving) {
+        g_tickAlpha = nowNs > lastTickNs_ ? (float)(nowNs - lastTickNs_) / (float)kTickNs : 0.f;
+        if (g_tickAlpha > 1.f) g_tickAlpha = 1.f;
+    } else if (GetConfig().interpolation) {
+        HoldTickPhase(nowNs, tickNow);  // P: the picture stays as it was
+    } else {
+        g_tickAlpha = 1.f;
+    }
     GetDevice().BeginFrame();
     HRESULT hr = Render();
     if (FAILED(hr)) return hr;
@@ -560,7 +590,7 @@ int CD3DApplication::Run() {
                     WindowChanged(AppTimeMs());
                     [[fallthrough]];
                 case SDL_EVENT_WINDOW_SHOWN:
-                    if (!m_bActive) m_dwLastFrameTime = AppTimeMs();
+                    if (!m_bActive) SetLastTick((uint64_t)AppTimeMs() * 1000000);
                     m_bActive = true;
                     break;
                 case SDL_EVENT_WINDOW_RESIZED:

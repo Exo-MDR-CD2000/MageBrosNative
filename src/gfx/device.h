@@ -126,9 +126,6 @@ public:
     int ScreenWidth() const { return 640; }
     int ScreenHeight() const { return 480; }
 
-    // Optional hook: extra world-space offset (used by frame interpolation)
-    void SetWorldOffset(const D3DVECTOR& v) { worldOffset_ = v; }
-
 private:
     float hudScale_ = 1.f, hudAnchorX_ = 0.f, hudAnchorY_ = 0.f, hudShiftX_ = 0.f;
     bool gameplayView_ = false;
@@ -165,7 +162,6 @@ private:
     D3DLIGHT7 light_{};
     bool lightEnabled_ = false;
     Texture* texture_ = nullptr;
-    D3DVECTOR worldOffset_;
     float maxAniso_ = 1.f;
 };
 

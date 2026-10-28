@@ -16,7 +16,8 @@ original game logic unchanged when every option is at its default.
 > over a dimmed level, the start-up logo white to the edges, and the ending's film strips across the
 > whole width; the HUD can be moved to the screen's edges and resized, and the field of view
 > zoomed. The game's logic and speed are the original's at any resolution, refresh rate and frame
-> rate. Next: to be planned (smooth motion, cheats, mods). See
+> rate. Smooth motion's first part (the mages and the camera drawn between the game's steps) is
+being built and tested. Next: the rest of smooth motion, then cheats and mods. See
 > [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
 > changed in each version.
 
@@ -119,6 +120,11 @@ the right one even after they are plugged in or out.
 **VSync** (Options > Video) is Off, On or Adaptive (on, but a late picture shows at once instead of
 waiting); the line under it tells you if your graphics driver's own setting seems to override it.
 With Smooth motion on, Frame limit caps the frames a second.
+
+**Smooth motion** (Options > Video, off by default) draws the mages, their shadows and the camera
+between the game's 100 steps a second, so they move smoothly at any refresh rate. The game itself
+runs exactly the same; the picture trails it by at most 10 ms. The rest of a level still moves in
+the game's steps for now (more to come). Off, the game draws on its steps only, like the original.
 
 **Widescreen** (Options > Video > Aspect): 4:3 is the original picture with black bars, Stretch
 pulls it wider, and Widescreen widens the 3D view of the levels to fill the screen (16:9, 16:10,

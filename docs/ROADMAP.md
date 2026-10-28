@@ -131,8 +131,9 @@ Chunk 2 is done but the options menu in widescreen, left as it is. The rest is t
 the owner. **Smooth motion (interpolation) is researched and planned** in
 [SMOOTH_MOTION.md](SMOOTH_MOTION.md): four chunks (A timing and camera, B everything in a level,
 C other screens, D polish), to be built and tested on the `interpolation-test` branch, perhaps as
-a stage of its own; chunk A is planned file by file; not started. Smooth motion will be off by
-default (the owner, 2026-10-27). Set aside for later (the owner, 2026-10-27): an in-game debug
+a stage of its own. **Chunk A (the clock, the camera, the mages and their shadows) is built in
+0.4.16** (the owner's first play test: smooth, nothing off); chunk B is next. Smooth motion is
+off by default from 0.4.16 (the owner, 2026-10-27). Set aside for later (the owner, 2026-10-27): an in-game debug
 overlay (ticks a second, ticks per frame, frame-time and alpha graphs, snaps, the display
 settings in effect), off by default, reading values only. For the field of view, possibly with mods: scenery beyond the original's view (deeper
 cliffs below the near edge, taller walls, something past the ends) so zooming out holds up. Possible later, maybe more than a game of
@@ -147,11 +148,11 @@ the table below onto ticks, the graphics options checked on Mage Bros.' scenes, 
 cheats, mods (add-ons and level packs, with `MODDING.md`), `--set`, `CONFIG.md` and the README
 sections Hopmon Native has.
 
-What the Video page's Smooth motion does today (the plan to make it really smooth is in
-[SMOOTH_MOTION.md](SMOOTH_MOTION.md)): on (the default, from Hopmon Native), the
-picture is drawn at the monitor's rate but repeats between ticks; off, it is drawn only on a
-tick boundary, at most 100 times a second, as the original. The game's speed is the same either
-way.
+What the Video page's Smooth motion does today (see [SMOOTH_MOTION.md](SMOOTH_MOTION.md)): on,
+the picture is drawn at the monitor's rate, with the camera, the mages and their shadows blended
+between the last two ticks (0.4.16; everything else still repeats between ticks until chunk B);
+off (the default from 0.4.16), it is drawn only on a tick boundary, at most 100 times a second,
+as the original. The game's speed is the same either way.
 
 ## Stage 7: frame-rate dependence
 

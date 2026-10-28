@@ -28,11 +28,16 @@ public:
     void DoSetTransform(Device* d) const;  // XCamera::DoSetTransform: the view matrix
     const D3DVECTOR& LookAt() const { return lookAt_; }
     const D3DMATRIX& View() const { return view_; }
+    // Native (smooth motion): the view between the last two ticks, by Interp::Alpha (the tick's
+    // own view_ at alpha 1). For drawing only: the draw range and the sound use LookAt.
+    D3DMATRIX BlendedView() const;
 
 private:
     void UpdateLookAtPos(float z);  // _UpdateLookAtPos
     void UpdateShake();             // _UpdateShake
     void UpdateViewMatrix();        // _UpdateViewMatrix
+    void Snap();                    // native: no blend from the earlier view (the resets)
+    void BuildView(D3DMATRIX& view, const D3DVECTOR& eyeBase, const D3DVECTOR& lookAt) const;
 
     unsigned localTime_ = 0;      // +0x0c
 
@@ -45,4 +50,8 @@ private:
     float maxZ_ = 160.0f;         // +0x38: (rows - 4) * 40
     float shakeMagnitude_ = 0;    // +0x3c: set only by the constructor and StartShaking
     D3DMATRIX view_;
+    // native (smooth motion): the look-at point and eye base before the latest tick
+    D3DVECTOR prevLookAt_{0, 0, 0};
+    D3DVECTOR prevEyeBase_{0, 0, 0};
+    unsigned blendTick_ = 0;  // Interp::CurrentTick of the last ProcessFrame
 };

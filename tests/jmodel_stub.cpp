@@ -16,6 +16,8 @@ void JObject3DX::SetPitch(float a) { pitch_ = a; }
 void JObject3DX::SetRoll(float a) { roll_ = a; }
 void JObject3DX::UpdateWorldMatrix() {}
 void JObject3DX::Render(Device*) {}
+void JObject3DX::Snap() {}
+D3DVECTOR JObject3DX::BlendedPos() const { return pos_; }
 JObject3DX::~JObject3DX() = default;
 void JObject3DX::SetCollisionModel(uint16_t) {}
 bool JObject3DX::CheckCollision(const JObject3DX&) const { return false; }

@@ -1,8 +1,9 @@
 # Smooth motion (interpolation): research and plan
 
 Research for drawing the game smoothly at any refresh rate, done on 2026-10-26 after 0.4.15.
-Chunk A was planned file by file on 2026-10-27 ("Chunk A in detail", below). No code has been
-written for it yet. The work happens on the `interpolation-test` branch, apart
+Chunk A was planned file by file on 2026-10-27 ("Chunk A in detail", below) and built the same
+day in 0.4.16 ("Chunk A as built"), and the owner's first play test found nothing off. Chunk B
+is next. The work happens on the `interpolation-test` branch, apart
 from `main`, until the owner has tested it and says to merge.
 
 ## Where things stand (0.4.15)
@@ -118,7 +119,7 @@ already moves once a frame (kept as the original, the owner's decision of 2026-1
 
 | Chunk | What | What the owner would notice |
 |---|---|---|
-| A: timing and camera | Snapshots before every tick, alpha from the high-resolution clock, snaps at resets; the camera, both mages and their shadows blended | Scrolling and the player's mage smooth at 144 Hz, most of what is seen |
+| A: timing and camera (done, 0.4.16) | Snapshots before every tick, alpha from the high-resolution clock, snaps at resets; the camera, both mages and their shadows blended | Scrolling and the player's mage smooth at 144 Hz, most of what is seen |
 | B: everything in a level | `JObject3DX` / `JObject3DRect` blending for enemies, bosses (the dragon's spline body, the nest's birds), platforms and riders, objects, shots, bullets, particles; the drawn-twice check | All motion in a level smooth |
 | C: other screens | The shop's slide, the ending's credits and film strips, moving parts of the title and front-end screens | Menus and the ending match |
 | D: polish | Frame pacing with the frame limit (the G-Sync / FreeSync "refresh minus 3" choice becomes worth having), help text, docs, the owner's play test at 60 and 144 Hz | Fine-tuning |
@@ -266,6 +267,45 @@ outline above, this section is the plan.
 - A mage never respawns within a level (a death loses the level), so `Reset` and the level's
   start are the only snaps a mage needs.
 
+## Chunk A as built (0.4.16)
+
+Built as planned above, with these differences found while testing:
+
+- **The ticks are still counted from the frame's millisecond time** (`now`, the time the `--auto`
+  steps and the options menu see), with the latest tick kept in nanoseconds (`lastTickNs_`,
+  `SetLastTick`, which also keeps `m_dwLastFrameTime`). Only alpha uses `AppTimeNs()`. Counting
+  ticks from a nanosecond reading taken a moment later moved some key presses one tick off
+  their `--auto` time (the 1-6 screenshot differed at alpha 1), so it was put back. The tick
+  clock also starts on a whole millisecond, as before.
+- **The first frame after the options menu or a pause** carries on from the held picture
+  (`heldLastFrame_`). The menu draws at 60 frames a second, so its last frame could be up to
+  16 ms old, and that was caught up in one step (about 1.6 ticks) when it closed. With Smooth
+  motion off, the frame loop holds the time exactly as before (`HoldTickPhase` takes `tickNow`).
+- **The camera blends only if it ran in the latest tick** (`blendTick_`), like the models'
+  `poseTick_`. Otherwise a camera that stopped while ticks went on would swing between the same
+  two views.
+- After the level's 3D, `XGameScene::Render` sets the tick's own view again, so the shop's panel
+  is placed exactly as before.
+
+Checked (2026-10-27, 1280 x 960, 4:3):
+
+- **Byte for byte the same as 0.4.15**, with Smooth motion off and on at `alpha=1`: 1-1 running
+  and jumping (two shots), 1-6 after `place=` with the camera settled (two shots), 3-5, a
+  two-player 2-4 and the open shop in 1-3 (two shots). 0.4.15 run twice gives the same pictures,
+  except a 1-6 shot taken while the camera was still easing, which can land a tick apart in any
+  build. `mbn_hero_tests` and the other tests pass.
+- **`alpha=0.5`, from a temporary log of tick and drawn positions** (removed): in 1-1, each of
+  858 frames drew the mage exactly halfway between its last two ticks. That included the drop-in
+  and 452 frames of jumping and falling. In 1-6, each of 1001 frames drew the camera exactly
+  halfway, 871 of them while it moved.
+- **Snaps:** at `place=` mid-level (twice), in a two-player game, and at a level restart after
+  Escape, the first frame drawn shows the mage at its new place, not on the way there.
+- **Pause and the menu:** running through P, P and F10, Escape, no frame steps back, and the
+  largest step (0.85) is the same as an ordinary frame's (0.83).
+- A screenshot at `alpha=0.5` mid-jump in 2-4 shows the mage with its shadow under it.
+
+The owner's first play test (2026-10-27): "feels pretty smooth", nothing off.
+
 ## How the game logic is shown untouched
 
 - Smooth motion off: screenshots byte for byte the same as 0.4.15; `mbn_hero_tests` (800,000
@@ -283,9 +323,10 @@ outline above, this section is the plan.
   so it becomes something players turn on. The branch changes the default in `src/core/config`.
   A `config_version` bump resets the setting once in older ini files, as 0.4.13 did for HUD
   position. The help line and README then say how to turn it on.
-- **Versions on the branch.** `main` may release new versions while this branch is open, so
-  builds here should not take the next patch number. Not decided yet: build with
-  `make_release.bat none` and give the work one version when it is merged, or merge it as a
-  minor version (0.5.0).
+- **Versions on the branch (decided 2026-10-27): each build takes the next version** (chunk A is
+  0.4.16), so it is easy to tell which build is which. The owner first chose no bump, then
+  changed this the same day. A push to this branch publishes nothing: its versions are released
+  when it is merged into `main`. While the branch is open, work on `main` must not take the same
+  numbers.
 - **Where it ends up:** perhaps a stage of its own ("Stage 8: smooth motion") rather than a
   stage 7 chunk.

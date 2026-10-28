@@ -1,5 +1,6 @@
 #include "XCamera.h"
 #include "framework/d3dutil.h"
+#include "framework/interp.h"
 #include "game/XMath.h"
 #include "gfx/device.h"
 #include <cmath>
@@ -15,6 +16,7 @@ void XCamera::ResetForGame(int rows) {
     eyeBase_ = lookAt_;
     UpdateLookAtPos(minZ_);
     UpdateViewMatrix();
+    Snap();
 }
 
 void XCamera::ResetForTitle() {
@@ -24,6 +26,7 @@ void XCamera::ResetForTitle() {
     lookAt_ = D3DVECTOR(0, 0, 0);
     eyeBase_ = D3DVECTOR(0, 0, 0);
     UpdateViewMatrix();
+    Snap();
     localTime_ = 0;  // (and its state to 1, which only the game's ProcessFrame reads)
 }
 
@@ -34,10 +37,14 @@ void XCamera::ResetForEnding() {
     lookAt_ = D3DVECTOR(0.0f, -60.0f, 0.0f);
     eyeBase_ = D3DVECTOR(0, 0, 0);
     UpdateViewMatrix();
+    Snap();
     localTime_ = 0;  // (and its state to 1, as ResetForTitle)
 }
 
 void XCamera::ProcessFrame(float zA, bool aliveA, float zB, bool aliveB) {
+    // native (smooth motion): the view before this tick, to draw from
+    Snap();
+    blendTick_ = Interp::CurrentTick();
     localTime_++;
     if (aliveA && !aliveB) {
         UpdateLookAtPos(zA);
@@ -72,12 +79,29 @@ void XCamera::UpdateLookAtPos(float z) {
     eyeBase_.z = lookAt_.z;
 }
 
-void XCamera::UpdateViewMatrix() {
+void XCamera::UpdateViewMatrix() { BuildView(view_, eyeBase_, lookAt_); }
+
+void XCamera::BuildView(D3DMATRIX& view, const D3DVECTOR& eyeBase, const D3DVECTOR& lookAt) const {
     float rise = std::sin(vAngle_) * distance_;
     float flat = std::cos(vAngle_) * distance_;
-    D3DVECTOR eye(eyeBase_.x + std::sin(hAngle_) * flat, eyeBase_.y + rise, eyeBase_.z + std::cos(hAngle_) * flat);
+    D3DVECTOR eye(eyeBase.x + std::sin(hAngle_) * flat, eyeBase.y + rise, eyeBase.z + std::cos(hAngle_) * flat);
     D3DVECTOR up(0.0f, 1.0f, 0.0f);
-    D3DUtil_SetViewMatrix(view_, eye, lookAt_, up);
+    D3DUtil_SetViewMatrix(view, eye, lookAt, up);
+}
+
+void XCamera::Snap() {
+    prevLookAt_ = lookAt_;
+    prevEyeBase_ = eyeBase_;
+}
+
+D3DMATRIX XCamera::BlendedView() const {
+    // (only between the latest two ticks: a camera that didn't move in the latest tick is drawn
+    // where it is)
+    float a = Interp::Alpha();
+    if (a >= 1.0f || blendTick_ != Interp::CurrentTick()) return view_;
+    D3DMATRIX view;
+    BuildView(view, Interp::Lerp(prevEyeBase_, eyeBase_, a), Interp::Lerp(prevLookAt_, lookAt_, a));
+    return view;
 }
 
 void XCamera::DoSetTransform(Device* d) const { d->SetTransform(D3DTRANSFORMSTATE_VIEW, &view_); }

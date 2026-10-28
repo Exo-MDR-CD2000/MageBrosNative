@@ -667,7 +667,7 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
         v.push_back(it);
     }
     v.push_back({"Smooth motion",
-                 "On: draws at the monitor's rate (in-between pictures come later). Off: on game ticks, max 100, as the original.",
+                 "On: mages and camera drawn between game ticks, smooth at any refresh rate (up to 10 ms later). Off: as the original.",
                  [] { return OnOff(GetConfig().interpolation); },
                  [this](int) {
                      GetConfig().interpolation = !GetConfig().interpolation;

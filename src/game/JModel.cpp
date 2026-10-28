@@ -3,6 +3,7 @@
 #include "core/log.h"
 #include "framework/d3dfile.h"
 #include "framework/d3dutil.h"
+#include "framework/interp.h"
 #include "gfx/device.h"
 #include <cmath>
 
@@ -54,26 +55,81 @@ void JObject3DX::SetCurrentFrame(int frame) {
     if (frame >= 0 && frame < (int)frames_.size()) current_ = frame;
 }
 
-void JObject3DX::SetPos(const D3DVECTOR& p) { pos_ = p; }
-void JObject3DX::SetScale(float s) { scale_ = s; }
-void JObject3DX::SetYaw(float a) { yaw_ = a; }
-void JObject3DX::SetPitch(float a) { pitch_ = a; }
-void JObject3DX::SetRoll(float a) { roll_ = a; }
+void JObject3DX::SetPos(const D3DVECTOR& p) {
+    TouchPose();
+    pos_ = p;
+}
+void JObject3DX::SetScale(float s) {
+    TouchPose();
+    scale_ = s;
+}
+void JObject3DX::SetYaw(float a) {
+    TouchPose();
+    yaw_ = a;
+}
+void JObject3DX::SetPitch(float a) {
+    TouchPose();
+    pitch_ = a;
+}
+void JObject3DX::SetRoll(float a) {
+    TouchPose();
+    roll_ = a;
+}
 
-void JObject3DX::UpdateWorldMatrix() {
+namespace {
+// world = scale * roll(Z) * pitch(X) * yaw(Y) * translation, as JObject3DX::UpdateWorldMatrix
+void BuildWorld(D3DMATRIX& world, const D3DVECTOR& pos, float scale, float yaw, float pitch, float roll) {
     D3DMATRIX s, rz, rx, ry, t;
-    D3DUtil_SetScaleMatrix(s, scale_, scale_, scale_);
-    D3DUtil_SetRotateZMatrix(rz, roll_);
-    D3DUtil_SetRotateXMatrix(rx, pitch_);
-    D3DUtil_SetRotateYMatrix(ry, yaw_);
-    D3DUtil_SetTranslateMatrix(t, pos_.x, pos_.y, pos_.z);
-    D3DUtil_SetIdentityMatrix(world_);
+    D3DUtil_SetScaleMatrix(s, scale, scale, scale);
+    D3DUtil_SetRotateZMatrix(rz, roll);
+    D3DUtil_SetRotateXMatrix(rx, pitch);
+    D3DUtil_SetRotateYMatrix(ry, yaw);
+    D3DUtil_SetTranslateMatrix(t, pos.x, pos.y, pos.z);
+    D3DUtil_SetIdentityMatrix(world);
     for (const D3DMATRIX* m : {&s, &rz, &rx, &ry, &t}) {
         D3DMATRIX r;
-        D3DMath_MatrixMultiply(r, world_, *m);
-        world_ = r;
+        D3DMath_MatrixMultiply(r, world, *m);
+        world = r;
     }
+}
+
+// further than this in one tick is a jump, drawn where it lands (a cell; the mage moves at most
+// 4 a tick)
+constexpr float kMaxBlendStep = 40.0f;
+}  // namespace
+
+void JObject3DX::UpdateWorldMatrix() {
+    BuildWorld(world_, pos_, scale_, yaw_, pitch_, roll_);
     if (col_) col_->setTransform(reinterpret_cast<float*>(&world_));
+}
+
+void JObject3DX::TouchPose() {
+    if (!blend_ || poseTick_ == Interp::CurrentTick()) return;
+    poseTick_ = Interp::CurrentTick();
+    prevPos_ = pos_;
+    prevScale_ = scale_;
+    prevYaw_ = yaw_;
+    prevPitch_ = pitch_;
+    prevRoll_ = roll_;
+}
+
+void JObject3DX::Snap() {
+    poseTick_ = Interp::CurrentTick();
+    prevPos_ = pos_;
+    prevScale_ = scale_;
+    prevYaw_ = yaw_;
+    prevPitch_ = pitch_;
+    prevRoll_ = roll_;
+}
+
+bool JObject3DX::Blending() const {
+    if (!blend_ || poseTick_ != Interp::CurrentTick() || Interp::Alpha() >= 1.f) return false;
+    return std::fabs(pos_.x - prevPos_.x) <= kMaxBlendStep && std::fabs(pos_.y - prevPos_.y) <= kMaxBlendStep &&
+           std::fabs(pos_.z - prevPos_.z) <= kMaxBlendStep;
+}
+
+D3DVECTOR JObject3DX::BlendedPos() const {
+    return Blending() ? Interp::Lerp(prevPos_, pos_, Interp::Alpha()) : pos_;
 }
 
 namespace {
@@ -126,7 +182,16 @@ bool JObject3DX::CheckCollision_Sphere(const D3DVECTOR& centre, float radius) co
 void JObject3DX::Render(Device* d) {
     CD3DFile* mesh = frames_.empty() ? nullptr : frames_[current_];
     if (!mesh) return;
-    d->SetTransform(D3DTRANSFORMSTATE_WORLD, &world_);
+    if (Blending()) {
+        float a = Interp::Alpha();
+        D3DMATRIX world;
+        BuildWorld(world, Interp::Lerp(prevPos_, pos_, a), Interp::Lerp(prevScale_, scale_, a),
+                   Interp::LerpAngle(prevYaw_, yaw_, a), Interp::LerpAngle(prevPitch_, pitch_, a),
+                   Interp::LerpAngle(prevRoll_, roll_, a));
+        d->SetTransform(D3DTRANSFORMSTATE_WORLD, &world);
+    } else {
+        d->SetTransform(D3DTRANSFORMSTATE_WORLD, &world_);
+    }
     // models are shared between objects, so the flag is set for this draw only
     mesh->UseWhiteMaterial(white_);
     mesh->Render(d);

@@ -623,11 +623,8 @@ void Device::ApplyState(DWORD fvf, bool twoD) {
         glCullFace(GL_BACK);
     }
 
-    // transforms (with optional widescreen projection and interpolation offset)
+    // transforms (with optional widescreen projection)
     D3DMATRIX world = world_;
-    world._41 += worldOffset_.x;
-    world._42 += worldOffset_.y;
-    world._43 += worldOffset_.z;
     D3DMATRIX proj = proj_;
     proj._11 *= 640.f / layout_.virtualW;
     if (cfg.fovScale != 1.f && gameplayView_) {  // levels only: menus, title and ending keep the original lens

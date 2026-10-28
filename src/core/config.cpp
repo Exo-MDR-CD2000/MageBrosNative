@@ -142,6 +142,10 @@ bool Config::Load(const std::string& file) {
             Log("Config: ignoring unknown setting '%s' in [%s]", k.c_str(), section.c_str());
     }
     fclose(f);
+    // config_version 21: [video] interpolation (Smooth motion) defaults to 0, as the original
+    // draws; files written before it had 1 (from Hopmon Native, when it only repeated pictures),
+    // so it is reset once
+    if (version > 0 && version < 21) interpolation = false;
     // config_version 20: [video] hud_layout defaults to 0 (the original's place); files written
     // before it had 1 (Hopmon Native's default) while the setting did nothing, so it is reset
     if (version > 0 && version < 20) hudLayout = 0;
@@ -256,9 +260,11 @@ bool Config::Save() const {
       ";   144. Only applies when interpolation = 1; without interpolation the game\n"
       ";   draws at most 100 frames per second, like the original.\n");
     fprintf(f, "max_fps = %d\n\n", maxFps);
-    P("; interpolation: 1 = draw smooth in-between frames, so motion is fluid at any\n"
-      ";   refresh rate (default). 0 = draw only on the game's 100 Hz steps, like\n"
-      ";   the original.\n");
+    P("; interpolation: Smooth motion. 1 = draw at the monitor's rate, the mages and\n"
+      ";   the camera between the game's 100 Hz steps, so they move smoothly at any\n"
+      ";   refresh rate; the picture trails the game by up to 10 ms. The game itself\n"
+      ";   runs exactly the same. 0 = draw only on the game's steps, like the\n"
+      ";   original (default).\n");
     fprintf(f, "interpolation = %d\n\n", interpolation ? 1 : 0);
     P("; msaa: antialiasing (smooth polygon edges). 0 = off, 2, 4 (default), 8 or 16.\n"
       ";   Values above what your graphics card supports are lowered automatically.\n");

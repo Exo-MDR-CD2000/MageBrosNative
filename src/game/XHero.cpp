@@ -44,6 +44,9 @@ XHero::XHero(bool heroA) : heroA_(heroA), box_(26.0f, 29.0f) {
     body_->SetCollisionModel(0x179);  // MageCOL: what enemies and coins touch
     wand_ = std::make_unique<JObject3DX>(kWandFirst);
     for (uint16_t f : kWandFrames) wand_->AppendFrame(f);
+    // native: smooth motion draws both models between ticks (drawing only)
+    body_->EnableBlending(true);
+    wand_->EnableBlending(true);
 }
 
 void XHero::SetPosX(float x) {
@@ -78,6 +81,8 @@ void XHero::Reset() {
     yaw_ = 0;
     pitch_ = 0;
     UpdateWorldMatrix();
+    body_->Snap();  // native (smooth motion): dropped in, not slid there from where it was
+    wand_->Snap();
     wandOut_ = false;
     beingKnockBack_ = false;
     knockBackDir_ = 0;
@@ -100,6 +105,8 @@ void XHero::Reset() {
     jumpState_ = LAND;
     liveState_ = NORMAL;
 }
+
+D3DVECTOR XHero::DrawPos() const { return body_->BlendedPos(); }
 
 void XHero::UpdateWorldMatrix() {
     for (JObject3DX* m : {body_.get(), wand_.get()}) {
