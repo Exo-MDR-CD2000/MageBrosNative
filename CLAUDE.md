@@ -347,8 +347,9 @@ owner's play tests found A, B1 and C (the ending) fine after the fixes recorded 
 Decided along the way: the 2D that moves in whole pixels (film strips, menu backgrounds, the
 venetian-blind fades) stays as the original; the ending's corridor, with Smooth motion on, scrolls
 once a tick at the speed the frame rate gave it; a G-Sync / FreeSync "Refresh - 3" frame limit was
-dropped (documented for later, "D1"). At the merge the owner decides the release notes (0.4.16 to
-0.4.19 were never released; see "D5"). Smooth motion is **off by default** from 0.4.16 (the owner;
+dropped (documented for later, "D1"). The release notes are decided: 0.4.20's CHANGELOG section sums up
+all of smooth motion (0.4.16 to 0.4.19 were never released; see "D5"); how to merge is still the
+owner's call. Smooth motion is **off by default** from 0.4.16 (the owner;
 config_version 21 turns it off once in older files). **Versions on the branch:** each build takes
 the next version, as on `main` (the owner, 2026-10-27; 0.4.16 is the branch's). A push to the
 branch publishes nothing; while it is open, work on `main` must not reuse its numbers. Perhaps a branch for the

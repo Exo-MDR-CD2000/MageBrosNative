@@ -9,9 +9,36 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [0.4.20] - 2026-10-28
 
-- Smooth motion is complete: the help lines in Options > Video, the notes in
-  `magebros_native.ini` and the README now describe what it does in full, and what it costs (the
-  picture trails the game by at most 10 ms).
+**Smooth motion** (Options > Video > Smooth motion, off by default). This release brings together
+versions 0.4.16 to 0.4.20, which were built and tested before being released; each one's own
+notes are below.
+
+- **What it does.** The game runs in steps, 100 a second, as the original. Without Smooth motion,
+  a picture is drawn only when a step has run, so on a 144 Hz screen some pictures are shown
+  twice and movement judders slightly. With Smooth motion on, a picture is drawn for every refresh
+  of your monitor, showing the game between its last two steps, so everything moves smoothly at
+  any refresh rate: 60, 144, 240 Hz or more.
+- **What moves smoothly**: the camera, your mage (or both), their shadows, enemies, every boss
+  (the dragon's whole body, the genie, the nest and its birds, the wizard), platforms and anyone
+  riding them, cannons, coins, bullets, smoke, sparkles, explosions, your shots, the dragon's
+  flame, the water's ripples, the shop sliding open and closed, and the ending's credits.
+- **The game itself doesn't change**: the same speed, timing, jumps, enemies and controls, with
+  Smooth motion on or off. The only cost is that the picture trails the game by at most 10 ms
+  (about 5 on average).
+- **Kept as the original on purpose**: animation frames, effects growing and fading, and things
+  that move a whole pixel at a time (the menus' scrolling background, the ending's film strips,
+  the screen transitions). The ending's corridor keeps the speed it had at your frame rate,
+  scrolling evenly.
+- **Smooth motion is off by default**, so the game looks and feels like the original until you
+  turn it on. If you had it on before (it used to be on by default, but only repeated pictures),
+  it is switched off once when you update.
+- Also: a mage's shadow no longer lags a step behind while a moving platform carries it (with
+  Smooth motion on or off).
+
+New in 0.4.20 itself:
+
+- The help lines in Options > Video, the notes in `magebros_native.ini` and the README describe
+  Smooth motion in full, and what it costs.
 - The Frame limit's help line says it only applies with Smooth motion, and that VSync also caps
   the frame rate.
 

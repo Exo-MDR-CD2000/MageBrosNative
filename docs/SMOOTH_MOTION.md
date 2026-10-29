@@ -841,12 +841,13 @@ considering with Smooth motion, where frames really differ (the owner had set it
 
 ### D5 For the merge into `main` (the owner's decisions, after D)
 
-- **Release notes.** `release.yml` publishes the version in `CMakeLists.txt` when `main` is pushed,
-  with that version's CHANGELOG section. At the merge that will be 0.4.20 alone: 0.4.16 to 0.4.19
-  were never released (pushes to this branch publish nothing), so their sections would be in the
-  file but not on any release. Options: (a) merge as is; (b) **give 0.4.20 a section that sums up
-  all of smooth motion** for players, keeping the per-version sections below it as the detail
-  (recommended); (c) release it as 0.5.0 with that summary.
+- **Release notes (decided, the owner, 2026-10-28): a summary in 0.4.20.** `release.yml` publishes
+  the version in `CMakeLists.txt` when `main` is pushed, with that version's CHANGELOG section,
+  so only 0.4.20 gets a GitHub release (0.4.16 to 0.4.19 were never released). Its CHANGELOG
+  section sums up all of smooth motion for players (bold lines and bullets only, no `## `
+  headings: the workflow's extraction stops at the next one; checked, 34 lines up to 0.4.19's
+  heading), followed by what is new in 0.4.20 itself. The 0.4.16 to 0.4.19 sections stay below
+  as the detail.
 - **How to merge**: a pull request from `interpolation-test` into `main`, as `menu-dev` was
   (pull request #1), or a direct merge. Then the branch can be deleted or kept.
 - Smooth motion stays **off by default** (decided). Until the merge, nothing on `main` may take
