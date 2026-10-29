@@ -136,6 +136,14 @@ left as it is, the owner's choice), smooth motion (0.4.16 to 0.4.20) and the gra
 (0.4.21). The per-frame items in the "frame-rate dependence" table below are settled: each is
 handled or kept by the owner's choice.
 
+**Set aside (the owner, 2026-10-29): the present path.** Presenting through a DXGI flip swapchain
+of the port's own, so a window and borderless are as smooth as exclusive fullscreen on NVIDIA and
+AMD without driver settings. Two chunks of five were built on the `dxgi-present` branch (0.4.22
+there) and pushed to GitHub, kept apart from `main`; its `docs/PRESENT_PATH.md` has the reasons,
+the measurements and how to resume. Meanwhile the README recommends NVIDIA's "Vulkan/OpenGL present
+method: Prefer layered on DXGI swapchain", which the owner found cures the choppiness. `main`'s next
+version must skip 0.4.22, which the branch uses.
+
 **Still open, to be planned with the owner**: Mage Bros.' own cheats (the Cheats page is greyed
 out); mods (add-ons and level packs, with `MODDING.md`; the Mods pages are greyed out and
 `core/mods.cpp` is a stub); the config tooling (`--set`, `CONFIG.md`) and the README sections

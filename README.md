@@ -32,6 +32,8 @@ original game logic unchanged when every option is at its default.
   `ac191080af002b8ad0615e432faa92a2a47ce76a9aaa667bacf628836c098c49`.
   Other builds are refused unless you pass `--allow-unverified`.
 - Windows 10/11 x64 for the game. The asset tool also builds on Linux and macOS.
+- With an NVIDIA graphics card, one driver setting is recommended for smooth play in a window or
+  borderless: see "Recommended for NVIDIA graphics cards" below.
 
 ## What works today
 
@@ -131,6 +133,21 @@ trails the game by at most 10 ms, about 5 on average. A few things keep the orig
 purpose: animation frames, effects growing and fading, and the 2D that moves a whole pixel at a
 time (the menus' backgrounds, the ending's film strips, the screen transitions). The ending's
 corridor keeps the speed it had at your frame rate (faster above 60, up to 100), scrolling evenly.
+
+**Recommended for NVIDIA graphics cards: smooth play in a window or borderless.** By default,
+Windows copies the picture of an OpenGL game in a window or borderless into the desktop. That adds
+a frame of delay, keeps G-Sync from working there, and makes a frame limit below your monitor's
+refresh rate (60 on a 144 Hz monitor, say) feel choppy and sluggish with Smooth motion on.
+Exclusive fullscreen isn't affected. To fix it:
+
+1. Open the **NVIDIA Control Panel** and go to **Manage 3D settings > Program settings**.
+2. Choose `MageBrosNative.exe` (use **Add** to pick it if it isn't listed).
+3. Set **Vulkan/OpenGL present method** to **Prefer layered on DXGI swapchain**, then **Apply**.
+
+The game then reaches the screen the way modern DirectX games do: smooth in a window and
+borderless, with G-Sync where your monitor has it. It changes nothing in the game itself. AMD's
+drivers have no such setting; on an AMD card, exclusive fullscreen is the smoothest choice for
+frame limits below the refresh rate.
 
 **Widescreen** (Options > Video > Aspect): 4:3 is the original picture with black bars, Stretch
 pulls it wider, and Widescreen widens the 3D view of the levels to fill the screen (16:9, 16:10,

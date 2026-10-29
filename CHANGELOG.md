@@ -7,6 +7,14 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [Unreleased]
+
+- **Recommended for NVIDIA graphics cards**: for smooth play in a window or borderless (above all
+  with Smooth motion on and a frame limit below your monitor's refresh rate), set **Vulkan/OpenGL
+  present method** to **Prefer layered on DXGI swapchain** for `MageBrosNative.exe` in the NVIDIA
+  Control Panel (Manage 3D settings > Program settings). The README's Video section explains why.
+  The game itself is unchanged.
+
 ## [0.4.21] - 2026-10-29
 
 A second look at Options > Graphics:

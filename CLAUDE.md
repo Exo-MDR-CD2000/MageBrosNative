@@ -377,6 +377,15 @@ Stage 7 so far:
   Texture filtering 8x stay on by default (the owner, 2026-10-29); Off in each gives the
   original's picture.
 
+**Windowed / borderless smoothness (2026-10-29)**: the owner found Smooth motion choppy and
+sluggish in a window and borderless at frame limits below the refresh rate (exclusive fullscreen
+fine). The port's timing was reviewed and is fine; the cause is OpenGL's SwapBuffers being
+composed by DWM (no G-Sync there, uneven refresh holds). NVIDIA's "Vulkan/OpenGL present method:
+Prefer layered on DXGI swapchain" cured it, and the README now recommends it. The port's own cure
+(a DXGI flip swapchain shared with OpenGL, P1 and P2 of five chunks) is on the `dxgi-present`
+branch, paused and pushed apart from `main` (the owner's choice): see that branch's
+`docs/PRESENT_PATH.md`. Its builds used 0.4.22, so `main`'s next version skips to 0.4.23.
+
 **Next**: the rest of stage 7 (Mage Bros.' own cheats, mods, the config tooling: `--set`,
 `CONFIG.md`) is to be planned with the owner. Wait for the owner to say which and "start".
 
