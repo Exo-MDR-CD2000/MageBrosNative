@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 # The project version is the single source of the program's version number.
-project(MageBrosNative VERSION 0.4.21 LANGUAGES C CXX)
+project(MageBrosNative VERSION 0.4.22 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -118,7 +118,7 @@ if(MBN_BUILD_GAME)
     target_link_libraries(MageBrosNative PRIVATE SDL3::SDL3-static)
   endif()
   if(WIN32)
-    target_link_libraries(MageBrosNative PRIVATE winmm)
+    target_link_libraries(MageBrosNative PRIVATE winmm d3d11 dxgi)
   elseif(NOT APPLE)
     target_link_libraries(MageBrosNative PRIVATE m pthread)
   endif()

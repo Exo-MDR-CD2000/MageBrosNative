@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include "device.h"
+#include "dxgi_present.h"
 #include "../core/config.h"
 #include "../core/log.h"
 #include <SDL3/SDL.h>
@@ -441,13 +442,18 @@ void Device::Present() {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, sceneFbo_);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, resolveFbo_);
     glBlitFramebuffer(0, 0, layout_.fboW, layout_.fboH, 0, 0, layout_.fboW, layout_.fboH, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // the window's own framebuffer, or with present_mode = dxgi the picture shared with DXGI,
+    // whose rows run top to bottom (so the picture is drawn upside down into it)
+    bool dxgi = DxgiPresent::Active();
+    GLuint target = dxgi ? DxgiPresent::BeginFrame(layout_.windowW, layout_.windowH) : 0;
+    glBindFramebuffer(GL_FRAMEBUFFER, target);
     glViewport(0, 0, layout_.windowW, layout_.windowH);
     glDisable(GL_SCISSOR_TEST);
     glColorMask(1, 1, 1, 1);
     glClearColor(0, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    glViewport(layout_.destX, layout_.windowH - layout_.destY - layout_.destH, layout_.destW, layout_.destH);
+    glViewport(layout_.destX, dxgi ? layout_.destY : layout_.windowH - layout_.destY - layout_.destH, layout_.destW,
+               layout_.destH);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
     glDisable(GL_CULL_FACE);
@@ -458,7 +464,8 @@ void Device::Present() {
     glUniform1i(presentTexLoc_, 0);
     // brightness 150% -> exponent 0.67 (lighter mid-tones), 50% -> 2.0 (darker); black and white stay put
     glUniform1f(presentGammaLoc_, 100.f / (float)std::clamp(GetConfig().brightness, 50, 150));
-    struct V { float x, y, z, u, v; } q[4] = {{-1, -1, 0, 0, 0}, {1, -1, 0, 1, 0}, {-1, 1, 0, 0, 1}, {1, 1, 0, 1, 1}};
+    float v0 = dxgi ? 1.f : 0.f, v1 = 1.f - v0;
+    struct V { float x, y, z, u, v; } q[4] = {{-1, -1, 0, 0, v0}, {1, -1, 0, 1, v0}, {-1, 1, 0, 0, v1}, {1, 1, 0, 1, v1}};
     glBindVertexArray(vao_);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glBufferData(GL_ARRAY_BUFFER, sizeof q, q, GL_STREAM_DRAW);

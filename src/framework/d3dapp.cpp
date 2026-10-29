@@ -4,6 +4,7 @@
 #include "../core/config.h"
 #include "../core/log.h"
 #include "../gfx/device.h"
+#include "../gfx/dxgi_present.h"
 #include "../input/input.h"
 #include "../audio/midi.h"
 #include "../ui/options_menu.h"
@@ -32,6 +33,7 @@ CD3DApplication::~CD3DApplication() {
     menu_.reset();  // owns a GL texture: free it while the context still exists
     D3DTextr_FreeAll();
     GetDevice().Shutdown();
+    DxgiPresent::Shutdown();
     if (glContext_) SDL_GL_DestroyContext((SDL_GLContext)glContext_);
     if (window_) SDL_DestroyWindow(window_);
 }
@@ -47,6 +49,20 @@ void CD3DApplication::OpenOptions() {
 
 void CD3DApplication::ApplyVSync() {
     int want = GetConfig().vsync;
+    if (DxgiPresent::Active()) {
+        // through DXGI each present says itself whether it waits; adaptive needs tearing
+        vsyncInEffect_ = want == 2 && !DxgiPresent::CanTear() ? 1 : want;
+        vsyncOverride_ = vsyncVote_ = vsyncVotes_ = 0;
+        adaptiveSupported_ = DxgiPresent::CanTear();
+        int key = 100 + want * 10 + vsyncInEffect_;
+        if (key != vsyncLogged_) {
+            static const char* names[] = {"off", "on", "adaptive"};
+            Log("VSync: %s (DXGI)%s", names[vsyncInEffect_],
+                want == 2 && vsyncInEffect_ != 2 ? " (adaptive needs tearing, which this system doesn't allow)" : "");
+            vsyncLogged_ = key;
+        }
+        return;
+    }
     bool ok = false;
     if (want == 2) ok = adaptiveSupported_ && SDL_GL_SetSwapInterval(-1);
     if (!ok) ok = SDL_GL_SetSwapInterval(want == 0 ? 0 : 1);
@@ -82,6 +98,13 @@ void CD3DApplication::JudgeVSync() {
         if (vote) Log("VSync: %.0f frames a second on a %.0f Hz monitor: the graphics driver seems to have VSync %s", m_fFPS,
                       hz, vote > 0 ? "off" : "forced on");
     }
+}
+
+// The finished frame to the screen: through the DXGI swapchain with present_mode = dxgi (with
+// the VSync in effect), otherwise OpenGL's own SwapBuffers (its swap interval set by ApplyVSync).
+static void SwapFrame(SDL_Window* window, int vsync) {
+    if (DxgiPresent::Active()) DxgiPresent::Present(vsync);
+    else SDL_GL_SwapWindow(window);
 }
 
 // A monitor by its [video] display number (0 = primary, 1..n in SDL's order; the primary if
@@ -261,7 +284,9 @@ void CD3DApplication::SaveWindowState() {
 // GPU drivers promote an OpenGL window that exactly covers a monitor to exclusive fullscreen,
 // which makes Alt+Tab flicker, black out or minimize the game. One extra pixel of height keeps
 // the window from matching the monitor exactly (that row is off-screen). Elsewhere SDL's
-// desktop fullscreen already behaves as borderless.
+// desktop fullscreen already behaves as borderless. Through DXGI (present_mode = dxgi) OpenGL
+// never presents, and the window covers the monitor exactly: Windows then hands the swapchain's
+// pictures straight to the screen (independent flip), which G-Sync / FreeSync need.
 static bool UseBorderlessWindow() {
 #if defined(_WIN32)
     return true;
@@ -297,8 +322,9 @@ void CD3DApplication::ApplyDisplaySettings() {
             SDL_SetWindowResizable(window_, false);
             SDL_SetWindowBordered(window_, false);
             SDL_SetWindowPosition(window_, b.x, b.y);
-            SDL_SetWindowSize(window_, b.w, b.h + 1);
-            GetDevice().SetHiddenBottomRows(1);
+            bool exact = DxgiPresent::Active();
+            SDL_SetWindowSize(window_, b.w, exact ? b.h : b.h + 1);
+            GetDevice().SetHiddenBottomRows(exact ? 0 : 1);
             SDL_SyncWindow(window_);
             SDL_RaiseWindow(window_);
         } else {
@@ -410,6 +436,11 @@ HRESULT CD3DApplication::Create(const std::vector<std::string>& args) {
     adaptiveSupported_ = SDL_GL_SetSwapInterval(-1);  // can the driver do adaptive VSync?
     ApplyVSync();
     if (!GetDevice().Init(window_)) return E_FAIL;
+    if (cfg.presentMode == 1) {
+        if (DxgiPresent::Init(window_)) ApplyVSync();  // (VSync now goes through DXGI)
+    } else {
+        Log("Present: OpenGL's own (present_mode = legacy)");
+    }
     if (cfg.fullscreen != FullscreenMode::Windowed) ApplyDisplaySettings();
     SDL_ShowWindow(window_);
     if (cfg.fullscreen == FullscreenMode::Windowed && cfg.maximized) SDL_MaximizeWindow(window_);
@@ -438,6 +469,10 @@ void CD3DApplication::UpdateStats() {
         g_frameRate = m_fFPS;
         statsFrames_ = 0;
         statsLastTime_ = t;
+        if (DxgiPresent::Active() && window_) {
+            const SDL_DisplayMode* m = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window_));
+            DxgiPresent::SetRefreshRate(m ? m->refresh_rate : 0.f);
+        }
         JudgeVSync();
     }
 }
@@ -473,7 +508,7 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
         menu_->Render(&GetDevice());
         UpdateStats();
         GetDevice().Present();
-        SDL_GL_SwapWindow(window_);
+        SwapFrame(window_, vsyncInEffect_);
         return S_OK;
     }
     // with Smooth motion, the first frame after the menu or a pause carries on from the held
@@ -507,7 +542,7 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
     if (FAILED(hr)) return hr;
     UpdateStats();
     GetDevice().Present();
-    SDL_GL_SwapWindow(window_);
+    SwapFrame(window_, vsyncInEffect_);
     return S_OK;
 }
 
@@ -660,6 +695,20 @@ int CD3DApplication::Run() {
             // (else the drawing time adds to every frame: a limit of 60 gave 58); a frame more
             // than an interval late starts the count again from now
             lastPresent = dt < 2 * minDt ? lastPresent + (uint64_t)(minDt * perfFreq) : counter;
+            // with DXGI on a fixed refresh (no G-Sync / FreeSync) and VSync, a frame starts just
+            // after a refresh, so it shows one refresh after it was drawn, as every frame does:
+            // a limit that doesn't divide the refresh rate shows each picture for 2 or 3
+            // refreshes, but each where it should be when it is shown
+            if (vsyncInEffect_ > 0) {
+                uint64_t wait = DxgiPresent::NsUntilFrameStart();
+                if (wait) SDL_DelayPrecise(wait);
+            }
+        }
+        // through DXGI: wait until the swapchain can take the frame (one queued at most); the
+        // frame's time is taken after the waits
+        if (DxgiPresent::Active()) {
+            DxgiPresent::WaitForFrame();
+            now = AppTimeMs();
         }
         DWORD before = m_dwLastFrameTime;
         if (FAILED(Render3DEnvironment(now, force))) quit_ = true;

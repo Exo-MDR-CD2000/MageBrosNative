@@ -7,6 +7,39 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [Unreleased]
+
+The second step of the new way of showing the picture (`present_mode = dxgi`, on the
+`dxgi-present` branch):
+
+- **VSync Off, On and Adaptive** now work with `dxgi` (it was always on before).
+- **Borderless gets G-Sync / FreeSync**: with `dxgi`, borderless now covers the monitor exactly,
+  so Windows hands the game's pictures straight to the screen. Measured with a frame limit of 60
+  on a 144 Hz G-Sync monitor: each picture shown 16.67 ms after the last, as the game drew them.
+- **Frame limits below the refresh rate look right on screens without G-Sync / FreeSync** (and in
+  a window, which Windows always shows on its own fixed refresh). The game notices when pictures
+  reach the screen on a fixed refresh and starts each frame just after a refresh, so every
+  picture shows where the game was when it is shown. A limit that doesn't divide the refresh
+  rate (60 on 144 Hz) still shows pictures for 2 or 3 refreshes in turn, which no game can avoid
+  on such a screen, but the stutter of misplaced pictures is gone: measured, pictures strayed
+  about 3.3 ms from where they belonged, now about 0.3 ms.
+- **Less delay**: at most one picture waits to be shown.
+
+## [0.4.22] - 2026-10-29
+
+A test build (on the `dxgi-present` branch, not a public release): the first step towards a
+window and borderless that are as smooth as exclusive fullscreen.
+
+- **A new way of putting the picture on the screen, for testing**: set `present_mode = dxgi` in
+  `magebros_native.ini` (Windows). The game then shows each picture through a DirectX (DXGI)
+  flip swapchain, as modern games do, instead of OpenGL's own way, which in a window or borderless
+  lets Windows copy the picture into the desktop: a frame of delay, and G-Sync / FreeSync can't
+  work there. Until now the only cure was a graphics driver setting (NVIDIA's "Vulkan/OpenGL
+  present method"); AMD has none.
+- The picture itself is the same either way. For now VSync is always on with `dxgi`. If your
+  system can't do it, the game uses the old way and says why in `magebros_native.log`.
+- The default is still `legacy`, the old way, unchanged.
+
 ## [0.4.21] - 2026-10-29
 
 A second look at Options > Graphics:

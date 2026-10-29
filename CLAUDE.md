@@ -86,7 +86,8 @@ you can set `MAGEBROS_EXE` and `MAGEBROS_PDB_DIR`.
 
 ```
 src/core       PE resources, SHA-256 check, bitmaps, WAV, .x models, levels, config, log, saves
-src/gfx        OpenGL loader; Direct3D 7 / DirectDraw emulation (device.cpp maps the D3D states)
+src/gfx        OpenGL loader; Direct3D 7 / DirectDraw emulation (device.cpp maps the D3D states);
+               dxgi_present: the DXGI flip swapchain shared with OpenGL (present_mode = dxgi)
 src/audio      sound mixer (stereo pan, per-sound copies), MIDI (TinySoundFont), music streaming
 src/input      SDL3 -> DirectInput-style keyboard/gamepad state
 src/ui         options menu overlay
@@ -96,7 +97,8 @@ src/main.cpp   AssetViewerApp: game view / level viewer / model viewer, CLI, aut
 tools          MageBrosAssets (inventory / selftest / export)
 tests          format tests (no game needed); map, hero and collision tests
 docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status),
-               SMOOTH_MOTION.md (how smooth motion works, and how it was built)
+               SMOOTH_MOTION.md (how smooth motion works, and how it was built),
+               PRESENT_PATH.md (presenting through DXGI: why, the chunks, each as built)
 third_party    ColDet 1.2, TinySoundFont, dr_libs, stb, cgltf, font8x8
 ```
 
@@ -266,6 +268,10 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
   last one stops in the middle about 45 s later and waits for a button (allow a little more:
   startup takes time).
 
+- `MBN_PRESENT_TRACE=<file>` (environment variable, with `present_mode = dxgi`): a CSV line per
+  present (its number and QPC time, and the last present the DXGI frame statistics say reached the
+  screen, with its time and refresh count). How to read it: "P2 as built" in
+  `docs/PRESENT_PATH.md`.
 - `alpha=<0..1>`: hold smooth motion's blend there (only with Smooth motion on, in a level's 3D);
   `alpha=off` frees it. `alpha=1` must give the same pictures as Smooth motion off.
 
@@ -331,7 +337,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-29, version 0.4.21)
+## Where we are (last updated: 2026-10-29, version 0.4.22)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -377,11 +383,32 @@ Stage 7 so far:
   Texture filtering 8x stay on by default (the owner, 2026-10-29); Off in each gives the
   original's picture.
 
-**Next**: the rest of stage 7 (Mage Bros.' own cheats, mods, the config tooling: `--set`,
-`CONFIG.md`) is to be planned with the owner. Wait for the owner to say which and "start".
+- **The present path** (from 0.4.22, on the `dxgi-present` branch): presenting through a DXGI
+  flip swapchain shared with OpenGL (`src/gfx/dxgi_present.*`), so a window and borderless are as
+  smooth as exclusive fullscreen with G-Sync / FreeSync on NVIDIA and AMD, without driver
+  settings. The owner found Smooth motion choppy below the refresh rate in a window and
+  borderless (G-Sync on for both), and NVIDIA's "Vulkan/OpenGL present method: Prefer layered on
+  DXGI swapchain" cured it; the port's own timing was reviewed and is fine. Chunks P1 to P5 in
+  `docs/PRESENT_PATH.md`. **P1 done (0.4.22)**: behind `present_mode = dxgi` (default `legacy`);
+  checked here in a window, borderless and through F11. **P2 built (to be 0.4.23, under
+  `[Unreleased]` in CHANGELOG.md)**: VSync Off / On / Adaptive through DXGI, one frame queued (the
+  waitable object), frames started just after a refresh when the frame statistics show a fixed
+  grid (a window always; screens without G-Sync / FreeSync), borderless covering the monitor
+  exactly (G-Sync then follows every frame). Measured with `MBN_PRESENT_TRACE`; the figures are in
+  "P2 as built". The owner was testing 0.4.22 from `build\` meanwhile, so P2 was built in
+  `build-dev` and `make_release.bat` (which bumps to 0.4.23 and overwrites `build\Release`) waits
+  for the owner.
 
-**Branches**: work goes on `main`; each push publishes the version's release when that version
-has none yet (see "GitHub releases"). Two side branches were used and merged: `menu-dev` (0.4.0 to
+**Paused (the owner, 2026-10-29)**: the owner put the present path on hold after P2 and went back
+to 0.4.21 on `main`, advising Windows players with NVIDIA cards to set "Vulkan/OpenGL present method:
+Prefer layered on DXGI swapchain" for `MageBrosNative.exe` instead. This branch was committed and
+pushed as it stood (P2 under `[Unreleased]`, the version still 0.4.22); how to pick it up again is
+under "Status" in `docs/PRESENT_PATH.md`. Work goes on `main` meanwhile.
+
+**Branches**: `dxgi-present` holds the present path (created from `main` at 0.4.21 on 2026-10-29;
+its builds are 0.4.22 onward), **paused** and pushed to GitHub apart from `main`; pushing it
+publishes nothing. While it is paused, work goes on `main`. Otherwise work goes on `main`; each push there publishes
+the version's release when that version has none yet (see "GitHub releases"). Two side branches were used and merged: `menu-dev` (0.4.0 to
 0.4.13, pull request #1, 2026-10-26) and `interpolation-test` (smooth motion, merged directly
 2026-10-28). Both are kept on GitHub; nothing goes there any more. Perhaps a branch for the modding
 work later; if a side branch is used again, its builds take the next version numbers and `main`

@@ -5,7 +5,7 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.21).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.22).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
 > Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
@@ -16,8 +16,9 @@ original game logic unchanged when every option is at its default.
 > over a dimmed level, the start-up logo white to the edges, and the ending's film strips across the
 > whole width; the HUD can be moved to the screen's edges and resized, and the field of view
 > zoomed, and Smooth motion draws the game between its steps, smooth at any refresh rate. The
-> game's logic and speed are the original's at any resolution, refresh rate and frame rate. Next:
-> cheats and mods. See
+> game's logic and speed are the original's at any resolution, refresh rate and frame rate. This
+> branch (`dxgi-present`, paused): presenting through DXGI, so a window and borderless are as
+> smooth as exclusive fullscreen, with G-Sync / FreeSync. Then: cheats and mods. See
 > [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
 > changed in each version.
 
@@ -119,6 +120,14 @@ the right one even after they are plugged in or out.
 waiting); the line under it tells you if your graphics driver's own setting seems to override it.
 With Smooth motion on, Frame limit caps the frames a second (VSync also keeps them to the
 monitor's refresh rate).
+
+**Present mode** (paused on this branch, `present_mode` in `magebros_native.ini`, Windows only):
+`legacy` (default) shows each picture through OpenGL's own way, which in a window or borderless
+Windows copies into the desktop: a frame of delay, and G-Sync / FreeSync can't work there.
+`dxgi` shows it through a DirectX flip swapchain, as modern games do, so a window and borderless
+can be as smooth as exclusive fullscreen: borderless gets G-Sync / FreeSync, and on a screen
+without them, frame limits below the refresh rate show every picture where it should be. See
+[docs/PRESENT_PATH.md](docs/PRESENT_PATH.md).
 
 **Smooth motion** (Options > Video, off by default). The game runs in steps, 100 a second, as the
 original; without Smooth motion it draws a picture only when a step has run, so at most 100 a
@@ -255,7 +264,7 @@ this project's source is public, anyone can rebuild it with a modified ColDet as
 ```
 src/core     reading MageBros.exe (PE resources, SHA-256, bitmaps, sounds, .x models, levels),
              config, logging, mods (stage 2: original game only)
-src/gfx      OpenGL loader and the Direct3D 7 / DirectDraw emulation layer
+src/gfx      OpenGL loader, the Direct3D 7 / DirectDraw emulation layer, presenting through DXGI
 src/audio    sound-effect mixer, MIDI sequencer, MP3/FLAC music streaming
 src/input    SDL3 keyboard/gamepad -> DirectInput-style state
 src/ui       options menu overlay
@@ -269,6 +278,7 @@ tests        format and collision tests; map and hero tests on your copy (-DMBN_
 docs         REVERSE_ENGINEERING.md (what the original is made of, and at its end the
              original's bugs and quirks with what the port does about each), ROADMAP.md,
              SMOOTH_MOTION.md (how smooth motion works, and how it was built)
+             PRESENT_PATH.md (presenting through DXGI: why, and how it is built)
 CLAUDE.md    contributor handoff: project rules, build/test/RE workflow, current status, next steps
 ```
 

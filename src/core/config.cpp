@@ -72,6 +72,7 @@ bool Config::Load(const std::string& file) {
             else if (k == "vsync") vsync = iv == 2 || v == "adaptive" ? 2 : toBool(v) ? 1 : 0;
             else if (k == "max_fps") maxFps = std::max(0, iv);
             else if (k == "interpolation") interpolation = toBool(v);
+            else if (k == "present_mode") presentMode = v == "dxgi" || v == "modern" || iv == 1 ? 1 : 0;
             else if (k == "msaa") msaa = std::clamp(iv, 0, 16);
             else if (k == "anisotropy") anisotropy = std::clamp(iv, 1, 16);
             else if (k == "smooth_textures") smoothTextures = toBool(v);
@@ -142,6 +143,7 @@ bool Config::Load(const std::string& file) {
             Log("Config: ignoring unknown setting '%s' in [%s]", k.c_str(), section.c_str());
     }
     fclose(f);
+    // config_version 22: [video] present_mode
     // config_version 21: [video] interpolation (Smooth motion) defaults to 0, as the original
     // draws; files written before it had 1 (from Hopmon Native, when it only repeated pictures),
     // so it is reset once
@@ -268,6 +270,17 @@ bool Config::Save() const {
       ";   the same: its speed, timing and controls don't change. 0 = draw only on\n"
       ";   the game's steps, like the original (default).\n");
     fprintf(f, "interpolation = %d\n\n", interpolation ? 1 : 0);
+    P("; present_mode: how each finished picture reaches the screen (Windows only).\n"
+      ";   legacy = OpenGL's own way (default). In a window or borderless, Windows\n"
+      ";            copies the picture into the desktop, which adds a frame of delay\n"
+      ";            and can keep G-Sync / FreeSync from working there.\n"
+      ";   dxgi   = through a DirectX (DXGI) flip swapchain, as modern games do: in\n"
+      ";            a window or borderless, G-Sync / FreeSync can work and pictures\n"
+      ";            reach the screen sooner and more evenly; borderless then covers\n"
+      ";            the monitor exactly. Being tested. If your system can't do it,\n"
+      ";            the game uses legacy and says why in magebros_native.log.\n"
+      "; The picture itself is the same either way.\n");
+    fprintf(f, "present_mode = %s\n\n", presentMode == 1 ? "dxgi" : "legacy");
     P("; msaa: antialiasing (smooth polygon edges). 0 = off, 2, 4 (default), 8 or 16.\n"
       ";   Values above what your graphics card supports are lowered automatically.\n");
     fprintf(f, "msaa = %d\n\n", msaa);
