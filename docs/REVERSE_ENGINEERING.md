@@ -81,7 +81,7 @@ Read by `XMap::_LoadMapArray`, reimplemented in `src/core/level.cpp`:
   odd-length row each, which this rule makes harmless.
 - Character sets seen: row flags `- C W`; cells `. 0–7 H`; objects use most letters, digits and
   `! # * + - /`. Their meaning is defined by `_ConstructFloorAndWall`, `_ConstructWallObjects`
-  and `_ConstructObjects` and is next on the list to document.
+  and `_ConstructObjects`; the object codes are listed under "Level codes" below.
 
 `GetMapResId(world, level)` maps the 40 slots to resource IDs; the table is in
 `src/core/game_files.cpp`. Level 10 of each world is the boss level.

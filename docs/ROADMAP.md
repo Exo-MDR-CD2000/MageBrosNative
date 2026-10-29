@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, built on a branch and merged into `main` on 2026-10-28, released as v0.4.20; [SMOOTH_MOTION.md](SMOOTH_MOTION.md)) |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats, mods and the config tooling still to come |
 
 ## Stage 4, chunk by chunk
 
@@ -103,9 +103,11 @@ patterns from the start.
 
 ## Stage 7, chunk by chunk
 
-Every extra is opt-in: with every option at its default the game plays as the original. The
-options menu, the config and the renderer's extras came from Hopmon Native; stage 7 makes them
-Mage Bros.' own and finishes the ones that need the game's help.
+Every extra is opt-in: with every option at its default the game plays as the original (the one
+exception, the owner's choice of 2026-10-29: Antialiasing 4x and Texture filtering 8x are on by
+default; they only smooth edges and distant textures, and Off in each gives the original's
+picture). The options menu, the config and the renderer's extras came from Hopmon Native; stage 7
+makes them Mage Bros.' own and finishes the ones that need the game's help.
 
 | Chunk | What it covers | What you can test | Status |
 |---|---|---|---|
@@ -126,36 +128,33 @@ Mage Bros.' own and finishes the ones that need the game's help.
 | 3-9's start wall | Not widescreen, found by the owner: a legacy slip (in the original too). The level opens on a row of pits and the original builds end walls only from the floor's height up, so a black strip showed on the start wall above the water; such end walls now get a cliff face below them, in every mode. Listed in "Bugs and quirks in the original" in `REVERSE_ENGINEERING.md` | the start of 3-9 | Done (0.4.14) |
 | 2d-iii (options menu) | The options menu in widescreen | the options menu in widescreen | Left as it is for now (the owner) |
 | 2d-iv | Field of view: `XGameScene::Render` turns `Device::SetGameplayView` on for the level's 3D and off before the shop and the HUD, so the renderer's lens scaling (both parts of the lens divided by the setting) applies to levels only; the title, level select, the shop's panel (sized to its 2D board), the HUD and the ending keep the original lens. Zoomed out, the draw range and the sound panning grow by the setting (`ViewReachFactor` = widescreen factor × the setting above 100%); zoomed in they keep the original's. The update range (game logic) is unchanged. The menu row offers 50% to 200% (the owner's choice) and shows the angle; the setting is marked experimental, with players advised to leave it at 100% (the owner: help line, ini comment, README and CHANGELOG); the help line warns that above 100% the level's unbuilt edges show (black below the near edge from about 105%, above the back wall and past the ends further out), as the original's levels are built only as far as its own view. Checked: at 100% levels at 4:3 and 16:9 and the open shop byte for byte the same as 0.4.14; at 200%, 16:9 and 21:9, in 1-1, 1-6, 2-4 and 3-5, the same objects as a draw-everything build (the only differences, a few pixels, were a slug caught a moment apart); the shop's panel lined up at 50% and 150% | Field of view in levels | Done (0.4.15) |
+| Smooth motion | Drawing the game between its ticks at any refresh rate, the game itself unchanged: A the clock, the camera and the mages (0.4.16); B1 every model in a level (0.4.17); B2 sprites: particles, shots, the flame, the water (0.4.18); C the shop's slide and the ending's credits (0.4.19); D help text, docs, final checks (0.4.20). Off by default. Built on the `interpolation-test` branch, merged into `main` on 2026-10-28 and released as v0.4.20. How it works, each chunk's plan and checks: [SMOOTH_MOTION.md](SMOOTH_MOTION.md) | Options > Video > Smooth motion at 60 and 144 Hz | Done (0.4.16 to 0.4.20) |
 | Graphics review | Options > Graphics checked setting by setting on Mage Bros.' scenes (1-6 with each setting alone; pixel counts and close-ups), 2026-10-29. Fixed: **Texture filtering** never reached the game's own (point-filtered) textures, so 2x to 16x looked the same and only switched on point-sampled mipmaps; now, on, textures shrunk on screen (far or at an angle) get trilinear and anisotropic filtering while magnified ones keep the original's point sampling (`Device` texture state); **Render scale** above 200% was shrunk to the window by plain bilinear, skipping most pixels; now through mipmaps made each frame (`resolveMips_`); **screenshots** now take the Brightness curve. Checked: Texture filtering off and Smooth textures on byte for byte the same as 0.4.20 (24 shots); Brightness 100% screenshots unchanged; the steep walls of 2-4 clean at 8x where they were noisy; render scale 2x to 4x run without errors. Working as they were: Antialiasing, Smooth textures, Smooth 2D images, Per-pixel lighting, Soft shadows. **Decided (the owner, 2026-10-29): Antialiasing (4x) and Texture filtering (8x) stay on by default**, inherited from Hopmon Native, an exception to the rule of the original's look by default (both only smooth edges and distant textures; Off in each gives the original's picture) | Options > Graphics, Texture filtering on steep walls, Render scale 300% and 400%, F12 with Brightness changed | Done (0.4.21) |
 
-Chunk 2 is done but the options menu in widescreen, left as it is. The rest is to be planned with
-the owner. **Smooth motion (interpolation) is done**: researched and planned in
-[SMOOTH_MOTION.md](SMOOTH_MOTION.md) in four chunks (A timing and camera, B everything in a level,
-C other screens, D polish), built and tested on the `interpolation-test` branch, and merged into
-`main` on 2026-10-28 (released as v0.4.20, whose notes sum it all up). **Chunk A (the clock, the camera, the mages and their shadows) is built in
-0.4.16** (the owner's first play test: smooth, nothing off); chunk B is planned in two parts: **B1 (every model) is built in 0.4.17** (the owner's play test: fine), **B2 (sprites) is built in 0.4.18**; **chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; **chunk D (help text, docs, final checks) is built in 0.4.20**: smooth motion is complete and merged (the owner's merge decisions are in SMOOTH_MOTION.md, "D5"). How it works: the first section of SMOOTH_MOTION.md. Smooth motion is
-off by default from 0.4.16 (the owner, 2026-10-27). Set aside for later (the owner, 2026-10-27): an in-game debug
-overlay (ticks a second, ticks per frame, frame-time and alpha graphs, snaps, the display
-settings in effect), off by default, reading values only. For the field of view, possibly with mods: scenery beyond the original's view (deeper
-cliffs below the near edge, taller walls, something past the ends) so zooming out holds up. Possible later, maybe more than a game of
-this size needs (the owner's notes): a frame-limit choice for G-Sync / FreeSync (the monitor's
-refresh rate less 3), **planned in smooth motion's chunk D and then dropped** (the owner,
-2026-10-28: a few milliseconds at most, and the graphics drivers already offer the cap); why, and
-how it would be built if wanted later, are in [SMOOTH_MOTION.md](SMOOTH_MOTION.md) ("D1"); for 32:9 screens, an idle
-animation for the nine enemy types the update range pauses far away (at 21:9 that can only show
-for an enemy against the back wall or in a pit at the very edge of the screen, which the owner
-didn't see in play; at 32:9 the middle of the level reaches 501, past the 480 range), and
-perhaps a "widescreen max width" setting. Candidates still open: Mage Bros.' own cheats, mods (add-ons and level packs, with `MODDING.md`),
-`--set`, `CONFIG.md` and the README sections Hopmon Native has. (The per-frame items in the
-table below are settled: each is handled or kept by the owner's choice.)
+**Done**: chunk 1 (the options menu), chunk 2 (the Video page; the options menu in widescreen is
+left as it is, the owner's choice), smooth motion (0.4.16 to 0.4.20) and the graphics review
+(0.4.21). The per-frame items in the "frame-rate dependence" table below are settled: each is
+handled or kept by the owner's choice.
 
-What the Video page's Smooth motion does (0.4.20; how it works is in
-[SMOOTH_MOTION.md](SMOOTH_MOTION.md)): on, a picture is drawn for every refresh of the monitor,
-with everything that moves (the camera, the mages, enemies, bosses, platforms, coins, bullets,
-effects, shots, the water, the shop's slide and the ending's credits) shown between the last two
-ticks; the picture trails the game by up to 10 ms. Off (the default), it is drawn only on a tick
-boundary, at most 100 times a second, as the original. The game's speed and behaviour are the
-same either way.
+**Still open, to be planned with the owner**: Mage Bros.' own cheats (the Cheats page is greyed
+out); mods (add-ons and level packs, with `MODDING.md`; the Mods pages are greyed out and
+`core/mods.cpp` is a stub); the config tooling (`--set`, `CONFIG.md`) and the README sections
+Hopmon Native has.
+
+**Set aside for later** (the owner's notes; maybe more than a game of this size needs):
+
+- an in-game debug overlay (ticks a second, ticks per frame, frame-time and alpha graphs, snaps,
+  the display settings in effect), off by default, reading values only (2026-10-27);
+- for the field of view, possibly with mods: scenery beyond the original's view (deeper cliffs
+  below the near edge, taller walls, something past the ends) so zooming out holds up;
+- for 32:9 screens: an idle animation for the nine enemy types the update range pauses far away
+  (at 21:9 that can only show for an enemy against the back wall or in a pit at the very edge of
+  the screen, which the owner didn't see in play; at 32:9 the middle of the level reaches 501,
+  past the 480 range), and perhaps a "widescreen max width" setting;
+- a frame-limit choice for G-Sync / FreeSync (the monitor's refresh rate less 3): planned in
+  smooth motion's chunk D and then dropped (2026-10-28: a few milliseconds at most, and the
+  graphics drivers already offer the cap); why, and how it would be built, are in
+  [SMOOTH_MOTION.md](SMOOTH_MOTION.md) ("D1").
 
 ## Stage 7: frame-rate dependence
 

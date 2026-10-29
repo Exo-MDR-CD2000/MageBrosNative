@@ -5,7 +5,7 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.20).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.21).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
 > Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
@@ -31,7 +31,7 @@ original game logic unchanged when every option is at its default.
   The program checks the SHA-256 of `MageBros.exe`:
   `ac191080af002b8ad0615e432faa92a2a47ce76a9aaa667bacf628836c098c49`.
   Other builds are refused unless you pass `--allow-unverified`.
-- Windows 10/11 x64 (the game, once it lands). The asset tool also builds on Linux and macOS.
+- Windows 10/11 x64 for the game. The asset tool also builds on Linux and macOS.
 
 ## What works today
 
@@ -104,9 +104,7 @@ graphics, audio and controls, Main menu (back to the title), Level select in a l
 as you were when it started) and Quit. The controls page rebinds
 player 1's keys, player 2's keys, the general keys (select, pause, back) and the gamepad's fire and
 jump buttons. Options > Video > Show FPS shows the original's frames-per-second counter. Smooth
-motion (on by default) draws at the monitor's refresh rate; off, the picture is drawn only when the
-game ticks, at most 100 times a second, as the original. The game's speed is the same either way.
-Settings not ready for Mage Bros. yet (cheats and mods) are greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
+motion (off by default) is described below. Settings not ready for Mage Bros. yet (cheats and mods) are greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
 to replace the MIDI music.
 
 **The window** opens where you left it, at the size you left it (maximized too), on the same
@@ -160,6 +158,14 @@ ending keep the original view. The original's levels are built only as far as it
 reaches, so zooming out shows their unbuilt edges: black below the level's near edge from about
 105%, and above the back wall and past the ends further out. Far-away enemies, which stay still
 until you come near, can be seen standing still when zoomed far out.
+
+**Graphics** (Options > Graphics): Antialiasing (4x by default) smooths polygon edges; Texture
+filtering (8x by default) keeps floors and walls far away or at an angle sharp and free of
+flickering pixels, while up close the textures keep the original's sharp pixels; Off in both gives
+the original's picture. Render scale draws the 3D scene larger (smoother, slower) or smaller
+(faster) than the window. Smooth textures and Smooth 2D images soften the original's pixelated
+textures and the 2D images (menus, logo, HUD); Per-pixel lighting gives smoother shading; Soft
+shadows soften the blob shadows' edges; Brightness, 50% to 150%, also applies to screenshots (F12).
 
 In the game view N / B change level, F2 switches between one and two players and F3 jumps to the
 ending (test keys: a game started with them is not saved; `--ending` on the command line starts
@@ -262,7 +268,7 @@ tools        MageBrosAssets
 tests        format and collision tests; map and hero tests on your copy (-DMBN_GAME_EXE)
 docs         REVERSE_ENGINEERING.md (what the original is made of, and at its end the
              original's bugs and quirks with what the port does about each), ROADMAP.md,
-             SMOOTH_MOTION.md (the plan for smooth motion between ticks)
+             SMOOTH_MOTION.md (how smooth motion works, and how it was built)
 CLAUDE.md    contributor handoff: project rules, build/test/RE workflow, current status, next steps
 ```
 
@@ -276,6 +282,6 @@ Mage Bros., its name, artwork, levels, sounds and music are © 2003–2009 Saito
 music is © Yamaha Corporation. This project isn't affiliated with or endorsed by Saito Games and
 distributes none of the game's files. You supply your own copy of the freeware game.
 
-The port's own code is MIT-licensed. The reconstructed game logic that will live in `src/game` is
+The port's own code is MIT-licensed. The reconstructed game logic in `src/game` is
 a reconstruction of the original program and isn't covered by the MIT license. See
 [LICENSE](LICENSE).

@@ -878,27 +878,28 @@ Final checks (2026-10-28):
 
 The owner then chose to merge (2026-10-28), with the release notes summed up in 0.4.20 (D5).
 
-## How the game logic is shown untouched
+## How the game logic is shown untouched (the method, used in every chunk)
 
 - Smooth motion off: screenshots byte for byte the same as 0.4.15; `mbn_hero_tests` (800,000
   ticks) unchanged.
-- Smooth motion on with alpha held at 1 (a test hook for `--auto`): screenshots byte for byte
-  the same as today.
-- Alpha held at 0.5: screenshots showing poses exactly halfway between ticks.
-- The owner's play test at 60 Hz and 144 Hz: smoothness is felt more than seen in screenshots.
+- Smooth motion on with alpha held at 1 (`--auto alpha=1`): screenshots byte for byte the same.
+- Alpha held at 0.5, with temporary logs of tick and drawn positions: every blended object
+  exactly halfway between its last two ticks, with the right earlier pose.
+- The owner's play tests at 144 Hz (and 60 Hz): smoothness is felt more than seen in
+  screenshots.
 
-## Open decisions
+When a byte-for-byte run fails everywhere, check first that the test folder's ini hasn't kept
+`maximized = 1` (see "Chunk D as built").
 
-- **The default (decided 2026-10-27): off.** The owner chose off, following the project's rule
-  that the original's feel is the default. Smooth motion is on by default today (from Hopmon
-  Native), where it only repeats frames. Once it blends, it adds 0 to 10 ms of display delay,
-  so it becomes something players turn on. The branch changes the default in `src/core/config`.
-  A `config_version` bump resets the setting once in older ini files, as 0.4.13 did for HUD
-  position. The help line and README then say how to turn it on.
-- **Versions on the branch (decided 2026-10-27): each build takes the next version** (chunk A is
-  0.4.16), so it is easy to tell which build is which. The owner first chose no bump, then
-  changed this the same day. A push to this branch publishes nothing: its versions are released
-  when it is merged into `main`. While the branch is open, work on `main` must not take the same
-  numbers.
-- **Where it ends up:** perhaps a stage of its own ("Stage 8: smooth motion") rather than a
-  stage 7 chunk.
+## Decisions (all settled)
+
+- **The default: off** (2026-10-27), following the project's rule that the original's feel is
+  the default. It was on by default before 0.4.16 (from Hopmon Native, where it only repeated
+  frames); config_version 21 turns it off once in older ini files, and the help line and README
+  say how to turn it on.
+- **Versions on the branch: each build took the next version** (2026-10-27; 0.4.16 to 0.4.20),
+  so builds were easy to tell apart. The owner first chose no bump, then changed this the same
+  day. Pushes to the branch published nothing; v0.4.20 was released at the merge.
+- **Where it ended up:** stage 7, done as one piece of work in four chunks, not a stage of its
+  own.
+- The release notes and the merge: see "D5" (a summary in 0.4.20; merged directly).

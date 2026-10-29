@@ -95,7 +95,8 @@ src/game       the reconstructed game: one file per original module, original cl
 src/main.cpp   AssetViewerApp: game view / level viewer / model viewer, CLI, automation
 tools          MageBrosAssets (inventory / selftest / export)
 tests          format tests (no game needed); map, hero and collision tests
-docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status)
+docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status),
+               SMOOTH_MOTION.md (how smooth motion works, and how it was built)
 third_party    ColDet 1.2, TinySoundFont, dr_libs, stb, cgltf, font8x8
 ```
 
@@ -330,68 +331,61 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-29, version 0.4.21, graphics options reviewed)
+## Where we are (last updated: 2026-10-29, version 0.4.21)
 
-**Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
-plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
-opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) is done in
-0.4.0, tested by the owner. **Branches:** 0.4.0 to 0.4.13 were built on a `menu-dev` branch,
-apart from `main`; the owner merged it into `main` on 2026-10-26 (pull request #1, released as
-v0.4.13). **Work goes on `main`**: commit and push there (each push publishes the
-version's release; see "GitHub releases"). **Smooth motion** (chunks A to D, versions 0.4.16 to
-0.4.20) was built and tested on an `interpolation-test` branch (created from `main` at 0.4.15 on
-2026-10-26) and **merged into `main` directly on 2026-10-28, released as v0.4.20**, whose
-CHANGELOG section sums it up (0.4.16 to 0.4.19 were never released on their own). The branch is
-kept on GitHub; nothing goes there any more. How it works is the first section of
-`docs/SMOOTH_MOTION.md` ("How it works (as built)"); each chunk's plan, checks and the owner's
-decisions follow it there. The owner's play tests found A, B1 and C (the ending) fine after the
-fixes recorded there; the owner then chose to merge 0.4.20. Decided along the way: the
-2D that moves in whole pixels (film strips, menu backgrounds, the venetian-blind fades) stays as
-the original; the ending's corridor, with Smooth motion on, scrolls once a tick at the speed the
-frame rate gave it; a G-Sync / FreeSync "Refresh - 3" frame limit was dropped (documented for
-later, "D1"). Smooth motion is **off by default** from 0.4.16 (the owner; config_version 21 turns
-it off once in older files). Perhaps a branch for the
-modding work later. Chunk 2 (the Video page) is split into small chunks for thoroughness: 2a
-windowed mode (0.4.1, tested by the owner), 2b exclusive fullscreen (0.4.2, tested by the
-owner), 2c monitors (0.4.3, tested by the owner), 2d-i VSync (0.4.4), 2d-ii widescreen culling
-(0.4.5, tested by the owner) and widescreen sound panning (0.4.6, tested by the owner; at 4:3 and
-Stretch the panning is the original's bit for bit), then 2d-iii, widescreen on the other screens and the HUD, taken one screen at a time with the
-owner. Done so far, all with 4:3 screenshots byte for byte the same as before:
-the title's tile background filled out to the view's width on the title, save slots and level
-select, with the fade strips spanning the whole view (0.4.7); the shop sliding in from the view's
-edges over a full-width dim, the dim only when wider than 4:3 (0.4.8); the Saito Games logo's
-white backdrop widened with the view (0.4.10, Stretch also unchanged); the ending's film strips
-across the whole view and its credits waiting and leaving past the view's edges (0.4.11; the
-ending can't be compared byte for byte, as the corridor scrolls once a frame, so a temporary log
-showed the original's tiles and credit positions at 4:3 and Stretch); 0.4.12 added F3 in a level
-and `--ending` to reach the ending, for the owner to test it; the HUD settings (HUD position,
-HUD max width, HUD size) hooked into `XStatusDisplay` and `XFPSDisplay` (0.4.13; HUD position
-defaults to Centered, the owner's call, and config_version 20 resets older files once; tried by
-the owner, who also had the original's overlapping lost-gold messages fixed in every mode, the
-first entry of the "Bugs and quirks in the original" table in `docs/REVERSE_ENGINEERING.md`;
-then 0.4.14 fixed another slip the owner found, the black strip on 3-9's start wall). The
-options menu in widescreen is left as it is for now (the owner: the menus and level select are
-fine). Beside them, 0.4.9 made
-the shop's button take every fire / jump key of the shopper and Enter (the owner couldn't find
-how to buy or leave with the keyboard). 2d-iv, the field of view, is done in 0.4.15 (50% to
-200% in the menu, the owner's choice, with a help line warning that zooming out shows the level's
-unbuilt edges; at 100% byte for byte the same as before). The owner tried it ("seems to work")
-and wants it presented as **experimental**, with players advised to leave it at 100%: keep that
-wording wherever the setting is described (the help line, the ini comment, README, CHANGELOG). **Chunk 2 is done; the rest of stage 7
-is to be planned with the owner** (see ROADMAP). The owner's must: 16:9 with no culling or pop-in at all
-(verified by screenshot comparison with a draw-everything build). The owner then played 21:9
-(a 2560 x 1080 window): every object, enemy and boss showed and behaved normally to the edges, so
-native 21:9 is feasible. The camera and lens were checked value by value against the original
-(all the same): see "The camera and lens: the original and the port, side by side" in
-`docs/REVERSE_ENGINEERING.md`. The owner set aside a
-G-Sync / FreeSync frame-limit choice as a possible later feature; it was planned in smooth motion's
-chunk D and dropped (2026-10-28), documented for later in `docs/SMOOTH_MOTION.md` ("D1"). Smooth motion is done (v0.4.20). The graphics options were
-reviewed in 0.4.21 (Texture filtering, Render scale above 200% and Brightness in screenshots
-fixed; see the ROADMAP's "Graphics review" row); Antialiasing 4x and Texture filtering 8x stay
-on by default (the owner, 2026-10-29), an exception to the original's look by default; Off in each
-gives the original's picture. The rest of stage 7 (cheats, mods, config tooling) is to be planned with the owner.
-Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
-7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.
+**Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
+plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
+opt-in modern extras, is under way; the tables are in `docs/ROADMAP.md` ("Stage 7, chunk by
+chunk") and what each version changed is in `CHANGELOG.md`.
+
+Stage 7 so far:
+
+- **Chunk 1, the options menu made for Mage Bros.** (0.4.0, tested by the owner).
+- **Chunk 2, the Video page**, done in small chunks: 2a windowed mode (0.4.1), 2b exclusive
+  fullscreen (0.4.2), 2c monitors (0.4.3), 2d-i VSync (0.4.4), 2d-ii widescreen culling (0.4.5)
+  and sound panning (0.4.6; at 4:3 and Stretch the original's bit for bit), 2d-iii widescreen on
+  the other screens and the HUD, one screen at a time with the owner (all with 4:3 screenshots
+  byte for byte the same as before): the title's tile background and the fade strips across the
+  view (0.4.7), the shop sliding in from the view's edges over a full-width dim (0.4.8), the logo's
+  white backdrop (0.4.10), the ending's film strips and credits (0.4.11; F3 and `--ending` added
+  in 0.4.12 to reach it), the HUD settings in `XStatusDisplay` / `XFPSDisplay` (0.4.13; HUD
+  position defaults to Centered, config_version 20 resets older files once); 2d-iv the field of
+  view (0.4.15, 50% to 200%, at 100% byte for byte as before). The options menu in widescreen is
+  left as it is (the owner: the menus are fine). Beside them: the shop's button takes every fire /
+  jump key of the shopper and Enter (0.4.9), and two slips of the original fixed at the owner's
+  request, the overlapping lost-gold messages (0.4.13) and the black strip on 3-9's start wall
+  (0.4.14).
+  - The owner's must: 16:9 with no culling or pop-in at all (verified against a draw-everything
+    build); the owner then played 21:9 (2560 x 1080) with every object, enemy and boss normal to
+    the edges. The camera and lens were checked value by value against the original (all the
+    same): "The camera and lens: the original and the port, side by side" in
+    `docs/REVERSE_ENGINEERING.md`.
+  - **The field of view is experimental**: the owner wants players advised to leave it at 100%;
+    keep that wording wherever the setting is described (help line, ini comment, README,
+    CHANGELOG).
+- **Smooth motion** (chunks A to D, 0.4.16 to 0.4.20, **off by default**; config_version 21 turns
+  it off once in older files): built on an `interpolation-test` branch and merged into `main`
+  directly on 2026-10-28, released as v0.4.20, whose CHANGELOG section sums it up (0.4.16 to 0.4.19
+  were never released on their own). How it works is the first section of
+  `docs/SMOOTH_MOTION.md`; each chunk's plan, checks and the owner's decisions follow it there.
+  Decided along the way: the 2D that moves in whole pixels (film strips, menu backgrounds, the
+  venetian-blind fades) stays as the original; the ending's corridor, with Smooth motion on,
+  scrolls once a tick at the speed the frame rate gave it; a G-Sync / FreeSync "Refresh - 3" frame
+  limit was dropped (documented for later, "D1").
+- **The graphics options review** (0.4.21): Texture filtering, Render scale above 200% and
+  Brightness in screenshots fixed (the ROADMAP's "Graphics review" row). Antialiasing 4x and
+  Texture filtering 8x stay on by default (the owner, 2026-10-29); Off in each gives the
+  original's picture.
+
+**Next**: the rest of stage 7 (Mage Bros.' own cheats, mods, the config tooling: `--set`,
+`CONFIG.md`) is to be planned with the owner. Wait for the owner to say which and "start".
+
+**Branches**: work goes on `main`; each push publishes the version's release when that version
+has none yet (see "GitHub releases"). Two side branches were used and merged: `menu-dev` (0.4.0 to
+0.4.13, pull request #1, 2026-10-26) and `interpolation-test` (smooth motion, merged directly
+2026-10-28). Both are kept on GitHub; nothing goes there any more. Perhaps a branch for the modding
+work later; if a side branch is used again, its builds take the next version numbers and `main`
+stays off them until it merges.
 
 **The options menu** (`src/ui/options_menu.*`, F10 / gamepad Start) came from Hopmon Native
 almost line for line, with its config (`src/core/config.*`), input remapping (`src/input`) and
@@ -569,8 +563,12 @@ and 16:9, needs nothing of its own). The HUD settings of 0.4.13 were tried by th
 work fine"), who then found the lost-gold messages overlapping in two-player games, a slip in the
 original as well: fixed in every mode in 0.4.13 (player 2's message 12 lower), seen on screen
 here through a temporary `ShowLostGoldMessage` call in `InitForGame` (removed). The field of view of
-0.4.15 was tried by the owner too. MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver
-override warning can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
+0.4.15 was tried by the owner too. Smooth motion: the owner's play tests found A, B1 and the ending
+(C) fine after the fixes recorded in `docs/SMOOTH_MOTION.md`; no separate result was reported for
+B2 (0.4.18) or D (0.4.20) before the owner chose to merge. 0.4.21's Render scale at 300% and 400%
+is still to be judged by eye (screenshots are taken before the picture is shrunk to the window).
+MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver override warning
+can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
 
 ### Notes from earlier stages
 
