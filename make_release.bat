@@ -2,22 +2,29 @@
 rem Builds MageBrosNative in Release and packages build\MageBrosNative-<version>-windows-x64.zip.
 rem Needs Visual Studio 2022 or newer with the "Desktop development with C++" workload.
 rem
-rem Each run first raises the version in CMakeLists.txt (the single source of the version number):
-rem   make_release.bat          patch: 0.1.0 -> 0.1.1 (also when double-clicked)
+rem The version is the one in CMakeLists.txt (the single source of the version number). It only
+rem changes when you ask for it:
+rem   make_release.bat          build the current version, unchanged (also when double-clicked)
+rem   make_release.bat patch    raise it first: 0.1.0 -> 0.1.1
 rem   make_release.bat minor    0.1.3 -> 0.2.0
 rem   make_release.bat major    0.2.0 -> 1.0.0
-rem   make_release.bat none     rebuild at the current version
-rem If the build or a test fails, the version is put back. Commit CMakeLists.txt with the release.
-rem When ..\MageBros.exe is found, the map and hero tests run on all 40 levels too.
+rem   make_release.bat 0.4.23   set this exact version first (to skip one a side branch used)
+rem If the build or a test fails, a raised version is put back. Commit CMakeLists.txt with the
+rem release. When ..\MageBros.exe is found, the map and hero tests run on all 40 levels too.
+rem The full steps for making a release: docs\RELEASING.md.
 setlocal
 cd /d "%~dp0"
 set "RESULT=0"
 set "OLDVER="
+set "SETVER="
 
 set "BUMP=%~1"
-if "%BUMP%"=="" set "BUMP=patch"
-if /i not "%BUMP%"=="patch" if /i not "%BUMP%"=="minor" if /i not "%BUMP%"=="major" if /i not "%BUMP%"=="none" (
-  echo Unknown option "%BUMP%". Use patch, minor, major or none.
+if "%BUMP%"=="" set "BUMP=none"
+echo %BUMP%| findstr /r "^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$" >nul && set "SETVER=%BUMP%"
+if defined SETVER set "BUMP=set"
+if /i not "%BUMP%"=="patch" if /i not "%BUMP%"=="minor" if /i not "%BUMP%"=="major" if /i not "%BUMP%"=="none" if not "%BUMP%"=="set" (
+  echo Unknown option "%BUMP%". Use nothing ^(build the current version^), patch, minor, major
+  echo or an exact version such as 0.4.23.
   goto :error
 )
 
@@ -47,6 +54,8 @@ if /i "%BUMP%"=="patch" set /a "PAT+=1"
 if /i "%BUMP%"=="minor" set /a "MIN+=1, PAT=0"
 if /i "%BUMP%"=="major" set /a "MAJ+=1, MIN=0, PAT=0"
 set "NEWVER=%MAJ%.%MIN%.%PAT%"
+if defined SETVER set "NEWVER=%SETVER%"
+if "%NEWVER%"=="%OLDVER%" set "BUMP=none"
 if /i "%BUMP%"=="none" (
   echo Version %OLDVER% ^(unchanged^)
   set "OLDVER="
@@ -74,6 +83,7 @@ if errorlevel 1 (popd & goto :failed)
 popd
 echo.
 echo Done: build\MageBrosNative-%NEWVER%-windows-x64.zip
+if defined OLDVER echo CMakeLists.txt now says %NEWVER%: commit it with the release.
 goto :done
 
 :failed

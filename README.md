@@ -236,17 +236,18 @@ ctest --test-dir build -C Release        # format tests, no game files needed
 ```
 
 On Windows, double-click `make_release.bat` (Visual Studio 2022+ with the "Desktop development
-with C++" workload): it raises the patch version in `CMakeLists.txt`, builds, runs the tests and
-writes `build\MageBrosNative-<version>-windows-x64.zip`. Run it as `make_release.bat minor`,
-`major` or `none` (rebuild at the current version) to choose the version step; a failed build
-puts the version back. With `MageBros.exe` in the folder above the repository it also runs the map
-and hero tests.
+with C++" workload): it builds the version in `CMakeLists.txt` as it is, runs the tests and
+writes `build\MageBrosNative-<version>-windows-x64.zip`. To raise the version first, run it as
+`make_release.bat patch`, `minor` or `major`, or give an exact version (`make_release.bat
+0.4.23`); a failed build puts the version back. With `MageBros.exe` in the folder above the
+repository it also runs the map and hero tests. Making a release, step by step:
+[docs/RELEASING.md](docs/RELEASING.md).
 
 **Releases.** What changed in each version is in [CHANGELOG.md](CHANGELOG.md). Every push to `main` runs the GitHub Actions workflow in
 `.github/workflows/release.yml`: it builds the same zip on a Windows runner, runs the tests that
 need no game files, and publishes it as the GitHub release `v<version>`, the version being the
 one in `CMakeLists.txt`. A push that leaves the version unchanged (docs only, say) makes no new
-release, so raise the version (`make_release.bat` does) when a push should produce one. The map
+release, so raise the version (`make_release.bat patch`) when a push should produce one. The map
 and hero tests can't run there, since `MageBros.exe` is never uploaded; run them locally.
 
 From Linux or macOS, cross-compile with llvm-mingw or MinGW-w64:

@@ -14,6 +14,10 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
   present method** to **Prefer layered on DXGI swapchain** for `MageBrosNative.exe` in the NVIDIA
   Control Panel (Manage 3D settings > Program settings). The README's Video section explains why.
   The game itself is unchanged.
+- For building it yourself: `make_release.bat` now builds the current version as it is when run
+  with nothing after it (or double-clicked), instead of raising the version. Raise it with
+  `make_release.bat patch`, `minor` or `major`, or set one with `make_release.bat 0.4.23`. Step
+  by step: [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [0.4.21] - 2026-10-29
 

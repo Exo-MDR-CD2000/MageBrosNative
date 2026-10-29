@@ -96,7 +96,8 @@ src/main.cpp   AssetViewerApp: game view / level viewer / model viewer, CLI, aut
 tools          MageBrosAssets (inventory / selftest / export)
 tests          format tests (no game needed); map, hero and collision tests
 docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status),
-               SMOOTH_MOTION.md (how smooth motion works, and how it was built)
+               SMOOTH_MOTION.md (how smooth motion works, and how it was built),
+               RELEASING.md (building and publishing a release, for the owner)
 third_party    ColDet 1.2, TinySoundFont, dr_libs, stb, cgltf, font8x8
 ```
 
@@ -205,10 +206,14 @@ ctest --test-dir build --output-on-failure   # formats, collision, map_geometry,
   runs 800,000 random ticks.
 
 **Windows (the owner's platform).** Run `make_release.bat` (VS 2022+, "Desktop development with
-C++"). It builds, tests and writes `build\MageBrosNative-<ver>-windows-x64.zip`. Each run
-raises the version in `CMakeLists.txt` first: patch by default, or pass `minor`, `major` or
-`none`. A failed build puts the version back, so commit `CMakeLists.txt` with each release. It
-runs the map and hero tests when `..\MageBros.exe` exists, and pauses at the end. Or open the
+C++"). It builds, tests and writes `build\MageBrosNative-<ver>-windows-x64.zip`. **With no
+argument it builds the current version, unchanged** (the owner, 2026-10-29: a double-click had
+built 0.4.22 by mistake); pass `patch`, `minor` or `major` to raise the version in
+`CMakeLists.txt` first, or an exact `x.y.z` to set it (to skip a version a side branch used). A
+failed build puts a raised version back, so commit `CMakeLists.txt` with each release. It runs
+the map and hero tests when `..\MageBros.exe` exists, and pauses at the end. The owner's
+step-by-step guide to releasing is `docs/RELEASING.md`: keep it in step with the script and the
+workflow. Or open the
 folder in Visual Studio / use `cmake -S . -B build -A x64`. SDL3 is fetched on first configure.
 
 **GitHub releases.** `.github/workflows/release.yml` runs on every push to `main` (and by hand
@@ -216,8 +221,8 @@ from the Actions tab): on a Windows runner it configures, builds, runs the no-ga
 `cpack`, then publishes the zip as release `v<version>` (from `CMakeLists.txt`). Its notes are
 that version's section of `CHANGELOG.md` (the commit message if there is none) and a link to the
 full changelog. If that release already exists it does nothing, so a push only releases
-when the version was raised: keep running `make_release.bat` (patch bump) for each chunk and
-commit `CMakeLists.txt` with it. Pushing therefore publishes publicly; the zip holds no game
+when the version was raised: run `make_release.bat patch` for each chunk (or the exact version,
+when one must be skipped) and commit `CMakeLists.txt` with it. Pushing therefore publishes publicly; the zip holds no game
 content.
 
 **Cross-compile for Windows from Linux** (llvm-mingw):
@@ -652,7 +657,8 @@ can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
   with PowerShell's System.Drawing) to view, then delete them.
 - **Per chunk**: disassemble, write the code, build and test, screenshot the level, update
   `docs/REVERSE_ENGINEERING.md`, `docs/ROADMAP.md`, `README.md`, `CLAUDE.md` and
-  `CHANGELOG.md`, run `make_release.bat`, then report and wait for "commit and push". Pushing
+  `CHANGELOG.md`, run `make_release.bat patch` (or `make_release.bat <x.y.z>` to skip a
+  version), then report and wait for "commit and push". Pushing
   publishes the GitHub release; there is no need to watch the run unless the commit changed the
   workflow or the build setup.
 
