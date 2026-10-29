@@ -7,6 +7,22 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.21] - 2026-10-29
+
+A second look at Options > Graphics:
+
+- **Texture filtering now works on the game's own textures.** The floors, walls and objects are
+  drawn with the original's sharp, pixelated textures, and the setting didn't reach them: its
+  levels (2x to 16x) all looked the same. Now, with it on, floors and walls far away or seen at an
+  angle stay sharp without the flickering pixel noise, while up close the textures keep the
+  original's pixels. Off, the game looks exactly like the original. (On by default, at 8x, as
+  before; the difference shows most on walls seen at a steep angle and while the screen scrolls.)
+- **Render scale above 200% now pays off.** The larger picture is now shrunk to your screen
+  properly, so 300% and 400% give smoother edges and detail than 200%; before, most of the extra
+  work was thrown away.
+- **Screenshots (F12) now include the Brightness setting**, as you see it on screen.
+- The help lines for Texture filtering and Render scale say what they do more plainly.
+
 ## [0.4.20] - 2026-10-28
 
 **Smooth motion** (Options > Video > Smooth motion, off by default). This release brings together

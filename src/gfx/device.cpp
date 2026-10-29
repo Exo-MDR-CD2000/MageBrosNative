@@ -398,11 +398,13 @@ void Device::CreateTargets() {
     glGenTextures(1, &resolveTex_);
     glBindTexture(GL_TEXTURE_2D, resolveTex_);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, W, H, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    resolveMips_ = layout_.destW > 0 && W > layout_.destW * 2;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, resolveMips_ ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    if (resolveMips_) glGenerateMipmap(GL_TEXTURE_2D);  // (the levels exist from here on)
+    else glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glGenFramebuffers(1, &resolveFbo_);
     glBindFramebuffer(GL_FRAMEBUFFER, resolveFbo_);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, resolveTex_, 0);
@@ -452,6 +454,7 @@ void Device::Present() {
     glUseProgram(progPresent_);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, resolveTex_);
+    if (resolveMips_) glGenerateMipmap(GL_TEXTURE_2D);
     glUniform1i(presentTexLoc_, 0);
     // brightness 150% -> exponent 0.67 (lighter mid-tones), 50% -> 2.0 (darker); black and white stay put
     glUniform1f(presentGammaLoc_, 100.f / (float)std::clamp(GetConfig().brightness, 50, 150));
@@ -474,6 +477,15 @@ bool Device::SaveScreenshot(const char* path) {
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, W, H, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    // the Brightness setting, as Present applies it to the screen (left alone at 100%)
+    int brightness = std::clamp(GetConfig().brightness, 50, 150);
+    if (brightness != 100) {
+        uint8_t curve[256];
+        for (int i = 0; i < 256; i++)
+            curve[i] = (uint8_t)std::lround(255.0 * std::pow(i / 255.0, 100.0 / brightness));
+        for (size_t i = 0; i < px.size(); i++)
+            if (i % 4 != 3) px[i] = curve[px[i]];
+    }
     FILE* f = OpenFileUtf8(path, "wb");
     if (!f) return false;
     int stride = (W * 3 + 3) & ~3;
@@ -679,13 +691,19 @@ void Device::ApplyState(DWORD fvf, bool twoD) {
         bool linMag = tss_[D3DTSS_MAGFILTER] >= D3DTFG_LINEAR || cfg.smoothTextures;
         bool linMin = tss_[D3DTSS_MINFILTER] >= D3DTFG_LINEAR || cfg.smoothTextures;
         GLint minF = linMin ? GL_LINEAR : GL_NEAREST;
-        if (texture_->HasMips() && (cfg.anisotropy > 1 || cfg.smoothTextures))
-            minF = linMin ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_NEAREST;
+        // Texture filtering (anisotropic) works on the texture's mipmaps, smoothly blended, which
+        // only applies where a texture is shrunk on screen (far away, or seen at an angle). So with
+        // it on, textures the original drew pixelated keep their sharp pixels up close (magnified,
+        // point as the original) and are filtered properly where they shrink; off, they are drawn
+        // as the original (point, no mipmaps). (Before 0.4.21 the pixelated textures got only
+        // point-sampled mipmaps and no anisotropy, so the level made no difference.)
+        bool aniso = texture_->HasMips() && cfg.anisotropy > 1;
+        if (texture_->HasMips() && (aniso || (linMin && cfg.smoothTextures))) minF = GL_LINEAR_MIPMAP_LINEAR;
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minF);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linMag ? GL_LINEAR : GL_NEAREST);
         if (maxAniso_ > 1.f)
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY,
-                            (texture_->HasMips() && linMin) ? std::min((float)cfg.anisotropy, maxAniso_) : 1.f);
+                            aniso ? std::min((float)cfg.anisotropy, maxAniso_) : 1.f);
     }
 }
 

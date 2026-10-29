@@ -271,12 +271,15 @@ bool Config::Save() const {
     P("; msaa: antialiasing (smooth polygon edges). 0 = off, 2, 4 (default), 8 or 16.\n"
       ";   Values above what your graphics card supports are lowered automatically.\n");
     fprintf(f, "msaa = %d\n\n", msaa);
-    P("; anisotropy: texture sharpness on floors seen at an angle. 1 = off,\n"
-      ";   2, 4, 8 (default) or 16.\n");
+    P("; anisotropy: texture filtering for floors and walls far away or seen at an\n"
+      ";   angle: they stay sharp without flickering pixels. Up close the textures\n"
+      ";   keep the original's sharp pixels. 1 = off (the original's look), 2, 4,\n"
+      ";   8 (default) or 16.\n");
     fprintf(f, "anisotropy = %d\n\n", anisotropy);
     P("; render_scale: draws the 3D scene at this multiple of the screen size, then\n"
-      ";   scales it to fit. 1.0 = native (default). 1.5 or 2.0 = supersampling\n"
-      ";   (sharper, slower). Below 1.0 = faster, blurrier. Range 0.25 to 4.0.\n");
+      ";   scales it to fit. 1.0 = native (default). Above 1.0 = supersampling\n"
+      ";   (smoother edges and detail, slower; 3.0 and 4.0 are very demanding).\n"
+      ";   Below 1.0 = faster, blurrier. Range 0.25 to 4.0.\n");
     fprintf(f, "render_scale = %.2f\n\n", renderScale);
     P("; aspect: 0 = original 4:3 picture with black bars on wide screens (default)\n"
       ";         1 = stretch 4:3 to fill the window (distorted)\n"

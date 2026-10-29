@@ -777,7 +777,7 @@ OptionsMenu::Page OptionsMenu::GraphicsPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Render scale", "Renders the 3D scene larger (sharper) or smaller (faster) than the screen.",
+    v.push_back({"Render scale", "Renders the 3D scene larger (smoother, slower) or smaller (faster) than the screen. 300%+ is very demanding.",
                  [] { return std::to_string((int)std::lround(GetConfig().renderScale * 100)) + "%"; },
                  [this](int d) {
                      static const std::vector<float> l{0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 3.0f, 4.0f};
@@ -786,7 +786,7 @@ OptionsMenu::Page OptionsMenu::GraphicsPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Texture filtering", "Anisotropic filtering: keeps floors sharp at an angle.",
+    v.push_back({"Texture filtering", "Anisotropic: far and angled floors and walls stay sharp, no flicker. Up close: the original pixels.",
                  [] {
                      int a = GetConfig().anisotropy;
                      return a <= 1 ? std::string("Off") : std::to_string(a) + "x";

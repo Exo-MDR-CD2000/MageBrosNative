@@ -329,7 +329,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-28, version 0.4.20, smooth motion done and merged into `main`)
+## Where we are (last updated: 2026-10-29, version 0.4.21, graphics options reviewed)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -384,9 +384,11 @@ native 21:9 is feasible. The camera and lens were checked value by value against
 (all the same): see "The camera and lens: the original and the port, side by side" in
 `docs/REVERSE_ENGINEERING.md`. The owner set aside a
 G-Sync / FreeSync frame-limit choice as a possible later feature; it was planned in smooth motion's
-chunk D and dropped (2026-10-28), documented for later in `docs/SMOOTH_MOTION.md` ("D1"). Smooth motion is done (v0.4.20). The rest of stage 7
-(the graphics options checked on Mage Bros.' scenes, cheats, mods, config tooling) is to be planned
-with the owner; the graphics options are next (2026-10-28).
+chunk D and dropped (2026-10-28), documented for later in `docs/SMOOTH_MOTION.md` ("D1"). Smooth motion is done (v0.4.20). The graphics options were
+reviewed in 0.4.21 (Texture filtering, Render scale above 200% and Brightness in screenshots
+fixed; see the ROADMAP's "Graphics review" row); still the owner's call: Antialiasing 4x and
+Texture filtering 8x are on by default (from Hopmon Native), so the default picture isn't the
+original's. The rest of stage 7 (cheats, mods, config tooling) is to be planned with the owner.
 Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
 7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.
 
