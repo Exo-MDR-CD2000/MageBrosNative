@@ -41,7 +41,8 @@ repository contains no game content.
   at its default: the same tick order, constants, slot counts and quirks, including ones that
   look like bugs. Any modern extras (stage 7) must be opt-in options. The exception: a slip in
   the original that the owner chooses to fix (so far the shop's keys, 0.4.9, the overlapping
-  lost-gold messages, 0.4.13, and the black strip at the start of 3-9, 0.4.14). Every bug or quirk of the original found, fixed or kept, goes in
+  lost-gold messages, 0.4.13, and the black strip at the start of 3-9, 0.4.14). Also an exception: Antialiasing (4x) and Texture
+  filtering (8x) are on by default (the owner, 2026-10-29); Off in each gives the original's picture. Every bug or quirk of the original found, fixed or kept, goes in
   the "Bugs and quirks in the original" table at the end of `docs/REVERSE_ENGINEERING.md`.
 - **Never commit game material:**
   - `MageBros.exe`, `MageBros.pdb`, `.mid` files, or anything exported from them;
@@ -386,9 +387,9 @@ native 21:9 is feasible. The camera and lens were checked value by value against
 G-Sync / FreeSync frame-limit choice as a possible later feature; it was planned in smooth motion's
 chunk D and dropped (2026-10-28), documented for later in `docs/SMOOTH_MOTION.md` ("D1"). Smooth motion is done (v0.4.20). The graphics options were
 reviewed in 0.4.21 (Texture filtering, Render scale above 200% and Brightness in screenshots
-fixed; see the ROADMAP's "Graphics review" row); still the owner's call: Antialiasing 4x and
-Texture filtering 8x are on by default (from Hopmon Native), so the default picture isn't the
-original's. The rest of stage 7 (cheats, mods, config tooling) is to be planned with the owner.
+fixed; see the ROADMAP's "Graphics review" row); Antialiasing 4x and Texture filtering 8x stay
+on by default (the owner, 2026-10-29), an exception to the original's look by default; Off in each
+gives the original's picture. The rest of stage 7 (cheats, mods, config tooling) is to be planned with the owner.
 Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
 7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.
 
