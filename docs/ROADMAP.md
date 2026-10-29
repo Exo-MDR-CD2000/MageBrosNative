@@ -144,17 +144,18 @@ how it would be built if wanted later, are in [SMOOTH_MOTION.md](SMOOTH_MOTION.m
 animation for the nine enemy types the update range pauses far away (at 21:9 that can only show
 for an enemy against the back wall or in a pit at the very edge of the screen, which the owner
 didn't see in play; at 32:9 the middle of the level reaches 501, past the 480 range), and
-perhaps a "widescreen max width" setting. Candidates: smooth motion (drawing the
-game's objects between ticks; it may become a stage of its own), moving the per-frame items in
-the table below onto ticks, the graphics options checked on Mage Bros.' scenes, Mage Bros.' own
-cheats, mods (add-ons and level packs, with `MODDING.md`), `--set`, `CONFIG.md` and the README
-sections Hopmon Native has.
+perhaps a "widescreen max width" setting. Candidates still open: the graphics options checked
+on Mage Bros.' scenes, Mage Bros.' own cheats, mods (add-ons and level packs, with `MODDING.md`),
+`--set`, `CONFIG.md` and the README sections Hopmon Native has. (The per-frame items in the
+table below are settled: each is handled or kept by the owner's choice.)
 
-What the Video page's Smooth motion does today (see [SMOOTH_MOTION.md](SMOOTH_MOTION.md)): on,
-the picture is drawn at the monitor's rate, with the camera, the mages and their shadows blended
-between the last two ticks (0.4.16; everything else still repeats between ticks until chunk B);
-off (the default from 0.4.16), it is drawn only on a tick boundary, at most 100 times a second,
-as the original. The game's speed is the same either way.
+What the Video page's Smooth motion does (0.4.20; how it works is in
+[SMOOTH_MOTION.md](SMOOTH_MOTION.md)): on, a picture is drawn for every refresh of the monitor,
+with everything that moves (the camera, the mages, enemies, bosses, platforms, coins, bullets,
+effects, shots, the water, the shop's slide and the ending's credits) shown between the last two
+ticks; the picture trails the game by up to 10 ms. Off (the default), it is drawn only on a tick
+boundary, at most 100 times a second, as the original. The game's speed and behaviour are the
+same either way.
 
 ## Stage 7: frame-rate dependence
 

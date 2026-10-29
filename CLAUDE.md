@@ -384,8 +384,9 @@ native 21:9 is feasible. The camera and lens were checked value by value against
 (all the same): see "The camera and lens: the original and the port, side by side" in
 `docs/REVERSE_ENGINEERING.md`. The owner set aside a
 G-Sync / FreeSync frame-limit choice as a possible later feature; it was planned in smooth motion's
-chunk D and dropped (2026-10-28), documented for later in `docs/SMOOTH_MOTION.md` ("D1"). The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
-its own).
+chunk D and dropped (2026-10-28), documented for later in `docs/SMOOTH_MOTION.md` ("D1"). Smooth motion is done (v0.4.20). The rest of stage 7
+(the graphics options checked on Mage Bros.' scenes, cheats, mods, config tooling) is to be planned
+with the owner; the graphics options are next (2026-10-28).
 Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
 7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.
 
