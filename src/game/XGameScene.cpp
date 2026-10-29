@@ -7,6 +7,7 @@
 #include "audio/midi.h"
 #include "core/config.h"
 #include "framework/d3dutil.h"
+#include "framework/interp.h"
 #include "gfx/device.h"
 #include "input/input.h"
 #include <algorithm>
@@ -221,13 +222,19 @@ void XGameScene::ProcessFrame(unsigned n) {
             StartFadeOut(processType_);
         }
     }
+    // (native, smooth motion: Interp::BeginTick before each tick, so blended objects keep their
+    // pose from before it)
     if (shop_->GetState() == XShop::NON) {
-        for (unsigned i = 0; i < n; i++) Tick();
+        for (unsigned i = 0; i < n; i++) {
+            Interp::BeginTick();
+            Tick();
+        }
     } else {
         // the shop pauses the level: only the status display and the camera run, then the shop.
         // (The heroes' keys are still read, so a key held over from the shop doesn't count as
         // pressed afresh when play resumes, as the original's once-a-frame JDInput.)
         for (unsigned i = 0; i < n; i++) {
+            Interp::BeginTick();
             UpdateInput();
             app_->StatusDisplay().ProcessFrame();
             camera_.ProcessFrame(heroA_->GetPos().z, Alive(*heroA_), heroB_->GetPos().z, Alive(*heroB_));
@@ -272,7 +279,12 @@ void XGameScene::SetDeviceState(Device* d) {
 
 void XGameScene::Render(Device* d, BackBuffer* bb) {
     if (state_ == NON || !heroA_) return;
-    camera_.DoSetTransform(d);
+    // native (smooth motion): the level's 3D is drawn between the last two ticks (the mages, their
+    // shadows and the camera so far); the shop, the HUD and the fade as they are
+    Interp::SetScope(true);
+    Interp::BeginFrame();
+    D3DMATRIX view = camera_.BlendedView();
+    d->SetTransform(D3DTRANSFORMSTATE_VIEW, &view);
     // native: the draw range grows with the 3D view (ViewReachFactor): 400 at 4:3, 533 at 16:9,
     // 600 at 4:3 with the field of view at 150%
     loop_.SetVisibleRange(400.0f * ViewReachFactor());
@@ -289,18 +301,20 @@ void XGameScene::Render(Device* d, BackBuffer* bb) {
         if (!h) return;
         h->Render(d);
         if (Alive(*h)) {
-            shadow.SetPos(h->GetPos());
+            shadow.SetPos(h->DrawPos());
             shadow.Render(d, level_.Collision());
         }
     };
     renderHero(heroA_.get(), *heroShadowA_);
     renderHero(heroB_.get(), *heroShadowB_);
-    loop_.RenderObjects(d, camera_.View());
-    loop_.RenderEffects(d, camera_.View());
+    loop_.RenderObjects(d, view);
+    loop_.RenderEffects(d, view);
     D3DMATRIX identity;
     D3DUtil_SetIdentityMatrix(identity);
     d->SetTransform(D3DTRANSFORMSTATE_WORLD, &identity);
     d->SetGameplayView(false);
+    Interp::SetScope(false);
+    camera_.DoSetTransform(d);  // the shop's panel is placed by the tick's camera
 
     // then the status display, blitted over the scene, and the fade over everything
     XStatusDisplay::Info info;
@@ -315,8 +329,13 @@ void XGameScene::Render(Device* d, BackBuffer* bb) {
     info.statusB = &app_->HeroStatus(false);
     info.heroADead = heroA_->GetLiveState() == XHero::DEAD;
     info.heroBDead = heroB_->GetLiveState() == XHero::DEAD;
+    // (native, smooth motion: the shop's slide between ticks; the status display as it is)
+    Interp::SetScope(true);
     if (shop_->GetState() != XShop::NON) shop_->RenderDim(d);  // native: widescreen only
+    Interp::SetScope(false);
     app_->StatusDisplay().Render(bb, info);
+    Interp::SetScope(true);
     if (shop_->GetState() != XShop::NON) shop_->Render(d, bb);
+    Interp::SetScope(false);
     RenderFade(bb);
 }

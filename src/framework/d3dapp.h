@@ -99,7 +99,7 @@ protected:
     bool m_bReady = false;
     bool m_bFrameMoving = true;
     bool m_bSingleStep = false;
-    DWORD m_dwLastFrameTime = 0;
+    DWORD m_dwLastFrameTime = 0;  // when the latest tick came due (ms; lastTickNs_ to the ns)
     float m_fFPS = 0.f;
     const char* m_strWindowTitle = "D3D Application";
     bool m_bAppUseZBuffer = false;
@@ -107,6 +107,16 @@ protected:
 
 private:
     HRESULT Render3DEnvironment(DWORD now, bool forceRender);
+    // Ticks are counted on the nanosecond clock (still exactly 10 ms each), so the smooth motion
+    // alpha has no millisecond steps. HoldTickPhase keeps the blend where it is while the game
+    // stands still (the options menu, P), so the picture doesn't jump when it moves again.
+    void SetLastTick(uint64_t ns) {
+        lastTickNs_ = ns;
+        m_dwLastFrameTime = (DWORD)(ns / 1000000);
+    }
+    void HoldTickPhase(uint64_t nowNs, uint64_t tickNow);
+    uint64_t lastTickNs_ = 0;
+    bool heldLastFrame_ = false;  // the last frame was drawn with the game standing still
     void UpdateStats();
     void ToggleFullscreen();
     void HandleAutomation(DWORD now);
@@ -142,8 +152,12 @@ private:
 
 // Timer used by the framework (milliseconds, like timeGetTime)
 DWORD AppTimeMs();
+// The same clock in nanoseconds (AppTimeMs() == AppTimeNs() / 1,000,000)
+uint64_t AppTimeNs();
 // Fraction (0..1) of the current 10 ms logic tick that has elapsed at render time.
 float AppTickAlpha();
+// The frames drawn a second, as last measured (the FPS counter's number; 0 before the first second)
+float AppFrameRate();
 // Inject a DIK key state for automation (pressed = true/false)
 void AppInjectKey(int dik, bool pressed);
 bool AppInjectedKey(int dik);

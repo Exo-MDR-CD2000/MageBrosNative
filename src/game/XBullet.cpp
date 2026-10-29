@@ -1,4 +1,5 @@
 #include "game/XBullet.h"
+#include "framework/interp.h"
 #include "game/JModel.h"
 #include "game/JObject3D.h"
 #include "game/XGameContext.h"
@@ -295,7 +296,7 @@ public:
     }
     void Render(Device* d, const D3DMATRIX& view) override {
         if (liveState_ == NON) return;
-        particle_->SetWorldPos(pos_);
+        particle_->SetWorldPos(Interp::BlendPos(prevPos_, pos_, prevTick_));  // (native: smooth motion)
         particle_->Render2(d, view);
     }
 
@@ -372,7 +373,8 @@ void XBulletBase::Render(Device* d, const D3DMATRIX&) {
     if (liveState_ == NON) return;
     if (model_) model_->Render(d);
     if (shadow_) {
-        shadow_->SetPos(pos_);
+        // (native: where the model is drawn)
+        shadow_->SetPos(model_ ? pos_ + model_->BlendOffset() : pos_);
         shadow_->Render(d, game_->level->Collision());
     }
 }
@@ -393,6 +395,11 @@ bool XBulletBase::CollisionCheck_Hero(XHero* hero) {
     hero->Damage(*game_->heroWorld);
     hero->KnockBack(pos_);
     return true;
+}
+
+void XBulletBase::KeepPrevPos() {
+    prevPos_ = pos_;
+    prevTick_ = Interp::CurrentTick();
 }
 
 void XBulletBase::UpdateWorldMatrix() {
@@ -447,6 +454,7 @@ void XBulletList::CreateWizardFire(const D3DVECTOR& pos, float yaw) {
 void XBulletList::ProcessFrame() {
     for (auto& s : slots_) {
         if (!s) continue;
+        s->KeepPrevPos();  // native (smooth motion)
         s->ProcessFrame();
         if (s->GetState() == XBulletBase::NON) s.reset();
     }

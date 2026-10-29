@@ -1,4 +1,6 @@
 #include "XEndingObject.h"
+#include "framework/interp.h"
+#include "framework/d3dapp.h"
 #include "game/JDInput.h"
 #include "game/JModel.h"
 #include "game/JObject3D.h"
@@ -9,6 +11,7 @@
 #include "gfx/device.h"
 #include "input/input.h"
 #include <algorithm>
+#include <cmath>
 
 namespace {
 // bitmaps: the film strips and the last credit are not colour-keyed
@@ -19,6 +22,12 @@ const uint16_t kTextureFloor = 0x2c8, kTextureWall = 0x2c7, kTextureShadow = 0xa
 const uint16_t kModelMageA = 0x163, kModelMageB = 0x168, kModelWand = 0x1b7;
 const uint16_t kSoundDecide = 0xed;
 constexpr unsigned kFadeTicks = 254;
+// native (smooth motion): the corridor's scroll a tick at a given frame rate: 0.008 a frame, at
+// most 100 frames a second (the frame loop's cap), spread over the 100 ticks
+float CorridorPerTick(float frameRate) {
+    if (frameRate <= 0.0f || frameRate > 100.0f) frameRate = 100.0f;
+    return 0.008f * frameRate / 100.0f;
+}
 constexpr float kPi = 3.14159f, kHalfPi = 1.5708f;
 }  // namespace
 
@@ -115,7 +124,15 @@ void XEndingObject::ProcessFrame(unsigned n) {
     if (state_ == NON) return;
     tick_ += n;
     localCounter_ += n;
-    textureOffset_ += 0.008f;  // (once a frame, not once a tick, as the original)
+    // (once a frame, not once a tick, as the original; native: with smooth motion, once a tick at
+    // the speed the frame rate gives it, drawn between ticks: the same speed, without standing
+    // still on the frames that run no tick)
+    if (Interp::Enabled()) {
+        corridorPerTick_ = CorridorPerTick(AppFrameRate());
+        textureOffset_ += corridorPerTick_ * (float)n;
+    } else {
+        textureOffset_ += 0.008f;
+    }
     JDInput& in = app_->GetDInput();
     in.UpdateInputState();
     if (state_ == FADEIN) {
@@ -169,6 +186,24 @@ void XEndingObject::ProcessFrame(unsigned n) {
     }
 }
 
+// Native (smooth motion): the credit's x one tick earlier, blended to creditPosX_ by alpha. Each
+// tick adds one to tick_ (ProcessFrame adds them all at once); a state that began in the latest
+// tick (tick_ 0) carries on from where the one before ended. A new credit (WAIT1) jumps from past
+// the left edge to past the right one, unseen, so it isn't blended. Only while the credits run
+// (PROCESS): the fade-out after the last one starts tick_ again from 0 for itself.
+float XEndingObject::CreditPosXBlended() const {
+    float a = Interp::Alpha();
+    if (a >= 1.0f || state_ != PROCESS) return (float)creditPosX_;
+    // (the slides on their exact line, 2.5 a tick, not the whole pixels each tick rounds to, which
+    // step 2, 3, 2, 3 and would make the glide's speed wobble)
+    const float t = (float)tick_ - 1.0f + a;
+    if (creditState_ == APPEAR && tick_ >= 1) return 820.0f - t / 200.0f * 500.0f;
+    if (creditState_ == DISAPPEAR && tick_ >= 1) return 320.0f - t / 200.0f * 500.0f;
+    if ((creditState_ == WAIT2 || creditState_ == WAIT_FOR_INPUT) && tick_ == 0)
+        return 322.5f - 2.5f * a;  // from the slide in's last tick before the middle
+    return (float)creditPosX_;
+}
+
 // XEndingObject::Render: the corridor (floor and walls with their textures scrolled by the
 // offset), the shadows, the wands, the mages on their walk frame (one step every 9 ticks), the
 // film strips (80-pixel tiles moving left a quarter pixel a tick) and the credit centred at
@@ -176,7 +211,13 @@ void XEndingObject::ProcessFrame(unsigned n) {
 void XEndingObject::Render(Device* d, BackBuffer* bb) {
     if (state_ == NON) return;
     camera_->DoSetTransform(d);
-    const float off = textureOffset_;
+    // native (smooth motion): the corridor between the last two ticks, and the credit's slide
+    Interp::SetScope(true);
+    const float alpha = Interp::Alpha();
+    const float creditX = CreditPosXBlended();
+    Interp::SetScope(false);
+    float off = textureOffset_;
+    if (Interp::Enabled() && alpha < 1.0f) off -= corridorPerTick_ * (1.0f - alpha);
     floor_->SetUV(0.0f, 5.0f, off, 320.0f + off, 0.0f);
     floor_->Render(d);
     wallLeft_->SetUV(-off, 320.0f - off, 0.0f, 1.0f, 0.0f);
@@ -210,11 +251,24 @@ void XEndingObject::Render(Device* d, BackBuffer* bb) {
         // native (widescreen): the credit waits and leaves as far past the view's edges as the
         // original's x 820 and -180 are past the 4:3 screen's, on the same ticks (so it slides a
         // little faster); the original's x at 4:3
-        int x = creditPosX_;
-        if (x > 320) x += (x - 320) * (viewRight - 640) / 500;
-        else x += (320 - x) * viewLeft / 500;
-        credit_[creditIndex_]->SetCenterPos(x, 240);
-        credit_[creditIndex_]->Draw(bb);
+        if (alpha >= 1.0f) {
+            int x = creditPosX_;
+            if (x > 320) x += (x - 320) * (viewRight - 640) / 500;
+            else x += (320 - x) * viewLeft / 500;
+            credit_[creditIndex_]->SetCenterPos(x, 240);
+            credit_[creditIndex_]->Draw(bb);
+        } else {
+            // native (smooth motion): between ticks, placed between whole 640 x 480 pixels (the
+            // fraction as a shift of the blit), so it glides evenly
+            float x = creditX;
+            if (x > 320.0f) x += (x - 320.0f) * (float)(viewRight - 640) / 500.0f;
+            else x += (320.0f - x) * (float)viewLeft / 500.0f;
+            int xi = (int)std::floor(x);
+            d->BeginHudScale(1.0f, 0.0f, 0.0f, x - (float)xi);
+            credit_[creditIndex_]->SetCenterPos(xi, 240);
+            credit_[creditIndex_]->Draw(bb);
+            d->EndHudScale();
+        }
     }
     RenderFade(bb);
 }

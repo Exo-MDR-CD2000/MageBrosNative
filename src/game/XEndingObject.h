@@ -45,4 +45,8 @@ private:
     int creditIndex_ = -1;       // +0xd8: the credit shown (-1 before the first)
     int creditPosX_ = 0;         // +0xdc: its centre's x
     int creditState_ = WAIT1;    // +0xe0
+    // Native (smooth motion): the credit's x between the last two ticks (creditPosX_ itself at
+    // alpha 1 or outside smooth motion)
+    float CreditPosXBlended() const;
+    float corridorPerTick_ = 0.008f;  // native (smooth motion): the corridor's scroll in the latest tick
 };

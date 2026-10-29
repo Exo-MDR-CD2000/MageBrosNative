@@ -38,6 +38,8 @@ public:
     // XBulletBase::CollisionCheck_Fire: a hero's shot at `pos` with `radius` reaches this bullet
     bool CollisionCheck_Fire(const D3DVECTOR& pos, float radius) const;
     LiveState GetState() const { return liveState_; }
+    // native (smooth motion): XBulletList keeps the position before each tick
+    void KeepPrevPos();
 
 protected:
     bool CollisionCheck_Hero(XHero* hero);  // _CollisionCheck_Hero
@@ -47,6 +49,8 @@ protected:
     LiveState liveState_ = NON;
     unsigned localCounter_ = 0;
     D3DVECTOR pos_;
+    D3DVECTOR prevPos_{0, 0, 0};  // native (smooth motion): pos_ before tick prevTick_ (the flame)
+    unsigned prevTick_ = ~0u;
     float yaw_ = 0, pitch_ = 0, radius_ = 0;
     std::unique_ptr<JObject3DX> model_;
     std::unique_ptr<XShadow> shadow_;

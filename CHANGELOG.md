@@ -7,6 +7,91 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.20] - 2026-10-28
+
+**Smooth motion** (Options > Video > Smooth motion, off by default). This release brings together
+versions 0.4.16 to 0.4.20, which were built and tested before being released; each one's own
+notes are below.
+
+- **What it does.** The game runs in steps, 100 a second, as the original. Without Smooth motion,
+  a picture is drawn only when a step has run, so on a 144 Hz screen some pictures are shown
+  twice and movement judders slightly. With Smooth motion on, a picture is drawn for every refresh
+  of your monitor, showing the game between its last two steps, so everything moves smoothly at
+  any refresh rate: 60, 144, 240 Hz or more.
+- **What moves smoothly**: the camera, your mage (or both), their shadows, enemies, every boss
+  (the dragon's whole body, the genie, the nest and its birds, the wizard), platforms and anyone
+  riding them, cannons, coins, bullets, smoke, sparkles, explosions, your shots, the dragon's
+  flame, the water's ripples, the shop sliding open and closed, and the ending's credits.
+- **The game itself doesn't change**: the same speed, timing, jumps, enemies and controls, with
+  Smooth motion on or off. The only cost is that the picture trails the game by at most 10 ms
+  (about 5 on average).
+- **Kept as the original on purpose**: animation frames, effects growing and fading, and things
+  that move a whole pixel at a time (the menus' scrolling background, the ending's film strips,
+  the screen transitions). The ending's corridor keeps the speed it had at your frame rate,
+  scrolling evenly.
+- **Smooth motion is off by default**, so the game looks and feels like the original until you
+  turn it on. If you had it on before (it used to be on by default, but only repeated pictures),
+  it is switched off once when you update.
+- Also: a mage's shadow no longer lags a step behind while a moving platform carries it (with
+  Smooth motion on or off).
+
+New in 0.4.20 itself:
+
+- The help lines in Options > Video, the notes in `magebros_native.ini` and the README describe
+  Smooth motion in full, and what it costs.
+- The Frame limit's help line says it only applies with Smooth motion, and that VSync also caps
+  the frame rate.
+
+## [0.4.19] - 2026-10-28
+
+- **Smooth motion, fourth part**: with Smooth motion on, the shop now slides open and closed
+  smoothly (the board, the items, the shopkeeper and the dimmed background), and the ending's
+  credits glide in and out evenly.
+- With Smooth motion on, the ending's corridor now scrolls evenly, at the same speed as before.
+  On a 144 Hz screen it used to stand still on about one picture in three, which looked jittery.
+- The menus' scrolling backgrounds, the ending's film strips and the venetian-blind screen
+  transitions keep the original's look, moving a whole pixel at a time.
+
+## [0.4.18] - 2026-10-28
+
+- **Smooth motion, third part**: with Smooth motion on, the rest of a level now moves smoothly
+  too: smoke, sparkles, flashes, explosions and the other effects, your shots and their trails,
+  the dragon's flame, and the water's drifting ripples. Everything that moves in a level is now
+  drawn between the game's steps.
+- Effects that grow, shrink or fade still do so in the game's steps (in small steps of a few
+  percent), as do animated pictures such as the flame's flicker.
+- As before, Smooth motion changes only what you see: the game plays exactly the same.
+
+## [0.4.17] - 2026-10-28
+
+- **Smooth motion, second part**: with Smooth motion on, everything with a model in a level is now
+  drawn between the game's steps too: enemies, every boss (the dragon's whole body, the genie,
+  the nest and its birds, the wizard with its blade and wand), platforms, cannons, the genie's
+  lamp, coins, and cannonballs, needle balls, rockets and the wizard's fireballs. Their shadows
+  follow them smoothly.
+- A mage riding a moving platform now moves smoothly with it, with its shadow on the platform.
+- Things that appear (a coin popping out, a new cannonball, the wizard's wand, the genie leaving
+  its lamp) show up where they are, instead of gliding in.
+- Still in the game's steps for now: particle effects, the mages' shots, the dragon's flame and
+  the water's ripples (next part).
+- Fixed (0.4.16, Smooth motion on or off): a mage's shadow could sit up to a step behind the mage
+  while a moving platform carried it.
+
+## [0.4.16] - 2026-10-27
+
+- **Smooth motion, first part** (Options > Video > Smooth motion): when it's on, your mage (or
+  both mages), their shadows and the camera are drawn between the game's steps, so walking,
+  jumping, falling and the screen's scrolling are smooth at any refresh rate (144 Hz, 240 Hz,
+  and 60 Hz too). Everything else in a level still moves in the game's steps for now; it follows
+  in the next parts. A mage riding a moving platform can drift slightly against it until then.
+- Smooth motion changes only what you see: the game runs exactly as before, at the same speed,
+  with your keys read at the same moments. The picture trails the game by at most 10 ms (about
+  5 ms on average).
+- **Smooth motion is now off by default**, so the game looks and feels like the original unless
+  you turn it on. It was on before but only repeated pictures. Your setting is switched off once
+  when you update; turn it back on in Options > Video if you want it.
+- Pausing (P) and the options menu no longer make the picture jump when the game carries on.
+
 ## [0.4.15] - 2026-10-26
 
 - **Field of view (experimental)**: Options > Video > Field of view now works, from 50% (zoomed in) to 200%

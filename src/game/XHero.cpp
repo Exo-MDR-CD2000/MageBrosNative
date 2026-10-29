@@ -78,6 +78,8 @@ void XHero::Reset() {
     yaw_ = 0;
     pitch_ = 0;
     UpdateWorldMatrix();
+    body_->Snap();  // native (smooth motion): dropped in, not slid there from where it was
+    wand_->Snap();
     wandOut_ = false;
     beingKnockBack_ = false;
     knockBackDir_ = 0;
@@ -99,6 +101,12 @@ void XHero::Reset() {
     localCounter_ = 0;
     jumpState_ = LAND;
     liveState_ = NORMAL;
+}
+
+D3DVECTOR XHero::DrawPos() const {
+    // (the hero's own position, which a platform may have pushed since its model was placed)
+    D3DVECTOR o = body_->BlendOffset();
+    return D3DVECTOR(pos_.x + o.x, pos_.y + o.y, pos_.z + o.z);
 }
 
 void XHero::UpdateWorldMatrix() {

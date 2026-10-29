@@ -138,6 +138,8 @@ public:
     }
 
     const D3DVECTOR& GetPos() const { return pos_; }
+    // Native (smooth motion): where the mage is drawn this frame, for its shadow
+    D3DVECTOR DrawPos() const;
     float GetYaw() const { return yaw_; }
     bool BeingDamage() const { return damageCounter_ > 0; }
     const XCollideBox& GetCollideBox() const { return box_; }

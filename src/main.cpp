@@ -14,6 +14,7 @@
 #include "core/saves.h"
 #include "framework/d3dapp.h"
 #include "framework/d3dfile.h"
+#include "framework/interp.h"
 #include "framework/d3dtextr.h"
 #include "framework/d3dutil.h"
 #include "game/XApplication.h"
@@ -25,6 +26,7 @@
 #include <SDL3/SDL.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -113,8 +115,13 @@ protected:
 
     // test automation (--auto): "level=w,l" goes straight into the game at a level (from any
     // screen), "place=x,z" drops hero A there ("placeB=x,z" hero B), "players=1" or "players=2"
-    // sets the number of players for the next level started, "ending" goes to the ending
+    // sets the number of players for the next level started, "ending" goes to the ending,
+    // "alpha=0.5" holds smooth motion's blend there ("alpha=off" frees it)
     void OnAutomation(const std::string& action, const std::string& arg) override {
+        if (action == "alpha") {
+            Interp::HoldAlpha(arg == "off" ? -1.0f : (float)std::atof(arg.c_str()));
+            return;
+        }
         if (action == "ending") {
             app_.SetState(XApplication::ENDING);
             return;

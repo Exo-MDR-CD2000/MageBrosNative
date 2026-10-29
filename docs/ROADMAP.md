@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below) |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, built on a branch and merged into `main` on 2026-10-28, released as v0.4.20; [SMOOTH_MOTION.md](SMOOTH_MOTION.md)) |
 
 ## Stage 4, chunk by chunk
 
@@ -128,10 +128,19 @@ Mage Bros.' own and finishes the ones that need the game's help.
 | 2d-iv | Field of view: `XGameScene::Render` turns `Device::SetGameplayView` on for the level's 3D and off before the shop and the HUD, so the renderer's lens scaling (both parts of the lens divided by the setting) applies to levels only; the title, level select, the shop's panel (sized to its 2D board), the HUD and the ending keep the original lens. Zoomed out, the draw range and the sound panning grow by the setting (`ViewReachFactor` = widescreen factor × the setting above 100%); zoomed in they keep the original's. The update range (game logic) is unchanged. The menu row offers 50% to 200% (the owner's choice) and shows the angle; the setting is marked experimental, with players advised to leave it at 100% (the owner: help line, ini comment, README and CHANGELOG); the help line warns that above 100% the level's unbuilt edges show (black below the near edge from about 105%, above the back wall and past the ends further out), as the original's levels are built only as far as its own view. Checked: at 100% levels at 4:3 and 16:9 and the open shop byte for byte the same as 0.4.14; at 200%, 16:9 and 21:9, in 1-1, 1-6, 2-4 and 3-5, the same objects as a draw-everything build (the only differences, a few pixels, were a slug caught a moment apart); the shop's panel lined up at 50% and 150% | Field of view in levels | Done (0.4.15) |
 
 Chunk 2 is done but the options menu in widescreen, left as it is. The rest is to be planned with
-the owner. For the field of view, possibly with mods: scenery beyond the original's view (deeper
+the owner. **Smooth motion (interpolation) is done**: researched and planned in
+[SMOOTH_MOTION.md](SMOOTH_MOTION.md) in four chunks (A timing and camera, B everything in a level,
+C other screens, D polish), built and tested on the `interpolation-test` branch, and merged into
+`main` on 2026-10-28 (released as v0.4.20, whose notes sum it all up). **Chunk A (the clock, the camera, the mages and their shadows) is built in
+0.4.16** (the owner's first play test: smooth, nothing off); chunk B is planned in two parts: **B1 (every model) is built in 0.4.17** (the owner's play test: fine), **B2 (sprites) is built in 0.4.18**; **chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; **chunk D (help text, docs, final checks) is built in 0.4.20**: smooth motion is complete and merged (the owner's merge decisions are in SMOOTH_MOTION.md, "D5"). How it works: the first section of SMOOTH_MOTION.md. Smooth motion is
+off by default from 0.4.16 (the owner, 2026-10-27). Set aside for later (the owner, 2026-10-27): an in-game debug
+overlay (ticks a second, ticks per frame, frame-time and alpha graphs, snaps, the display
+settings in effect), off by default, reading values only. For the field of view, possibly with mods: scenery beyond the original's view (deeper
 cliffs below the near edge, taller walls, something past the ends) so zooming out holds up. Possible later, maybe more than a game of
 this size needs (the owner's notes): a frame-limit choice for G-Sync / FreeSync (the monitor's
-refresh rate less 3), worth it only once smooth motion draws between ticks; for 32:9 screens, an idle
+refresh rate less 3), **planned in smooth motion's chunk D and then dropped** (the owner,
+2026-10-28: a few milliseconds at most, and the graphics drivers already offer the cap); why, and
+how it would be built if wanted later, are in [SMOOTH_MOTION.md](SMOOTH_MOTION.md) ("D1"); for 32:9 screens, an idle
 animation for the nine enemy types the update range pauses far away (at 21:9 that can only show
 for an enemy against the back wall or in a pit at the very edge of the screen, which the owner
 didn't see in play; at 32:9 the middle of the level reaches 501, past the 480 range), and
@@ -141,10 +150,11 @@ the table below onto ticks, the graphics options checked on Mage Bros.' scenes, 
 cheats, mods (add-ons and level packs, with `MODDING.md`), `--set`, `CONFIG.md` and the README
 sections Hopmon Native has.
 
-What the Video page's Smooth motion does today: on (the default, from Hopmon Native), the
-picture is drawn at the monitor's rate but repeats between ticks; off, it is drawn only on a
-tick boundary, at most 100 times a second, as the original. The game's speed is the same either
-way.
+What the Video page's Smooth motion does today (see [SMOOTH_MOTION.md](SMOOTH_MOTION.md)): on,
+the picture is drawn at the monitor's rate, with the camera, the mages and their shadows blended
+between the last two ticks (0.4.16; everything else still repeats between ticks until chunk B);
+off (the default from 0.4.16), it is drawn only on a tick boundary, at most 100 times a second,
+as the original. The game's speed is the same either way.
 
 ## Stage 7: frame-rate dependence
 
@@ -162,7 +172,7 @@ part of high-refresh support. Add each new one to this table as it's found.
 
 | Where | What advances per frame | Found in |
 |---|---|---|
-| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks). `ProcessFrame` runs only on frames with at least one tick, so at most 100 times a second. **Kept as the original** (the owner's decision, 2026-10-25: a minor visual effect, hardly noticeable in play); the details are under the table | stage 6 chunk 8 (0.3.6) |
+| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks). `ProcessFrame` runs only on frames with at least one tick, so at most 100 times a second. **Kept as the original with Smooth motion off** (the owner's decision, 2026-10-25: a minor visual effect, hardly noticeable in play). **With Smooth motion on, once a tick at the speed the frame rate gave it (0.008 x the frame rate up to 100, spread over 100 ticks), drawn between ticks** (the owner, 2026-10-28: at 144 Hz the once-a-frame scroll stood still on one frame in three; the speed of the faster frame rates kept, as it conveys the mages leaving at speed); the details are under the table | stage 6 chunk 8 (0.3.6); smooth motion 0.4.19 |
 | The heroes' fire and jump presses (`XHeroA` / `XHeroB::_UpdateInput` read the once-a-frame `JDInput`) | A press counts on every tick of its frame: one at 100 frames a second, sometimes two at 60 (a 10 ms jump buffer on landing). **Already handled**: the port reads the heroes' keys every tick, as the original at 100 frames a second, whatever the frame rate (the owner's decision) | the frame-loop review, stage 7 chunk 2d-i (0.4.4) |
 | The menus and the shop (`JDInput::UpdateInputState`, `XShop::GetState` in `XGameObject::ProcessFrame`) | The menus' keys are read once a frame ("pressed" = held now and not at the last read), and the shop's state once a frame. This changes no speed; drawing between ticks must keep it on frames that tick | stage 7 chunk 1 (0.4.0) |
 
@@ -175,6 +185,16 @@ stops it. The port behaves the same: on the owner's 60 Hz receiver 1x, on the 14
 Only the textures move faster: the mages' walk, the credits, the music and the ending's length
 run on ticks. Had it been changed, the scroll would have been `0.008 x 60 / 100 = 0.0048` per
 tick (`textureOffset += 0.0048f * n`), the 60 Hz speed at any frame rate.
+
+**With Smooth motion on (0.4.19)** the corridor moves once a tick, drawn between ticks, at the
+speed the frame rate gives it: `0.008 x min(frame rate, 100) / 100` a tick (`CorridorPerTick`,
+from the measured frame rate, `AppFrameRate`). Smooth motion draws 144 frames a second at
+144 Hz, but the once-a-frame scroll only moved on the frames that ran a tick, about 100 of them,
+so the corridor stood still on about one frame in three, a stutter behind the gliding credits
+that the owner noticed. The owner first had it moved to the 60 Hz speed, then chose to keep the
+faster frame rates' speed (it conveys the mages leaving at speed). Measured: at 144 Hz 0.800 a
+second, even on every frame (Smooth motion off: 0.800 a second, 0.69 to 1.00 frame to frame); at a
+frame limit of 60, 0.480. With Smooth motion off the scroll is the original's.
 
 ## Open items
 

@@ -30,10 +30,12 @@ public:
     explicit XShadowOnPlatform(const XGameContext* game);
     ~XShadowOnPlatform();
     void SetPlatformBoxPtr(const XCollideBox* box) { platformBox_ = box; }
-    void Render(Device* d);
+    // `drawOffset` (native, smooth motion): how far the platform is drawn from its box this frame
+    // (zero when not blending)
+    void Render(Device* d, const D3DVECTOR& drawOffset);
 
 private:
-    void RenderShadow(Device* d, const XHero* hero, JObject3DRect& shadow);
+    void RenderShadow(Device* d, const XHero* hero, JObject3DRect& shadow, const D3DVECTOR& drawOffset);
     const XGameContext* game_;
     const XCollideBox* platformBox_ = nullptr;
     std::unique_ptr<JObject3DRect> shadow_[2];

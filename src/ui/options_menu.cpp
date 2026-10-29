@@ -667,14 +667,14 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
         v.push_back(it);
     }
     v.push_back({"Smooth motion",
-                 "On: draws at the monitor's rate (in-between pictures come later). Off: on game ticks, max 100, as the original.",
+                 "On: drawn between game ticks, smooth at any refresh rate; up to 10 ms behind. Off: as the original.",
                  [] { return OnOff(GetConfig().interpolation); },
                  [this](int) {
                      GetConfig().interpolation = !GetConfig().interpolation;
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Frame limit", "Most frames a second with Smooth motion (without it: 100). With VSync, the refresh rate.",
+    v.push_back({"Frame limit", "Most frames a second, with Smooth motion only (off: 100 at most). VSync also caps it.",
                  [] {
                      int f = GetConfig().maxFps;
                      return f == 0 ? std::string("Unlimited") : std::to_string(f);

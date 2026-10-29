@@ -69,11 +69,15 @@ private:
     void _UpdateInput();        // the shopper's keys and gamepad
     void _CheckEnabledItems();  // grey out what the shopper can't buy
     float _SlideIn() const;     // how far in: 0..1 over each fade, 1 while open
+    // native (smooth motion): _SlideIn between the last two ticks, by Interp::Alpha (the tick's own
+    // at alpha 1)
+    float SlideInBlended() const;
 
     XApplication* app_;
     const XCamera* camera_;
     unsigned localCounter_ = 0;
     STATE state_ = NON;
+    bool justOpened_ = false;  // native (smooth motion): the fade-in ended in the latest tick
     XHero* pHero_ = nullptr;
     XShopItem shopItem_[kItems];
     std::unique_ptr<JSprite> bmpHealPotion_, bmpMagicPotion_, bmpDoubleWand_, bmpTripleWand_;

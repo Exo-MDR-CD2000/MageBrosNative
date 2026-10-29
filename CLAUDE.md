@@ -264,7 +264,10 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
   last one stops in the middle about 45 s later and waits for a button (allow a little more:
   startup takes time).
 
-`level`, `place`, `placeB`, `players` and `ending` (and F3, `--ending`) are test hooks only. Key names are SDL's (`Left Ctrl`,
+- `alpha=<0..1>`: hold smooth motion's blend there (only with Smooth motion on, in a level's 3D);
+  `alpha=off` frees it. `alpha=1` must give the same pictures as Smooth motion off.
+
+`level`, `place`, `placeB`, `players`, `ending` and `alpha` (and F3, `--ending`) are test hooks only. Key names are SDL's (`Left Ctrl`,
 `Right Ctrl`, `Left Shift`, `D`, `1`); a wrong name does nothing, silently.
 
 Screenshots are game images: view them, then delete them. Never commit them.
@@ -326,16 +329,28 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-26, version 0.4.15, stage 7 chunk 2 done but the options menu)
+## Where we are (last updated: 2026-10-28, version 0.4.20, smooth motion done and merged into `main`)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
 opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) is done in
 0.4.0, tested by the owner. **Branches:** 0.4.0 to 0.4.13 were built on a `menu-dev` branch,
 apart from `main`; the owner merged it into `main` on 2026-10-26 (pull request #1, released as
-v0.4.13). **Work goes on `main` again**: commit and push there (each push publishes the
-version's release; see "GitHub releases"). The owner plans no new branch for now, perhaps one
-for the modding work. Chunk 2 (the Video page) is split into small chunks for thoroughness: 2a
+v0.4.13). **Work goes on `main`**: commit and push there (each push publishes the
+version's release; see "GitHub releases"). **Smooth motion** (chunks A to D, versions 0.4.16 to
+0.4.20) was built and tested on an `interpolation-test` branch (created from `main` at 0.4.15 on
+2026-10-26) and **merged into `main` directly on 2026-10-28, released as v0.4.20**, whose
+CHANGELOG section sums it up (0.4.16 to 0.4.19 were never released on their own). The branch is
+kept on GitHub; nothing goes there any more. How it works is the first section of
+`docs/SMOOTH_MOTION.md` ("How it works (as built)"); each chunk's plan, checks and the owner's
+decisions follow it there. The owner's play tests found A, B1 and C (the ending) fine after the
+fixes recorded there; the owner then chose to merge 0.4.20. Decided along the way: the
+2D that moves in whole pixels (film strips, menu backgrounds, the venetian-blind fades) stays as
+the original; the ending's corridor, with Smooth motion on, scrolls once a tick at the speed the
+frame rate gave it; a G-Sync / FreeSync "Refresh - 3" frame limit was dropped (documented for
+later, "D1"). Smooth motion is **off by default** from 0.4.16 (the owner; config_version 21 turns
+it off once in older files). Perhaps a branch for the
+modding work later. Chunk 2 (the Video page) is split into small chunks for thoroughness: 2a
 windowed mode (0.4.1, tested by the owner), 2b exclusive fullscreen (0.4.2, tested by the
 owner), 2c monitors (0.4.3, tested by the owner), 2d-i VSync (0.4.4), 2d-ii widescreen culling
 (0.4.5, tested by the owner) and widescreen sound panning (0.4.6, tested by the owner; at 4:3 and
@@ -368,7 +383,8 @@ is to be planned with the owner** (see ROADMAP). The owner's must: 16:9 with no 
 native 21:9 is feasible. The camera and lens were checked value by value against the original
 (all the same): see "The camera and lens: the original and the port, side by side" in
 `docs/REVERSE_ENGINEERING.md`. The owner set aside a
-G-Sync / FreeSync frame-limit choice as a possible later feature (noted in the ROADMAP). The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
+G-Sync / FreeSync frame-limit choice as a possible later feature; it was planned in smooth motion's
+chunk D and dropped (2026-10-28), documented for later in `docs/SMOOTH_MOTION.md` ("D1"). The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
 its own).
 Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
 7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.
@@ -399,9 +415,10 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   rebinding a DIK moves every place the game reads it (the menus' W / S too).
 - `OptionsMenu::NotYet` greys out what isn't built: Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
   menu's mod pages still speak of Hopmon's assets).
-- Smooth motion (`interpolation`, on by default, from Hopmon) only sets how often the picture is
-  drawn: no game object takes part in `Interp::Tracked`, so frames repeat between ticks. Off, the
-  framework draws only on frames with a tick (at most 100 a second, the original's pace).
+- Smooth motion (`interpolation`, off by default from 0.4.16): drawing between ticks, only inside
+  `Interp::SetScope` (a level's 3D, the shop, the ending's credits and corridor); `--auto alpha=`
+  holds the blend for tests. Off, the framework draws only on frames with a tick (at most 100 a
+  second, the original's pace). How it works: `docs/SMOOTH_MOTION.md`, first section.
 - `config_version` 15 rewrote the ini notes for Mage Bros.' keys and dropped Hopmon's two
   cheats; `unlock_all_levels` is still read but nothing uses it.
 
@@ -506,8 +523,11 @@ the island (z 1300 to 1460); the dragon becomes a target about 10 s in.
 **The ending (chunk 8, 0.3.6)** is in: `XEndingObject` and `XCamera::ResetForEnding` (see "The
 ending" in `docs/REVERSE_ENGINEERING.md`). `--auto ending` jumps there. Its corridor scrolls once
 a frame (`textureOffset`, as the original), so it scrolls faster at higher frame rates. The owner chose
-to keep it so (2026-10-25: minor and visual only); the details are under the "Stage 7:
-frame-rate dependence" table in `docs/ROADMAP.md`.
+to keep it so (2026-10-25: minor and visual only) with Smooth motion off; with Smooth motion on it
+scrolls once a tick at the speed the frame rate gives it (up to 100), drawn between ticks (0.4.19,
+the owner's choice: the once-a-frame scroll stood still on one frame in three at 144 Hz; the
+faster speed kept, as it conveys the mages leaving). The details are under the
+"Stage 7: frame-rate dependence" table in `docs/ROADMAP.md`.
 
 Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
 status, shot colour, warp photons, lost-gold line and platform mark; `XGameScene::UpdateInput`

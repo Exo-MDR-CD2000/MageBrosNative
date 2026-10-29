@@ -109,6 +109,8 @@ private:
         bool chase = false;
         const XEnemyBase* targetEnemy = nullptr;
         const XBossBase* targetBoss = nullptr;
+        D3DVECTOR prevPos{0, 0, 0};  // native (smooth motion): pos before tick prevTick
+        unsigned prevTick = ~0u;
     };
     struct Torch {
         bool large = false, fireOn = false;

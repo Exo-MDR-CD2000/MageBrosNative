@@ -1247,7 +1247,7 @@ public:
     }
     void Render(Device* d) override {
         if (liveState_ == XEnemyBase::NON || !game_->IsVisible(pos_)) return;
-        ghostShadow_->SetPos(pos_);
+        ghostShadow_->SetPos(pos_ + model_->BlendOffset());  // (native: where the model is drawn)
         ghostShadow_->Render(d, game_->level->Collision());
         model_->SetCurrentFrame(frame_);
         model_->Render(d);
@@ -1754,7 +1754,7 @@ void XEnemyBase::ProcessFrame() {
 void XEnemyBase::Render(Device* d) {
     if (liveState_ == NON || !game_->IsVisible(pos_)) return;
     if (shadow_) {
-        shadow_->SetPosXZ(pos_);
+        shadow_->SetPosXZ(pos_ + model_->BlendOffset());  // (native: where the model is drawn)
         shadow_->Render(d);
     }
     model_->SetCurrentFrame(frame_);
