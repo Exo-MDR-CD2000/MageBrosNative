@@ -156,6 +156,8 @@ DWORD AppTimeMs();
 uint64_t AppTimeNs();
 // Fraction (0..1) of the current 10 ms logic tick that has elapsed at render time.
 float AppTickAlpha();
+// The frames drawn a second, as last measured (the FPS counter's number; 0 before the first second)
+float AppFrameRate();
 // Inject a DIK key state for automation (pressed = true/false)
 void AppInjectKey(int dik, bool pressed);
 bool AppInjectedKey(int dik);

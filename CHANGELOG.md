@@ -7,6 +7,16 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.19] - 2026-10-28
+
+- **Smooth motion, fourth part**: with Smooth motion on, the shop now slides open and closed
+  smoothly (the board, the items, the shopkeeper and the dimmed background), and the ending's
+  credits glide in and out evenly.
+- With Smooth motion on, the ending's corridor now scrolls evenly, at the same speed as before.
+  On a 144 Hz screen it used to stand still on about one picture in three, which looked jittery.
+- The menus' scrolling backgrounds, the ending's film strips and the venetian-blind screen
+  transitions keep the original's look, moving a whole pixel at a time.
+
 ## [0.4.18] - 2026-10-28
 
 - **Smooth motion, third part**: with Smooth motion on, the rest of a level now moves smoothly

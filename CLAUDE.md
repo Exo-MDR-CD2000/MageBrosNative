@@ -329,7 +329,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-28, version 0.4.18 on `interpolation-test`, smooth motion chunk B built)
+## Where we are (last updated: 2026-10-28, version 0.4.19 on `interpolation-test`, smooth motion chunk C built)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -346,7 +346,9 @@ play test found it smooth, with nothing off. Chunk B is planned file by file in 
 (every model in a level) is built in 0.4.17**; the owner's play test found nothing wrong ("everything
 feels so smooth", 2026-10-28; to be revisited if a bug turns up); **B2 (sprites:
 particles, shots, the flame, the water) is built in 0.4.18**, waiting for the owner's play test.
-Chunk C (the shop's slide and the ending's credits; 0.4.19) is planned file by file, not started;
+**Chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; the owner checked the
+ending in play (2026-10-28), which led to the corridor and credit changes and the Saito logo fix in
+`docs/SMOOTH_MOTION.md` ("Chunk C as built"); chunk D (polish, frame pacing) is last, to be planned;
 the 2D that moves in whole pixels (film strips, menu backgrounds, the venetian-blind fades) stays
 as the original (the owner, 2026-10-28). Smooth motion is **off by default** from 0.4.16 (the owner;
 config_version 21 turns it off once in older files). **Versions on the branch:** each build takes
@@ -535,8 +537,11 @@ the island (z 1300 to 1460); the dragon becomes a target about 10 s in.
 **The ending (chunk 8, 0.3.6)** is in: `XEndingObject` and `XCamera::ResetForEnding` (see "The
 ending" in `docs/REVERSE_ENGINEERING.md`). `--auto ending` jumps there. Its corridor scrolls once
 a frame (`textureOffset`, as the original), so it scrolls faster at higher frame rates. The owner chose
-to keep it so (2026-10-25: minor and visual only); the details are under the "Stage 7:
-frame-rate dependence" table in `docs/ROADMAP.md`.
+to keep it so (2026-10-25: minor and visual only) with Smooth motion off; with Smooth motion on it
+scrolls once a tick at the speed the frame rate gives it (up to 100), drawn between ticks (0.4.19,
+the owner's choice: the once-a-frame scroll stood still on one frame in three at 144 Hz; the
+faster speed kept, as it conveys the mages leaving). The details are under the
+"Stage 7: frame-rate dependence" table in `docs/ROADMAP.md`.
 
 Player 2 (chunk 16, 0.2.22) is in: `XHero(false)` has MageB's models, `IsHeroA()` picks its
 status, shot colour, warp photons, lost-gold line and platform mark; `XGameScene::UpdateInput`

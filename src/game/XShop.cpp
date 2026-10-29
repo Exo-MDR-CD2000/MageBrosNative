@@ -1,4 +1,5 @@
 #include "XShop.h"
+#include "framework/interp.h"
 #include "game/JDInput.h"
 #include "game/JObject3D.h"
 #include "game/JSoundList.h"
@@ -159,11 +160,13 @@ void XShop::_UpdateInput() {
 // when the cursor can't go that way. Escape puts the cursor on exit and presses the button.
 void XShop::ProcessFrame(unsigned n) {
     if (state_ == NON) return;
+    justOpened_ = false;
     localCounter_ += n;
     if (state_ == FADEIN) {
         if (localCounter_ >= kFadeTicks) {
             localCounter_ = 0;
             state_ = PROCESS;
+            justOpened_ = true;
         }
     } else if (state_ == FADEOUT) {
         if (localCounter_ >= kFadeTicks) {
@@ -228,18 +231,34 @@ float XShop::_SlideIn() const {
     return t;
 }
 
+// Native (smooth motion): the fade counter one tick earlier plus alpha (each tick adds one, though
+// ProcessFrame adds them all at once); the tick that ends the fade-in slides the last 40th
+float XShop::SlideInBlended() const {
+    float a = Interp::Alpha();
+    if (a >= 1.0f) return _SlideIn();
+    float c = (float)localCounter_ - 1.0f + a;
+    if (c < 0.0f) c = 0.0f;
+    float t = 1.0f;
+    if (state_ == FADEIN) t = c / 40.0f;
+    else if (state_ == FADEOUT) t = (40.0f - c) / 40.0f;
+    else if (state_ == PROCESS && justOpened_) t = (39.0f + a) / 40.0f;
+    if (t < 0.0f) t = 0.0f;
+    else if (t > 1.0f) t = 1.0f;
+    return t;
+}
+
 void XShop::RenderDim(Device* d) const {
     if (state_ == NON) return;
     int viewLeft, viewRight;
     d->ViewXRange(&viewLeft, &viewRight);
     if (viewLeft >= 0) return;  // 4:3 or Stretch: as the original
-    const float black[4] = {0.0f, 0.0f, 0.0f, 0.4f * _SlideIn()};
+    const float black[4] = {0.0f, 0.0f, 0.0f, 0.4f * SlideInBlended()};
     d->DrawUIQuad((float)viewLeft, 0.0f, (float)viewRight, 480.0f, 0, 0, 0, 0, nullptr, black);
 }
 
 void XShop::Render(Device* d, BackBuffer* bb) {
     if (state_ == NON) return;
-    float t = _SlideIn();  // how far in: 0..1 over each fade
+    float t = SlideInBlended();  // how far in: 0..1 over each fade (native: between ticks)
     const XHeroStatus& s = app_->HeroStatus(pHero_->IsHeroA());
     // native (widescreen): the board and the items slide in from just past the view's edges (the
     // original's x -280 and 640 at 4:3), so they don't pop up in a wide view's sides

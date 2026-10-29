@@ -329,8 +329,13 @@ void XGameScene::Render(Device* d, BackBuffer* bb) {
     info.statusB = &app_->HeroStatus(false);
     info.heroADead = heroA_->GetLiveState() == XHero::DEAD;
     info.heroBDead = heroB_->GetLiveState() == XHero::DEAD;
+    // (native, smooth motion: the shop's slide between ticks; the status display as it is)
+    Interp::SetScope(true);
     if (shop_->GetState() != XShop::NON) shop_->RenderDim(d);  // native: widescreen only
+    Interp::SetScope(false);
     app_->StatusDisplay().Render(bb, info);
+    Interp::SetScope(true);
     if (shop_->GetState() != XShop::NON) shop_->Render(d, bb);
+    Interp::SetScope(false);
     RenderFade(bb);
 }

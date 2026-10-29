@@ -19,6 +19,8 @@ static constexpr uint64_t kTickNs = 10000000;  // a tick: 10 ms
 uint64_t AppTimeNs() { return SDL_GetTicksNS() - g_timeBase + 1000000000ull; }
 DWORD AppTimeMs() { return (DWORD)(AppTimeNs() / 1000000); }
 float AppTickAlpha() { return g_tickAlpha; }
+static float g_frameRate = 0.f;
+float AppFrameRate() { return g_frameRate; }
 
 HRESULT BackBuffer::Blt(const RECT* dst, Surface* src, const RECT* srcRect, bool keySrc) {
     return GetDevice().BltToBackBuffer(dst, src, srcRect, keySrc);
@@ -433,6 +435,7 @@ void CD3DApplication::UpdateStats() {
     statsFrames_++;
     if (t - statsLastTime_ > 1.0f) {
         m_fFPS = statsFrames_ / (t - statsLastTime_);
+        g_frameRate = m_fFPS;
         statsFrames_ = 0;
         statsLastTime_ = t;
         JudgeVSync();

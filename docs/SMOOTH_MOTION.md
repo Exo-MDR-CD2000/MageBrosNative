@@ -121,7 +121,7 @@ already moves once a frame (kept as the original, the owner's decision of 2026-1
 |---|---|---|
 | A: timing and camera (done, 0.4.16) | Snapshots before every tick, alpha from the high-resolution clock, snaps at resets; the camera, both mages and their shadows blended | Scrolling and the player's mage smooth at 144 Hz, most of what is seen |
 | B: everything in a level (done: B1 0.4.17, B2 0.4.18) | `JObject3DX` blending for enemies, bosses (the dragon's body, the nest's birds), platforms and riders, objects, bullets; sprites (particles, shots, the flame) blended from their owners' positions; the drawn-twice check | All motion in a level smooth |
-| C: other screens | The shop's slide, the ending's credits and film strips, moving parts of the title and front-end screens | Menus and the ending match |
+| C: other screens (done, 0.4.19: the shop's slide and the credits) | The shop's slide, the ending's credits and film strips, moving parts of the title and front-end screens | Menus and the ending match |
 | D: polish | Frame pacing with the frame limit (the G-Sync / FreeSync "refresh minus 3" choice becomes worth having), help text, docs, the owner's play test at 60 and 144 Hz | Fine-tuning |
 
 ## Chunk A in detail (planned 2026-10-27)
@@ -562,7 +562,7 @@ moves in whole 640 x 480 pixels, a pixel every few ticks.
 | Shop (`XShop`) | The board and the shopper's line slide in from the left, the items and exit from the right, the shopkeeper rises from the bottom; the panel and the widescreen dim fade with them | `_SlideIn()`: the fade counter / 40, so about 8 pixels a tick across 40 ticks | **Blend** (C1) |
 | Ending (`XEndingObject`) | The credits slide in and out | `creditPosX_`: 2.5 pixels a tick | **Blend** (C2) |
 | Ending | The film strips scroll left | A whole pixel every 4 ticks (`localCounter_ * 0.25`) | Whole pixels, as the original (see the decision below) |
-| Ending | The corridor's textures | Once a frame (`textureOffset_`) | Kept, the owner's decision of 2026-10-25 |
+| Ending | The corridor's textures | Once a frame (`textureOffset_`) | Kept at first (the owner's decision of 2026-10-25); changed while building C, see "Chunk C as built" |
 | Ending | The two mages | Walk frames only; they don't move | Nothing to do |
 | Title, save slots, level select | The tiled green background | A whole pixel every 4 ticks (`RenderTiledBackground`) | Whole pixels, as the original |
 | Title | The pictures fade in; the logo's glow pulses | Alpha, 0.002 a tick; a 300-tick sine | Too small to see as steps; kept |
@@ -617,7 +617,7 @@ rounds to the same pixel.
 ### What chunk C doesn't change
 
 - The HUD, the blinking arrows and cursors, the heart animation: frames on ticks.
-- The corridor's once-a-frame scroll (the owner's decision).
+- The corridor's once-a-frame scroll (the owner's decision; changed with Smooth motion on while building C, below).
 - With Smooth motion off, and at `alpha=1`, every screen is drawn exactly as now.
 
 ### Checks
@@ -632,6 +632,55 @@ rounds to the same pixel.
 4. The owner's play test: opening and leaving a shop, and the ending (F3 in a level reaches it).
 
 Version 0.4.19. Chunk C is small enough to build in one part.
+
+## Chunk C as built (0.4.19)
+
+Built as planned. `XShop::SlideInBlended` uses the fade counter one tick earlier plus alpha, and
+(39 + alpha) / 40 in the tick the fade-in turns into PROCESS (`justOpened_`). It is used by the
+board, items, shopkeeper, panel and widescreen dim. `XEndingObject::CreditPosXBlended` gives the
+credit's x on the slide's exact line, 2.5 a tick (from the end of the earlier phase when the state
+changed in the latest tick). `XGameScene::Render` turns the scope on around the
+shop only, not the status display; the ending around the credit's x only.
+
+Checked (2026-10-28):
+
+- **Byte for byte**, Smooth motion off and on at `alpha=1`: 24 screenshots of 1-3 taken every
+  100 ms while the shop slides in, stays open and slides out after Escape. Every one matches a
+  0.4.15 run: 0.4.15 itself lands a few of these a tick apart from run to run (load timing), and
+  the new build always gives one of its two pictures. The 14 level shots also match.
+- **`alpha=0.5`, from a temporary log** (removed): the shop's slide fraction exactly halfway
+  between its last two ticks on all 242 frames with a previous tick, through the fade-in, the turn
+  into PROCESS and the fade-out. The credit's x was halfway (to the nearest pixel) on 8,109 frames
+  across all four credits; the 6 others are new credits starting off screen. The largest step
+  between frames was 3 pixels.
+- A screenshot at `alpha=0.5` of the shop half open.
+
+**Changed after the owner's first look (2026-10-28), who thought the ending looked slightly
+jittery.** A per-frame log at 144 Hz with alpha running freely found two causes:
+
+1. **The corridor stood still on about one frame in three** (721 of 2,360 frames). It scrolls
+   once per frame that runs a tick (the original's once a frame); with Smooth motion off every
+   drawn frame runs a tick, so it was even at 100 a second, but with Smooth motion on only about
+   100 of 144 frames do. The owner first chose the original's 60 Hz speed, then (after trying it)
+   the speed it had before: with Smooth motion on, once a tick at `0.008 x min(frame rate, 100) /
+   100` (`CorridorPerTick`, from the measured frame rate, `AppFrameRate`), drawn between ticks.
+   Measured afterwards: at 144 Hz 0.800 a second, even on every frame (Smooth motion off: 0.800
+   overall, 0.69 to 1.00 frame to frame); at a frame limit of 60, 0.480 a second, even. With
+   Smooth motion off it is the original's.
+2. **The credit stepped 2, 2, 1 whole 640 x 480 pixels a frame** (4, 4, 2 screen pixels in a
+   1280 x 960 window), and blending between the original's rounded positions (which step 2, 3, 2,
+   3 a tick) made its speed wobble between 2 and 3 pixels a tick. The owner chose: while blending,
+   the credit is placed between pixels (the fraction as a shift of the blit,
+   `Device::BeginHudScale`'s shift) on the slide's exact line. Measured afterwards: 2.49 to 2.51
+   pixels per 10 ms on 99% of frames; the rest are the original's one-tick pause as each slide
+   begins. At alpha 1, and with Smooth motion off, the credit is on the original's whole pixels.
+3. **Found by the owner after that: the Saito Games logo (the last credit) jumped slightly right
+   when the button was pressed** (VSync and Smooth motion on). The blend takes a credit whose
+   `tick_` is 0 in WAIT2 / WAIT_FOR_INPUT as just arrived and draws the slide's last 2.5 pixels;
+   the fade-out that the button starts also resets `tick_` to 0, so for the first frames of the
+   fade-out the logo was drawn up to 2.5 pixels right. Fixed: the credits blend only while the
+   ending is in PROCESS. Checked by a log: through the 365 frames of the fade-out the logo stayed
+   at x 320.
 
 ## How the game logic is shown untouched
 

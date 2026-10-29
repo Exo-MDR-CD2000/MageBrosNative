@@ -132,7 +132,7 @@ the owner. **Smooth motion (interpolation) is researched and planned** in
 [SMOOTH_MOTION.md](SMOOTH_MOTION.md): four chunks (A timing and camera, B everything in a level,
 C other screens, D polish), to be built and tested on the `interpolation-test` branch, perhaps as
 a stage of its own. **Chunk A (the clock, the camera, the mages and their shadows) is built in
-0.4.16** (the owner's first play test: smooth, nothing off); chunk B is planned in two parts: **B1 (every model) is built in 0.4.17** (the owner's play test: fine), **B2 (sprites) is built in 0.4.18**; chunk C (the shop's slide and the ending's credits) is planned, not started. Smooth motion is
+0.4.16** (the owner's first play test: smooth, nothing off); chunk B is planned in two parts: **B1 (every model) is built in 0.4.17** (the owner's play test: fine), **B2 (sprites) is built in 0.4.18**; **chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; chunk D (polish) is last. Smooth motion is
 off by default from 0.4.16 (the owner, 2026-10-27). Set aside for later (the owner, 2026-10-27): an in-game debug
 overlay (ticks a second, ticks per frame, frame-time and alpha graphs, snaps, the display
 settings in effect), off by default, reading values only. For the field of view, possibly with mods: scenery beyond the original's view (deeper
@@ -170,7 +170,7 @@ part of high-refresh support. Add each new one to this table as it's found.
 
 | Where | What advances per frame | Found in |
 |---|---|---|
-| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks). `ProcessFrame` runs only on frames with at least one tick, so at most 100 times a second. **Kept as the original** (the owner's decision, 2026-10-25: a minor visual effect, hardly noticeable in play); the details are under the table | stage 6 chunk 8 (0.3.6) |
+| The ending (`XEndingObject::ProcessFrame`) | `textureOffset += 0.008` each call: the corridor's floor and walls scroll faster at higher frame rates (the credits and the mages' walk use ticks). `ProcessFrame` runs only on frames with at least one tick, so at most 100 times a second. **Kept as the original with Smooth motion off** (the owner's decision, 2026-10-25: a minor visual effect, hardly noticeable in play). **With Smooth motion on, once a tick at the speed the frame rate gave it (0.008 x the frame rate up to 100, spread over 100 ticks), drawn between ticks** (the owner, 2026-10-28: at 144 Hz the once-a-frame scroll stood still on one frame in three; the speed of the faster frame rates kept, as it conveys the mages leaving at speed); the details are under the table | stage 6 chunk 8 (0.3.6); smooth motion 0.4.19 |
 | The heroes' fire and jump presses (`XHeroA` / `XHeroB::_UpdateInput` read the once-a-frame `JDInput`) | A press counts on every tick of its frame: one at 100 frames a second, sometimes two at 60 (a 10 ms jump buffer on landing). **Already handled**: the port reads the heroes' keys every tick, as the original at 100 frames a second, whatever the frame rate (the owner's decision) | the frame-loop review, stage 7 chunk 2d-i (0.4.4) |
 | The menus and the shop (`JDInput::UpdateInputState`, `XShop::GetState` in `XGameObject::ProcessFrame`) | The menus' keys are read once a frame ("pressed" = held now and not at the last read), and the shop's state once a frame. This changes no speed; drawing between ticks must keep it on frames that tick | stage 7 chunk 1 (0.4.0) |
 
@@ -183,6 +183,16 @@ stops it. The port behaves the same: on the owner's 60 Hz receiver 1x, on the 14
 Only the textures move faster: the mages' walk, the credits, the music and the ending's length
 run on ticks. Had it been changed, the scroll would have been `0.008 x 60 / 100 = 0.0048` per
 tick (`textureOffset += 0.0048f * n`), the 60 Hz speed at any frame rate.
+
+**With Smooth motion on (0.4.19)** the corridor moves once a tick, drawn between ticks, at the
+speed the frame rate gives it: `0.008 x min(frame rate, 100) / 100` a tick (`CorridorPerTick`,
+from the measured frame rate, `AppFrameRate`). Smooth motion draws 144 frames a second at
+144 Hz, but the once-a-frame scroll only moved on the frames that ran a tick, about 100 of them,
+so the corridor stood still on about one frame in three, a stutter behind the gliding credits
+that the owner noticed. The owner first had it moved to the 60 Hz speed, then chose to keep the
+faster frame rates' speed (it conveys the mages leaving at speed). Measured: at 144 Hz 0.800 a
+second, even on every frame (Smooth motion off: 0.800 a second, 0.69 to 1.00 frame to frame); at a
+frame limit of 60, 0.480. With Smooth motion off the scroll is the original's.
 
 ## Open items
 
