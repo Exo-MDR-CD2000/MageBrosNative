@@ -329,30 +329,27 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-28, version 0.4.20 on `interpolation-test`, smooth motion built)
+## Where we are (last updated: 2026-10-28, version 0.4.20, smooth motion done and merged into `main`)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
 opt-in modern extras, has begun. Chunk 1 (the options menu made for Mage Bros.) is done in
 0.4.0, tested by the owner. **Branches:** 0.4.0 to 0.4.13 were built on a `menu-dev` branch,
 apart from `main`; the owner merged it into `main` on 2026-10-26 (pull request #1, released as
-v0.4.13). **Work goes on `main` again**: commit and push there (each push publishes the
-version's release; see "GitHub releases"). **Exception: smooth motion (interpolation) is built
-and tested on the `interpolation-test` branch** (created from `main` at 0.4.15 on 2026-10-26),
-merged into `main` only when the owner says so. **Smooth motion is built, chunks A to D,
-versions 0.4.16 to 0.4.20**: how it works is the first section of `docs/SMOOTH_MOTION.md` ("How it
-works (as built)"); each chunk's plan, checks and the owner's decisions follow it there. The
-owner's play tests found A, B1 and C (the ending) fine after the fixes recorded there; 0.4.20
-(chunk D: help text, docs, final checks) waits for the owner's last play test before the merge.
-Decided along the way: the 2D that moves in whole pixels (film strips, menu backgrounds, the
-venetian-blind fades) stays as the original; the ending's corridor, with Smooth motion on, scrolls
-once a tick at the speed the frame rate gave it; a G-Sync / FreeSync "Refresh - 3" frame limit was
-dropped (documented for later, "D1"). The release notes are decided: 0.4.20's CHANGELOG section sums up
-all of smooth motion (0.4.16 to 0.4.19 were never released; see "D5"); how to merge is still the
-owner's call. Smooth motion is **off by default** from 0.4.16 (the owner;
-config_version 21 turns it off once in older files). **Versions on the branch:** each build takes
-the next version, as on `main` (the owner, 2026-10-27; 0.4.16 is the branch's). A push to the
-branch publishes nothing; while it is open, work on `main` must not reuse its numbers. Perhaps a branch for the
+v0.4.13). **Work goes on `main`**: commit and push there (each push publishes the
+version's release; see "GitHub releases"). **Smooth motion** (chunks A to D, versions 0.4.16 to
+0.4.20) was built and tested on an `interpolation-test` branch (created from `main` at 0.4.15 on
+2026-10-26) and **merged into `main` directly on 2026-10-28, released as v0.4.20**, whose
+CHANGELOG section sums it up (0.4.16 to 0.4.19 were never released on their own). The branch is
+kept on GitHub; nothing goes there any more. How it works is the first section of
+`docs/SMOOTH_MOTION.md` ("How it works (as built)"); each chunk's plan, checks and the owner's
+decisions follow it there. The owner's play tests found A, B1 and C (the ending) fine after the
+fixes recorded there; the owner then chose to merge 0.4.20. Decided along the way: the
+2D that moves in whole pixels (film strips, menu backgrounds, the venetian-blind fades) stays as
+the original; the ending's corridor, with Smooth motion on, scrolls once a tick at the speed the
+frame rate gave it; a G-Sync / FreeSync "Refresh - 3" frame limit was dropped (documented for
+later, "D1"). Smooth motion is **off by default** from 0.4.16 (the owner; config_version 21 turns
+it off once in older files). Perhaps a branch for the
 modding work later. Chunk 2 (the Video page) is split into small chunks for thoroughness: 2a
 windowed mode (0.4.1, tested by the owner), 2b exclusive fullscreen (0.4.2, tested by the
 owner), 2c monitors (0.4.3, tested by the owner), 2d-i VSync (0.4.4), 2d-ii widescreen culling

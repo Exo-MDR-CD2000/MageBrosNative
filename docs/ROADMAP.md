@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion built on the `interpolation-test` branch (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)), waiting for the merge |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, built on a branch and merged into `main` on 2026-10-28, released as v0.4.20; [SMOOTH_MOTION.md](SMOOTH_MOTION.md)) |
 
 ## Stage 4, chunk by chunk
 
@@ -128,11 +128,11 @@ Mage Bros.' own and finishes the ones that need the game's help.
 | 2d-iv | Field of view: `XGameScene::Render` turns `Device::SetGameplayView` on for the level's 3D and off before the shop and the HUD, so the renderer's lens scaling (both parts of the lens divided by the setting) applies to levels only; the title, level select, the shop's panel (sized to its 2D board), the HUD and the ending keep the original lens. Zoomed out, the draw range and the sound panning grow by the setting (`ViewReachFactor` = widescreen factor × the setting above 100%); zoomed in they keep the original's. The update range (game logic) is unchanged. The menu row offers 50% to 200% (the owner's choice) and shows the angle; the setting is marked experimental, with players advised to leave it at 100% (the owner: help line, ini comment, README and CHANGELOG); the help line warns that above 100% the level's unbuilt edges show (black below the near edge from about 105%, above the back wall and past the ends further out), as the original's levels are built only as far as its own view. Checked: at 100% levels at 4:3 and 16:9 and the open shop byte for byte the same as 0.4.14; at 200%, 16:9 and 21:9, in 1-1, 1-6, 2-4 and 3-5, the same objects as a draw-everything build (the only differences, a few pixels, were a slug caught a moment apart); the shop's panel lined up at 50% and 150% | Field of view in levels | Done (0.4.15) |
 
 Chunk 2 is done but the options menu in widescreen, left as it is. The rest is to be planned with
-the owner. **Smooth motion (interpolation) is researched and planned** in
-[SMOOTH_MOTION.md](SMOOTH_MOTION.md): four chunks (A timing and camera, B everything in a level,
-C other screens, D polish), to be built and tested on the `interpolation-test` branch, perhaps as
-a stage of its own. **Chunk A (the clock, the camera, the mages and their shadows) is built in
-0.4.16** (the owner's first play test: smooth, nothing off); chunk B is planned in two parts: **B1 (every model) is built in 0.4.17** (the owner's play test: fine), **B2 (sprites) is built in 0.4.18**; **chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; **chunk D (help text, docs, final checks) is built in 0.4.20**: smooth motion is complete on the branch and waits for the owner's last play test, then the merge into `main` (the owner's decisions for it are in SMOOTH_MOTION.md, "D5"). How it works: the first section of SMOOTH_MOTION.md. Smooth motion is
+the owner. **Smooth motion (interpolation) is done**: researched and planned in
+[SMOOTH_MOTION.md](SMOOTH_MOTION.md) in four chunks (A timing and camera, B everything in a level,
+C other screens, D polish), built and tested on the `interpolation-test` branch, and merged into
+`main` on 2026-10-28 (released as v0.4.20, whose notes sum it all up). **Chunk A (the clock, the camera, the mages and their shadows) is built in
+0.4.16** (the owner's first play test: smooth, nothing off); chunk B is planned in two parts: **B1 (every model) is built in 0.4.17** (the owner's play test: fine), **B2 (sprites) is built in 0.4.18**; **chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; **chunk D (help text, docs, final checks) is built in 0.4.20**: smooth motion is complete and merged (the owner's merge decisions are in SMOOTH_MOTION.md, "D5"). How it works: the first section of SMOOTH_MOTION.md. Smooth motion is
 off by default from 0.4.16 (the owner, 2026-10-27). Set aside for later (the owner, 2026-10-27): an in-game debug
 overlay (ticks a second, ticks per frame, frame-time and alpha graphs, snaps, the display
 settings in effect), off by default, reading values only. For the field of view, possibly with mods: scenery beyond the original's view (deeper

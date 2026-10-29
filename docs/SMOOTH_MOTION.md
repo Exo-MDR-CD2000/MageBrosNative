@@ -2,8 +2,8 @@
 
 Drawing the game smoothly at any refresh rate without changing the game. Researched on
 2026-10-26 after 0.4.15, built in four chunks on the `interpolation-test` branch: A (0.4.16), B1
-(0.4.17), B2 (0.4.18), C (0.4.19) and D (0.4.20), with the owner's play tests along the way. It
-stays on that branch until the owner merges it into `main`. **Smooth motion is off by default.**
+(0.4.17), B2 (0.4.18), C (0.4.19) and D (0.4.20), with the owner's play tests along the way, then
+**merged into `main` on 2026-10-28 and released as v0.4.20**. **Smooth motion is off by default.**
 
 This file starts with how it works as built. The research and each chunk's plan and "as built"
 notes follow, in the order they were written, as the history and the record of what was checked.
@@ -848,10 +848,10 @@ considering with Smooth motion, where frames really differ (the owner had set it
   headings: the workflow's extraction stops at the next one; checked, 34 lines up to 0.4.19's
   heading), followed by what is new in 0.4.20 itself. The 0.4.16 to 0.4.19 sections stay below
   as the detail.
-- **How to merge**: a pull request from `interpolation-test` into `main`, as `menu-dev` was
-  (pull request #1), or a direct merge. Then the branch can be deleted or kept.
-- Smooth motion stays **off by default** (decided). Until the merge, nothing on `main` may take
-  the numbers 0.4.16 to 0.4.20.
+- **How to merge (decided, the owner, 2026-10-28): directly**, no pull request: `interpolation-test`
+  merged into `main` with a merge commit and pushed, which released v0.4.20. The branch is kept
+  on GitHub (not deleted) unless the owner asks.
+- Smooth motion stays **off by default** (decided).
 
 ## Chunk D as built (0.4.20)
 
@@ -876,7 +876,7 @@ Final checks (2026-10-28):
   put back, everything matched. When a byte-for-byte check fails everywhere, check the window
   settings in the test folder's ini before anything else.
 
-Waiting for: the owner's last play test (D4), then the merge decisions (D5).
+The owner then chose to merge (2026-10-28), with the release notes summed up in 0.4.20 (D5).
 
 ## How the game logic is shown untouched
 
