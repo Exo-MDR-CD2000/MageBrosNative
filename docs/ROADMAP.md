@@ -132,13 +132,15 @@ the owner. **Smooth motion (interpolation) is researched and planned** in
 [SMOOTH_MOTION.md](SMOOTH_MOTION.md): four chunks (A timing and camera, B everything in a level,
 C other screens, D polish), to be built and tested on the `interpolation-test` branch, perhaps as
 a stage of its own. **Chunk A (the clock, the camera, the mages and their shadows) is built in
-0.4.16** (the owner's first play test: smooth, nothing off); chunk B is planned in two parts: **B1 (every model) is built in 0.4.17** (the owner's play test: fine), **B2 (sprites) is built in 0.4.18**; **chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; chunk D (polish) is last. Smooth motion is
+0.4.16** (the owner's first play test: smooth, nothing off); chunk B is planned in two parts: **B1 (every model) is built in 0.4.17** (the owner's play test: fine), **B2 (sprites) is built in 0.4.18**; **chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; chunk D (polish: help text, docs, final checks; 0.4.20) is planned, not started. Smooth motion is
 off by default from 0.4.16 (the owner, 2026-10-27). Set aside for later (the owner, 2026-10-27): an in-game debug
 overlay (ticks a second, ticks per frame, frame-time and alpha graphs, snaps, the display
 settings in effect), off by default, reading values only. For the field of view, possibly with mods: scenery beyond the original's view (deeper
 cliffs below the near edge, taller walls, something past the ends) so zooming out holds up. Possible later, maybe more than a game of
 this size needs (the owner's notes): a frame-limit choice for G-Sync / FreeSync (the monitor's
-refresh rate less 3), worth it only once smooth motion draws between ticks; for 32:9 screens, an idle
+refresh rate less 3), **planned in smooth motion's chunk D and then dropped** (the owner,
+2026-10-28: a few milliseconds at most, and the graphics drivers already offer the cap); why, and
+how it would be built if wanted later, are in [SMOOTH_MOTION.md](SMOOTH_MOTION.md) ("D1"); for 32:9 screens, an idle
 animation for the nine enemy types the update range pauses far away (at 21:9 that can only show
 for an enemy against the back wall or in a pit at the very edge of the screen, which the owner
 didn't see in play; at 32:9 the middle of the level reaches 501, past the 480 range), and

@@ -348,7 +348,10 @@ feels so smooth", 2026-10-28; to be revisited if a bug turns up); **B2 (sprites:
 particles, shots, the flame, the water) is built in 0.4.18**, waiting for the owner's play test.
 **Chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; the owner checked the
 ending in play (2026-10-28), which led to the corridor and credit changes and the Saito logo fix in
-`docs/SMOOTH_MOTION.md` ("Chunk C as built"); chunk D (polish, frame pacing) is last, to be planned;
+`docs/SMOOTH_MOTION.md` ("Chunk C as built"); chunk D (help text, docs, final checks;
+0.4.20) is planned file by file, not started; frame pacing was measured and needs no change; a
+G-Sync / FreeSync "Refresh - 3" frame limit was planned and then dropped by the owner (documented
+for later in `docs/SMOOTH_MOTION.md`, "D1");
 the 2D that moves in whole pixels (film strips, menu backgrounds, the venetian-blind fades) stays
 as the original (the owner, 2026-10-28). Smooth motion is **off by default** from 0.4.16 (the owner;
 config_version 21 turns it off once in older files). **Versions on the branch:** each build takes
@@ -387,7 +390,8 @@ is to be planned with the owner** (see ROADMAP). The owner's must: 16:9 with no 
 native 21:9 is feasible. The camera and lens were checked value by value against the original
 (all the same): see "The camera and lens: the original and the port, side by side" in
 `docs/REVERSE_ENGINEERING.md`. The owner set aside a
-G-Sync / FreeSync frame-limit choice as a possible later feature (noted in the ROADMAP). The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
+G-Sync / FreeSync frame-limit choice as a possible later feature; it was planned in smooth motion's
+chunk D and dropped (2026-10-28), documented for later in `docs/SMOOTH_MOTION.md` ("D1"). The chunks after 2 are to be planned with the owner (smooth motion may become a stage of
 its own).
 Wait for the owner to say "start the next chunk". The tables are in `docs/ROADMAP.md` ("Stage
 7, chunk by chunk"); what each version changed is in `CHANGELOG.md`.

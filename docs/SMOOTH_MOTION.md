@@ -122,7 +122,7 @@ already moves once a frame (kept as the original, the owner's decision of 2026-1
 | A: timing and camera (done, 0.4.16) | Snapshots before every tick, alpha from the high-resolution clock, snaps at resets; the camera, both mages and their shadows blended | Scrolling and the player's mage smooth at 144 Hz, most of what is seen |
 | B: everything in a level (done: B1 0.4.17, B2 0.4.18) | `JObject3DX` blending for enemies, bosses (the dragon's body, the nest's birds), platforms and riders, objects, bullets; sprites (particles, shots, the flame) blended from their owners' positions; the drawn-twice check | All motion in a level smooth |
 | C: other screens (done, 0.4.19: the shop's slide and the credits) | The shop's slide, the ending's credits and film strips, moving parts of the title and front-end screens | Menus and the ending match |
-| D: polish | Frame pacing with the frame limit (the G-Sync / FreeSync "refresh minus 3" choice becomes worth having), help text, docs, the owner's play test at 60 and 144 Hz | Fine-tuning |
+| D: polish (planned in detail below; 0.4.20) | Frame pacing with the frame limit (measured: no change needed; the G-Sync / FreeSync "refresh minus 3" choice was planned, then dropped, see D1), help text, docs, the owner's play test at 60 and 144 Hz | Fine-tuning |
 
 ## Chunk A in detail (planned 2026-10-27)
 
@@ -681,6 +681,121 @@ jittery.** A per-frame log at 144 Hz with alpha running freely found two causes:
    fade-out the logo was drawn up to 2.5 pixels right. Fixed: the credits blend only while the
    ending is in PROCESS. Checked by a log: through the 365 frames of the fade-out the logo stayed
    at x 320.
+
+## Chunk D in detail (planned 2026-10-28)
+
+The last chunk: the words players read, a tidy-up of the docs, the final checks and the owner's
+play test, then what the merge into `main` needs. Version 0.4.20. (A G-Sync / FreeSync frame
+limit was planned here too and dropped by the owner; it is kept below, D1, in case it is wanted
+later.)
+
+### Frame pacing, measured first (2026-10-28, 0.4.19)
+
+A temporary log of every frame (when it was presented, and the game time it showed) in 1-1 with
+the mage running, 1280 x 960 window on the 144 Hz monitor, Smooth motion on:
+
+| VSync | Frame limit | Frames a second | Frame time (1% to 99%) | Shown motion against real time |
+|---|---|---|---|---|
+| On | Unlimited | 144 | 6.86 to 7.04 ms | 0.10 ms (sd) |
+| Off | Unlimited | about 1,790 | 0.43 to 1.06 ms | 0.17 ms |
+| Off | 141 | 141 | 6.29 to 7.82 ms | 0.03 ms |
+| On | 141 | 141 | 6.22 to 7.94 ms | 0.04 ms |
+| Off | 60 | 60 | 15.81 to 17.46 ms | 0.04 ms |
+| On | 60 | 60 | 15.78 to 17.54 ms | 0.04 ms |
+
+"Shown motion against real time" is how far the game time each frame shows strays from the time
+between presents: in every setup it is a fraction of a millisecond, so each picture shows the
+game where it should be when it is shown. The frame limit holds its rate exactly on average,
+with frames within about 0.8 ms either side (the limiter's sleep). **No pacing change is
+needed.** The log can't see the monitor itself: whether a limit below the refresh rate shows
+evenly depends on G-Sync / FreeSync (D1).
+
+### D1 The "Refresh - 3" frame limit: dropped (the owner, 2026-10-28), kept here for later
+
+**Not built.** The owner decided it isn't needed, and asked for it to stay documented in case it
+is wanted later. Why it was dropped:
+
+- **The gain is small.** It only matters on a G-Sync / FreeSync monitor with VSync on, when the
+  game would otherwise reach the refresh rate: there VSync takes over again and can add up to a
+  frame of delay (7 ms at 144 Hz). Capping 3 below keeps the monitor in its variable range. In a
+  game like this one, a few milliseconds are hardly felt.
+- **Players who want it already have it.** The NVIDIA app / Control Panel ("Max Frame Rate") and
+  AMD Software cap any game at refresh - 3, which is what most G-Sync / FreeSync owners do, and
+  the ini's `max_fps` takes any number (141 on a 144 Hz monitor).
+- **It is another setting to explain and test**, and only the owner, on a monitor with variable
+  refresh, could check that it does its job.
+- **The frame pacing measured above is already good**, so nothing else depends on it.
+
+**How it would be built**, if wanted later (about a day's work, in these files):
+
+On a G-Sync or FreeSync monitor with VSync on, capping the frame rate a little below the refresh
+rate keeps every frame inside the monitor's variable range: no VSync wait (less delay) and no
+tearing. The drivers' makers recommend about 3 below the refresh rate. It became worth
+considering with Smooth motion, where frames really differ (the owner had set it aside for this,
+2026-10-25).
+
+- `max_fps = -1` means "the refresh rate less 3", worked out from the monitor the window is on
+  (its current mode, so exclusive fullscreen's chosen rate too), each frame from a cached value
+  refreshed on a display change. `config.cpp` accepts -1 (it clamps to 0 or more today); the ini
+  comment explains it.
+- The Frame limit row offers it right after Unlimited, shown as "Refresh - 3 (141)" with the
+  number it gives. Its help line: for G-Sync / FreeSync monitors with VSync on.
+- `JudgeVSync` skips its verdict with any limit, -1 included (as it does for a number today).
+- Like every frame limit it applies with Smooth motion on only (off, the game draws on ticks, at
+  most 100 a second).
+- Checked by the log above's method at -1 on the 144 Hz monitor (141) and on the 60 Hz one (57).
+  Whether the monitor's variable refresh takes it can only be seen by the owner (the NVIDIA
+  Control Panel's G-Sync indicator, or the monitor's own refresh readout).
+- The words: the Frame limit help line and the ini comment for `max_fps` would mention it, and
+  the README's Video section.
+
+### D2 The words players read
+
+- **Options > Video help lines**:
+  - Smooth motion: what it does and the cost ("the whole game drawn between its steps, smooth at
+    any refresh rate; the picture is up to 10 ms behind").
+  - Frame limit: that it only applies with Smooth motion.
+  - VSync Off: keep its "with Smooth motion, set a Frame limit".
+- **The ini comments** for `interpolation`, `max_fps` and `vsync`.
+- **README**: the Video section's Smooth motion and Frame limit paragraphs as they stand at the
+  end; the "what works today" lines.
+- **CHANGELOG** 0.4.20.
+
+### D3 Tidy the docs
+
+- **SMOOTH_MOTION.md** gets a short "How it works (as built)" section at the top: the clock and
+  alpha, `Interp` (ticks, frames, scope, `BlendPos`), `JObject3DX` blending with the not-drawn
+  rule and `BlendOffset`, the camera, the sprites, the water, the shop and the credits, the
+  corridor, what stays per tick, and the test hooks. The research and the chunk plans stay below
+  it as the history, with the outline's superseded parts marked.
+- **CLAUDE.md**'s smooth motion paragraphs are shortened to that summary plus a pointer, so the
+  handoff file stays readable.
+- **ROADMAP**: smooth motion's status; the G-Sync / FreeSync item noted as decided against for now
+  (D1 here).
+
+### D4 Final checks
+
+1. The byte-for-byte suite once more, with Smooth motion off and on at `alpha=1`: the 14 level
+   shots and the shop sliding (24 shots).
+2. `mbn_hero_tests` and the other tests.
+3. The owner's play test, the last before the merge:
+   - the whole game at 144 Hz with Smooth motion on (a world or a few levels of each, the
+     shop, a boss, the ending);
+   - a few levels on the 60 Hz screen (the TX-NR646) with Smooth motion on;
+   - Smooth motion off once, to see it is the original's.
+
+### D5 For the merge into `main` (the owner's decisions, after D)
+
+- **Release notes.** `release.yml` publishes the version in `CMakeLists.txt` when `main` is pushed,
+  with that version's CHANGELOG section. At the merge that will be 0.4.20 alone: 0.4.16 to 0.4.19
+  were never released (pushes to this branch publish nothing), so their sections would be in the
+  file but not on any release. Options: (a) merge as is; (b) **give 0.4.20 a section that sums up
+  all of smooth motion** for players, keeping the per-version sections below it as the detail
+  (recommended); (c) release it as 0.5.0 with that summary.
+- **How to merge**: a pull request from `interpolation-test` into `main`, as `menu-dev` was
+  (pull request #1), or a direct merge. Then the branch can be deleted or kept.
+- Smooth motion stays **off by default** (decided). Until the merge, nothing on `main` may take
+  the numbers 0.4.16 to 0.4.20.
 
 ## How the game logic is shown untouched
 
