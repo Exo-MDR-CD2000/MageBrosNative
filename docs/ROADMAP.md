@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below) |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion built on the `interpolation-test` branch (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)), waiting for the merge |
 
 ## Stage 4, chunk by chunk
 
@@ -132,7 +132,7 @@ the owner. **Smooth motion (interpolation) is researched and planned** in
 [SMOOTH_MOTION.md](SMOOTH_MOTION.md): four chunks (A timing and camera, B everything in a level,
 C other screens, D polish), to be built and tested on the `interpolation-test` branch, perhaps as
 a stage of its own. **Chunk A (the clock, the camera, the mages and their shadows) is built in
-0.4.16** (the owner's first play test: smooth, nothing off); chunk B is planned in two parts: **B1 (every model) is built in 0.4.17** (the owner's play test: fine), **B2 (sprites) is built in 0.4.18**; **chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; chunk D (polish: help text, docs, final checks; 0.4.20) is planned, not started. Smooth motion is
+0.4.16** (the owner's first play test: smooth, nothing off); chunk B is planned in two parts: **B1 (every model) is built in 0.4.17** (the owner's play test: fine), **B2 (sprites) is built in 0.4.18**; **chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; **chunk D (help text, docs, final checks) is built in 0.4.20**: smooth motion is complete on the branch and waits for the owner's last play test, then the merge into `main` (the owner's decisions for it are in SMOOTH_MOTION.md, "D5"). How it works: the first section of SMOOTH_MOTION.md. Smooth motion is
 off by default from 0.4.16 (the owner, 2026-10-27). Set aside for later (the owner, 2026-10-27): an in-game debug
 overlay (ticks a second, ticks per frame, frame-time and alpha graphs, snaps, the display
 settings in effect), off by default, reading values only. For the field of view, possibly with mods: scenery beyond the original's view (deeper

@@ -329,7 +329,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-28, version 0.4.19 on `interpolation-test`, smooth motion chunk C built)
+## Where we are (last updated: 2026-10-28, version 0.4.20 on `interpolation-test`, smooth motion built)
 
 **Stages 1 to 6 are done: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9.** Stage 7, the
@@ -339,21 +339,16 @@ apart from `main`; the owner merged it into `main` on 2026-10-26 (pull request #
 v0.4.13). **Work goes on `main` again**: commit and push there (each push publishes the
 version's release; see "GitHub releases"). **Exception: smooth motion (interpolation) is built
 and tested on the `interpolation-test` branch** (created from `main` at 0.4.15 on 2026-10-26),
-merged into `main` only when the owner says so; its research and plan are in
-`docs/SMOOTH_MOTION.md`. **Chunk A (the clock, the camera, the mages and their shadows) is built
-in 0.4.16** on that branch ("Chunk A as built" in `docs/SMOOTH_MOTION.md`); the owner's first
-play test found it smooth, with nothing off. Chunk B is planned file by file in two parts: **B1
-(every model in a level) is built in 0.4.17**; the owner's play test found nothing wrong ("everything
-feels so smooth", 2026-10-28; to be revisited if a bug turns up); **B2 (sprites:
-particles, shots, the flame, the water) is built in 0.4.18**, waiting for the owner's play test.
-**Chunk C (the shop's slide and the ending's credits) is built in 0.4.19**; the owner checked the
-ending in play (2026-10-28), which led to the corridor and credit changes and the Saito logo fix in
-`docs/SMOOTH_MOTION.md` ("Chunk C as built"); chunk D (help text, docs, final checks;
-0.4.20) is planned file by file, not started; frame pacing was measured and needs no change; a
-G-Sync / FreeSync "Refresh - 3" frame limit was planned and then dropped by the owner (documented
-for later in `docs/SMOOTH_MOTION.md`, "D1");
-the 2D that moves in whole pixels (film strips, menu backgrounds, the venetian-blind fades) stays
-as the original (the owner, 2026-10-28). Smooth motion is **off by default** from 0.4.16 (the owner;
+merged into `main` only when the owner says so. **Smooth motion is built, chunks A to D,
+versions 0.4.16 to 0.4.20**: how it works is the first section of `docs/SMOOTH_MOTION.md` ("How it
+works (as built)"); each chunk's plan, checks and the owner's decisions follow it there. The
+owner's play tests found A, B1 and C (the ending) fine after the fixes recorded there; 0.4.20
+(chunk D: help text, docs, final checks) waits for the owner's last play test before the merge.
+Decided along the way: the 2D that moves in whole pixels (film strips, menu backgrounds, the
+venetian-blind fades) stays as the original; the ending's corridor, with Smooth motion on, scrolls
+once a tick at the speed the frame rate gave it; a G-Sync / FreeSync "Refresh - 3" frame limit was
+dropped (documented for later, "D1"). At the merge the owner decides the release notes (0.4.16 to
+0.4.19 were never released; see "D5"). Smooth motion is **off by default** from 0.4.16 (the owner;
 config_version 21 turns it off once in older files). **Versions on the branch:** each build takes
 the next version, as on `main` (the owner, 2026-10-27; 0.4.16 is the branch's). A push to the
 branch publishes nothing; while it is open, work on `main` must not reuse its numbers. Perhaps a branch for the
@@ -422,21 +417,10 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   rebinding a DIK moves every place the game reads it (the menus' W / S too).
 - `OptionsMenu::NotYet` greys out what isn't built: Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
   menu's mod pages still speak of Hopmon's assets).
-- Smooth motion (`interpolation`, off by default from 0.4.16): on, the picture is drawn at the
-  monitor's rate and `Interp::Alpha` (`src/framework/interp.*`, from the nanosecond clock) places
-  it between the last two ticks. `XGameScene` calls `Interp::BeginTick` before each tick.
-  `JObject3DX` models with `EnableBlending` keep their pose from before the latest tick (taken at
-  the first change in a tick, `poseTick_`) and draw between the two, leaving `world_` (and the
-  collision) the tick's; `Snap()` after a jump. `XCamera::BlendedView` does the same for the view.
-  Only drawing is touched, and only inside `XGameScene::Render`'s 3D (`Interp::SetScope`).
-  Every model blends (on by default; a model not drawn in the last frame, new or shown again,
-  doesn't blend in its next tick: `snapTick_`, `Interp::BeginFrame` / `FramesDrawn`); shadows
-  take the owner's position plus `BlendOffset()` (zero when not blending). A model drawn twice in
-  one frame is logged once ("drawn twice"). Sprites blend from their owners' positions
-  (`KeepPrevPos` / `prevPos`, drawn at `Interp::BlendPos`); the water blends its drift. Particle
-  sizes and fades, and animation frames, stay per tick. `--auto alpha=0.5` holds alpha (`alpha=off` frees it). Off, the framework draws
-  only on frames with a tick (at most 100 a second, the original's pace). See
-  `docs/SMOOTH_MOTION.md`.
+- Smooth motion (`interpolation`, off by default from 0.4.16): drawing between ticks, only inside
+  `Interp::SetScope` (a level's 3D, the shop, the ending's credits and corridor); `--auto alpha=`
+  holds the blend for tests. Off, the framework draws only on frames with a tick (at most 100 a
+  second, the original's pace). How it works: `docs/SMOOTH_MOTION.md`, first section.
 - `config_version` 15 rewrote the ini notes for Mage Bros.' keys and dropped Hopmon's two
   cheats; `unlock_all_levels` is still read but nothing uses it.
 

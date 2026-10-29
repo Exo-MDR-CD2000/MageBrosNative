@@ -1,12 +1,67 @@
-# Smooth motion (interpolation): research and plan
+# Smooth motion (interpolation)
 
-Research for drawing the game smoothly at any refresh rate, done on 2026-10-26 after 0.4.15.
-Chunk A was planned file by file on 2026-10-27 ("Chunk A in detail", below) and built the same
-day in 0.4.16 ("Chunk A as built"), and the owner's first play test found nothing off. Chunk B
-is next. The work happens on the `interpolation-test` branch, apart
-from `main`, until the owner has tested it and says to merge.
+Drawing the game smoothly at any refresh rate without changing the game. Researched on
+2026-10-26 after 0.4.15, built in four chunks on the `interpolation-test` branch: A (0.4.16), B1
+(0.4.17), B2 (0.4.18), C (0.4.19) and D (0.4.20), with the owner's play tests along the way. It
+stays on that branch until the owner merges it into `main`. **Smooth motion is off by default.**
 
-## Where things stand (0.4.15)
+This file starts with how it works as built. The research and each chunk's plan and "as built"
+notes follow, in the order they were written, as the history and the record of what was checked.
+
+## How it works (as built, 0.4.20)
+
+**The idea.** The game runs in ticks, 100 a second, exactly as before. With Smooth motion on, the
+framework draws a picture for every refresh of the monitor and tells the drawing code how far the
+clock is between the last two ticks (alpha, 0 to 1). Everything that moves is drawn that far
+between where it was after the previous tick and where it is after the latest. Nothing the game
+reads ever changes: only what is drawn. With Smooth motion off, or at alpha 1, every picture is
+the original's, byte for byte (checked at each chunk).
+
+**The clock** (`src/framework/d3dapp.cpp`). Ticks are counted from the frame's millisecond time,
+as before, and kept to the nanosecond (`lastTickNs_`, `SetLastTick`). Alpha comes from the
+nanosecond clock (`AppTimeNs`). The options menu and P freeze it (`HoldTickPhase`), and the first
+frame after them carries on from the held picture (`heldLastFrame_`), so nothing jumps.
+`AppFrameRate` gives the measured frame rate (the ending's corridor uses it).
+
+**`Interp`** (`src/framework/interp.*`): `BeginTick` / `CurrentTick` (called by `XGameScene` before
+each tick, the shop's ticks included), `BeginFrame` / `FramesDrawn` (each level picture),
+`Alpha()` (1 unless Smooth motion is on and a scope is open: `SetScope`, opened only around a
+level's 3D, the shop and the ending's credits and corridor), `Lerp`, `LerpAngle` (the short way
+round), `BlendPos` (for sprites, with the 40-unit safety net) and the `--auto alpha=` hold.
+
+**Models** (`JObject3DX`, `src/game/JModel.*`): every model keeps its pose from before the latest
+tick, taken at its first pose change in a tick (`TouchPose`, `poseTick_`), and is drawn between
+the two; its world matrix, and so its collision, is always the tick's own. A model not drawn in
+the last frame (new, or shown again) isn't blended in its next tick (`snapTick_`,
+`lastDrawFrame_`); a jump of more than 40 in a tick isn't blended; `Snap()` after a reset. A model
+drawn twice in one frame is logged once. Shadows take their owner's position plus the model's
+`BlendOffset()` (exactly zero when not blending).
+
+**The camera** (`XCamera::BlendedView`): the view between the last two ticks for the level's 3D
+and its billboards; the draw range, the sound and the shop's panel use the tick's camera.
+
+**Sprites**: particles, the mages' shots and the dragon's flame keep their owner's position from
+before the latest tick (`KeepPrevPos`, `prevPos`) and are drawn at `Interp::BlendPos`. The water
+blends its texture drift.
+
+**Other screens**: the shop's slide (`XShop::SlideInBlended`) and the ending's credits
+(`XEndingObject::CreditPosXBlended`, placed between whole pixels while blending) blend from their
+counters. The ending's corridor, with Smooth motion on, moves once a tick at the speed the frame
+rate gave it (`CorridorPerTick`), drawn between ticks.
+
+**Kept as the original on purpose**: animation frames (models, sprite sheets, blinking), particle
+sizes and fades, and the 2D that moves a whole 640 x 480 pixel at a time (the menus' background,
+the ending's film strips, the venetian-blind fades). The HUD doesn't move.
+
+**The cost**: the picture trails the game by up to 10 ms (5 on average). Input is read on ticks as
+before. The frame rate costs nothing measurable (about 1,070 frames a second either way in the
+busiest level, VSync off).
+
+**Testing**: `--auto alpha=<0..1>` holds alpha (`alpha=off` frees it); `alpha=1` must give the
+same screenshots as Smooth motion off. The checks used at each chunk (byte-for-byte screenshots,
+temporary per-object logs at `alpha=0.5`) are described in each chunk's "as built" section.
+
+## Where things stood before (0.4.15, the research of 2026-10-26)
 
 - **The game logic runs at 100 ticks a second.** Every 10 ms the game advances one step
   (`XApplication::FrameMove(n)`, at most 10 ticks a frame): the mages, enemies, platforms, shots
@@ -49,7 +104,7 @@ are untouched: it is drawing only.
   recommended; reimplementations that care about feel generally interpolate.
 - Smooth motion off keeps today's behaviour exactly, with no added delay.
 
-## What exists already (from Hopmon Native)
+## What existed already (from Hopmon Native; replaced in chunk A)
 
 - `src/framework/interp.{h,cpp}`: `Interp::Tracked` (a registry of objects with a
   `SnapshotPrev()`), `BeginFrameMove` (snapshots every tracked object), `Alpha()`,
@@ -75,7 +130,7 @@ are untouched: it is drawing only.
    (`SDL_GetTicksNS` or the performance counter), while ticks keep the original's 10 ms rhythm.
 3. **Nothing feeds it** (above).
 
-## How objects would be blended
+## How objects would be blended (the first outline; the chunk plans below replaced its details)
 
 **Centrally, in the two building blocks.** Nearly everything in a level is drawn through
 `JObject3DX` (models: the mages, enemies, bosses, objects, platforms) or `JObject3DRect` (flat
@@ -122,7 +177,7 @@ already moves once a frame (kept as the original, the owner's decision of 2026-1
 | A: timing and camera (done, 0.4.16) | Snapshots before every tick, alpha from the high-resolution clock, snaps at resets; the camera, both mages and their shadows blended | Scrolling and the player's mage smooth at 144 Hz, most of what is seen |
 | B: everything in a level (done: B1 0.4.17, B2 0.4.18) | `JObject3DX` blending for enemies, bosses (the dragon's body, the nest's birds), platforms and riders, objects, bullets; sprites (particles, shots, the flame) blended from their owners' positions; the drawn-twice check | All motion in a level smooth |
 | C: other screens (done, 0.4.19: the shop's slide and the credits) | The shop's slide, the ending's credits and film strips, moving parts of the title and front-end screens | Menus and the ending match |
-| D: polish (planned in detail below; 0.4.20) | Frame pacing with the frame limit (measured: no change needed; the G-Sync / FreeSync "refresh minus 3" choice was planned, then dropped, see D1), help text, docs, the owner's play test at 60 and 144 Hz | Fine-tuning |
+| D: polish (done, 0.4.20) | Frame pacing with the frame limit (measured: no change needed; the G-Sync / FreeSync "refresh minus 3" choice was planned, then dropped, see D1), help text, docs, the owner's play test at 60 and 144 Hz | Fine-tuning |
 
 ## Chunk A in detail (planned 2026-10-27)
 
@@ -796,6 +851,31 @@ considering with Smooth motion, where frames really differ (the owner had set it
   (pull request #1), or a direct merge. Then the branch can be deleted or kept.
 - Smooth motion stays **off by default** (decided). Until the merge, nothing on `main` may take
   the numbers 0.4.16 to 0.4.20.
+
+## Chunk D as built (0.4.20)
+
+- **The words**: the Smooth motion help line ("drawn between game ticks, smooth at any refresh
+  rate; up to 10 ms behind"), the Frame limit help line (Smooth motion only; VSync also caps it),
+  the ini notes for `interpolation` and `max_fps`, the README's Video section (a fuller Smooth
+  motion paragraph: what it does, the cost, what keeps the original's look) and its status line.
+- **The docs**: "How it works (as built)" at the top of this file; the research marked as history;
+  CLAUDE.md's smooth motion passages shortened to a summary and a pointer; the ROADMAP's status.
+- No code beyond those texts.
+
+Final checks (2026-10-28):
+
+- `mbn_hero_tests` and the other tests pass.
+- **Byte for byte**, Smooth motion off and on at `alpha=1`, against 0.4.15: all 48 shop-slide shots
+  match a 0.4.15 run; 27 of the 28 level shots match exactly. The 28th (the dragon in 1-10 at
+  14 s) matched in 6 of 8 runs; the 2 others differed from it in 34 pixels by 1 in 255, in the
+  flame's glow over the water: the graphics card's rounding when blending see-through effects,
+  with everything in the same place.
+- **A trap found on the way**: a first run differed everywhere because a test window had been
+  maximized (the ini kept `maximized = 1`), which scales the picture. With the window setting
+  put back, everything matched. When a byte-for-byte check fails everywhere, check the window
+  settings in the test folder's ini before anything else.
+
+Waiting for: the owner's last play test (D4), then the merge decisions (D5).
 
 ## How the game logic is shown untouched
 

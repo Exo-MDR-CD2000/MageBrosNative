@@ -5,7 +5,7 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.15).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.20).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
 > Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
@@ -15,9 +15,9 @@ original game logic unchanged when every option is at its default.
 > select with their green background filled out to the edges, the shop sliding in from the edges
 > over a dimmed level, the start-up logo white to the edges, and the ending's film strips across the
 > whole width; the HUD can be moved to the screen's edges and resized, and the field of view
-> zoomed. The game's logic and speed are the original's at any resolution, refresh rate and frame
-> rate. Smooth motion (drawing the game between its steps) is built and being tested; its last
-> part, polish and frame pacing, comes next. Then cheats and mods. See
+> zoomed, and Smooth motion draws the game between its steps, smooth at any refresh rate. The
+> game's logic and speed are the original's at any resolution, refresh rate and frame rate. Next:
+> cheats and mods. See
 > [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
 > changed in each version.
 
@@ -119,14 +119,20 @@ the right one even after they are plugged in or out.
 
 **VSync** (Options > Video) is Off, On or Adaptive (on, but a late picture shows at once instead of
 waiting); the line under it tells you if your graphics driver's own setting seems to override it.
-With Smooth motion on, Frame limit caps the frames a second.
+With Smooth motion on, Frame limit caps the frames a second (VSync also keeps them to the
+monitor's refresh rate).
 
-**Smooth motion** (Options > Video, off by default) draws the level between the game's 100 steps a
-second: the camera, the mages, enemies, bosses, platforms, coins, bullets, effects, shots and the
-water, so everything moves smoothly at any refresh rate, and so do the shop's slide and the
-ending's credits. The game itself runs exactly the same; the picture trails it by at most 10 ms.
-The menus' backgrounds, the film strips and the screen transitions keep the original's
-whole-pixel steps. Off, the game draws on its steps only, like the original.
+**Smooth motion** (Options > Video, off by default). The game runs in steps, 100 a second, as the
+original; without Smooth motion it draws a picture only when a step has run, so at most 100 a
+second and, on a 144 Hz monitor, some pictures shown twice. With Smooth motion on it draws a
+picture for every refresh of the monitor, showing the game between its last two steps: the
+camera, the mages, enemies, bosses, platforms, coins, bullets, effects, shots and the water, the
+shop's slide and the ending's credits all move smoothly at any refresh rate. The game itself runs
+exactly the same (its speed, timing and controls don't change); the cost is that the picture
+trails the game by at most 10 ms, about 5 on average. A few things keep the original's look on
+purpose: animation frames, effects growing and fading, and the 2D that moves a whole pixel at a
+time (the menus' backgrounds, the ending's film strips, the screen transitions). The ending's
+corridor keeps the speed it had at your frame rate (faster above 60, up to 100), scrolling evenly.
 
 **Widescreen** (Options > Video > Aspect): 4:3 is the original picture with black bars, Stretch
 pulls it wider, and Widescreen widens the 3D view of the levels to fill the screen (16:9, 16:10,

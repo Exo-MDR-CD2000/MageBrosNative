@@ -7,6 +7,14 @@ You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## [0.4.20] - 2026-10-28
+
+- Smooth motion is complete: the help lines in Options > Video, the notes in
+  `magebros_native.ini` and the README now describe what it does in full, and what it costs (the
+  picture trails the game by at most 10 ms).
+- The Frame limit's help line says it only applies with Smooth motion, and that VSync also caps
+  the frame rate.
+
 ## [0.4.19] - 2026-10-28
 
 - **Smooth motion, fourth part**: with Smooth motion on, the shop now slides open and closed
