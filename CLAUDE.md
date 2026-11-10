@@ -336,7 +336,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-10-29, version 0.4.21)
+## Where we are (last updated: 2026-11-09, version 0.4.23)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -384,15 +384,47 @@ Stage 7 so far:
 
 **Windowed / borderless smoothness (2026-10-29)**: the owner found Smooth motion choppy and
 sluggish in a window and borderless at frame limits below the refresh rate (exclusive fullscreen
-fine). The port's timing was reviewed and is fine; the cause is OpenGL's SwapBuffers being
-composed by DWM (no G-Sync there, uneven refresh holds). NVIDIA's "Vulkan/OpenGL present method:
-Prefer layered on DXGI swapchain" cured it, and the README now recommends it. The port's own cure
-(a DXGI flip swapchain shared with OpenGL, P1 and P2 of five chunks) is on the `dxgi-present`
-branch, paused and pushed apart from `main` (the owner's choice): see that branch's
-`docs/PRESENT_PATH.md`. Its builds used 0.4.22, so `main`'s next version skips to 0.4.23.
+fine; the owner's two monitors are 144 Hz with G-Sync on for windowed and fullscreen). The first
+review put it down to OpenGL's SwapBuffers being composed by DWM (no G-Sync there, uneven refresh
+holds), and NVIDIA's "Vulkan/OpenGL present method: Prefer layered on DXGI swapchain" seemed to
+cure it. The port's own cure (a DXGI flip swapchain shared with OpenGL, P1 and P2 of five chunks)
+is on the `dxgi-present` branch, paused and pushed apart from `main` (the owner's choice): see
+that branch's `docs/PRESENT_PATH.md`. Its builds used 0.4.22, so `main` skipped to 0.4.23.
+**Since then (2026-11-02)** the owner found the NVIDIA setting no longer cures it, though the
+G-Sync indicator shows G-Sync engaging in a window, so the README and CHANGELOG no longer
+recommend it (the owner, 2026-11-09). A second review found no bug in the blend, the limiter or
+VSync; the weak point is that a picture is placed for when its frame starts, not when it reaches
+the screen, and in a composed window that gap can vary (the driver's frame queue is not limited
+either). Borderless on Windows is a window one row taller than the monitor (`UseBorderlessWindow`,
+against Alt+Tab flicker), so it is composed like a window. Ideas, not built: limit the queue to
+one frame, pace by the time shown, a measuring build first. The owner chose to work on cheats; the
+smoothness is open, and the owner may have another model review it.
 
-**Next**: the rest of stage 7 (Mage Bros.' own cheats, mods, the config tooling: `--set`,
-`CONFIG.md`) is to be planned with the owner. Wait for the owner to say which and "start".
+- **Cheats** (planned with the owner, 2026-11-02; each chunk stops for the owner's test). All off
+  by default, set in Options > Cheats only, for both players in a two-player game, and progress
+  saves normally (so items a cheat gives stay in the save). C1 (0.4.23, done): the page turned on,
+  Unlock all levels, `Config::AnyCheat` (add each new cheat to it) and the CHEATS mark. C2
+  (0.4.24): Infinite lives, Invincible (not pits), Infinite magic, No falling deaths (back on the
+  last solid ground: read the original's fall handling first, avoid moving platforms). C3
+  (0.4.25): Max magic level, Choose your wand (Off keeps the hero's), Max gold (9999), all at
+  each level start. C4 (0.4.26): Moon jump (150 / 200%), Run speed (125 / 150 / 200%), One-hit
+  kills, Rapid fire; run the hero tests with each off.
+  - **Unlock all levels** (C1): `XSelectLevelObject`'s `MaxSelWorld` / `MaxSelLevel` give 3 / 9
+    while it is on; the level status (saved) is never changed by it, but levels cleared while it
+    is on count as usual (`IncreaseLevel` / `IncreaseWorld`, as the original). Entering level
+    select, a current level past those offered (played with the cheat, then turned off) moves
+    back to the last one offered: a state the original never reaches. Changeable only outside a
+    level (the menu).
+  - **The CHEATS mark**: `main.cpp` draws "CHEATS" (the menu's 8x8 font, `UIDraw`) at the
+    bottom-left on level select and in levels while `AnyCheat()`; the FPS counter has the
+    bottom-right.
+  - **Testing**: with every cheat off, level select and 1-1 screenshots must stay byte for byte
+    as the previous version (checked for C1 against 0.4.21, two save states). A test run with
+    `save_path = saves` in an empty folder copies the owner's saves into it first (read only):
+    give it a made-up `saves/original/progress.ini` to test from a known state.
+
+**Next**: cheats C2, when the owner says "start". Mods and the config tooling (`--set`,
+`CONFIG.md`) are still to be planned with the owner.
 
 **Branches**: work goes on `main`; each push publishes the version's release when that version
 has none yet (see "GitHub releases"). Two side branches were used and merged: `menu-dev` (0.4.0 to
@@ -425,14 +457,19 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   showFps, fps)`.
 - The key pages are built from `kKeyActions` in `options_menu.cpp` (group, label, DIK):
   rebinding a DIK moves every place the game reads it (the menus' W / S too).
-- `OptionsMenu::NotYet` greys out what isn't built: Cheats and Mods (`core/mods.cpp` is still a stub; its header and the
-  menu's mod pages still speak of Hopmon's assets).
+- `OptionsMenu::NotYet` greys out what isn't built: Mods (`core/mods.cpp` is still a stub; its header and the
+  menu's mod pages still speak of Hopmon's assets). Cheats is open from 0.4.23 (`CheatsPage`).
 - Smooth motion (`interpolation`, off by default from 0.4.16): drawing between ticks, only inside
   `Interp::SetScope` (a level's 3D, the shop, the ending's credits and corridor); `--auto alpha=`
   holds the blend for tests. Off, the framework draws only on frames with a tick (at most 100 a
   second, the original's pace). How it works: `docs/SMOOTH_MOTION.md`, first section.
+- The ini's `game_version` (under `config_version`) is `MBN_VERSION_STRING`, written by every
+  `Config::Save` and only read for show (`Config::gameVersion`); `main.cpp` rewrites the file at
+  start when it is missing or names another build (as it does for an older `config_version`), so
+  the ini always says which build last wrote it (the owner, 2026-10-29). It needs no
+  `config_version` bump.
 - `config_version` 15 rewrote the ini notes for Mage Bros.' keys and dropped Hopmon's two
-  cheats; `unlock_all_levels` is still read but nothing uses it.
+  cheats; `unlock_all_levels` stayed, and level select uses it from 0.4.23.
 
 **The window (chunk 2a, 0.4.1)**, in `src/framework/d3dapp.cpp`:
 

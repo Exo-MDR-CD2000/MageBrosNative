@@ -5,7 +5,7 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.21).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.23).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
 > Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
@@ -16,8 +16,8 @@ original game logic unchanged when every option is at its default.
 > over a dimmed level, the start-up logo white to the edges, and the ending's film strips across the
 > whole width; the HUD can be moved to the screen's edges and resized, and the field of view
 > zoomed, and Smooth motion draws the game between its steps, smooth at any refresh rate. The
-> game's logic and speed are the original's at any resolution, refresh rate and frame rate. Next:
-> cheats and mods. See
+> game's logic and speed are the original's at any resolution, refresh rate and frame rate. The
+> cheats have begun (Unlock all levels); next: more cheats, then mods. See
 > [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
 > changed in each version.
 
@@ -106,7 +106,10 @@ graphics, audio and controls, Main menu (back to the title), Level select in a l
 as you were when it started) and Quit. The controls page rebinds
 player 1's keys, player 2's keys, the general keys (select, pause, back) and the gamepad's fire and
 jump buttons. Options > Video > Show FPS shows the original's frames-per-second counter. Smooth
-motion (off by default) is described below. Settings not ready for Mage Bros. yet (cheats and mods) are greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
+motion (off by default) is described below. Options > Cheats has **Unlock all levels** (every
+level of all four worlds on level select, without changing your saved progress; set it from the
+title screen); more cheats are coming. All are off by default, and a small CHEATS mark shows in
+the bottom-left corner while any is on. Mods are not ready for Mage Bros. yet and are greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
 to replace the MIDI music.
 
 **The window** opens where you left it, at the size you left it (maximized too), on the same
@@ -133,21 +136,6 @@ trails the game by at most 10 ms, about 5 on average. A few things keep the orig
 purpose: animation frames, effects growing and fading, and the 2D that moves a whole pixel at a
 time (the menus' backgrounds, the ending's film strips, the screen transitions). The ending's
 corridor keeps the speed it had at your frame rate (faster above 60, up to 100), scrolling evenly.
-
-**Recommended for NVIDIA graphics cards: smooth play in a window or borderless.** By default,
-Windows copies the picture of an OpenGL game in a window or borderless into the desktop. That adds
-a frame of delay, keeps G-Sync from working there, and makes a frame limit below your monitor's
-refresh rate (60 on a 144 Hz monitor, say) feel choppy and sluggish with Smooth motion on.
-Exclusive fullscreen isn't affected. To fix it:
-
-1. Open the **NVIDIA Control Panel** and go to **Manage 3D settings > Program settings**.
-2. Choose `MageBrosNative.exe` (use **Add** to pick it if it isn't listed).
-3. Set **Vulkan/OpenGL present method** to **Prefer layered on DXGI swapchain**, then **Apply**.
-
-The game then reaches the screen the way modern DirectX games do: smooth in a window and
-borderless, with G-Sync where your monitor has it. It changes nothing in the game itself. AMD's
-drivers have no such setting; on an AMD card, exclusive fullscreen is the smoothest choice for
-frame limits below the refresh rate.
 
 **Widescreen** (Options > Video > Aspect): 4:3 is the original picture with black bars, Stretch
 pulls it wider, and Widescreen widens the 3D view of the levels to fill the screen (16:9, 16:10,
@@ -205,7 +193,8 @@ fences, red enemies, large magenta bosses).
 | Alt+Enter or F11 | fullscreen | fullscreen |
 
 The first run creates `magebros_native.ini` (every option, with comments) and
-`magebros_native.log` next to the program.
+`magebros_native.log` next to the program. The ini's `game_version` line names the build that
+last wrote it (the log's first line names the build that is running).
 
 **Saved progress** is kept after every level, in `%APPDATA%\MageBrosNative\saves\original\progress.ini`
 (or the folder set by `save_path` in the ini): the level you have reached, the worlds you have

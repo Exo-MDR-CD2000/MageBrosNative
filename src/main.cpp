@@ -22,6 +22,7 @@
 #include "game/XLevelView.h"
 #include "gfx/device.h"
 #include "input/input.h"
+#include "ui/ui_draw.h"
 #include "version.h"
 #include <SDL3/SDL.h>
 #include <algorithm>
@@ -183,6 +184,12 @@ protected:
             XGameScene::SetDeviceState(d);
             app_.Render(d, GetBackBuffer(), DisplayFPS() != 0, GetFPS());
             d->EndScene();
+            // native: CHEATS in the bottom-left corner on level select and in levels while any
+            // cheat is on (the FPS counter has the bottom-right)
+            if (GetConfig().AnyCheat() && (app_.InGame() || app_.OnLevelSelect())) {
+                cheatsMark_.Begin(d);
+                cheatsMark_.Text(cheatsMark_.Left() + 6, 466, "CHEATS", 1, UIColor{1.f, 0.8f, 0.25f, 0.9f});
+            }
             return S_OK;
         }
         SetViewerDeviceState(d);
@@ -447,6 +454,7 @@ private:
     D3DVECTOR center_{0, 0, 0};
     XLevelView levelView_;
     XApplication app_;  // the original's screens: the logo, the title, the game (the rest: stage 6)
+    UIDraw cheatsMark_;  // the CHEATS mark (its font is a GL texture: freed before the context)
     enum class Mode { Game, LevelViewer, ModelViewer };
     Mode mode_ = Mode::Game;  // Tab cycles game -> level viewer -> model viewer
     bool levelMode_ = false;
@@ -471,8 +479,10 @@ int main(int argc, char** argv) {
         cfg.path = basePath + "magebros_native.ini";
         cfg.firstRun = true;  // the window is then sized to the monitor (CD3DApplication::Create)
         cfg.Save();
-    } else if (cfg.version < Config::kCurrentVersion) {
-        cfg.Save();  // rewrite older files with the current comments, keeping their values
+    } else if (cfg.version < Config::kCurrentVersion || cfg.gameVersion != MBN_VERSION_STRING) {
+        // rewrite older files with the current comments, keeping their values, and files from
+        // another build with this build's game_version
+        cfg.Save();
     }
     std::string gamePath = cfg.gamePath;
     bool allowUnverified = false, twoPlayer = false, ending = false;

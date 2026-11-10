@@ -5,6 +5,7 @@
 #include "game/XApplication.h"
 #include "game/XCamera.h"
 #include "game/XStatusDisplay.h"
+#include "core/config.h"
 #include "input/input.h"
 
 namespace {
@@ -22,6 +23,11 @@ const uint16_t kSoundMove = 0xec, kSoundDecide = 0xed;
 enum { START = 0, PICK = 1, BACK = 2 };
 enum { TO_GAME = 0, TO_TITLE = 1 };
 constexpr unsigned kFadeTicks = 254;
+
+// The last world and level the screen offers: the level status's (the original), or every one
+// with the Unlock all levels cheat (native), which leaves the level status itself untouched
+int MaxSelWorld(const XLevelStatus& ls) { return GetConfig().unlockAllLevels ? 3 : ls.maxSelWorld; }
+int MaxSelLevel(const XLevelStatus& ls, int world) { return GetConfig().unlockAllLevels ? 9 : ls.maxSelLevel[world]; }
 }  // namespace
 
 XSelectLevelObject::XSelectLevelObject(XApplication* app) : XProcessObject(app) {
@@ -50,6 +56,11 @@ XSelectLevelObject::XSelectLevelObject(XApplication* app) : XProcessObject(app) 
     for (int i = 0; i < 4; i++) worlds_[i] = std::make_unique<JSprite>(kBitmapWorlds[i], 1);
     for (int i = 0; i < 3; i++) items_[i] = std::make_unique<JSprite>(kBitmapItems[i], 2);
     app_->StatusDisplay().InitForGame();  // InitForSelLevel: the same, with no game (Render's inGame)
+    // native: a level played with Unlock all levels can be past the levels reached once the cheat
+    // is off again; the marker goes back to the last one offered (never so in the original)
+    XLevelStatus& ls = app_->LevelStatus();
+    if (ls.currentWorld > MaxSelWorld(ls)) ls.currentWorld = (int8_t)MaxSelWorld(ls);
+    if (ls.currentLevel > MaxSelLevel(ls, ls.currentWorld)) ls.currentLevel = (int8_t)MaxSelLevel(ls, ls.currentWorld);
     StartFadeIn(0);
 }
 XSelectLevelObject::~XSelectLevelObject() = default;
@@ -94,18 +105,18 @@ void XSelectLevelObject::ProcessFrame(unsigned n) {
             XLevelStatus& ls = app_->LevelStatus();
             if (left) {
                 snd.PlayMono(kSoundMove, 1.0f);
-                if (--ls.currentLevel < 0) ls.currentLevel = ls.maxSelLevel[ls.currentWorld];
+                if (--ls.currentLevel < 0) ls.currentLevel = (int8_t)MaxSelLevel(ls, ls.currentWorld);
             } else if (right) {
                 snd.PlayMono(kSoundMove, 1.0f);
-                if (++ls.currentLevel > ls.maxSelLevel[ls.currentWorld]) ls.currentLevel = 0;
+                if (++ls.currentLevel > MaxSelLevel(ls, ls.currentWorld)) ls.currentLevel = 0;
             } else if (up) {
                 snd.PlayMono(kSoundMove, 1.0f);
-                if (--ls.currentWorld < 0) ls.currentWorld = ls.maxSelWorld;
-                if (ls.currentLevel > ls.maxSelLevel[ls.currentWorld]) ls.currentLevel = ls.maxSelLevel[ls.currentWorld];
+                if (--ls.currentWorld < 0) ls.currentWorld = (int8_t)MaxSelWorld(ls);
+                if (ls.currentLevel > MaxSelLevel(ls, ls.currentWorld)) ls.currentLevel = (int8_t)MaxSelLevel(ls, ls.currentWorld);
             } else if (down) {
                 snd.PlayMono(kSoundMove, 1.0f);
-                if (++ls.currentWorld > ls.maxSelWorld) ls.currentWorld = 0;
-                if (ls.currentLevel > ls.maxSelLevel[ls.currentWorld]) ls.currentLevel = ls.maxSelLevel[ls.currentWorld];
+                if (++ls.currentWorld > MaxSelWorld(ls)) ls.currentWorld = 0;
+                if (ls.currentLevel > MaxSelLevel(ls, ls.currentWorld)) ls.currentLevel = (int8_t)MaxSelLevel(ls, ls.currentWorld);
             } else if (button) {
                 snd.PlayMono(kSoundDecide, 1.0f);
                 picking_ = false;
@@ -170,7 +181,7 @@ void XSelectLevelObject::Render(Device* d, BackBuffer* bb) {
             cleared_->Draw(bb);
         }
         for (int lv = 0; lv < 10; lv++) {
-            dot_->SetCurrentFrame(w <= ls.maxSelWorld && lv <= ls.maxSelLevel[w] ? 1 : 0);
+            dot_->SetCurrentFrame(w <= MaxSelWorld(ls) && lv <= MaxSelLevel(ls, w) ? 1 : 0);
             dot_->SetPosition(x, rowY);
             dot_->Draw(bb);
             if (lv < 9) {

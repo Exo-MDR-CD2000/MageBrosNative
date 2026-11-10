@@ -9,11 +9,21 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
-- **Recommended for NVIDIA graphics cards**: for smooth play in a window or borderless (above all
-  with Smooth motion on and a frame limit below your monitor's refresh rate), set **Vulkan/OpenGL
-  present method** to **Prefer layered on DXGI swapchain** for `MageBrosNative.exe` in the NVIDIA
-  Control Panel (Manage 3D settings > Program settings). The README's Video section explains why.
-  The game itself is unchanged.
+## [0.4.23] - 2026-11-09
+
+The first of the cheats:
+
+- **Options > Cheats is open**, with **Unlock all levels**: every level of all four worlds can be
+  picked on level select. Turning it on writes nothing to your save, so turning it off again
+  brings back exactly the levels you had reached (levels you clear while it is on count as
+  usual). Change it from the options on the title screen. More cheats come in the next versions;
+  all are off by default, and with them off the game plays exactly as the original.
+- While any cheat is on, a small **CHEATS** mark shows in the bottom-left corner on level select
+  and in levels.
+- **The settings file names the game's version**: `magebros_native.ini` now has a
+  `game_version` line at the top, the version of Mage Bros. Native that last wrote it, so you can
+  tell which build a settings file came from. Starting a different version updates it; your
+  settings are kept.
 - For building it yourself: `make_release.bat` now builds the current version as it is when run
   with nothing after it (or double-clicked), instead of raising the version. Raise it with
   `make_release.bat patch`, `minor` or `major`, or set one with `make_release.bat 0.4.23`. Step

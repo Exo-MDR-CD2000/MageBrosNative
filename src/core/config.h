@@ -59,12 +59,15 @@ struct Config {
     // [mods]: installed add-ons in load order (first wins) with on/off, and the level pack to play
     std::vector<std::pair<std::string, bool>> mods;
     std::string modPack = "original";
-    // [cheats] (off by default; not used yet: Mage Bros.' own cheats come in stage 7)
+    // [cheats] (all off by default; with them all off the game plays exactly as the original)
     bool unlockAllLevels = false;     // every level selectable; saved progress is left untouched
+    // Any cheat on (the HUD's CHEATS mark). Add each new cheat here.
+    bool AnyCheat() const { return unlockAllLevels; }
 
     std::string path;
     int version = 0;                    // config_version found in the file (0 = older file)
     static constexpr int kCurrentVersion = 21;
+    std::string gameVersion;            // game_version found in the file: the build that last wrote it (only shown)
     bool firstRun = false;              // no ini existed at start (not saved): size the window to the monitor
     bool Load(const std::string& file);
     bool Save() const;

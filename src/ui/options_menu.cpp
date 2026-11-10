@@ -441,8 +441,8 @@ OptionsMenu::Page OptionsMenu::MainPage() {
                        [this] { PushPage(AudioPage()); }, nullptr});
     p.items.push_back({"Controls", "Keyboard and gamepad bindings, stick dead zone.", nullptr, nullptr,
                        [this] { PushPage(ControlsPage()); }, nullptr});
-    p.items.push_back({"Cheats", "", nullptr, nullptr, [this] { PushPage(CheatsPage()); }, nullptr});
-    NotYet(p.items.back());
+    p.items.push_back({"Cheats", "Game modifiers, all off by default.", nullptr, nullptr,
+                       [this] { PushPage(CheatsPage()); }, nullptr});
     p.items.push_back({"Mods", "", nullptr, nullptr, [this] { PushPage(ModsPage()); }, nullptr});
     NotYet(p.items.back());
     p.items.push_back({"Reset all settings",
@@ -1244,7 +1244,7 @@ OptionsMenu::Page OptionsMenu::CheatsPage() {
     struct Cheat { const char* label; const char* help; bool Config::*field; };
     static const Cheat cheats[] = {
         {"Unlock all levels",
-         "Every level can be picked on level select. Your saved progress is not changed.",
+         "Every level of all four worlds can be picked on level select. Your saved progress is not changed.",
          &Config::unlockAllLevels},
     };
     for (const Cheat& ch : cheats) {
@@ -1266,7 +1266,8 @@ OptionsMenu::Page OptionsMenu::CheatsPage() {
         }
         p.items.push_back(it);
     }
-    p.items.push_back({"Back", "All cheats are off by default; with them off the game plays like the original.",
+    p.items.push_back({"Back", "All cheats are off by default; with them off the game plays like the original. "
+                               "CHEATS shows in the corner while any is on.",
                        nullptr, nullptr, [this] { Back(false); }, nullptr});
     return p;
 }

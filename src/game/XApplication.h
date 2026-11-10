@@ -102,6 +102,7 @@ public:
 
     XGameScene& Game() { return *game_; }
     bool InGame() const { return current_ == game_.get() && state_ == RUNNING; }
+    bool OnLevelSelect() const;
     // Test hook (N / B, F2, --auto level=): straight into the game at that level, now, without a
     // save slot (so nothing it does is saved)
     void StartGameAt(int world, int level);

@@ -132,6 +132,10 @@ bool XApplication::OnLogoOrTitle() const {
     return state_ == RUNNING && current_ && (current_ == logo_.get() || current_ == title_.get());
 }
 
+bool XApplication::OnLevelSelect() const {
+    return state_ == RUNNING && current_ && current_ == selectLevel_.get();
+}
+
 bool XApplication::PlayerHasControl() const {
     if (state_ != RUNNING || !current_ || current_->GetState() != XProcessObject::PROCESS) return false;
     if (current_ == logo_.get() || current_ == ending_.get()) return false;

@@ -70,9 +70,9 @@ about to release).
 - **major** (-> 1.0.0): the big one.
 
 **Skip any version a side branch has used**, even if that branch was never merged: its builds
-went out under that number. Today `dxgi-present` uses **0.4.22**, so `main`'s next release is
-**0.4.23** (`make_release.bat 0.4.23`). Check `CLAUDE.md` ("Where we are") and `docs/ROADMAP.md`
-for any others.
+went out under that number. For example, `dxgi-present` used **0.4.22**, so `main` went from
+0.4.21 straight to **0.4.23** (`make_release.bat 0.4.23`). Check `CLAUDE.md` ("Where we are") and
+`docs/ROADMAP.md` for any others.
 
 To see which versions are already released:
 

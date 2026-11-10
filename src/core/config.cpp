@@ -1,5 +1,6 @@
 #include "config.h"
 #include "log.h"
+#include "version.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -50,6 +51,7 @@ bool Config::Load(const std::string& file) {
         size_t before = seen;
         seen++;
         if (section == "" && k == "config_version") version = iv;
+        else if (section == "" && k == "game_version") gameVersion = v;
         else if (section == "video") {
             if (k == "width") windowWidth = std::max(320, iv);
             else if (k == "height") windowHeight = std::max(240, iv);
@@ -138,7 +140,7 @@ bool Config::Load(const std::string& file) {
         } else {
             seen = before;
         }
-        if (seen == before && !(section == "" && k == "config_version"))
+        if (seen == before && !(section == "" && (k == "config_version" || k == "game_version")))
             Log("Config: ignoring unknown setting '%s' in [%s]", k.c_str(), section.c_str());
     }
     fclose(f);
@@ -182,7 +184,10 @@ bool Config::Save() const {
       "; None of these settings change gameplay: the game always runs its original\n"
       "; rules and 100-steps-per-second timing.\n"
       "; ===========================================================================\n");
-    fprintf(f, "config_version = %d\n\n", kCurrentVersion);
+    fprintf(f, "config_version = %d\n", kCurrentVersion);
+    P("; game_version: the Mage Bros. Native build that last wrote this file (for\n"
+      ";   telling builds apart; changing it does nothing).\n");
+    fprintf(f, "game_version = %s\n\n", MBN_VERSION_STRING);
 
     P("[game]\n"
       "; Where your original MageBros.exe is. Leave empty to look next to this program\n"
@@ -421,12 +426,14 @@ bool Config::Save() const {
     }
     P("\n[cheats]\n"
       "; Game modifiers. All off by default; with them off the game plays exactly\n"
-      "; like the original. (Not used yet: the cheats come in a later version.)\n"
+      "; like the original. While any is on, CHEATS shows in the bottom-left corner\n"
+      "; on level select and in levels. Progress is saved as usual.\n"
       ";\n"
-      "; unlock_all_levels: 1 = every level can be chosen on the level-select\n"
-      ";   screen, in the original game and in level packs. Your real progress (the\n"
-      ";   highest level you have reached) is not changed, so turning this off again\n"
-      ";   brings back exactly the levels you had unlocked. Default 0.\n");
+      "; unlock_all_levels: 1 = every level of all four worlds can be chosen on the\n"
+      ";   level-select screen. Turning it on writes nothing to your save: the\n"
+      ";   levels you have reached stay as they were, and turning it off again brings\n"
+      ";   back exactly those (levels you clear while it is on count as usual).\n"
+      ";   Default 0.\n");
     fprintf(f, "unlock_all_levels = %d\n", unlockAllLevels ? 1 : 0);
     P("\n[mods]\n"
       "; Level packs go in mods/levelpacks/, add-ons in mods/addons/ (next to this program);\n"
