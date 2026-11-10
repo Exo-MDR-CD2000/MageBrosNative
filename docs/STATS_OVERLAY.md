@@ -1,4 +1,4 @@
-# The Statistics Overlay (O1 built as 0.4.34; O2 and O3 planned)
+# The Statistics Overlay (O1 built as 0.4.34, O2 as 0.4.35; O3 optional)
 
 A panel of statistics and information drawn over the game, turned on and off by the player: how
 the game is running (frame rate, frame times, the game's ticks, smooth motion's blend) and on what
@@ -122,6 +122,33 @@ Below the text, three strips of the last 2 to 3 seconds, one column a frame:
 - **Smooth motion's blend**: an even sawtooth means each picture is placed evenly; jumps show
   uneven pictures (with Smooth motion off it is flat at 1).
 - **Ticks per frame**: 1 a frame at 100 frames a second; 0 and 1 in turn above it; 1 and 2 below.
+
+### O2 as built (0.4.35)
+
+- **No separate panel was needed** (the owner asked to check first). The graphs take about 90 in
+  the 480-high space. Compact with them ends at 316 at 4:3 (374 at HUD size 200%), and Full in
+  two columns at 396 (454): both fit below the HUD and above the bottom (474). Only Full in one
+  column (4:3 to about 16:10) has no room under it (it would end at 524), so there the graphs get
+  a small panel of their own beside it, from below the HUD's top-right panel (`sideTop`, about 84).
+  F9 keeps its three states.
+- **The history** (`src/framework/d3dapp.h`): `statsHist_`, the last 512 frames drawn (the gap
+  since the one before, the blend it was drawn at, its ticks), filled by `StatsFrameStart` and
+  `StatsFrameAlpha` whether the overlay shows or not, so the graphs are full when it is turned on.
+- **The graphs** (`StatsOverlay::Graphs`): one column a frame, as many frames as the graph is
+  wide, the newest at the right: 232 in one column (2.3 s at 100 frames a second, 1.6 s at 144),
+  488 across two. The frame time is scaled so that the expected time is halfway up (a gold line):
+  a tick (10 ms) with Smooth motion off; with it on, the frame limit, else with VSync the refresh
+  times the swap interval, else none (drawing freely, scaled by the average). A frame half again
+  as long as expected is red. The blend strip is flat and dim with Smooth motion off. Ticks a
+  frame: dark none, green one, gold two or more.
+- **Cost**: still drawn in the same two batched draws. Unlimited frames at 1280 x 960: about 2,045
+  to 2,070 a second off, 2,005 to 2,040 Compact, 1,860 to 1,990 Full (about 0.01 and 0.03 ms a
+  frame).
+- **Checked**: off, the logo, title, 1-1 (still and moving) and the ending byte for byte as
+  0.4.34; on, 4:3 Compact and Full (the side panel), 16:9 Compact and Full, 16:9 at limits 60 and
+  72 (refresh over 2) and 32:9 Full. Seen: Smooth motion off, flat 10 ms and one tick a frame;
+  144 Hz with VSync, 6.95 ms and ticks 0 and 1 in turn; a limit of 60, 16.66 to 16.68 ms and 1 or
+  2 ticks a frame; the limit of 72 paced by the driver at 13.90 ms (two refreshes).
 
 ### O3, recording (optional, the owner to decide)
 

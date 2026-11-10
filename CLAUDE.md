@@ -351,7 +351,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-10, version 0.4.34 on `main`)
+## Where we are (last updated: 2026-11-10, version 0.4.35 on `main`)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -519,8 +519,9 @@ the update range follows the view on views wider than about 1.83:1, so enemies a
 screen's edges move (see the visibility convention above and the ROADMAP's "Wake range" row);
 checked here by screenshots, not yet by the owner at 32:9; and the options menu shows the
 build's version at the right of its title row. Then (0.4.34) the Statistics Overlay's O1, the
-panel (F9; `docs/STATS_OVERLAY.md`, "O1 as built"); **next**, on the owner's word after trying
-it: O2, the graphs. Still to
+panel (F9; `docs/STATS_OVERLAY.md`, "O1 as built"), and (0.4.35) O2, its graphs ("O2 as built":
+no extra F9 state was needed). O3, recording to a file, is optional, for the owner to decide
+after trying them. Still to
 be planned with the owner: mods, the config tooling (`--set`, `CONFIG.md`), and what is left of
 the window / borderless smoothness (above; the part-of-refresh frame limits answer the
 choppiness at a limit below the refresh rate, which the owner liked; whether G-Sync follows a

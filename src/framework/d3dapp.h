@@ -193,6 +193,19 @@ private:
         float alpha = 0;
     } statsSec_;
     uint64_t frameStartNs_ = 0;
+    // The last frames drawn, for the overlay's graphs (O2): the time since the frame before, the
+    // blend it was drawn at (1 with Smooth motion off) and the ticks it ran. Kept whether the
+    // overlay shows or not, so the graphs are full the moment it is turned on.
+    static constexpr int kStatsHistory = 512;
+    struct StatsFrameRec {
+        float ms = 0, alpha = 1;
+        unsigned char ticks = 0;
+    };
+    StatsFrameRec statsHist_[kStatsHistory];
+    int statsHistHead_ = 0, statsHistCount_ = 0;  // head: the next slot
+    void StatsFrameAlpha(float alpha) {
+        if (statsHistCount_) statsHist_[(statsHistHead_ + kStatsHistory - 1) % kStatsHistory].alpha = alpha;
+    }
     std::unique_ptr<StatsOverlay> statsOverlay_;
     void StatsFrameStart(uint64_t nowNs, DWORD ticks, bool late);
     void SummarizeStats(DWORD elapsedMs);

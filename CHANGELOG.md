@@ -9,6 +9,14 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.35] - 2026-11-10
+
+- **The Statistics Overlay has graphs**: the time between pictures (an even line is smooth, a red
+  bar is a stutter, the gold line is what to expect from your refresh rate or frame limit), Smooth
+  motion's blend (an even pattern means even movement) and the game's steps in each picture, for
+  the last couple of seconds. They sit under the figures; in Full on a 4:3 screen they get a small
+  panel of their own beside it.
+
 ## [0.4.34] - 2026-11-10
 
 - **Statistics Overlay** (F9, or Options > Video): a see-through panel at the left of the screen

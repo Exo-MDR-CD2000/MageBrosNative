@@ -516,13 +516,19 @@ void CD3DApplication::UpdateStats() {
 // long after its latest tick it started (Smooth motion off, where each frame belongs to a tick).
 void CD3DApplication::StatsFrameStart(uint64_t nowNs, DWORD ticks, bool late) {
     StatsWindow& w = statsWin_;
+    StatsFrameRec rec;
+    rec.ticks = (unsigned char)std::min<DWORD>(ticks, 255);
     if (w.lastStartNs && nowNs > w.lastStartNs && nowNs - w.lastStartNs < 1000000000ull) {
         double ms = (double)(nowNs - w.lastStartNs) / 1e6;
+        rec.ms = (float)ms;
         if (w.frames == 0 || ms < w.frameMin) w.frameMin = ms;
         if (w.frames == 0 || ms > w.frameMax) w.frameMax = ms;
         w.frameSum += ms;
         w.frames++;
     }
+    statsHist_[statsHistHead_] = rec;
+    statsHistHead_ = (statsHistHead_ + 1) % kStatsHistory;
+    statsHistCount_ = std::min(statsHistCount_ + 1, kStatsHistory);
     w.lastStartNs = nowNs;
     frameStartNs_ = nowNs;
     w.ticks += (int)ticks;
@@ -642,10 +648,38 @@ void CD3DApplication::DrawStatsOverlay() {
         left = {perf, timing};
         right = {disp, sys};
     }
-    // below the HUD's level info (its two rows end at about 58, grown by the HUD size in a level)
-    float top = 4.f + 58.f * (InLevel() ? std::max(1.0f, cfg.hudScale) : 1.0f);
+    // The graphs (O2): the frames kept, oldest first, and the frame time to expect: with Smooth
+    // motion off a tick (10 ms: the original's 100 a second); on, the frame limit, else with VSync
+    // the refresh (times the swap interval), else none (drawing freely), scaled by the average.
+    StatsGraphs graphs;
+    graphs.smooth = cfg.interpolation;
+    for (int i = 0; i < statsHistCount_; i++) {
+        const StatsFrameRec& r = statsHist_[(statsHistHead_ - statsHistCount_ + i + kStatsHistory) % kStatsHistory];
+        graphs.frameMs.push_back(r.ms);
+        graphs.alpha.push_back(r.alpha);
+        graphs.ticks.push_back(r.ticks);
+    }
+    double lim = FrameLimit();
+    if (!cfg.interpolation) {
+        graphs.targetMs = 10.f;
+        graphs.target = "tick";
+    } else if (lim > 0 && !SwapPaced()) {
+        graphs.targetMs = (float)(1000.0 / lim);
+        graphs.target = "limit";
+    } else if (vsyncInEffect_ > 0 && refreshHz_ > 0) {
+        graphs.targetMs = (float)(1000.0 * std::max(1, swapEvery_) / refreshHz_);
+        graphs.target = swapEvery_ > 1 ? "refreshes" : "refresh";
+    }
+    float base = graphs.targetMs > 0 ? graphs.targetMs : (float)std::max(0.5, s.frameAvg);
+    graphs.scaleMs = std::max(2.f * base, 2.f);  // (the expected time halfway up; longer clips at the top)
+
+    // below the HUD's level info (its two rows end at about 58, grown by the HUD size in a level);
+    // the graphs' own panel, where it has one, below the HUD's top-right panel (ends at about 80)
+    const float hud = InLevel() ? std::max(1.0f, cfg.hudScale) : 1.0f;
+    float top = 4.f + 58.f * hud, sideTop = 4.f + 80.f * hud;
     std::string sub = std::string(cfg.statsOverlay >= 2 ? "FULL" : "COMPACT") + "  v" + MBN_VERSION_STRING;
-    statsOverlay_->Render(&GetDevice(), top, "STATISTICS OVERLAY", sub, left, right);
+    statsOverlay_->Render(&GetDevice(), top, sideTop, cfg.statsOverlay >= 2, "STATISTICS OVERLAY", sub, left, right,
+                          graphs);
 }
 
 // With Smooth motion on, the game standing still keeps the alpha of the last frame drawn: the
@@ -678,6 +712,7 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
         HoldTickPhase(nowNs, tickNow);
         heldLastFrame_ = true;
         StatsFrameStart(nowNs, 0, false);
+        StatsFrameAlpha(GetConfig().interpolation ? g_tickAlpha : 1.f);
         GetDevice().BeginFrame();
         HRESULT hr = Render();
         if (FAILED(hr)) return hr;
@@ -718,6 +753,7 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
     } else {
         g_tickAlpha = 1.f;
     }
+    StatsFrameAlpha(GetConfig().interpolation ? g_tickAlpha : 1.f);  // (the blend this frame is drawn at)
     GetDevice().BeginFrame();
     HRESULT hr = Render();
     if (FAILED(hr)) return hr;
