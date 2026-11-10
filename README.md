@@ -1,298 +1,163 @@
 # Mage Bros. Native
 
-An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platformer by Saito Games
-(2003–2009), in the same style as [Hopmon Native](https://github.com/Exo-MDR-CD2000/HopmonNative):
-SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
-original game logic unchanged when every option is at its default.
+An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2003–2009), for
+modern Windows. It plays exactly like the original, with optional extras: widescreen, any
+resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-> **Status: stage 7 of 7 in progress (version 0.4.26).** The whole original game is in and plays
-> from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
-> two, with the original's logo, title, save slots, level select, shop, saving and ending.
-> Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
-> pause and FPS counter, rebinding both players' keys, replacement music); the window, monitors,
-> exclusive fullscreen and VSync are done; widescreen, 16:9 and 21:9 included, shows the levels
-> without pop-in at the edges, with the sound panned to match, and the title, save slots and level
-> select with their green background filled out to the edges, the shop sliding in from the edges
-> over a dimmed level, the start-up logo white to the edges, and the ending's film strips across the
-> whole width; the HUD can be moved to the screen's edges and resized, and the field of view
-> zoomed, and Smooth motion draws the game between its steps, smooth at any refresh rate. The
-> game's logic and speed are the original's at any resolution, refresh rate and frame rate. The
-> cheats are in (Options > Cheats, all off by default); next: mods. See
-> [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
-> changed in each version.
+**Version 0.4.26.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+or two players, the shop, saving and the ending. What changed in each version:
+[CHANGELOG.md](CHANGELOG.md).
 
-> **You need your own copy of the original game.** This repository contains no game content: no
-> images, models, levels, sounds, music or text. Everything is read at runtime from the original
-> `MageBros.exe` and its `Music01–06.mid` files. Without them nothing runs.
+> **You need your own copy of the original game.** This project contains none of the game's
+> files: everything is read from your `MageBros.exe` and its music files when you play.
 
-## Requirements
+## What Native adds
 
-- **Mage Bros. 2.0, the freeware build** from [saitogames.com](http://www.saitogames.com/).
-  The program checks the SHA-256 of `MageBros.exe`:
-  `ac191080af002b8ad0615e432faa92a2a47ce76a9aaa667bacf628836c098c49`.
-  Other builds are refused unless you pass `--allow-unverified`.
-- Windows 10/11 x64 for the game. The asset tool also builds on Linux and macOS.
-- With an NVIDIA graphics card, one driver setting is recommended for smooth play in a window or
-  borderless: see "Recommended for NVIDIA graphics cards" below.
+The game itself is the original's: the same levels, enemies, physics, timing and even its quirks.
+Around it, Native adds:
 
-## What works today
+- **Runs natively on Windows 10 and 11** with OpenGL instead of the original's DirectX 7: no
+  compatibility settings or wrappers needed.
+- **Any resolution and screen mode:** a resizable window, borderless or exclusive fullscreen, any
+  monitor, instead of the original's fixed 640 × 480. The window opens where you left it.
+- **Widescreen** (16:9, 21:9 and wider): see more of each level at the sides, with nothing
+  popping in at the edges and the sound panned to match. The HUD can move to the screen's edges.
+- **High refresh rates:** Smooth motion draws the game between its steps for smooth movement at
+  144 Hz and beyond, and VSync, adaptive VSync and a frame limit are built in. The game's speed
+  and timing never change with the frame rate.
+- **Sharper graphics, all optional:** antialiasing, texture filtering, higher render resolution,
+  per-pixel lighting, soft shadows and a brightness setting.
+- **An in-game options menu** (F10) for every setting, with changes applied at once.
+- **Full controls:** rebind every key for both players, and use modern gamepads.
+- **Replacement music:** play MP3 or FLAC versions of the six tracks instead of MIDI.
+- **Cheats:** twelve of them, from Unlock all levels to Moon jump, all off by default.
+- **Saves you can back up:** your progress is kept in a plain file under `%APPDATA%`.
+- **A few fixes:** small slips of the original, such as overlapping messages in two-player games,
+  are fixed; each one is listed in [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md).
 
-**`MageBrosNative.exe`**: put it next to `MageBros.exe` (or pass `--game PATH`) and run it. It
-opens on the original's **logo** with its jingle, then the **title screen**: choose 1 PLAYER,
-2 PLAYERS or EXIT with the arrow keys (or W / S, or a gamepad) and Enter (or Shift, Ctrl, a
-gamepad button); Escape picks EXIT. Then the **save slots**: 8 for each game mode, each showing
-the date it was saved and the level reached; choose one (an empty one starts a new game), or
-press Delete to delete a saved game. Then **level select**, the world map: START plays the
-level marked, SELECT LEVEL lets you move the marker to any level you have reached (Left / Right
-along a world, Up / Down between worlds), BACK saves and returns to the title. Then the **game
-view**: World 1-1 to start, with player 1's mage, who drops in from above and plays
-with the original controls (arrow keys; jump Right Shift or `]`; fire Right Ctrl or `[`; in a
-one-player game Left Shift and Left Ctrl too; or a gamepad). Shots cost magic, which refills over
-time; jump-fire over a torch post to light its torch; collect coins; once every torch is lit the
-goal opens: stand on it to warp to the next level. Lit torches burn if you stand in them, and the
-mage flashes white after a hit. Escape gives up the level (losing some gold, as in the original),
-once the level has finished fading in. Each level fades in and out with the original's venetian
-blind.
-The original status display shows the level, torches, life, gold and magic (and a boss's
-hearts), sounds are panned left and right as the mage moves, and the original's shadow and
-particle effects are in.
+## Getting started
 
-**Two players**: choose 2 PLAYERS on the title screen (or, as test shortcuts, press F2 in the
-game view, which restarts the level, or start with `--two-player`). Player 2 is the second mage: D, A, W, S move, Left Ctrl or `1` fires, Left Shift
-or `2` jumps, or the second gamepad. Each player has their own life, gold and magic, shown in two
-panels; the camera follows the point between the mages. The level is cleared once one mage has
-warped and the other has warped or died, and lost only when both have died. (In two-player games
-the 1 to 6 music keys are off, since 1 and 2 belong to player 2.) The mages bump into each
-other, and one can stand on the other's head and be carried along, or up and down on a lift.
+1. Get **Mage Bros. 2.0**, the freeware version, from [saitogames.com](http://www.saitogames.com/).
+2. Download the latest `MageBrosNative-<version>-windows-x64.zip` from
+   [Releases](https://github.com/Exo-MDR-CD2000/MageBrosNative/releases).
+3. Unzip it and put `MageBrosNative.exe` in the same folder as `MageBros.exe` and its
+   `Music01.mid` to `Music06.mid` files.
+4. Run `MageBrosNative.exe`.
 
-- **World 1** plays through: slimes, bees, wallabies, spikes, needle fans, breakable barrels and
-  fence doors, pillars and fences, cannons, moving platforms, water in the pits with leaping
-  fish, and in 1-10 the dragon, who swims round its pools and crosses the floor breathing fire.
-- **World 2** plays through: trees, potted plants, hopping mushrooms, rolling needle balls,
-  squids, hammers that slam down and shake the screen, fans that blow the mage along, turtles
-  that hide in their shells, and in 2-10 the genie, who rises from its steaming lamp and fires
-  spiked balls that roll after the mage.
-- **World 3** plays through: pots, kiwis that run from the mage, spikes that jump up from the
-  floor, stalactites that drop and shake the screen, rocket launchers whose rockets home in on
-  the mage, floor fans that float the mage up to higher ledges, ghosts that drift through walls
-  and swoop at the mage, and in 3-10 the nest, which sends a bird after the mage with every hit.
-- **World 4** reuses the first three worlds' enemies and bosses; in 4-10 the wizard rises from the
-  pit, circles the arena, and attacks with a great spinning blade whose wind blows the mage towards
-  the edge or a wand that fires homing fireballs.
+You need Windows 10 or 11 (64-bit). The game checks that `MageBros.exe` is the 2.0 freeware build
+(SHA-256 `ac191080af002b8ad0615e432faa92a2a47ce76a9aaa667bacf628836c098c49`); other builds are
+refused unless you start it with `--allow-unverified`. If the game is somewhere else, start it
+with `--game "C:\path\to\MageBros.exe"` or set `path` in the settings file.
 
-**The shop**: walk up to the door of a shop building (levels 3, 6 and 9 of worlds 1 to 3, and 4-2,
-4-5, 4-8) and the original's MAGIC SHOP opens, pausing the level. The shopper buys with their own
-gold: a heal potion (20 gold, one more heart), a magic potion (100, a faster magic refill) and
-two wands that depend on the world. What you can't afford or already have is greyed out. Move
-with the shopper's own direction keys and buy with any of their fire or jump keys or Enter
-(player 1: arrows, Right Shift, Right Ctrl, `[` or `]`, and in a one-player game Left Shift or
-Left Ctrl too; player 2: W A S D, Left Shift, Left Ctrl, `1` or `2`; or their gamepad; changed
-keys count). The original took only Right Shift / Right Ctrl (player 2: Left Shift / Left Ctrl).
-Choose EXIT to leave. As in the original, Escape also leaves the shop, but it gives up the level too.
-Each wand fires its own pattern: the double wand two shots side by side, the triple wand a
-shot and two smaller ones spread wider, and the X wands the same in homing shots that curve
-towards the nearest enemy (or the boss).
+## Controls
 
-**The ending**: clearing 4-10 plays the original's ending. The two mages walk down an endless
-corridor between scrolling film strips while the credits slide past. On the last one, press a
-button (Enter, Shift, Ctrl, a gamepad button or Escape) to return to the logo.
-
-Defeated enemies drop coins. After a lost level, or a world's last level, the game saves and
-returns to level select; world 4 opens once worlds 1 to 3 are cleared.
-
-**Pause and options**: P pauses and resumes, as in the original. F10 (or gamepad Start) opens
-the options menu whenever you can play (not during the logo, the ending, a fade or a death): video,
-graphics, audio and controls, Main menu (back to the title), Level select in a level (leaving it
-as you were when it started) and Quit. The controls page rebinds
-player 1's keys, player 2's keys, the general keys (select, pause, back) and the gamepad's fire and
-jump buttons. Options > Video > Show FPS shows the original's frames-per-second counter. Smooth
-motion (off by default) is described below. Options > Cheats has **Unlock all levels** (every
-level of all four worlds on level select, without changing your saved progress; set it from the
-title screen), **Infinite lives** (hits never take your last life), **Invincible** (enemies,
-bullets and flames can't hurt or push you), **Infinite magic** (firing costs nothing) and **No
-falling deaths** (a pit or the water puts you back where you last stood), and, at each level
-start, **Max magic level**, **Choose your wand** and **Max gold** (kept in your save), and
-**Moon jump**, **Run speed**, **One-hit kills** and **Rapid fire**.
-All are off by default, and a small CHEATS mark shows in the bottom-left corner while any is on. Mods are not ready for Mage Bros. yet and are greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
-to replace the MIDI music.
-
-**The window** opens where you left it, at the size you left it (maximized too), on the same
-monitor; the first start opens the largest 4:3 window that fits the monitor. Alt+Enter or F11
-switches between the window and the fullscreen mode you used last (borderless or exclusive), and
-is remembered. Exclusive fullscreen can run at any resolution and refresh rate your monitor has
-(Options > Video > Resolution and Refresh rate). Window sizes are real screen pixels: with Windows display scaling above 100% the
-window looks smaller than its numbers suggest. Monitors are remembered by name, so the game finds
-the right one even after they are plugged in or out.
-
-**VSync** (Options > Video) is Off, On or Adaptive (on, but a late picture shows at once instead of
-waiting); the line under it tells you if your graphics driver's own setting seems to override it.
-With Smooth motion on, Frame limit caps the frames a second (VSync also keeps them to the
-monitor's refresh rate).
-
-**Smooth motion** (Options > Video, off by default). The game runs in steps, 100 a second, as the
-original; without Smooth motion it draws a picture only when a step has run, so at most 100 a
-second and, on a 144 Hz monitor, some pictures shown twice. With Smooth motion on it draws a
-picture for every refresh of the monitor, showing the game between its last two steps: the
-camera, the mages, enemies, bosses, platforms, coins, bullets, effects, shots and the water, the
-shop's slide and the ending's credits all move smoothly at any refresh rate. The game itself runs
-exactly the same (its speed, timing and controls don't change); the cost is that the picture
-trails the game by at most 10 ms, about 5 on average. A few things keep the original's look on
-purpose: animation frames, effects growing and fading, and the 2D that moves a whole pixel at a
-time (the menus' backgrounds, the ending's film strips, the screen transitions). The ending's
-corridor keeps the speed it had at your frame rate (faster above 60, up to 100), scrolling evenly.
-
-**Widescreen** (Options > Video > Aspect): 4:3 is the original picture with black bars, Stretch
-pulls it wider, and Widescreen widens the 3D view of the levels to fill the screen (16:9, 16:10,
-21:9 and so on), showing more of the level to the left and right with nothing popping in at the
-edges. The camera is the original's (45° lens, 340 away, 35° above) in every mode; widescreen only
-widens it. Sounds are panned to match the wider screen too, whatever shape the window is. The
-start-up logo is white to the edges, the scrolling green background of the title, save slots and
-level select fills the whole width, and the fades between screens cover it. The shop slides in
-from the screen's edges and dims the level across the whole width while it is open, and the
-ending's film strips run edge to edge with the credits sliding in from the screen's edge. The
-menus themselves stay in a 4:3 area in the middle.
-
-**HUD** (Options > Video): HUD position (widescreen) is Centered, the original's place inside the
-middle 4:3 area (the default), or Edges: the level and torches at the left edge, the players'
-panels at the right edge and the FPS counter in the bottom-right corner. HUD max width keeps the
-Edges HUD within 16:9, 16:10, 21:9 or 32:9 on wider screens (21:9 by default). HUD size, 50% to
-200%, grows each part from its corner, in any aspect mode; when the level information and the
-players' panels would meet (two players on a boss level, or a 4:3 screen), the HUD stops at the
-largest size that fits. Level select keeps the original's layout.
-
-**Field of view** (Options > Video) is **experimental: we recommend leaving it at 100%**, the
-view the original's levels were made for. It zooms the view in levels, from 50% (in) to 200%
-(out); 100% is the original's 45-degree lens. The title, level select, the shop's panel, the HUD and the
-ending keep the original view. The original's levels are built only as far as its own view
-reaches, so zooming out shows their unbuilt edges: black below the level's near edge from about
-105%, and above the back wall and past the ends further out. Far-away enemies, which stay still
-until you come near, can be seen standing still when zoomed far out.
-
-**Graphics** (Options > Graphics): Antialiasing (4x by default) smooths polygon edges; Texture
-filtering (8x by default) keeps floors and walls far away or at an angle sharp and free of
-flickering pixels, while up close the textures keep the original's sharp pixels; Off in both gives
-the original's picture. Render scale draws the 3D scene larger (smoother, slower) or smaller
-(faster) than the window. Smooth textures and Smooth 2D images soften the original's pixelated
-textures and the 2D images (menus, logo, HUD); Per-pixel lighting gives smoother shading; Soft
-shadows soften the blob shadows' edges; Brightness, 50% to 150%, also applies to screenshots (F12).
-
-In the game view N / B change level, F2 switches between one and two players and F3 jumps to the
-ending (test keys: a game started with them is not saved; `--ending` on the command line starts
-the game at the ending). Tab switches to the **level viewer**: every one of the 40
-levels, built by the original's own map code with each world's textures. The goal, coins and
-torches use their real models; other objects are colour-coded markers (blue platforms, brown objects, grey
-fences, red enemies, large magenta bosses).
-
-| Key | Level viewer | Model viewer |
+| | Player 1 | Player 2 |
 |---|---|---|
-| Left / Right | scroll along the level (hold Shift: faster) | previous / next model (all 172) |
-| Up / Down | zoom in / out | zoom |
-| PgUp / PgDn | camera height | |
-| N / B | next / previous level | |
-| Home | back to the level start | |
-| Tab | switch to the model viewer | switch to the level viewer |
-| Space | next sound effect | next sound effect |
-| 1 to 6 | play Music01 to Music06 | play Music01 to Music06 |
-| F10 / gamepad Start | options menu | options menu |
-| Alt+Enter or F11 | fullscreen | fullscreen |
+| Move | Arrow keys | W A S D |
+| Jump | Right Shift or `]` | Left Shift or `2` |
+| Fire | Right Ctrl or `[` | Left Ctrl or `1` |
+| Gamepad | first gamepad | second gamepad |
 
-The first run creates `magebros_native.ini` (every option, with comments) and
-`magebros_native.log` next to the program. The ini's `game_version` line names the build that
-last wrote it (the log's first line names the build that is running).
+In a one-player game, Left Shift and Left Ctrl also jump and fire. Every key can be changed in
+Options > Controls.
 
-**Saved progress** is kept after every level, in `%APPDATA%\MageBrosNative\saves\original\progress.ini`
-(or the folder set by `save_path` in the ini): the level you have reached, the worlds you have
-cleared, and each player's gold, life, magic and wand, in 8 slots for one-player games and 8
-for two-player games, as the original. Saves from the original game are not carried over.
+| Key | Action |
+|---|---|
+| P | Pause |
+| F10 or gamepad Start | Options menu |
+| Escape | Give up the level (you lose some gold, as in the original) |
+| Alt+Enter or F11 | Switch between window and fullscreen |
+| F12 | Screenshot (saved next to the program) |
 
-**`MageBrosAssets.exe`**: inspects your copy from the command line:
+**How to play:** light every torch in a level by jump-firing over its post, then stand on the goal
+to warp to the next level. Shots cost magic, which refills over time. Defeated enemies drop coins;
+spend them in the shops (levels 3, 6 and 9 of worlds 1 to 3, and 4-2, 4-5 and 4-8). World 4 opens
+once worlds 1 to 3 are cleared.
 
-```
-MageBrosAssets [--game PATH] [--allow-unverified] --inventory      # what's in MageBros.exe
-MageBrosAssets [--game PATH] [--allow-unverified] --selftest       # decode every resource
-MageBrosAssets [--game PATH] [--allow-unverified] --export FOLDER  # write them out for reference
-```
+## Options
 
-Put it next to `MageBros.exe`, or point `--game` at the exe or its folder. `--selftest` decodes all
-122 bitmaps, 44 sounds, 172 `.x` models and 40 levels, and checks that every world/level slot
-resolves to a readable level. Exported files come from your copy and are Saito Games' work: don't
-share them.
+Press F10 (or Start) to open the options menu. With every option at its default the game looks
+and plays like the original, apart from smoother edges and distant textures (Antialiasing and
+Texture filtering, both on by default; turn them off for the original's exact picture).
 
-## Building
+- **Video:** window, borderless or exclusive fullscreen; resolution and refresh rate; VSync and a
+  frame limit; **Smooth motion** (off by default), which draws the game between its 100 steps a
+  second so it moves smoothly on high refresh rate monitors, without changing the game's speed;
+  **Aspect** (4:3, Stretch or Widescreen, which shows more of each level at the sides); HUD
+  position and size; and **Field of view**, which is **experimental: we recommend leaving it at
+  100%**, the view the original's levels were made for.
+- **Graphics:** antialiasing, texture filtering, render scale, smoother textures and lighting,
+  soft shadows and brightness.
+- **Audio:** volume levels. To replace the MIDI music, put `Music01.mp3` (or `.flac`) to
+  `Music06` in a `music` folder next to `MageBros.exe`.
+- **Controls:** rebind both players' keys and the gamepad buttons.
 
-Any C++17 compiler and CMake 3.20+:
+### Cheats
 
-```sh
-cmake -S . -B build
-cmake --build build --config Release
-ctest --test-dir build -C Release        # format tests, no game files needed
-```
+Options > Cheats. All are off by default. While any is on, **CHEATS** shows in the bottom-left
+corner.
 
-On Windows, double-click `make_release.bat` (Visual Studio 2022+ with the "Desktop development
-with C++" workload): it builds the version in `CMakeLists.txt` as it is, runs the tests and
-writes `build\MageBrosNative-<version>-windows-x64.zip`. To raise the version first, run it as
-`make_release.bat patch`, `minor` or `major`, or give an exact version (`make_release.bat
-0.4.23`); a failed build puts the version back. With `MageBros.exe` in the folder above the
-repository it also runs the map and hero tests. Making a release, step by step:
-[docs/RELEASING.md](docs/RELEASING.md).
+| Cheat | What it does |
+|---|---|
+| Unlock all levels | Every level can be picked on level select (set it from the title screen; your saved progress is not changed) |
+| Infinite lives | Hits never take your last heart |
+| Invincible | Enemies, bullets and flames can't hurt or push you |
+| Infinite magic | Firing costs no magic |
+| No falling deaths | Falling into a pit or the water puts you back where you last stood |
+| Max magic level | Every level starts at magic level 7 |
+| Choose your wand | Every level starts with the wand you pick |
+| Max gold | Every level starts with 9999 gold |
+| Moon jump | Jump 150% or 200% as high |
+| Run speed | Walk 125%, 150% or 200% as fast |
+| One-hit kills | Enemies and bosses fall to one shot (turtles and ghosts still can't be shot) |
+| Rapid fire | Hold fire to keep shooting |
 
-**Releases.** What changed in each version is in [CHANGELOG.md](CHANGELOG.md). Every push to `main` runs the GitHub Actions workflow in
-`.github/workflows/release.yml`: it builds the same zip on a Windows runner, runs the tests that
-need no game files, and publishes it as the GitHub release `v<version>`, the version being the
-one in `CMakeLists.txt`. A push that leaves the version unchanged (docs only, say) makes no new
-release, so raise the version (`make_release.bat patch`) when a push should produce one. The map
-and hero tests can't run there, since `MageBros.exe` is never uploaded; run them locally.
+A fall ends a level whatever your hearts, so only No falling deaths protects you from falls. Your
+progress is saved as usual with cheats on, and what Max magic level, Choose your wand and Max gold
+give you stays in your save.
 
-From Linux or macOS, cross-compile with llvm-mingw or MinGW-w64:
-`cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`.
-SDL3 is downloaded and built automatically the first time. To build only the tools and tests (no
-SDL), configure with `-DMBN_BUILD_GAME=OFF`. Add `-DMBN_GAME_EXE=/path/to/MageBros.exe` to also run
-the map and hero tests on all 40 levels of your copy.
+## Settings and saves
 
-For scripted test runs the game takes `--auto "ms:action=arg;..."` (times in milliseconds) (keys, screenshots, level and
-position jumps); see [CLAUDE.md](CLAUDE.md) for the actions and for building and running the game
-headless on Linux.
+- **Settings:** `magebros_native.ini` next to the program, with a comment for every option. Delete
+  it to restore the defaults. A log, `magebros_native.log`, is written next to it.
+- **Saves:** `%APPDATA%\MageBrosNative\saves\original\progress.ini`, or the folder set by
+  `save_path` in the settings file. There are 8 save slots for one-player games and 8 for
+  two-player games, as in the original. Saves from the original game are not carried over.
 
-### Collision (ColDet)
+## For developers
 
-The original game uses [ColDet](https://sourceforge.net/projects/coldet/), an open-source
-collision library. The port builds ColDet's own published source rather than a rewrite, so
-collision behaves exactly like the original. ColDet is LGPL-2.0-or-later and lives in
-`third_party/coldet` with its license; it is compiled as a separate static library, and since
-this project's source is public, anyone can rebuild it with a modified ColDet as the LGPL requires.
+- **Building:** any C++17 compiler and CMake 3.20 or newer. On Windows, double-click
+  `make_release.bat` (needs Visual Studio 2022 or newer with "Desktop development with C++"); it
+  builds, runs the tests and writes the release zip to `build\`. Step by step, including how a
+  release is published: [docs/RELEASING.md](docs/RELEASING.md).
+- **Other platforms:** the tools and tests build on Linux and macOS (`-DMBN_BUILD_GAME=OFF`), and
+  the Windows game cross-compiles with MinGW-w64
+  (`-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`). Add `-DMBN_GAME_EXE=<path to MageBros.exe>`
+  to run the map and hero tests on your copy.
+- **Test keys** (games started with them aren't saved): N / B change level, F2 switches between
+  one and two players, F3 jumps to the ending, Tab opens the level and model viewers.
+- **`MageBrosAssets.exe`** lists (`--inventory`), checks (`--selftest`) or exports
+  (`--export FOLDER`) the resources in your copy. Exported files are Saito Games' work: don't share
+  them.
+- **More:** [docs/ROADMAP.md](docs/ROADMAP.md) (status and plans),
+  [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md) (how the original works, and its bugs
+  and quirks), [docs/SMOOTH_MOTION.md](docs/SMOOTH_MOTION.md), and [CLAUDE.md](CLAUDE.md) (the
+  contributor handoff: project rules, source layout, workflow).
 
-## How it's put together
-
-```
-src/core     reading MageBros.exe (PE resources, SHA-256, bitmaps, sounds, .x models, levels),
-             config, logging, mods (stage 2: original game only)
-src/gfx      OpenGL loader and the Direct3D 7 / DirectDraw emulation layer
-src/audio    sound-effect mixer, MIDI sequencer, MP3/FLAC music streaming
-src/input    SDL3 keyboard/gamepad -> DirectInput-style state
-src/ui       options menu overlay
-src/framework  the DirectX 7 SDK framework the game was built on (d3dapp, d3dfile, d3dtextr, d3dutil)
-src/game     the reconstructed game logic, one file per original module (XHero, XLevelLoop,
-             XEnemy, XStaticObj, XParticle, XStatusDisplay, ...)
-third_party  ColDet 1.2 (the original's collision library), TinySoundFont, dr_libs, stb, cgltf,
-             font8x8
-tools        MageBrosAssets
-tests        format and collision tests; map and hero tests on your copy (-DMBN_GAME_EXE)
-docs         REVERSE_ENGINEERING.md (what the original is made of, and at its end the
-             original's bugs and quirks with what the port does about each), ROADMAP.md,
-             SMOOTH_MOTION.md (how smooth motion works, and how it was built)
-CLAUDE.md    contributor handoff: project rules, build/test/RE workflow, current status, next steps
-```
-
-The engine layers (`src/gfx`, `src/audio`, `src/input`, `src/ui`, `src/framework`) and parts of
-`src/core` come from Hopmon Native, by the same author: both games run on the same Saito Games
-engine and DirectX 7 framework.
+The port keeps the original's game logic: the code in `src/game` is reconstructed from the
+original program, one file per original module, and collision uses the original's own collision
+library, [ColDet](https://sourceforge.net/projects/coldet/), built from its published source. The
+engine code (`src/gfx`, `src/audio`, `src/input`, `src/ui`, `src/framework`) comes from
+[Hopmon Native](https://github.com/Exo-MDR-CD2000/HopmonNative), by the same author, since both
+games run on the same Saito Games engine.
 
 ## Legal
 
 Mage Bros., its name, artwork, levels, sounds and music are © 2003–2009 Saito Games; the MIDI
 music is © Yamaha Corporation. This project isn't affiliated with or endorsed by Saito Games and
-distributes none of the game's files. You supply your own copy of the freeware game.
+distributes none of the game's files.
 
-The port's own code is MIT-licensed. The reconstructed game logic in `src/game` is
-a reconstruction of the original program and isn't covered by the MIT license. See
-[LICENSE](LICENSE).
+The port's own code is MIT-licensed. The reconstructed game logic in `src/game` isn't covered by
+the MIT license. ColDet is LGPL-2.0-or-later (in `third_party/coldet` with its license), built as a
+separate library that anyone can rebuild with a modified ColDet. See [LICENSE](LICENSE) and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

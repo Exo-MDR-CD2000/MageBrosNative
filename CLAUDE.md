@@ -319,7 +319,10 @@ is no decompiled C. For each module:
      at the screenshots.
    - Cross-build the Windows zip for the owner.
 6. **Update `docs/ROADMAP.md`**: mark the chunk done and the next one **Next**. Also update the
-   README's "What works today" section.
+   README where players would notice: its version line, and the Options or Cheats lists for a
+   new setting. **Keep the README short and plain** (the owner, 2026-11-09: it is for the average
+   player): a line or a table row per feature, no implementation detail; the details go in
+   `docs/` and here.
 7. **Add the version to `CHANGELOG.md`**: a `## [x.y.z] - YYYY-MM-DD` section (that exact form:
    the release workflow looks for it) at the top, in plain words for players, taking in anything
    under `## [Unreleased]`. Commit it with the code so the release picks it up.
@@ -645,7 +648,11 @@ here through a temporary `ShowLostGoldMessage` call in `InitForGame` (removed). 
 B2 (0.4.18) or D (0.4.20) before the owner chose to merge. 0.4.21's Render scale at 300% and 400%
 is still to be judged by eye (screenshots are taken before the picture is shrunk to the window).
 MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver override warning
-can only be tried by changing the NVIDIA Control Panel's own VSync setting.)
+can only be tried by changing the NVIDIA Control Panel's own VSync setting.) The cheats (0.4.23 to
+0.4.26) were each released on the owner's "commit and push", checked here by screenshots, saves
+and temporary logs; no result of the owner's own play has been reported for them yet (open
+questions put to the owner: the reappearing spot of No falling deaths, right at the edge; Rapid
+fire's 8 shots a second; the CHEATS mark's size).
 
 ### Notes from earlier stages
 

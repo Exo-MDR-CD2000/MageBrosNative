@@ -94,8 +94,8 @@ notes on GitHub):
 ```
 
 Move anything that was under `## [Unreleased]` into it, and leave `## [Unreleased]` empty above
-it. Also bring `README.md` ("Status" line), `CLAUDE.md` ("Where we are") and `docs/ROADMAP.md`
-up to the new version.
+it. Also bring `README.md` (the "**Version x.y.z.**" line near the top), `CLAUDE.md` ("Where we
+are") and `docs/ROADMAP.md` up to the new version.
 
 ### 4. Build and test
 
