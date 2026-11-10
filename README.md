@@ -5,7 +5,7 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.24).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.25).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
 > Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
@@ -110,7 +110,9 @@ motion (off by default) is described below. Options > Cheats has **Unlock all le
 level of all four worlds on level select, without changing your saved progress; set it from the
 title screen), **Infinite lives** (hits never take your last life), **Invincible** (enemies,
 bullets and flames can't hurt or push you), **Infinite magic** (firing costs nothing) and **No
-falling deaths** (a pit or the water puts you back where you last stood); more cheats are coming.
+falling deaths** (a pit or the water puts you back where you last stood), and, at each level
+start, **Max magic level**, **Choose your wand** and **Max gold** (kept in your save); more
+cheats are coming.
 All are off by default, and a small CHEATS mark shows in the bottom-left corner while any is on. Mods are not ready for Mage Bros. yet and are greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
 to replace the MIDI music.
 

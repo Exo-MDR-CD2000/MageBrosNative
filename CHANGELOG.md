@@ -9,6 +9,16 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.25] - 2026-11-09
+
+Three more cheats in Options > Cheats, for items. They apply when each level starts, to every
+player in the game, and what they give stays in your save, as if you had bought it:
+
+- **Max magic level**: magic level 7, the fastest magic recovery.
+- **Choose your wand**: start with any of the six wands (single, double, triple, or the homing
+  single, double and triple), or Off to keep the one you have.
+- **Max gold**: 9999 gold.
+
 ## [0.4.24] - 2026-11-09
 
 Four more cheats in Options > Cheats, for staying alive. Like every cheat they are off by default,

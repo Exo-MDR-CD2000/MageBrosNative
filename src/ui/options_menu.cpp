@@ -1254,9 +1254,28 @@ OptionsMenu::Page OptionsMenu::CheatsPage() {
         {"Infinite magic", "Firing costs no magic.", &Config::infiniteMagic},
         {"No falling deaths", "Falling into a pit or the water puts you back where you last stood on the floor.",
          &Config::noFallingDeaths},
+        {"Max magic level", "Every level starts at magic level 7, the fastest magic recovery. It stays in your save.",
+         &Config::maxMagicLevel},
+        {"Choose your wand", "", nullptr},  // (its own row below)
+        {"Max gold", "Every level starts with 9999 gold. It stays in your save.", &Config::maxGold},
     };
     for (const Cheat& ch : cheats) {
         bool Config::*f = ch.field;
+        if (!f) {
+            static const char* const kWands[] = {"Off",          "Single",        "Double",       "Triple",
+                                                 "Homing single", "Homing double", "Homing triple"};
+            // -1 (Off) and the six wand types, as XHeroStatus::wandType
+            p.items.push_back({ch.label,
+                               "Every level starts with this wand (Off keeps yours). It stays in your save.",
+                               [] { return std::string(kWands[std::clamp(GetConfig().cheatWand, -1, 5) + 1]); },
+                               [this](int d) {
+                                   int& w = GetConfig().cheatWand;
+                                   w = (std::clamp(w, -1, 5) + 1 + d + 7) % 7 - 1;
+                                   Save();
+                               },
+                               nullptr, nullptr});
+            continue;
+        }
         Item it{ch.label, ch.help, [f] { return OnOff(GetConfig().*f); },
                 [this, f](int) {
                     GetConfig().*f = !(GetConfig().*f);

@@ -65,6 +65,16 @@ bool XGameScene::InitLevel() {
     heroA_->SetStatus(&app_->HeroStatus(true));
     heroB_ = std::make_unique<XHero>(false);
     heroB_->SetStatus(&app_->HeroStatus(false));
+    // native: the item cheats (Options > Cheats), for each player in the game, before Reset reads
+    // the magic level and the wand; what they give is saved like anything bought
+    const Config& cfg = GetConfig();
+    for (bool a : {true, false}) {
+        if (!a && onePlayer) continue;
+        XHeroStatus& s = app_->HeroStatus(a);
+        if (cfg.maxMagicLevel) s.magicLevel = 7;
+        if (cfg.cheatWand >= 0 && cfg.cheatWand <= 5) s.wandType = (int8_t)cfg.cheatWand;
+        if (cfg.maxGold) s.gold = 9999;
+    }
     if (onePlayer) {
         heroA_->SetStartPos(kStartOnePlayer);
     } else {

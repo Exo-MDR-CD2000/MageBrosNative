@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats under way (C1 0.4.23, C2 0.4.24 done; C3 and C4 planned); mods and the config tooling still to come |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats under way (C1 to C3 done, 0.4.23 to 0.4.25; C4 planned); mods and the config tooling still to come |
 
 ## Stage 4, chunk by chunk
 
@@ -132,12 +132,12 @@ makes them Mage Bros.' own and finishes the ones that need the game's help.
 | Graphics review | Options > Graphics checked setting by setting on Mage Bros.' scenes (1-6 with each setting alone; pixel counts and close-ups), 2026-10-29. Fixed: **Texture filtering** never reached the game's own (point-filtered) textures, so 2x to 16x looked the same and only switched on point-sampled mipmaps; now, on, textures shrunk on screen (far or at an angle) get trilinear and anisotropic filtering while magnified ones keep the original's point sampling (`Device` texture state); **Render scale** above 200% was shrunk to the window by plain bilinear, skipping most pixels; now through mipmaps made each frame (`resolveMips_`); **screenshots** now take the Brightness curve. Checked: Texture filtering off and Smooth textures on byte for byte the same as 0.4.20 (24 shots); Brightness 100% screenshots unchanged; the steep walls of 2-4 clean at 8x where they were noisy; render scale 2x to 4x run without errors. Working as they were: Antialiasing, Smooth textures, Smooth 2D images, Per-pixel lighting, Soft shadows. **Decided (the owner, 2026-10-29): Antialiasing (4x) and Texture filtering (8x) stay on by default**, inherited from Hopmon Native, an exception to the rule of the original's look by default (both only smooth edges and distant textures; Off in each gives the original's picture) | Options > Graphics, Texture filtering on steep walls, Render scale 300% and 400%, F12 with Brightness changed | Done (0.4.21) |
 | Cheats C1 | Options > Cheats opened; **Unlock all levels** wired to level select (every level of the four worlds offered; the saved level status never changed by it; a current level past those reached moves back once the cheat is off); `Config::AnyCheat` and a CHEATS mark at the bottom-left on level select and in levels. Checked: with the cheat off, level select (two save states) and 1-1 byte for byte as 0.4.21; with it on, world 4 picked and played from a save with only 1-3 reached, the save's progress unchanged afterwards | Options > Cheats from the title; level select with the cheat on and off | Done (0.4.23) |
 | Cheats C2 | Infinite lives (a hit never takes the last life), Invincible (`XHero::Damage` and `KnockBack` do nothing), Infinite magic (firing costs nothing), No falling deaths (a fall below -200, or into the water after its splash, puts the hero back where it last stood on the map's own floor, flashing 100 ticks). In Mage Bros. `life` is health and a fall kills outright, so only No falling deaths covers falls. The heroes get the cheats as `XHero::cheats`, set by `XGameScene::Tick` (the hero tests leave them off). Checked: with them off, 1-1 still and moving and firing byte for byte as 0.4.23; with a temporary hook hitting the hero every 1.5 s: off, dead after five hits; Infinite lives, held at 1; Invincible, no change; ten shots at full magic; 4-10's pit and 1-10's water, back on the floor | Any level: hits, firing, pits and water | Done (0.4.24) |
-| Cheats C3 | Max magic level, Choose your wand (or Off), Max gold, each at the start of a level | Level start, the shop | Next (0.4.25) |
-| Cheats C4 | Moon jump (150 / 200%), Run speed (125 / 150 / 200%), One-hit kills, Rapid fire | Movement and fights | (0.4.26) |
+| Cheats C3 | Max magic level (7), Choose your wand (Off or wand type 0 to 5), Max gold (9999), set in each playing hero's status by `XGameScene::InitLevel` before `Reset` (which reads the magic level and the wand); saved like anything bought. Checked: with them off, 1-1 and 1-3 started from a save byte for byte as 0.4.24; with them on, from a save with 50 gold and the single wand: 9999 gold, three homing shots a press, and the save after Escape at magic level 7, wand 5, 9000 gold (the original's tenth lost) | Level start, the shop, firing | Done (0.4.25) |
+| Cheats C4 | Moon jump (150 / 200%), Run speed (125 / 150 / 200%), One-hit kills, Rapid fire | Movement and fights | Next (0.4.26) |
 
 **Done**: chunk 1 (the options menu), chunk 2 (the Video page; the options menu in widescreen is
 left as it is, the owner's choice), smooth motion (0.4.16 to 0.4.20), the graphics review
-(0.4.21) and cheats C1 and C2 (0.4.23, 0.4.24). The per-frame items in the "frame-rate dependence" table below are settled: each is
+(0.4.21) and cheats C1 to C3 (0.4.23 to 0.4.25). The per-frame items in the "frame-rate dependence" table below are settled: each is
 handled or kept by the owner's choice.
 
 **Set aside (the owner, 2026-10-29): the present path.** Presenting through a DXGI flip swapchain
@@ -149,7 +149,7 @@ swapchain" first seemed to cure the choppiness, then no longer did (the owner, 2
 README no longer recommends it; window and borderless smoothness is still open (`CLAUDE.md`,
 "Windowed / borderless smoothness"). `main` skipped 0.4.22, which the branch uses.
 
-**Next**: cheats C3 and C4 (planned with the owner, 2026-11-02; the rows above).
+**Next**: cheats C4 (planned with the owner, 2026-11-02; the row above).
 
 **Still open, to be planned with the owner**: mods (add-ons and level packs, with `MODDING.md`; the Mods pages are greyed out and
 `core/mods.cpp` is a stub); the config tooling (`--set`, `CONFIG.md`) and the README sections

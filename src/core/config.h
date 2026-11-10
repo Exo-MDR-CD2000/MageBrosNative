@@ -65,8 +65,15 @@ struct Config {
     bool invincible = false;          // hits do nothing (no damage, no knockback)
     bool infiniteMagic = false;       // firing costs no magic
     bool noFallingDeaths = false;     // falling out of a level puts the mage back on solid ground
+    // at each level start (XGameScene::InitLevel), kept in the save like anything bought
+    bool maxMagicLevel = false;       // magic level 7
+    int cheatWand = -1;               // -1 = off (the hero's own), else the wand type 0..5
+    bool maxGold = false;             // 9999 gold
     // Any cheat on (the HUD's CHEATS mark). Add each new cheat here.
-    bool AnyCheat() const { return unlockAllLevels || infiniteLives || invincible || infiniteMagic || noFallingDeaths; }
+    bool AnyCheat() const {
+        return unlockAllLevels || infiniteLives || invincible || infiniteMagic || noFallingDeaths || maxMagicLevel ||
+               cheatWand >= 0 || maxGold;
+    }
 
     std::string path;
     int version = 0;                    // config_version found in the file (0 = older file)

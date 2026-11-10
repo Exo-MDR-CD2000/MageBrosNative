@@ -336,7 +336,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-09, version 0.4.24)
+## Where we are (last updated: 2026-11-09, version 0.4.25)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -405,7 +405,7 @@ smoothness is open, and the owner may have another model review it.
   saves normally (so items a cheat gives stay in the save). C1 (0.4.23, done): the page turned on,
   Unlock all levels, `Config::AnyCheat` (add each new cheat to it) and the CHEATS mark. C2
   (0.4.24, done): Infinite lives, Invincible, Infinite magic, No falling deaths. C3
-  (0.4.25): Max magic level, Choose your wand (Off keeps the hero's), Max gold (9999), all at
+  (0.4.25, done): Max magic level, Choose your wand (Off keeps the hero's), Max gold (9999), all at
   each level start. C4 (0.4.26): Moon jump (150 / 200%), Run speed (125 / 150 / 200%), One-hit
   kills, Rapid fire; run the hero tests with each off.
   - **Unlock all levels** (C1): `XSelectLevelObject`'s `MaxSelWorld` / `MaxSelLevel` give 3 / 9
@@ -425,6 +425,11 @@ smoothness is open, and the owner may have another model review it.
     object, a candle or the other hero; the start position until then); `BackOnSolidGround` puts
     it there at rest (models snapped for smooth motion, knockback and pushes cleared) flashing for
     100 ticks, after the original's splash on water levels.
+  - **The item cheats** (C3): `Config::maxMagicLevel`, `cheatWand` (-1 off, else 0..5; ini `wand`)
+    and `maxGold`, written into each playing hero's `XHeroStatus` by `XGameScene::InitLevel`
+    before `Reset` (which reads the magic level and the wand). Saved like anything bought; turning
+    a cheat on mid-level shows from the next level. The menu's wand row cycles Off and the six
+    wands (the names from the shop's: single, double, triple, homing single, double, triple).
   - **The CHEATS mark**: `main.cpp` draws "CHEATS" (the menu's 8x8 font, `UIDraw`) at the
     bottom-left on level select and in levels while `AnyCheat()`; the FPS counter has the
     bottom-right.
@@ -437,7 +442,7 @@ smoothness is open, and the owner may have another model review it.
     `save_path = saves` in an empty folder copies the owner's saves into it first (read only):
     give it a made-up `saves/original/progress.ini` to test from a known state.
 
-**Next**: cheats C3, when the owner says "start". Mods and the config tooling (`--set`,
+**Next**: cheats C4, when the owner says "start". Mods and the config tooling (`--set`,
 `CONFIG.md`) are still to be planned with the owner.
 
 **Branches**: work goes on `main`; each push publishes the version's release when that version
