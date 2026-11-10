@@ -344,7 +344,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-10, version 0.4.32 on `smooth-motion-rework`; `main` is at 0.4.26)
+## Where we are (last updated: 2026-11-10, version 0.4.32 on `main`)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -463,7 +463,7 @@ it must cover 30, 50, 75, 90, 100, 120, 144, 165, 180, 200 Hz and so on, not onl
 tested). One bug (ticks up to 1 ms late after the first menu or pause with Smooth motion on) and
 seven improvements are listed in `docs/SMOOTH_MOTION.md`, "Review of 2026-11-09". They are being
 built one at a time, each on the owner's word, on the **`smooth-motion-rework`** branch (made from
-`main` at 0.4.26; committed there on 2026-11-10, not pushed and not merged: both wait for the owner's word; the owner: disregard `dxgi-present` for
+`main` at 0.4.26; committed there on 2026-11-10, merged into `main` on 2026-11-10 (pull request #3) and released as v0.4.32; the owner: disregard `dxgi-present` for
 this work). Fix 1, the late ticks, is done there (`HoldTickPhase` keeps the latest tick on a whole
 millisecond; measured before and after, "Fix 1 as built").
 The rule it rests on: **the latest tick (`lastTickNs_`) must always be on a whole millisecond**,
@@ -506,19 +506,18 @@ never overwrite an earlier one (named by version: `MageBrosNative-0.4.31 (fixes 
 clock for the rest.
 
 **Next**: the cheats are done (0.4.26) and the frame timing review's list is closed (0.4.27 to
-0.4.32 on `smooth-motion-rework`). For the owner to decide: pushing that branch and merging it
-into `main` (a merge pushed to `main` releases 0.4.32, whose CHANGELOG section alone would be the
-release notes: sum the six versions up in it first, as 0.4.20 did for smooth motion). Still to
+0.4.32, merged into `main` on 2026-11-10 (pull request #3) and released as v0.4.32; its release notes are 0.4.32's
+CHANGELOG section alone, as the six versions were not summed up in it). Still to
 be planned with the owner: mods, the config tooling (`--set`, `CONFIG.md`), and what is left of
 the window / borderless smoothness (above; the part-of-refresh frame limits answer the
 choppiness at a limit below the refresh rate, which the owner liked; whether G-Sync follows a
 window is up to the driver and Windows).
 
-**Branches**: work goes on `main`, except the frame timing fixes on `smooth-motion-rework`
-(above); each push to `main` publishes the version's release when that version
-has none yet (see "GitHub releases"). Two side branches were used and merged: `menu-dev` (0.4.0 to
-0.4.13, pull request #1, 2026-10-26) and `interpolation-test` (smooth motion, merged directly
-2026-10-28). Both are kept on GitHub; nothing goes there any more. Perhaps a branch for the modding
+**Branches**: work goes on `main`; each push to `main` publishes the version's release when that version
+has none yet (see "GitHub releases"). Three side branches were used and merged: `menu-dev` (0.4.0 to
+0.4.13, pull request #1, 2026-10-26), `interpolation-test` (smooth motion, merged directly
+2026-10-28) and `smooth-motion-rework` (the frame timing fixes, 0.4.27 to 0.4.32, pull request #3,
+2026-11-10). All are kept on GitHub; nothing goes there any more. Perhaps a branch for the modding
 work later; if a side branch is used again, its builds take the next version numbers and `main`
 stays off them until it merges.
 
@@ -591,7 +590,7 @@ the refresh rate with VSync on (+1), or within half a percent of it with VSync o
 owner's NVIDIA (Smooth motion on): VSync on or adaptive 144 / 60; off about 980 in a window, 490
 in 4K borderless; Smooth motion off 100 (60 on the 60 Hz monitor with VSync). The frame limiter
 schedules each frame from when the last was due (`lastPresent += interval`). **From 0.4.27 to
-0.4.32** (the `smooth-motion-rework` branch): `max_fps` -1..-4 is the refresh rate over 1..4
+0.4.32** (from the `smooth-motion-rework` branch, now merged): `max_fps` -1..-4 is the refresh rate over 1..4
 (`FrameLimit`), paced with VSync by the driver's swap interval (`swapEvery_`, `SwapPaced`) and
 otherwise by the limiter, which waits with `WaitNs`; `low_latency` waits for the graphics card
 after each swap (`SwapFrame`); with Smooth motion off the loop waits for the next tick's moment.

@@ -1301,6 +1301,5 @@ stayed as small as in the table: the pictures after the hitch were still in the 
 the game hands every such monitor the right picture at the right time.
 
 **The review's list is closed**: 1 to 5, 8 and 9 built (0.4.27 to 0.4.32), 7 run, 6 written up
-and set aside. Committed on the `smooth-motion-rework` branch (2026-11-10), not merged into
-`main`.
+and set aside. Committed on the `smooth-motion-rework` branch (2026-11-10), merged into `main` on 2026-11-10 (pull request #3) and released as v0.4.32.
 
