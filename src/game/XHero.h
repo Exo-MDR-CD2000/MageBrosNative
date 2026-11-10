@@ -88,10 +88,20 @@ struct XHeroInput {
     float valueX = 0, valueY = 0;                      // stick, -1..1
 };
 
+// Native: the cheats that change the heroes (Options > Cheats), set by the game before each tick.
+// All off, as here, the heroes are the original's (the hero tests never set them).
+struct XHeroCheats {
+    bool infiniteLives = false;    // a hit never takes the last life
+    bool invincible = false;       // hits do nothing: no damage, no knockback
+    bool infiniteMagic = false;    // firing costs no magic
+    bool noFallingDeaths = false;  // falling out of the level puts the hero back on solid ground
+};
+
 class XHero {
 public:
     enum LiveState { NON = 0, NORMAL = 1, WARP = 2, DYING = 3, DEAD = 4, COMPLETED = 5 };
     enum JumpState { LAND = 0, JUMP = 1, FALL = 2 };
+    static XHeroCheats cheats;
 
     explicit XHero(bool heroA = true);  // XHeroA::XHeroA / XHeroB::XHeroB
     bool IsHeroA() const { return heroA_; }
@@ -151,6 +161,7 @@ private:
     void ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWorld& world, XHero* other);
     void ProcessWarp(XHeroWorld& world);
     void ProcessDying(XHeroWorld& world);
+    void BackOnSolidGround();  // native: the No falling deaths cheat
     int GetKeyDir(const XHeroInput& in) const;  // _GetKeyDir: 0..7, in 45 degree steps
     void SetPosX(float x);
     void SetPosZ(float z);
@@ -161,6 +172,9 @@ private:
     JumpState jumpState_ = LAND;
     unsigned localCounter_ = 0, walkCounter_ = 0;
     D3DVECTOR startPos_{0, 0, 0}, pos_{0, 0, 0};
+    // native (No falling deaths): where the hero last stood on the level's own floor (not a
+    // platform, an object or the other hero); the start until it first lands there
+    D3DVECTOR solidPos_{0, 0, 0};
     float yaw_ = 0, pitch_ = 0;
     bool wandOut_ = false;
     D3DVECTOR push_{0, 0, 0};

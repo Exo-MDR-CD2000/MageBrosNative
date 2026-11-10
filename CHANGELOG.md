@@ -9,6 +9,20 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.24] - 2026-11-09
+
+Four more cheats in Options > Cheats, for staying alive. Like every cheat they are off by default,
+and they can be turned on or off at any time, in a level too:
+
+- **Infinite lives**: enemies, bullets and flames still hit you (you flash and are knocked back),
+  but never take your last life.
+- **Invincible**: enemies, bullets and flames can't hurt you or push you at all.
+- **Infinite magic**: firing costs no magic.
+- **No falling deaths**: falling into a pit or the water puts you back where you last stood on the
+  level's floor (not a moving platform), flashing for a moment, after the splash on water levels.
+  In Mage Bros. a fall ends the level outright whatever your life, so Infinite lives and Invincible
+  don't cover falls: this one does.
+
 ## [0.4.23] - 2026-11-09
 
 The first of the cheats:

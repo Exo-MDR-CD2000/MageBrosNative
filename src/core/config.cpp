@@ -121,6 +121,10 @@ bool Config::Load(const std::string& file) {
             else seen = before;
         } else if (section == "cheats") {
             if (k == "unlock_all_levels") unlockAllLevels = toBool(v);
+            else if (k == "infinite_lives") infiniteLives = toBool(v);
+            else if (k == "invincible") invincible = toBool(v);
+            else if (k == "infinite_magic") infiniteMagic = toBool(v);
+            else if (k == "no_falling_deaths") noFallingDeaths = toBool(v);
             else seen = before;
         } else if (section == "mods") {
             if (k == "pack") modPack = v.empty() ? "original" : v;
@@ -434,7 +438,19 @@ bool Config::Save() const {
       ";   levels you have reached stay as they were, and turning it off again brings\n"
       ";   back exactly those (levels you clear while it is on count as usual).\n"
       ";   Default 0.\n");
-    fprintf(f, "unlock_all_levels = %d\n", unlockAllLevels ? 1 : 0);
+    fprintf(f, "unlock_all_levels = %d\n\n", unlockAllLevels ? 1 : 0);
+    P("; infinite_lives: 1 = enemies, bullets and flames still hit you (you flash and\n"
+      ";   are knocked back), but never take your last life. Falling out of a level\n"
+      ";   still loses it: see no_falling_deaths. Default 0.\n");
+    fprintf(f, "infinite_lives = %d\n\n", infiniteLives ? 1 : 0);
+    P("; invincible: 1 = enemies, bullets and flames can't hurt or push you. Falling\n"
+      ";   out of a level still loses it: see no_falling_deaths. Default 0.\n");
+    fprintf(f, "invincible = %d\n\n", invincible ? 1 : 0);
+    P("; infinite_magic: 1 = firing costs no magic. Default 0.\n");
+    fprintf(f, "infinite_magic = %d\n\n", infiniteMagic ? 1 : 0);
+    P("; no_falling_deaths: 1 = falling into a pit or the water puts you back where\n"
+      ";   you last stood on the level's floor, flashing for a moment. Default 0.\n");
+    fprintf(f, "no_falling_deaths = %d\n", noFallingDeaths ? 1 : 0);
     P("\n[mods]\n"
       "; Level packs go in mods/levelpacks/, add-ons in mods/addons/ (next to this program);\n"
       ";   (not used yet: mods come in a later version).\n"

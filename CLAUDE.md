@@ -336,7 +336,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-09, version 0.4.23)
+## Where we are (last updated: 2026-11-09, version 0.4.24)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -404,8 +404,7 @@ smoothness is open, and the owner may have another model review it.
   by default, set in Options > Cheats only, for both players in a two-player game, and progress
   saves normally (so items a cheat gives stay in the save). C1 (0.4.23, done): the page turned on,
   Unlock all levels, `Config::AnyCheat` (add each new cheat to it) and the CHEATS mark. C2
-  (0.4.24): Infinite lives, Invincible (not pits), Infinite magic, No falling deaths (back on the
-  last solid ground: read the original's fall handling first, avoid moving platforms). C3
+  (0.4.24, done): Infinite lives, Invincible, Infinite magic, No falling deaths. C3
   (0.4.25): Max magic level, Choose your wand (Off keeps the hero's), Max gold (9999), all at
   each level start. C4 (0.4.26): Moon jump (150 / 200%), Run speed (125 / 150 / 200%), One-hit
   kills, Rapid fire; run the hero tests with each off.
@@ -415,15 +414,30 @@ smoothness is open, and the owner may have another model review it.
     select, a current level past those offered (played with the cheat, then turned off) moves
     back to the last one offered: a state the original never reaches. Changeable only outside a
     level (the menu).
+  - **The hero cheats** (C2): `XHeroCheats XHero::cheats`, copied from the config by
+    `XGameScene::Tick` before each tick (the hero tests compile `XHero.cpp` without the config and
+    leave them off). In Mage Bros. `life` (0 to 5) is health, not spare lives, and a fall (below
+    -200, or below -58 on a water level) kills outright whatever the life. Infinite lives: the hit
+    still flashes and knocks back, the life stops at 1. Invincible: `Damage` and `KnockBack`
+    return at once (every hit goes through them: enemies, bosses, bullets, the torches' flames);
+    Escape's `StartDying` still works. Infinite magic: firing leaves `magicPoint`. No falling
+    deaths: `solidPos_` is where the hero last landed on the map alone (not a platform, a static
+    object, a candle or the other hero; the start position until then); `BackOnSolidGround` puts
+    it there at rest (models snapped for smooth motion, knockback and pushes cleared) flashing for
+    100 ticks, after the original's splash on water levels.
   - **The CHEATS mark**: `main.cpp` draws "CHEATS" (the menu's 8x8 font, `UIDraw`) at the
     bottom-left on level select and in levels while `AnyCheat()`; the FPS counter has the
     bottom-right.
   - **Testing**: with every cheat off, level select and 1-1 screenshots must stay byte for byte
-    as the previous version (checked for C1 against 0.4.21, two save states). A test run with
+    as the previous version (checked for C1 against 0.4.21, two save states; for C2 against
+    0.4.23, 1-1 still and moving and firing). A temporary `TEMP-C2` hook (an environment variable
+    hitting the hero every 150 ticks, and `fprintf(stderr)` lines read with `2> file`) checked the
+    hero cheats; removed before the release build. Writing it through a Python heredoc needs
+    `chr(92) + 'n'` for a C newline escape. A test run with
     `save_path = saves` in an empty folder copies the owner's saves into it first (read only):
     give it a made-up `saves/original/progress.ini` to test from a known state.
 
-**Next**: cheats C2, when the owner says "start". Mods and the config tooling (`--set`,
+**Next**: cheats C3, when the owner says "start". Mods and the config tooling (`--set`,
 `CONFIG.md`) are still to be planned with the owner.
 
 **Branches**: work goes on `main`; each push publishes the version's release when that version

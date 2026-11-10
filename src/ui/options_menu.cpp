@@ -1246,6 +1246,14 @@ OptionsMenu::Page OptionsMenu::CheatsPage() {
         {"Unlock all levels",
          "Every level of all four worlds can be picked on level select. Your saved progress is not changed.",
          &Config::unlockAllLevels},
+        {"Infinite lives",
+         "Hits still hurt and push you, but never take your last life. Falling out of a level still loses it.",
+         &Config::infiniteLives},
+        {"Invincible", "Enemies, bullets and flames can't hurt or push you. Falling out of a level still loses it.",
+         &Config::invincible},
+        {"Infinite magic", "Firing costs no magic.", &Config::infiniteMagic},
+        {"No falling deaths", "Falling into a pit or the water puts you back where you last stood on the floor.",
+         &Config::noFallingDeaths},
     };
     for (const Cheat& ch : cheats) {
         bool Config::*f = ch.field;

@@ -38,6 +38,8 @@ constexpr float kDegree = 0.0174533f;
 const int kRecoveryFrames[8] = {80, 70, 60, 50, 40, 32, 24, 16};
 }  // namespace
 
+XHeroCheats XHero::cheats;
+
 XHero::XHero(bool heroA) : heroA_(heroA), box_(26.0f, 29.0f) {
     body_ = std::make_unique<JObject3DX>(heroA ? kBodyFirstA : kBodyFirstB);
     for (uint16_t f : heroA ? kBodyFramesA : kBodyFramesB) body_->AppendFrame(f);
@@ -74,6 +76,7 @@ void XHero::Reset() {
     UpdateMagicLevel();
     pos_ = startPos_;
     box_.SetPos(pos_);
+    solidPos_ = startPos_;  // native (No falling deaths): until the hero first lands on the floor
     SetPosY(800.0f);  // the hero drops into the level
     yaw_ = 0;
     pitch_ = 0;
@@ -136,9 +139,11 @@ int XHero::GetKeyDir(const XHeroInput& in) const {
 }
 
 void XHero::Damage(XHeroWorld& world) {
+    if (cheats.invincible) return;  // native: the Invincible cheat
     if (damageCounter_ > 0) return;  // still flashing from the last hit
     world.PlaySound(kSoundDamage, pos_.z);
     status_->life--;
+    if (cheats.infiniteLives && status_->life < 1) status_->life = 1;  // native: Infinite lives
     if (status_->life > 0) {
         damageCounter_ = 400;
     } else {
@@ -148,6 +153,7 @@ void XHero::Damage(XHeroWorld& world) {
 }
 
 void XHero::KnockBack(const D3DVECTOR& from) {
+    if (cheats.invincible) return;  // native: the Invincible cheat (a hit can't push it into a pit)
     knockBackSpeed_ = beingKnockBack_ ? 1.6f : 2.4f;
     // FindDirectionXZ(from, pos): away from the source
     knockBackDir_ = FindYaw(pos_.x - from.x, pos_.z - from.z);
@@ -241,7 +247,7 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
     // platform marks it, and the other hero learns whether this one stands on it (not while a
     // floor fan lifts this one: the box still stops it, but it doesn't count as standing).
     // Rising: the other hero, static objects, candles; a platform's underside does not stop a jump.
-    bool landed = false, headHit = false;
+    bool landed = false, headHit = false, solidGround = false;
     if (verticalSpeed_ < 0.0f) {
         bool onHero = other && other->CollisionCheckY(np.y, box_) && !pushedByFan_;
         bool onStatic = world.StaticCollisionY(np.y, box_);
@@ -249,6 +255,7 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
         bool onMap = map.CollisionCheckY(np.y, box_);
         bool onCandle = world.CandleCollisionY(np.y, box_);
         landed = onHero || onStatic || onPlatform || onMap || onCandle;
+        solidGround = onMap && !onHero && !onStatic && !onPlatform && !onCandle;
         if (other) other->SetHeroAbove(onHero);
         if (onPlatform) world.SetHeroAboveLastPlatform(heroA_);  // SetHeroAAbove / SetHeroBAbove
     } else {
@@ -259,11 +266,14 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
         if (other) other->SetHeroAbove(false);
     }
     SetPosY(np.y);
+    if (solidGround) {  // native (No falling deaths): kept whether or not the cheat is on
+        solidPos_ = pos_;
+    }
 
     // the wand: a fresh press with the wand down and magic to spare fires
     if (in.button1Pressed && !wandOut_ && status_->magicPoint > 0) {
         world.PlaySound(kSoundFireA, pos_.z);
-        status_->magicPoint--;
+        if (!cheats.infiniteMagic) status_->magicPoint--;  // native: the Infinite magic cheat
         mpRecoveryCounter_ = 0;
         world.CreateFire(*this);
     }
@@ -310,12 +320,20 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
     // falling out of the level: below -200, or on a water level below -58 with a large wave
     // (and its sound) on the surface
     if (!world.UseWater() && pos_.y < -200.0f) {
+        if (cheats.noFallingDeaths) {  // native: the No falling deaths cheat
+            BackOnSolidGround();
+            return;
+        }
         localCounter_ = 0;
         liveState_ = DYING;
         return;
     }
     if (world.UseWater() && pos_.y < -58.0f) {
         world.CreateWaterWave(D3DVECTOR(pos_.x, -38.0f, pos_.z), true, true);
+        if (cheats.noFallingDeaths) {  // native: the No falling deaths cheat (after the splash)
+            BackOnSolidGround();
+            return;
+        }
         localCounter_ = 0;
         liveState_ = DYING;
         return;
@@ -328,6 +346,26 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
         return;
     }
     pushedByFan_ = false;
+}
+
+// Native (No falling deaths): back where the hero last stood on the level's own floor, at rest,
+// flashing for a second as after a hit (and as safe from hits)
+void XHero::BackOnSolidGround() {
+    pos_ = solidPos_;
+    box_.SetPos(pos_);
+    pitch_ = 0;
+    UpdateWorldMatrix();
+    body_->Snap();  // (smooth motion: put there, not slid there)
+    wand_->Snap();
+    beingKnockBack_ = false;
+    knockBackDir_ = 0;
+    knockBackSpeed_ = 0;
+    push_ = D3DVECTOR(0, 0, 0);
+    pushedByFan_ = false;
+    heroAbove_ = false;
+    verticalSpeed_ = 0;
+    jumpState_ = LAND;
+    damageCounter_ = 100;
 }
 
 void XHero::ProcessWarp(XHeroWorld& world) {

@@ -61,8 +61,12 @@ struct Config {
     std::string modPack = "original";
     // [cheats] (all off by default; with them all off the game plays exactly as the original)
     bool unlockAllLevels = false;     // every level selectable; saved progress is left untouched
+    bool infiniteLives = false;       // a hit never takes the last life
+    bool invincible = false;          // hits do nothing (no damage, no knockback)
+    bool infiniteMagic = false;       // firing costs no magic
+    bool noFallingDeaths = false;     // falling out of a level puts the mage back on solid ground
     // Any cheat on (the HUD's CHEATS mark). Add each new cheat here.
-    bool AnyCheat() const { return unlockAllLevels; }
+    bool AnyCheat() const { return unlockAllLevels || infiniteLives || invincible || infiniteMagic || noFallingDeaths; }
 
     std::string path;
     int version = 0;                    // config_version found in the file (0 = older file)
