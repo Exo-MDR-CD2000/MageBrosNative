@@ -437,6 +437,8 @@ HRESULT Device::EndScene() {
     return D3D_OK;
 }
 
+void Device::WaitForGpu() { glFinish(); }
+
 void Device::Present() {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, sceneFbo_);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, resolveFbo_);

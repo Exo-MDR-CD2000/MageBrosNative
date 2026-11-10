@@ -23,8 +23,9 @@ struct Config {
     int displayIndex = 0;          // 0 = primary monitor, 1..n = monitors in system order
     std::string displayName;       // that monitor's name; when connected it wins over the number
     int vsync = 1;                 // 0 off, 1 on, 2 adaptive (on where the driver can't)
-    int maxFps = 0;                // 0 = uncapped (or vsync limited)
+    int maxFps = 0;                // 0 = uncapped (or vsync limited); -1..-4 = the refresh rate over 1..4
     bool interpolation = false;    // smooth motion: drawing between the 100 Hz logic ticks
+    bool lowLatency = false;       // with VSync: no finished frames queued in the driver (waits after each swap)
     int msaa = 4;                  // 0, 2, 4, 8
     int anisotropy = 8;            // 1 = off
     bool smoothTextures = false;   // force linear filtering on 3D textures that used point sampling

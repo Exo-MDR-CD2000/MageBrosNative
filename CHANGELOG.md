@@ -9,6 +9,51 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.32] - 2026-11-10
+
+- **A much more even frame limit**: with a Frame limit set, pictures now start within a tenth of
+  a millisecond of their turn; before, they could be more than a millisecond late and the next
+  one early. This shows most on G-Sync and FreeSync monitors, which follow each picture as it
+  comes. It uses a little more processor time while a limit is on.
+
+## [0.4.31] - 2026-11-10
+
+- With Smooth motion off, each picture is now drawn right when its game step is due (within
+  a twentieth of a millisecond; it was about a millisecond late, by a different amount each
+  time), so the original's 100 pictures a second come more evenly.
+
+## [0.4.30] - 2026-11-09
+
+- Fixed: with VSync off and a frame cap set a little under the refresh rate in your graphics
+  driver (141 on a 144 Hz monitor, as often advised for G-Sync and FreeSync), the VSync row
+  wrongly said the driver was forcing VSync on.
+
+## [0.4.29] - 2026-11-09
+
+- **Low latency** (Options > Video, off by default): with VSync on, graphics drivers may keep a
+  few finished pictures waiting in a queue, each adding one screen refresh between pressing a
+  key and seeing the result. With Low latency on, the game waits for each picture to be on its
+  way to the screen before starting the next, so none wait. The frame rate stays the same.
+
+## [0.4.28] - 2026-11-09
+
+- **Frame limits that fit your monitor**: Options > Video > Frame limit now offers your
+  monitor's refresh rate and its half, third and quarter (on a 144 Hz monitor: 144, 72, 48 and
+  36). With one of these every picture stays on screen equally long, so movement is even; a
+  limit that doesn't divide the refresh rate (60 on 144 Hz) shows pictures for two or three
+  refreshes in turn, which looks choppy on a monitor without G-Sync or FreeSync. With VSync on,
+  the graphics driver keeps these limits exactly in step with the monitor. As every frame
+  limit, they apply with Smooth motion on.
+- The Frame limit list also has 50, 100, 180 and 200 now.
+
+## [0.4.27] - 2026-11-09
+
+The first of a set of fixes to frame timing, found in a review of refresh rates, VSync, the
+frame limit and Smooth motion (versions 0.4.27 to 0.4.32).
+
+- Fixed: with Smooth motion on, after opening the options menu or pausing once, the game's steps
+  ran up to a millisecond late for the rest of the session, so now and then a picture stood
+  still for a moment. Movement is now as even after the menu or a pause as before it.
 - **`MageBrosNative.exe` has its own icon**: a blue wizard hat on a tiled floor before a
   torchlit brick wall, shown in Explorer, on the taskbar and in the game's title bar. Its
   version now shows under Properties > Details. The README has a banner in the same style.

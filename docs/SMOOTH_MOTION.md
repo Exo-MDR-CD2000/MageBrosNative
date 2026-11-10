@@ -7,6 +7,7 @@ Drawing the game smoothly at any refresh rate without changing the game. Researc
 
 This file starts with how it works as built. The research and each chunk's plan and "as built"
 notes follow, in the order they were written, as the history and the record of what was checked.
+The last section, "Review of 2026-11-09", lists what could still be fixed or improved.
 
 ## How it works (as built, 0.4.20)
 
@@ -21,7 +22,10 @@ the original's, byte for byte (checked at each chunk).
 as before, and kept to the nanosecond (`lastTickNs_`, `SetLastTick`). Alpha comes from the
 nanosecond clock (`AppTimeNs`). The options menu and P freeze it (`HoldTickPhase`), and the first
 frame after them carries on from the held picture (`heldLastFrame_`), so nothing jumps.
-`AppFrameRate` gives the measured frame rate (the ending's corridor uses it).
+`AppFrameRate` gives the measured frame rate (the ending's corridor uses it). (From 0.4.27, on
+the `smooth-motion-rework` branch: the latest tick is always kept on a whole millisecond, and
+the frame limit, VSync and the wait between frames were reworked; see "Review of 2026-11-09" at
+the end.)
 
 **`Interp`** (`src/framework/interp.*`): `BeginTick` / `CurrentTick` (called by `XGameScene` before
 each tick, the shop's ticks included), `BeginFrame` / `FramesDrawn` (each level picture),
@@ -903,3 +907,400 @@ When a byte-for-byte run fails everywhere, check first that the test folder's in
 - **Where it ended up:** stage 7, done as one piece of work in four chunks, not a stage of its
   own.
 - The release notes and the merge: see "D5" (a summary in 0.4.20; merged directly).
+
+## Review of 2026-11-09 (0.4.26): what could be fixed or improved
+
+A review of the frame loop, VSync, the frame limit and smooth motion as they are on `main`, by
+reading the code and the docs. The review itself built and measured nothing: each item was a
+finding to confirm with a log before or while fixing it. **Since then** (2026-11-09 and 10, the
+`smooth-motion-rework` branch): 1 to 5, 8 and 9 are built, each measured before and after
+(versions 0.4.27 to 0.4.32), 7 is run and 6 is written up and set aside. What was built and
+measured is under "The fixes, on the `smooth-motion-rework` branch" below; the list here is kept
+as it was written, with each item's outcome noted in the table.
+
+**The verdict.** The design is sound and is not tied to any refresh rate. A picture always shows
+the game exactly 10 ms before its frame started, whatever the frame rate: below 100 frames a
+second a frame runs two or more ticks and the blend is still between the last two; at exactly 100
+a frame may run no tick or two, and the picture stays continuous; above 100 the frames without a
+tick blend further along. So 30, 50, 60, 75, 90, 100, 120, 144, 165, 180, 200, 240 Hz and odd
+rates (59.94, 143.86) are all handled by the same code. The blend (`JObject3DX`, `XCamera`,
+`Interp::BlendPos`) and the tick clock need no refactor. Only 60 and 144 Hz have been measured,
+on the owner's monitors; the other rates rest on reading the code.
+
+### The issues, most worthwhile first
+
+| # | Issue | Where | Size |
+|---|---|---|---|
+| 1 | **Ticks come due up to 1 ms late after the first menu or pause** (a bug, Smooth motion on). **Fixed** on the `smooth-motion-rework` branch, see "Fix 1 as built" below | `HoldTickPhase`, `Render3DEnvironment` in `d3dapp.cpp` | One line |
+| 2 | **The Frame limit list is fixed and has no limits that divide the monitor's rate**. **Done** on the branch, see "Fix 2 as built" below | `options_menu.cpp` (the Frame limit row), the limiter in `Run` | Small |
+| 3 | **Nothing limits the graphics driver's frame queue** with VSync on. **Built** on the branch as the Low latency setting, off by default, see "Fix 3 as built" below | after `SDL_GL_SwapWindow` in `d3dapp.cpp` | A few lines, behind an ini switch first |
+| 4 | **`JudgeVSync` wrongly says the driver forces VSync on** for a driver cap just under the refresh rate. **Fixed** on the branch, see "Fix 4 as built" below | `JudgeVSync` in `d3dapp.cpp` | Small |
+| 5 | **With Smooth motion off, tick frames show up to about 1 ms late** (measured: 0.7 to 1.2 ms on average, up to 2). **Fixed** on the branch, see "Fix 5 as built" below | the `SDL_Delay(1)` at the end of `Run` | Small |
+| 6 | **The renderer sets every state and uploads every mesh on every draw** | `Device::ApplyState`, `DrawIndexedPrimitive` in `device.cpp` | Large; only if weak graphics cards become a goal |
+| 7 | **Other refresh rates are untested**. **Measured** (2026-11-10): 30 to 360 frames a second all right, see "Check 7 as run" below | (testing) | A test run |
+| 8 | **Stale comments**. **Corrected** on the branch (2026-11-10), with fix 9 | `d3dapp.cpp`, `d3dapp.h`, `XGameScene.cpp` | Trivial |
+| 9 | **The frame limiter's frames start up to about 1 ms early or late** (found while measuring fix 2; see there). **Fixed** on the branch, see "Fix 9 as built" below | the limiter in `Run` (`d3dapp.cpp`) | Small |
+
+**1. Late ticks after the menu or a pause.** Ticks are counted from the frame's time in whole
+milliseconds (`tickNow = now * 1,000,000`), and the latest tick normally lies on a whole
+millisecond too, so a tick comes due exactly 10 ms after the last. `HoldTickPhase`, with Smooth
+motion on, sets the latest tick to `nowNs - phase`, a time between two milliseconds, and
+`SetLastTick(tickNow - elapsed % kTickNs)` then keeps that fraction for the rest of the session.
+From then on each tick is only seen at the next whole millisecond: up to 1 ms late (0.5 on
+average). Alpha is pinned at 1 for that time, so the picture stands still, then starts the next
+tick up to a tenth of the way in. At 144 Hz about one frame in fourteen is drawn up to 1 ms
+stale; at higher rates more frames land in the gap. It affects every refresh rate, only after F10
+or P has been used once. The fix: keep the held tick on a whole millisecond
+(`SetLastTick` of `(nowNs - phase)` rounded down to a millisecond), which costs one jump of at
+most 0.1 of a tick when the game carries on. To confirm first: a temporary log of how long alpha
+stays at 1 before each tick, before and after opening the menu.
+
+**2. Frame limits that fit the monitor.** The row offers Unlimited, 30, 60, 75, 90, 120, 144,
+165, 240 and 360 (no 50, 100, 180 or 200; the ini's `max_fps` takes any number). On a monitor
+without G-Sync / FreeSync in effect, a limit that doesn't divide the refresh rate shows pictures
+for an uneven number of refreshes (60 on 144 Hz: 3, 2, 2, 3...), which is the choppiness the
+owner saw in a window at a 60 limit. Proposed: build the list from the monitor the window is on:
+its own rate, a half, a third and a quarter of it, beside the common numbers. Such a limit must
+come from the monitor's measured rate (143.86 / 2 = 71.93, not 72): the limiter keeps its own
+clock, so a limit of 72 would drift across a refresh about every 15 seconds and show one picture
+for one or three refreshes. An alternative to try for the half: VSync at every second refresh
+(`SDL_GL_SetSwapInterval(2)`), where the driver does the pacing; whether a composed window
+honours it has to be tried.
+
+**3. The driver's frame queue.** With VSync on and frames drawn as fast as the monitor takes them,
+an OpenGL driver may hold several finished frames in a queue, each adding a refresh of delay
+between a key press and its picture. Nothing in the port limits that; it is a likely part of what
+felt sluggish. To try: wait for the graphics card after each swap (`glFinish`, or a fence sync),
+behind an ini switch, and compare by feel and by the frame-time log; keep it only if the frame
+rate holds.
+
+**4. `JudgeVSync`'s false warning.** With VSync off, the verdict "your graphics driver's own
+setting seems to force it on" is given when the frame rate stays within 3% of the refresh rate.
+A driver or overlay frame cap just under the refresh rate, the usual G-Sync / FreeSync advice
+(141 on a 144 Hz monitor), is within that 3%, so the VSync row's help line is wrong for exactly
+the players who set things up carefully. Proposed: a tighter window (within about 0.5% of the
+measured rate), since real VSync lands on the rate itself.
+
+**5. Smooth motion off: when a tick frame is drawn.** Between tick frames the loop sleeps 1 ms at
+a time, so a frame with a tick starts up to a millisecond or so after the tick came due, by a
+different amount each time. The average stays 100 a second (the remainder carries over), and this
+mode is the original's pace, so it matters little. Proposed: sleep until the next tick is due
+(`SDL_DelayPrecise`), keeping the event loop responsive.
+
+**6. The renderer's work per draw.** (The full write-up, and how it would be built, is
+[RENDERER_OPTIMIZATION.md](RENDERER_OPTIMIZATION.md), written for later at the owner's request,
+2026-11-10.) Every draw sets 26 shader values (counted since; first given here as "about 35"),
+the whole blend, depth and texture state, about 60 OpenGL calls in all, and uploads its vertices
+and indices again, static models included. On
+the owner's card this costs nothing that shows (about 1,070 frames a second in the busiest
+level), so it is no help to smoothness there. It would matter on weak integrated graphics at
+high refresh rates. If that becomes a goal: keep each model's buffers on the graphics card, and
+set only the state that changed. Not recommended otherwise: it touches the whole D3D emulation.
+
+**7. Testing the other rates.** A frame limit stands in for a monitor: with VSync off, limits of
+30, 50, 75, 90, 100, 165, 200 and 240 in the frame-pacing log of chunk D ("Frame pacing,
+measured first") would show each picture where it should be at every rate. Exactly 100 is the
+one worth looking at closely (frames and ticks at the same pace).
+
+**8. Stale comments.** `CD3DApplication::Pause` speaks of a clamp of 20 catch-up ticks in
+`Render3DEnvironment` that doesn't exist (the cap is `XApplication::FrameMove`'s 10).
+`d3dapp.h` says "Ticks are counted on the nanosecond clock", but they are counted from the
+millisecond time and kept to the nanosecond (see "Chunk A as built"). `XGameScene::Render`'s
+comment still says "the mages, their shadows and the camera so far".
+
+### Kept as they are (by earlier decisions, not flaws)
+
+- **Smooth motion off** draws the original's 100 pictures a second, which fits evenly only on
+  50, 100 and 200 Hz screens; every other rate judders slightly, as the original did. Smooth
+  motion on is the cure.
+- **The ending's corridor** scrolls at the speed the frame rate gives it, up to 100 frames a
+  second, so it is slower at 30 or 50 Hz (the owner's choice, 0.4.19).
+- **A picture is placed for when its frame starts**, not when it reaches the screen. With only
+  the last two ticks kept there is no room to do otherwise: the one moment always between them
+  is 10 ms before the frame's start. Keeping a third tick would give room at the cost of 5 to
+  10 ms more delay; not recommended. Items 2 and 3 work on when frames start and how long they
+  wait instead.
+
+### The fixes, on the `smooth-motion-rework` branch
+
+The branch was made from `main` (0.4.26) on 2026-11-09 for this list. **Each fix is a version of
+its own** (the owner, 2026-11-10; the first six were numbered afterwards): 0.4.27 fix 1, 0.4.28
+fix 2, 0.4.29 fix 3, 0.4.30 fix 4, 0.4.31 fix 5, 0.4.32 fix 9 with the comments of 8. After each
+new fix the owner is asked whether to raise the version and build. Only 0.4.31 and 0.4.32 exist
+as builds (`build\fix-builds`); the earlier four were built over one another before the
+numbering. Each fix is confirmed by a
+log first, then built, then measured again.
+
+**Fix 1 as built (0.4.27, 2026-11-09): late ticks after the menu or a pause.** `HoldTickPhase` now puts
+the held tick on a whole millisecond, rounded down (and so does the "clock went back" line in
+`Render3DEnvironment`), so the latest tick is always on a whole millisecond, as it is from the
+start. When the game carries on, the picture is at most a tenth of a tick further along than it
+was held, never back.
+
+Measured with a temporary log (removed), each second: the frames drawn, the frames drawn after
+a tick was due but before it ran (alpha pinned at 1), and how far the latest tick was from a
+whole millisecond. 1-1 in a 1280 x 960 window, Smooth motion on, VSync off, about 1,900 frames a
+second:
+
+| | Latest tick off the millisecond | Frames pinned, each second |
+|---|---|---|
+| Before, until the menu is opened | 0 | 0 |
+| Before, after F10 and Escape | 0.829 ms (so every tick 0.171 ms late) | 34 to 37, for the rest of the run |
+| After, through F10, Escape, P, P, F10, Escape | 0 throughout | 0 (one frame, once, as P let go: the tenth of a tick) |
+
+The lateness depends on the moment the menu closes: anywhere up to 1 ms. All 4 tests pass. Not
+re-run: the byte-for-byte screenshots (the change is only reached with Smooth motion on after
+the menu or a pause, which those runs don't use).
+
+**Fix 2 as built (0.4.28, 2026-11-09): frame limits that fit the monitor.**
+
+- **`max_fps` takes -1 to -4**: the monitor's refresh rate, a half, a third and a quarter of it
+  (`CD3DApplication::FrameLimit`). The rate is the one the monitor's mode states, to the
+  fraction (143.857, not 144: `UpdateRefreshRate`, read at every VSync or display change and
+  once a second, so a window moved to another monitor follows within a second). Positive
+  numbers work as before. An older build reading -2 takes it as 0 (Unlimited), so the file
+  needs no `config_version` change.
+- **With VSync on or adaptive, the driver paces these limits itself**: `ApplyVSync` asks for a
+  picture every n-th refresh (the swap interval, 2 to 4; adaptive -n) and the limiter stands
+  aside (`SwapPaced`). The driver waits on the monitor's own refreshes, so the pace can't drift
+  against them as the limiter's clock would. If the driver refuses the interval, VSync is set as
+  before and the limiter keeps the limit at the stated rate. If the driver accepts it but frames
+  still come more than 15% too fast for two seconds (`JudgeVSync`, as for a driver overriding
+  VSync), the limiter takes over.
+- **With VSync off** the limiter holds the refresh rate over n.
+- **Only with Smooth motion on**, like every limit: off, VSync shows every refresh as before.
+  The Smooth motion and Frame limit rows now call `ApplyVSync` when changed.
+- **The menu's Frame limit row**: Unlimited, "Refresh rate (144)", "1/2 refresh rate (72)",
+  "1/3 ... (48)", "1/4 ... (36)" with the numbers of the monitor the window is on (parts below
+  30 a second aren't offered: a 60 Hz monitor gets the rate and its half), then 30, 50, 60, 75,
+  90, 100, 120, 144, 165, 180, 200, 240, 360 (50, 100, 180 and 200 are new). The help line says
+  what a part of the refresh rate is for.
+- The "Refresh - 3" idea (D1, dropped) spoke of `max_fps = -1` for itself; if it is ever built
+  it needs another value.
+
+Measured with a temporary log (removed): the time from one frame's start to the next, the
+shortest and longest in each second, over three settled seconds. 1-1, Smooth motion on, on the
+143.857 Hz monitor:
+
+| Mode | VSync | `max_fps` | Frames a second | Frame to frame | Paced by |
+|---|---|---|---|---|---|
+| Window | On | 0 | 144 | 6.82 to 7.10 ms | VSync |
+| Window | On | -2 | 72 | 13.77 to 14.07 ms | the driver, every 2nd refresh |
+| Window | On | -3 | 48 | 20.80 to 20.93 ms | the driver, every 3rd refresh |
+| Window | Adaptive | -2 | 72 | 13.81 to 14.05 ms | the driver |
+| Borderless | On | -2 | 72 | 13.80 to 14.02 ms | the driver |
+| Window | Off | -2 | 72 | 12.73 to 15.18 ms | the limiter, 71.928 |
+| Window | Off | -1 | 144 | 5.99 to 8.05 ms | the limiter, 143.857 |
+| Window | On | 60 | 60 to 61 | 15.58 to 17.80 ms | the limiter (for comparison) |
+
+So the driver honours a picture every 2nd or 3rd refresh in a window and in borderless here
+(NVIDIA), within about 0.15 ms of even. (Each run had one or two longer frames in its first
+seconds, while the level loaded.) All 4 tests pass.
+
+**Not checked**: the look of it (only the owner's eyes can judge 72 against 60 on the 144 Hz
+monitors, and what G-Sync does with these limits); the menu row by hand (the runs set the ini);
+exclusive fullscreen; the 60 Hz monitor; AMD and Intel drivers; the fallback paths (a driver
+refusing or ignoring the interval), which this machine can't show.
+
+**Found on the way (issue 9)**: the limiter's own frames start up to about 1 ms early or late
+(12.73 to 15.18 ms at a limit of 71.93; chunk D's table shows the same at 60 and 141). The
+average is exact, because each frame is due an interval after the last was due. Smooth motion
+places each picture by its real start time, so the motion shown is right; on a monitor following
+the frames (G-Sync / FreeSync) the pictures come that unevenly. The likely cause is the sleep
+overshooting just before a frame is due; a tighter wait (sleeping to about 1.5 ms before, then
+shorter steps) would be the fix. Not built.
+
+**Fix 3 as built (0.4.29, 2026-11-09): Low latency (the driver's frame queue).**
+
+- **`[video] low_latency`** (0 by default) and a **Low latency** row in Options > Video, under
+  Frame limit (greyed out with VSync off). With it on and VSync on or adaptive, the frame loop
+  waits for the graphics card after each swap (`CD3DApplication::SwapFrame`,
+  `Device::WaitForGpu`: `glFinish`), so the frame just finished is on its way to the screen
+  before the next one is begun and none wait in the driver's queue. It applies with Smooth
+  motion on or off, and in the options menu's own frames.
+- Off by default, as every extra. It needs no `config_version` change.
+
+Measured with a temporary log (removed): how long the swap and the wait each take, the first
+eight frames one by one and then each second. 1-1, Smooth motion on, VSync on, no limit, the
+143.857 Hz monitor:
+
+| | Low latency off | Low latency on |
+|---|---|---|
+| The swap, a frame | 6.7 to 6.8 ms (it waits for the refresh) | 0.04 to 0.10 ms (it returns at once) |
+| The wait after it | none | 6.7 ms (the wait for the refresh is here now) |
+| Frames a second, window and borderless | 144 | 144 |
+| With `max_fps = -2` | 72 | 72 (the wait 13.6 ms) |
+| Adaptive VSync | | 144 |
+| Processor time over an 11 s run | 2.05 s | 2.17 s (the wait doesn't spin) |
+| The first swaps after start | 3 or 4 return in under 2.5 ms before the swaps start to wait | every one is waited for from the third on |
+
+What this shows: with the setting off, the driver takes the first few frames without waiting,
+which is a queue filling (about two or three frames here, with the NVIDIA driver's own
+settings at their defaults); with it on, each frame is waited for, so nothing queues. The frame
+rate and the processor time are unchanged. The time between frames was as even with it on as
+off in borderless (6.7 to 7.3 ms); in a window both had seconds with a frame about 1 ms early
+or late, with no clear difference in these short runs.
+
+**Not measured, and the point of it**: the delay itself, from a key press to its picture. That
+needs the owner's hands (or a capture tool): VSync on, Smooth motion on, no limit, Low latency
+off against on, in a window and borderless. Also not checked: the menu row by hand, exclusive
+fullscreen, AMD and Intel drivers.
+
+**The owner's verdict (2026-11-09): it stays**, off by default. The owner couldn't notice much
+difference on this machine (a fast card at 144 Hz, where the queue is at most two or three
+7 ms refreshes), but it may help other players, on slower monitors or with other drivers.
+
+**Fix 4 as built (0.4.30, 2026-11-09): the false "VSync forced on" warning.**
+
+- `JudgeVSync` now says the driver forces VSync on only when, with VSync off here, the frame
+  rate stays within **half a percent** of the monitor's stated refresh rate for two seconds (it
+  was 3%). Forced VSync lands on the refresh rate itself; a frame cap set a little under it in
+  the driver or an overlay (141 on 144 Hz, the usual G-Sync / FreeSync advice) is 2% away.
+- `UpdateStats` now measures the frame rate from whole milliseconds, not from seconds kept in
+  a float, which lost precision over a long session (about 0.4% after ten hours): too coarse
+  for a half-percent test.
+
+Checked with a temporary hook (removed) that let the game's own limiter stand in for a driver's
+cap, VSync off, on the 143.857 Hz monitor:
+
+| Frames held at | Measured | 3% (before) | Half a percent (now) |
+|---|---|---|---|
+| 141 | 140.86 to 141.01 | "forced on" (wrong) | nothing |
+| 143 | 142.86 to 143.00 | | nothing |
+| the refresh rate (as forced VSync would) | 143.85 to 143.86 | | "forced on" |
+| not held | about 1,900 | | nothing |
+
+All 4 tests pass. Not checked: a real driver setting (NVIDIA Control Panel's Max Frame Rate or
+its VSync forced on), which only the owner can set.
+
+**Fix 5 as built (0.4.31, 2026-11-10): Smooth motion off, drawn when the tick is due.** With Smooth
+motion off the game draws only on frames with a tick, as the original. Between them the loop
+slept a millisecond at a time and looked again, so each frame started some way after its tick
+came due, by a different amount each time. `Run` now waits until the next tick's own moment
+(`SDL_DelayPrecise` to `lastTickNs_` + 10 ms). The ticks themselves, their count and what the
+game does in them are untouched: only when the frame holding a tick begins.
+
+Measured with a temporary log (removed): how long after its tick came due each frame started.
+1-1, Smooth motion off, a 1280 x 960 window, four settled seconds each:
+
+| | Late, on average | Latest | Processor time, 11 s run |
+|---|---|---|---|
+| Before, VSync off | 0.72 to 0.84 ms | 2.0 to 3.1 ms | 0.53 to 0.61 s |
+| Before, VSync on (144 Hz) | 0.94 to 1.25 ms | 2.0 ms | |
+| After, VSync off | 0.02 to 0.04 ms | 0.4 to 1.0 ms | 1.14 to 1.16 s |
+| After, VSync on (144 Hz) | 0.03 to 0.06 ms | 0.8 to 1.0 ms | |
+| Tried and not kept: a plain sleep (`SDL_DelayNS`), VSync off | 0.36 to 0.48 ms | 1.0 to 1.1 ms | 0.73 to 0.80 s |
+
+The cost is about 5% of one processor core (the precise wait watches the clock for the last
+part of a millisecond); the plain sleep costs a third of that but is ten times less exact. The
+original used a whole core here (it never slept). 100 frames a second throughout, none with
+two ticks. All 4 tests pass. Not re-run: the byte-for-byte screenshots (the pictures don't
+depend on when in the millisecond a frame starts; a screenshot may still land a tick apart from
+run to run, as before).
+
+**Fix 9 as built (0.4.32, 2026-11-10): the frame limiter waits to the moment itself.** The limiter slept
+nine tenths of the time left, looked again, and so on. Its last sleeps were short ones (a
+millisecond or less), and a sleep comes back up to a millisecond late, so a frame started late
+by a different amount each time, and the next one, due an interval after the last was due, came
+early by as much. `Run` now waits with `WaitNs` (`d3dapp.cpp`): asleep until 1.5 ms before the
+frame is due, then watching the clock to the moment. The events and the frame's time are still
+read afresh right after the wait, as before.
+
+Measured with a temporary log (removed): how late after it was due each limited frame started,
+and the time from one frame's start to the next, the shortest and longest in each second, four
+settled seconds each. 1-1, Smooth motion on, a 1280 x 960 window:
+
+| VSync | Limit | Before: late (average, latest) | Before: frame to frame | After: late (average, latest) | After: frame to frame |
+|---|---|---|---|---|---|
+| Off | 60 | 0.28 to 0.39 ms, 1.16 | 15.58 to 17.60 ms | 0.013 ms, 0.08 | 16.60 to 16.74 ms |
+| Off | 141 | 0.31 to 0.37 ms, 1.30 | 6.06 to 8.32 ms | 0.013 ms, 0.06 | 7.05 to 7.14 ms |
+| Off | 1/2 refresh (71.93) | 0.29 to 0.34 ms, 0.97 | 13.02 to 14.81 ms | 0.013 ms, 0.08 | 13.84 to 13.97 ms |
+| Off | 240 | 0.21 to 0.30 ms, 1.24 | 3.18 to 5.09 ms | 0.012 ms, 0.10 | 4.08 to 4.26 ms |
+| On | 60 | 0.32 to 0.33 ms, 1.28 | 15.70 to 17.46 ms | 0.013 ms, 0.05 | 16.63 to 16.71 ms |
+
+Frames now start within a tenth of a millisecond of when they are due, where they were up to
+1.3 ms late: about twenty times as even.
+
+**The cost**: processor time, since the last 1.5 ms before each frame is spent watching the
+clock. Over a 10 s run with VSync off: at a limit of 141, 2.56 s against 0.95 s before (about
+16% of one core more); at 60, 1.30 s against 0.67 s (about 6% more). Two cheaper ways were
+measured and not kept: `SDL_DelayPrecise` for the whole wait (1.56 s at 141; 0.04 ms late on
+average but still up to 1.0 ms now and then, frames 6.1 to 8.1 ms apart in some seconds), and
+watching the clock for 1.0 ms instead of 1.5 (1.86 s; up to 0.4 ms late). It only applies while
+the limiter is at work: with VSync and a part-of-refresh limit the driver paces the frames
+(fix 2) and nothing is spent.
+
+All 4 tests pass. Not checked: the look of it on a monitor following the frames (G-Sync /
+FreeSync in exclusive fullscreen at a limit such as 141 or 60), which is where it should show;
+a slow or busy machine, where watching the clock could be interrupted.
+
+**Issue 8, the comments** (0.4.32, 2026-11-10): `CD3DApplication::Pause` (no clamp of 20 ticks: at most
+10 are taken and the rest dropped), `d3dapp.h` (ticks from whole milliseconds, the latest kept
+in nanoseconds on a whole millisecond) and `XGameScene::Render` (everything in the level's 3D is
+blended, not only the mages and the camera) now say what the code does.
+
+**Where the list stands**: 1 to 5, 8 and 9 are done. 6 (the renderer's work per draw; written up in
+[RENDERER_OPTIMIZATION.md](RENDERER_OPTIMIZATION.md) for later) is left
+alone unless weak graphics cards become a goal. 7 (the other refresh rates by measurement) has
+been run: below.
+
+**Check 7 as run (2026-11-10, on 0.4.32; no code changed, so no version of its own).** The
+owner's aim is every common refresh rate (30, 50, 75, 90, 100, 120, 144, 165, 180, 200 Hz and
+so on), and only 60 and 144 Hz had been measured. The owner's monitors can't show the others,
+but what the game draws at each rate can be measured: the frame limit, with VSync off, makes the
+game draw at exactly that rate, as it would on such a monitor.
+
+With a temporary log (removed) of every frame: when it started, how many ticks it ran, and the
+camera's position as drawn. 1-1 in a 1280 x 960 window, Smooth motion on, the mage running
+along the level so the camera scrolls steadily at 1.2 a tick (120 a second), measured over the
+3.6 seconds of steady scroll. "Motion error" is how far each frame's drawn camera movement was
+from what the time since the last frame calls for, in milliseconds of movement: zero means the
+picture is exactly where it should be for the moment it was drawn.
+
+| Frames a second | Ticks a second | Ticks in a frame | Frame to frame | Motion error (typical, largest) |
+|---|---|---|---|---|
+| 30 | 100.1 | 3 or 4 | 33.33 to 33.34 ms | 0.005, 0.035 ms |
+| 50 | 100.0 | always 2 | 19.99 to 20.01 ms | 0.003, 0.026 ms |
+| 60 | 100.1 | 1 or 2 | 16.64 to 16.69 ms | 0.003, 0.024 ms |
+| 75 | 100.0 | 1 or 2 | 13.33 to 13.34 ms | 0.002, 0.018 ms |
+| 90 | 100.1 | 1 or 2 | 11.06 to 11.16 ms | 0.002, 0.016 ms |
+| 100 | 100.0 | always 1 | 10.00 to 10.01 ms | 0.002, 0.015 ms |
+| 120 | 100.1 | 0 or 1 | 8.29 to 8.37 ms | 0.002, 0.012 ms |
+| 144 | 100.1 | 0 or 1 | 6.90 to 6.99 ms | 0.001, 0.010 ms |
+| 165 | 99.9 | 0 or 1 | 6.01 to 6.11 ms | 0.001, 0.009 ms |
+| 180 | 100.0 | 0 or 1 | 5.51 to 5.60 ms | 0.001, 0.008 ms |
+| 200 | 100.0 | 0 or 1 | 4.94 to 5.06 ms | 0.001, 0.008 ms |
+| 240 | 100.1 | 0 or 1 | 4.12 to 4.21 ms | 0.001, 0.006 ms |
+| 360 | 99.8 | 0 or 1 | 2.77 to 2.79 ms | 0.001, 0.004 ms |
+| Unlimited (about 1,900) | 100.0 | 0 or 1 | 0.33 to 0.94 ms | 0.000, 0.001 ms |
+| VSync on, no limit (143.86) | 100.0 | 0 or 1 | 6.72 to 7.15 ms | 0.001, 0.010 ms |
+| VSync on, 1/2 refresh (71.93) | 100.2 | 1 or 2 | 13.83 to 13.98 ms | 0.002, 0.019 ms |
+| VSync on, 1/3 refresh (47.95) | 100.1 | 2 or 3 | 20.71 to 20.95 ms | 0.003, 0.025 ms |
+| VSync on, 1/4 refresh (35.96) | 100.0 | 2 or 3 | 27.64 to 27.96 ms | 0.004, 0.029 ms |
+
+What it shows:
+
+- **The game runs 100 ticks a second at every rate** (the small differences are where the
+  3.6 s window happened to begin and end): its speed doesn't depend on the frame rate.
+- **Every picture is where it should be, at every rate**, to within 0.035 ms of movement at the
+  worst (a three-hundredth of a tick; what is left is the rounding of the numbers themselves).
+  Below 100 a frame runs several ticks, at exactly 100 always one, above 100 some frames run
+  none, and the drawn motion is the same straight line through all of them.
+- **No frame was drawn late for its tick** (none started with a tick due and not yet run), with
+  one exception in one run, by microseconds, at the 1/3 limit.
+- The frames themselves are evenly spaced at every limit (fix 9) and with the driver's pacing
+  (fix 2).
+
+Two runs had a single hitch each, neither repeated when run again: one frame of 10 ms at a limit
+of 144, and one stall of 100 ms at the 1/3 limit (the game took its 10 ticks in the next frame,
+as the original does). Something else on the machine, most likely. In both the motion error
+stayed as small as in the table: the pictures after the hitch were still in the right place.
+
+**What this doesn't show**: how any of these rates looks on a monitor that really runs at it
+(the owner's run at 144 Hz and 60 Hz), and what such a monitor's own VSync does. It shows that
+the game hands every such monitor the right picture at the right time.
+
+**The review's list is closed**: 1 to 5, 8 and 9 built (0.4.27 to 0.4.32), 7 run, 6 written up
+and set aside. Committed on the `smooth-motion-rework` branch (2026-11-10), not merged into
+`main`.
+
