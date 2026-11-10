@@ -135,6 +135,7 @@ typedef unsigned char GLubyte;
     X(void, glPixelStorei, (GLenum p, GLint v))                                                              \
     X(void, glReadPixels, (GLint x, GLint y, GLsizei w, GLsizei h, GLenum f, GLenum t, void* p))             \
     X(GLenum, glGetError, (void))                                                                            \
+    X(void, glFinish, (void))                                                                                \
     X(void, glGetIntegerv, (GLenum p, GLint * v))                                                            \
     X(void, glGetFloatv, (GLenum p, GLfloat * v))                                                            \
     X(const GLubyte*, glGetString, (GLenum n))                                                               \

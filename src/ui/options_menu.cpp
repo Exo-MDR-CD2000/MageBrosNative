@@ -671,20 +671,48 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                  [] { return OnOff(GetConfig().interpolation); },
                  [this](int) {
                      GetConfig().interpolation = !GetConfig().interpolation;
+                     app_->ApplyVSync();  // (a part-of-refresh Frame limit only counts with it on)
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Frame limit", "Most frames a second, with Smooth motion only (off: 100 at most). VSync also caps it.",
-                 [] {
-                     int f = GetConfig().maxFps;
-                     return f == 0 ? std::string("Unlimited") : std::to_string(f);
-                 },
-                 [this](int d) {
-                     static const std::vector<int> l{0, 30, 60, 75, 90, 120, 144, 165, 240, 360};
-                     GetConfig().maxFps = l[(size_t)CycleIndex(l, GetConfig().maxFps, d)];
+    {
+        // Unlimited; the monitor's refresh rate and its half, third and quarter (down to 30: every
+        // picture then stays the same number of refreshes); then the common numbers
+        Item it{"Frame limit", "",
+                [this] {
+                    int f = GetConfig().maxFps;
+                    if (f == 0) return std::string("Unlimited");
+                    if (f > 0) return std::to_string(f);
+                    std::string s = f == -1 ? "Refresh rate" : "1/" + std::to_string(-f) + " refresh rate";
+                    double hz = app_->RefreshRate();
+                    if (hz > 0.0) s += " (" + std::to_string((int)(hz / -f + 0.5)) + ")";
+                    return s;
+                },
+                [this](int d) {
+                    std::vector<int> l{0};
+                    double hz = app_->RefreshRate();
+                    for (int n = 1; n <= 4; n++)
+                        if (hz <= 0.0 || hz / n >= 29.5 || GetConfig().maxFps == -n) l.push_back(-n);
+                    for (int f : {30, 50, 60, 75, 90, 100, 120, 144, 165, 180, 200, 240, 360}) l.push_back(f);
+                    GetConfig().maxFps = l[(size_t)CycleIndex(l, GetConfig().maxFps, d)];
+                    app_->ApplyVSync();
+                    Save();
+                },
+                nullptr, [] { return GetConfig().interpolation; }};
+        it.helpFn = [] {
+            if (GetConfig().maxFps < 0)
+                return std::string("A part of the monitor's refresh rate: every picture shows equally long. Smooth motion only.");
+            return std::string("Most frames a second, with Smooth motion only (off: 100 at most). VSync also caps it.");
+        };
+        v.push_back(it);
+    }
+    v.push_back({"Low latency", "With VSync: no finished pictures wait in the graphics driver, so keys answer sooner.",
+                 [] { return OnOff(GetConfig().lowLatency); },
+                 [this](int) {
+                     GetConfig().lowLatency = !GetConfig().lowLatency;
                      Save();
                  },
-                 nullptr, [] { return GetConfig().interpolation; }});
+                 nullptr, [] { return GetConfig().vsync != 0; }});
     v.push_back({"Aspect", "4:3 as original, stretched, or widescreen (wider 3D view).",
                  [] {
                      switch (GetConfig().aspect) {

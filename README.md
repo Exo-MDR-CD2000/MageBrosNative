@@ -6,7 +6,7 @@ An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2
 modern Windows. It plays exactly like the original, with optional extras: widescreen, any
 resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-**Version 0.4.26.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+**Version 0.4.32.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -82,8 +82,9 @@ Press F10 (or Start) to open the options menu. With every option at its default 
 and plays like the original, apart from smoother edges and distant textures (Antialiasing and
 Texture filtering, both on by default; turn them off for the original's exact picture).
 
-- **Video:** window, borderless or exclusive fullscreen; resolution and refresh rate; VSync and a
-  frame limit; **Smooth motion** (off by default), which draws the game between its 100 steps a
+- **Video:** window, borderless or exclusive fullscreen; resolution and refresh rate; VSync; a
+  frame limit, including your monitor's refresh rate and its half, third and quarter, which keep
+  movement even; Low latency; **Smooth motion** (off by default), which draws the game between its 100 steps a
   second so it moves smoothly on high refresh rate monitors, without changing the game's speed;
   **Aspect** (4:3, Stretch or Widescreen, which shows more of each level at the sides); HUD
   position and size; and **Field of view**, which is **experimental: we recommend leaving it at

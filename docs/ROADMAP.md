@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats done (C1 to C4, 0.4.23 to 0.4.26); mods and the config tooling still to come |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats done (C1 to C4, 0.4.23 to 0.4.26); frame timing reviewed and reworked (0.4.27 to 0.4.32, on the `smooth-motion-rework` branch, not merged yet); mods and the config tooling still to come |
 
 ## Stage 4, chunk by chunk
 
@@ -134,6 +134,7 @@ makes them Mage Bros.' own and finishes the ones that need the game's help.
 | Cheats C2 | Infinite lives (a hit never takes the last life), Invincible (`XHero::Damage` and `KnockBack` do nothing), Infinite magic (firing costs nothing), No falling deaths (a fall below -200, or into the water after its splash, puts the hero back where it last stood on the map's own floor, flashing 100 ticks). In Mage Bros. `life` is health and a fall kills outright, so only No falling deaths covers falls. The heroes get the cheats as `XHero::cheats`, set by `XGameScene::Tick` (the hero tests leave them off). Checked: with them off, 1-1 still and moving and firing byte for byte as 0.4.23; with a temporary hook hitting the hero every 1.5 s: off, dead after five hits; Infinite lives, held at 1; Invincible, no change; ten shots at full magic; 4-10's pit and 1-10's water, back on the floor | Any level: hits, firing, pits and water | Done (0.4.24) |
 | Cheats C3 | Max magic level (7), Choose your wand (Off or wand type 0 to 5), Max gold (9999), set in each playing hero's status by `XGameScene::InitLevel` before `Reset` (which reads the magic level and the wand); saved like anything bought. Checked: with them off, 1-1 and 1-3 started from a save byte for byte as 0.4.24; with them on, from a save with 50 gold and the single wand: 9999 gold, three homing shots a press, and the save after Escape at magic level 7, wand 5, 9000 gold (the original's tenth lost) | Level start, the shop, firing | Done (0.4.25) |
 | Cheats C4 | Moon jump (the jump starts at `kJumpSpeed` times the square root of 1.5 or 2; falling unchanged), Run speed (`kWalkSpeed` times 1.25 to 2), One-hit kills (`XEnemyBase::Damage` and `XBossBase::Damage` bring the health to one hit first; turtles and ghosts, never hurt by shots in the original, stay so), Rapid fire (holding fire fires again every 12 ticks). Checked: with them off, 1-1 still and moving, firing and jumping byte for byte as 0.4.25, hero tests unchanged; jumps 74.80 / 112.68 / 150.64 high; 60 against 120 walked in 50 ticks; 13 shots in 1.5 s held (one without); 4-2's fence door (health 5) in five shots off, one on; 1-10's dragon defeated by one shot | Jumping, walking, firing, fights | Done (0.4.26) |
+| Frame timing review | Refresh rates, VSync, the frame limit and smooth motion reviewed (2026-11-09) and reworked on the `smooth-motion-rework` branch, a version a fix: 0.4.27 ticks no longer up to 1 ms late after the menu or a pause; 0.4.28 frame limits that fit the monitor (its refresh rate and a half, third and quarter of it, paced by the driver with VSync); 0.4.29 Low latency (off by default: no finished frames queued in the driver with VSync); 0.4.30 no false "VSync forced on" warning for a driver cap just under the refresh rate; 0.4.31 with Smooth motion off, each frame drawn when its tick is due; 0.4.32 the frame limiter starts each frame within 0.1 ms of when it is due (was up to 1.3 ms late). Each measured before and after; then every rate from 30 to 360 frames a second measured: 100 ticks a second and every picture within 0.035 ms of where it should be. The details: [SMOOTH_MOTION.md](SMOOTH_MOTION.md), "Review of 2026-11-09". Set aside: the renderer's work per draw ([RENDERER_OPTIMIZATION.md](RENDERER_OPTIMIZATION.md)) | Options > Video: Frame limit's refresh-rate entries, Low latency; a frame limit on a G-Sync / FreeSync monitor | Done on the branch (0.4.27 to 0.4.32; the owner tried 0.4.28, 0.4.29, 0.4.31 and 0.4.32); not merged into `main` |
 
 **Done**: chunk 1 (the options menu), chunk 2 (the Video page; the options menu in widescreen is
 left as it is, the owner's choice), smooth motion (0.4.16 to 0.4.20), the graphics review
@@ -149,12 +150,32 @@ swapchain" first seemed to cure the choppiness, then no longer did (the owner, 2
 README no longer recommends it; window and borderless smoothness is still open (`CLAUDE.md`,
 "Windowed / borderless smoothness"). `main` skipped 0.4.22, which the branch uses.
 
+**Reviewed (2026-11-09, 0.4.26): refresh rates, VSync, the frame limit and smooth motion.** The
+design holds at any refresh rate; one small bug (ticks up to 1 ms late after the menu or a pause)
+and seven improvements are listed in [SMOOTH_MOTION.md](SMOOTH_MOTION.md) ("Review of
+2026-11-09"), being built one at a time on the `smooth-motion-rework` branch, a version each
+(0.4.27 to 0.4.32 so far): the bug is fixed
+there (measured before and after), and so are the frame limits that fit the monitor (the
+refresh rate and its half, third and quarter, paced by the driver with VSync; liked by
+the owner) and a Low latency setting (off by default: no finished frames queued in the driver
+with VSync; kept by the owner, who noticed little on this machine, for players it may help), the false "VSync forced on" warning is fixed, and with Smooth motion off each frame
+is drawn when its tick is due, the frame limiter starts each frame within 0.1 ms of when it is
+due (it was up to 1.3 ms late) and the stale comments are corrected. The other refresh
+rates were then measured (2026-11-10): from 30 to 360 frames a second the game runs its 100
+ticks a second and every picture is drawn where it should be, to within 0.035 ms of movement.
+The renderer's work per draw (6) is not planned (written up for later in
+[RENDERER_OPTIMIZATION.md](RENDERER_OPTIMIZATION.md)). The list is closed and committed on the branch (2026-11-10); it is not merged into `main`.
+
 **Still open, to be planned with the owner**: mods (add-ons and level packs, with `MODDING.md`; the Mods pages are greyed out and
 `core/mods.cpp` is a stub); the config tooling (`--set`, `CONFIG.md`) and the README sections
 Hopmon Native has.
 
 **Set aside for later** (the owner's notes; maybe more than a game of this size needs):
 
+- the renderer's work per draw (every draw sets all its state and uploads its mesh again): an
+  optimization for weak graphics hardware only, changing no game logic and no picture. Written
+  up with a plan in chunks in [RENDERER_OPTIMIZATION.md](RENDERER_OPTIMIZATION.md) (2026-11-10);
+  to be considered if players on low-end hardware report low frame rates;
 - an in-game debug overlay (ticks a second, ticks per frame, frame-time and alpha graphs, snaps,
   the display settings in effect), off by default, reading values only (2026-10-27);
 - for the field of view, possibly with mods: scenery beyond the original's view (deeper cliffs

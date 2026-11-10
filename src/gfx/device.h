@@ -67,6 +67,9 @@ public:
     // Frame management (called by the application framework, not by game code)
     void BeginFrame();
     void Present();
+    // Wait until the graphics card has done everything handed to it (after the swap: the frame
+    // just finished is on its way to the screen before the next one is begun)
+    void WaitForGpu();
     const FrameLayout& Layout() const { return layout_; }
     // Widescreen HUD placement: how many 640x480-space pixels edge-anchored HUD elements move
     // outward (left items by -HudEdgeShift(), right items by +HudEdgeShift()). 0 unless

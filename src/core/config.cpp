@@ -72,8 +72,9 @@ bool Config::Load(const std::string& file) {
             else if (k == "display") displayIndex = std::max(0, iv);
             else if (k == "display_name") displayName = v;
             else if (k == "vsync") vsync = iv == 2 || v == "adaptive" ? 2 : toBool(v) ? 1 : 0;
-            else if (k == "max_fps") maxFps = std::max(0, iv);
+            else if (k == "max_fps") maxFps = std::max(-4, iv);
             else if (k == "interpolation") interpolation = toBool(v);
+            else if (k == "low_latency") lowLatency = toBool(v);
             else if (k == "msaa") msaa = std::clamp(iv, 0, 16);
             else if (k == "anisotropy") anisotropy = std::clamp(iv, 1, 16);
             else if (k == "smooth_textures") smoothTextures = toBool(v);
@@ -275,7 +276,12 @@ bool Config::Save() const {
     P("; max_fps: frame-rate cap. 0 = no cap (default). Any positive number, e.g. 60,\n"
       ";   144. Only applies when interpolation = 1; without interpolation the game\n"
       ";   draws at most 100 frames per second, like the original. With VSync on,\n"
-      ";   the frame rate never goes above the monitor's refresh rate anyway.\n");
+      ";   the frame rate never goes above the monitor's refresh rate anyway.\n"
+      ";   -1 = the monitor's refresh rate, -2 = half of it, -3 = a third, -4 = a\n"
+      ";   quarter (72, 48 and 36 on a 144 Hz monitor). On a monitor without G-Sync\n"
+      ";   or FreeSync these show every picture for the same number of refreshes,\n"
+      ";   which moves more evenly than a number that doesn't divide the refresh\n"
+      ";   rate (60 on 144 Hz shows pictures for 2 or 3 refreshes in turn).\n");
     fprintf(f, "max_fps = %d\n\n", maxFps);
     P("; interpolation: Smooth motion. 1 = draw at the monitor's rate, showing the\n"
       ";   game between its 100-a-second steps (the levels, the shop's slide and\n"
@@ -284,6 +290,12 @@ bool Config::Save() const {
       ";   the same: its speed, timing and controls don't change. 0 = draw only on\n"
       ";   the game's steps, like the original (default).\n");
     fprintf(f, "interpolation = %d\n\n", interpolation ? 1 : 0);
+    P("; low_latency: with VSync on, graphics drivers may keep a few finished\n"
+      ";   pictures waiting in a queue, each adding one screen refresh between a\n"
+      ";   key press and what you see. 1 = wait for each picture to be on its way\n"
+      ";   to the screen before starting the next, so none wait in a queue. Only\n"
+      ";   applies while VSync is on or adaptive. 0 = off (default).\n");
+    fprintf(f, "low_latency = %d\n\n", lowLatency ? 1 : 0);
     P("; msaa: antialiasing (smooth polygon edges). 0 = off, 2, 4 (default), 8 or 16.\n"
       ";   Values above what your graphics card supports are lowered automatically.\n");
     fprintf(f, "msaa = %d\n\n", msaa);

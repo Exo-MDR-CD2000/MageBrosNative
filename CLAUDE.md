@@ -98,6 +98,8 @@ tools          MageBrosAssets (inventory / selftest / export); render_branding.p
 tests          format tests (no game needed); map, hero and collision tests
 docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status),
                SMOOTH_MOTION.md (how smooth motion works, and how it was built),
+               RENDERER_OPTIMIZATION.md (a plan, not built: the renderer's work per draw, for
+               weak graphics hardware; only if the owner asks),
                RELEASING.md (building and publishing a release, for the owner),
                banner.png and branding/ (the README banner and the icon: SVG sources)
 res            version.h.in, magebros_native.rc (the exe's icon and version info), .ico
@@ -342,7 +344,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-09, version 0.4.26)
+## Where we are (last updated: 2026-11-10, version 0.4.32 on `smooth-motion-rework`; `main` is at 0.4.26)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -455,10 +457,65 @@ smoothness is open, and the owner may have another model review it.
     `save_path = saves` in an empty folder copies the owner's saves into it first (read only):
     give it a made-up `saves/original/progress.ini` to test from a known state.
 
-**Next**: the cheats are done (0.4.26). Still to be planned with the owner: mods, the config
-tooling (`--set`, `CONFIG.md`), and the window / borderless smoothness (above).
+**The review of 2026-11-09** (refresh rates, VSync, the frame limit, smooth motion, on `main`
+only, by reading; nothing built or measured): the design holds at any refresh rate (the owner:
+it must cover 30, 50, 75, 90, 100, 120, 144, 165, 180, 200 Hz and so on, not only the 144 Hz
+tested). One bug (ticks up to 1 ms late after the first menu or pause with Smooth motion on) and
+seven improvements are listed in `docs/SMOOTH_MOTION.md`, "Review of 2026-11-09". They are being
+built one at a time, each on the owner's word, on the **`smooth-motion-rework`** branch (made from
+`main` at 0.4.26; committed there on 2026-11-10, not pushed and not merged: both wait for the owner's word; the owner: disregard `dxgi-present` for
+this work). Fix 1, the late ticks, is done there (`HoldTickPhase` keeps the latest tick on a whole
+millisecond; measured before and after, "Fix 1 as built").
+The rule it rests on: **the latest tick (`lastTickNs_`) must always be on a whole millisecond**,
+because ticks are counted from the frame's millisecond time. Fix 2, frame limits that fit the
+monitor, is done there too ("Fix 2 as built"): `max_fps` -1..-4 = the monitor's refresh rate over
+1..4 (`FrameLimit`, `RefreshRate`); with VSync the driver paces them through the swap interval
+(`ApplyVSync`, `swapEvery_`, `SwapPaced`: the limiter stands aside), with VSync off the limiter
+does; the Frame limit row is built from the monitor's rate. Anything that changes `max_fps` or
+`interpolation` must call `ApplyVSync`. Measured here (72 and 48 a second within 0.15 ms of even,
+window and borderless); the owner's eyes haven't judged it yet. Measuring it turned up issue 9
+(the limiter's frames start up to 1 ms early or late), listed, not built. Fix 3 is built there
+too ("Fix 3 as built"): `[video] low_latency` and the Low latency row (Options > Video, off by
+default, greyed out with VSync off): with VSync, `SwapFrame` waits for the graphics card after
+each swap (`Device::WaitForGpu`, `glFinish`), so no finished frames queue in the driver. Measured:
+the frame rate and processor time unchanged, the wait moved from the swap to the `glFinish`. The
+delay itself can't be measured here. The owner tried it (2026-11-09): not much noticed on this
+machine, but it stays, off by default, as it may help other players. Fix 4 is done there
+("Fix 4 as built"): `JudgeVSync`'s "forced on" verdict needs the frame rate within half a
+percent of the refresh rate (was 3%, which a driver cap of 141 on 144 Hz set off), and
+`UpdateStats` measures in whole milliseconds. Fix 5 is done there ("Fix 5 as built",
+2026-11-10): with Smooth motion off, `Run` waits for the next tick's own moment
+(`SDL_DelayPrecise`) instead of sleeping 1 ms at a time: frames start 0.04 ms after their tick
+(was about 1 ms), for about 5% of one processor core. Fix 9 is done there ("Fix 9 as built"):
+the frame limiter waits with `WaitNs` (asleep to 1.5 ms before a frame is due, then watching the
+clock), so limited frames start within 0.1 ms of when they are due (were up to 1.3 ms late), for
+6% of one core at a limit of 60 and 16% at 141; the stale comments (8) are corrected. Left: 6
+(the renderer: not planned; the owner asked for a write-up to come back to if players on low-end
+hardware report low frame rates: `docs/RENDERER_OPTIMIZATION.md`, documentation only) and 7 is run ("Check 7 as run": at 30 to 360 frames a second, by the frame limit with VSync off, 100 ticks a second and every picture within 0.035 ms of where it should be; no code changed, no version). The review's list is closed. **Each fix is a
+version of its own** (the owner, 2026-11-10): 0.4.27 fix 1, 0.4.28 fix 2, 0.4.29 fix 3, 0.4.30
+fix 4, 0.4.31 fix 5, 0.4.32 fix 9 with the comments of 8 (numbered afterwards; the CHANGELOG has a
+section for each). **After implementing each further fix on this branch, ask the owner whether to
+raise the version and build** (`make_release.bat patch`), and don't do either before the answer.
+All of it was committed on the branch in one commit (2026-11-10, the owner's word); the fixes
+were not committed one by one.
+**A build per fix** (the owner, 2026-11-10, to compare by playing): after each fix, copy
+`build\Release\MageBrosNative.exe` to `build\fix-builds\` under a name saying what it holds, and
+never overwrite an earlier one (named by version: `MageBrosNative-0.4.31 (fixes 1 to 5).exe`,
+`MageBrosNative-0.4.32 (fixes 1 to 9).exe`; 0.4.27 to 0.4.30 were never kept as builds).
+**Sleeps on Windows come back up to 1 ms late**: for exact timing, sleep short and watch the
+clock for the rest.
 
-**Branches**: work goes on `main`; each push publishes the version's release when that version
+**Next**: the cheats are done (0.4.26) and the frame timing review's list is closed (0.4.27 to
+0.4.32 on `smooth-motion-rework`). For the owner to decide: pushing that branch and merging it
+into `main` (a merge pushed to `main` releases 0.4.32, whose CHANGELOG section alone would be the
+release notes: sum the six versions up in it first, as 0.4.20 did for smooth motion). Still to
+be planned with the owner: mods, the config tooling (`--set`, `CONFIG.md`), and what is left of
+the window / borderless smoothness (above; the part-of-refresh frame limits answer the
+choppiness at a limit below the refresh rate, which the owner liked; whether G-Sync follows a
+window is up to the driver and Windows).
+
+**Branches**: work goes on `main`, except the frame timing fixes on `smooth-motion-rework`
+(above); each push to `main` publishes the version's release when that version
 has none yet (see "GitHub releases"). Two side branches were used and merged: `menu-dev` (0.4.0 to
 0.4.13, pull request #1, 2026-10-26) and `interpolation-test` (smooth motion, merged directly
 2026-10-28). Both are kept on GitHub; nothing goes there any more. Perhaps a branch for the modding
@@ -530,10 +587,14 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
 at start: `adaptiveSupported_`); `ApplyVSync` falls back to 1, reads back the interval
 (`VSyncInEffect`) and runs after every display change. `JudgeVSync` (each second, only with Smooth
 motion on, no limit, menu closed) sets `VSyncOverride` after two seconds of frames above 115% of
-the refresh rate with VSync on (+1), or within 3% of it with VSync off (-1). Measured on the
+the refresh rate with VSync on (+1), or within half a percent of it with VSync off (-1; 3% before the review of 2026-11-09). Measured on the
 owner's NVIDIA (Smooth motion on): VSync on or adaptive 144 / 60; off about 980 in a window, 490
 in 4K borderless; Smooth motion off 100 (60 on the 60 Hz monitor with VSync). The frame limiter
-schedules each frame from when the last was due (`lastPresent += interval`).
+schedules each frame from when the last was due (`lastPresent += interval`). **From 0.4.27 to
+0.4.32** (the `smooth-motion-rework` branch): `max_fps` -1..-4 is the refresh rate over 1..4
+(`FrameLimit`), paced with VSync by the driver's swap interval (`swapEvery_`, `SwapPaced`) and
+otherwise by the limiter, which waits with `WaitNs`; `low_latency` waits for the graphics card
+after each swap (`SwapFrame`); with Smooth motion off the loop waits for the next tick's moment.
 
 **Monitors (chunk 2c, 0.4.3)**: `CD3DApplication::SetDisplay` sets `display` and
 `display_name` together (the menu and the window tracking use it); `ResolveDisplay` (at start
@@ -655,7 +716,12 @@ can only be tried by changing the NVIDIA Control Panel's own VSync setting.) The
 0.4.26) were each released on the owner's "commit and push", checked here by screenshots, saves
 and temporary logs; no result of the owner's own play has been reported for them yet (open
 questions put to the owner: the reappearing spot of No falling deaths, right at the edge; Rapid
-fire's 8 shots a second; the CHEATS mark's size).
+fire's 8 shots a second; the CHEATS mark's size). The frame timing fixes (0.4.27 to 0.4.32):
+the owner liked the part-of-refresh frame limits (0.4.28), noticed little from Low latency
+(0.4.29: kept, for players it may help) or from Smooth motion off's timing (0.4.31), and found
+0.4.31 and 0.4.32 both working fine after comparing them (the even frame limiter). Not tried by
+anyone: these on AMD or Intel graphics, in exclusive fullscreen, on the 60 Hz monitor, and with a
+real driver frame cap (0.4.30).
 
 ### Notes from earlier stages
 

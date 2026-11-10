@@ -50,6 +50,13 @@ public:
     // off here but frames stop at the refresh rate; 0 = nothing seen. Judged only while frames are
     // drawn freely (Smooth motion on, no frame limit, the menu closed), from two seconds running.
     int VSyncOverride() const { return vsyncOverride_; }
+    // The refresh rate of the monitor the window is on, as its mode states it (143.86, not 144);
+    // 0 while unknown. Read at every display or VSync change and once a second.
+    double RefreshRate() const { return refreshHz_; }
+    // [video] max_fps as frames a second: the number itself, or for -1..-4 the refresh rate, a
+    // half, a third or a quarter of it (a picture then stays the same number of refreshes, which
+    // a limit like 60 on a 144 Hz monitor can't give); 0 = none.
+    double FrameLimit() const;
     // The room a window's inside has on a monitor (0 = primary, as [video] display): its usable
     // area (without the taskbar) less the window's title bar and borders.
     void WindowFitArea(int display, int* w, int* h) const;
@@ -107,9 +114,11 @@ protected:
 
 private:
     HRESULT Render3DEnvironment(DWORD now, bool forceRender);
-    // Ticks are counted on the nanosecond clock (still exactly 10 ms each), so the smooth motion
-    // alpha has no millisecond steps. HoldTickPhase keeps the blend where it is while the game
-    // stands still (the options menu, P), so the picture doesn't jump when it moves again.
+    // Ticks are counted from the frame's time in whole milliseconds (exactly 10 ms each), and the
+    // latest one is kept in nanoseconds, always on a whole millisecond; the smooth motion alpha is
+    // measured from it on the nanosecond clock, so it has no millisecond steps. HoldTickPhase
+    // keeps the blend where it is while the game stands still (the options menu, P), so the
+    // picture doesn't jump when it moves again.
     void SetLastTick(uint64_t ns) {
         lastTickNs_ = ns;
         m_dwLastFrameTime = (DWORD)(ns / 1000000);
@@ -133,10 +142,19 @@ private:
     BackBuffer backBuffer_;
     bool quit_ = false;
     DWORD statsFrames_ = 0;
-    float statsLastTime_ = 0.f;
+    DWORD statsLastTime_ = 0;  // ms
     void JudgeVSync();  // each second's frame rate against the monitor's refresh rate
     bool adaptiveSupported_ = false;
     int vsyncInEffect_ = 1;
+    // With VSync and a limit that is a part of the refresh rate, the driver itself shows a picture
+    // every n-th refresh (the swap interval), exact where the limiter's own clock would drift
+    // across a refresh now and then. swapEvery_ is the n in effect (0 with VSync off); SwapPaced
+    // says the driver is pacing that limit, so the limiter stands aside.
+    int swapEvery_ = 1;
+    bool SwapPaced() const;
+    void UpdateRefreshRate();
+    void SwapFrame();
+    double refreshHz_ = 0.0;
     int vsyncOverride_ = 0;
     int vsyncVote_ = 0, vsyncVotes_ = 0;  // the last second's verdict and how many in a row
     int vsyncLogged_ = -1;

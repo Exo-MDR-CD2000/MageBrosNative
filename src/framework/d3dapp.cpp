@@ -45,20 +45,60 @@ void CD3DApplication::OpenOptions() {
     if (menu_) menu_->Open();
 }
 
+// The finished frame to the screen. With VSync and [video] low_latency, the graphics card is
+// waited for afterwards: a driver may otherwise hold several finished frames in a queue, each a
+// refresh of delay.
+void CD3DApplication::SwapFrame() {
+    SDL_GL_SwapWindow(window_);
+    if (GetConfig().lowLatency && vsyncInEffect_ > 0) GetDevice().WaitForGpu();
+}
+
+void CD3DApplication::UpdateRefreshRate() {
+    const SDL_DisplayMode* m = window_ ? SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window_)) : nullptr;
+    if (!m) return;  // (keep the last one known)
+    refreshHz_ = m->refresh_rate_denominator > 0 ? (double)m->refresh_rate_numerator / m->refresh_rate_denominator
+                                                 : (double)m->refresh_rate;
+}
+
+double CD3DApplication::FrameLimit() const {
+    int f = GetConfig().maxFps;
+    if (f > 0) return f;
+    if (f < 0 && refreshHz_ > 0.0) return refreshHz_ / -f;
+    return 0.0;
+}
+
+bool CD3DApplication::SwapPaced() const {
+    const Config& cfg = GetConfig();
+    return cfg.interpolation && cfg.maxFps < 0 && vsyncInEffect_ > 0 && swapEvery_ == -cfg.maxFps && vsyncOverride_ <= 0;
+}
+
 void CD3DApplication::ApplyVSync() {
-    int want = GetConfig().vsync;
-    bool ok = false;
-    if (want == 2) ok = adaptiveSupported_ && SDL_GL_SetSwapInterval(-1);
-    if (!ok) ok = SDL_GL_SetSwapInterval(want == 0 ? 0 : 1);
+    const Config& cfg = GetConfig();
+    int want = cfg.vsync;
+    UpdateRefreshRate();
+    // a limit that is a part of the refresh rate (max_fps -2..-4, Smooth motion on): a picture
+    // every n-th refresh, paced by the driver
+    int every = cfg.interpolation && cfg.maxFps < 0 ? -cfg.maxFps : 1;
+    auto set = [&](int n) {
+        bool ok = false;
+        if (want == 2) ok = adaptiveSupported_ && SDL_GL_SetSwapInterval(-n);
+        if (!ok) ok = SDL_GL_SetSwapInterval(want == 0 ? 0 : n);
+        return ok;
+    };
+    bool ok = set(every);
+    if (!ok && every > 1) ok = set(1);  // (the limiter then keeps the limit)
     if (!ok) Log("VSync: the driver refused it: %s", SDL_GetError());
     int got = 1;
     if (!SDL_GL_GetSwapInterval(&got)) got = want == 0 ? 0 : 1;
     vsyncInEffect_ = got < 0 ? 2 : got > 0 ? 1 : 0;
+    swapEvery_ = got < 0 ? -got : got;
     vsyncOverride_ = vsyncVote_ = vsyncVotes_ = 0;  // judged afresh
-    int key = want * 10 + vsyncInEffect_;
+    int key = want * 100 + vsyncInEffect_ * 10 + swapEvery_;
     if (key != vsyncLogged_) {
         static const char* names[] = {"off", "on", "adaptive"};
-        Log("VSync: %s%s", names[vsyncInEffect_],
+        char part[48] = "";
+        if (swapEvery_ > 1) snprintf(part, sizeof part, ", a picture every %d refreshes", swapEvery_);
+        Log("VSync: %s%s%s", names[vsyncInEffect_], part,
             want == 2 && vsyncInEffect_ != 2 ? " (adaptive isn't supported by the driver)" : "");
         vsyncLogged_ = key;
     }
@@ -66,15 +106,19 @@ void CD3DApplication::ApplyVSync() {
 
 void CD3DApplication::JudgeVSync() {
     const Config& cfg = GetConfig();
-    if (!cfg.interpolation || cfg.maxFps > 0 || (menu_ && menu_->IsOpen()) || !window_) return;  // (keep the verdict)
-    const SDL_DisplayMode* m = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window_));
-    float hz = m ? m->refresh_rate : 0.f;
+    // only while frames are drawn freely: no limit, or one the driver paces with VSync (keep the
+    // verdict otherwise)
+    bool limiter = cfg.maxFps > 0 || (cfg.maxFps < 0 && !SwapPaced());    if (!cfg.interpolation || limiter || (menu_ && menu_->IsOpen()) || !window_) return;
+    float hz = (float)refreshHz_;
     if (hz <= 0.f) return;
-    // VSync on (or adaptive) never goes above the refresh rate; off, drawing freely, it lands on it
-    // only when something else holds it there
+    // VSync on (or adaptive) never goes above the refresh rate (or the part of it asked for); off,
+    // drawing freely, it lands on it only when something else holds it there. (Seen above the
+    // part asked for, the driver isn't pacing it: SwapPaced turns false and the limiter does.)
     int vote = 0;
-    if (vsyncInEffect_ > 0 && m_fFPS > hz * 1.15f) vote = 1;
-    else if (vsyncInEffect_ == 0 && std::fabs(m_fFPS - hz) < hz * 0.03f) vote = -1;
+    if (vsyncInEffect_ > 0 && m_fFPS > hz / (float)std::max(1, swapEvery_) * 1.15f) vote = 1;
+    // (within half a percent: forced VSync lands on the refresh rate itself, while a frame cap set
+    // just under it in the driver, 141 on 144 Hz as advised for G-Sync / FreeSync, is 2% away)
+    else if (vsyncInEffect_ == 0 && std::fabs(m_fFPS - hz) < hz * 0.005f) vote = -1;
     vsyncVotes_ = vote == vsyncVote_ ? vsyncVotes_ + 1 : 1;
     vsyncVote_ = vote;
     if (vsyncVotes_ >= 2 && vsyncOverride_ != vote) {
@@ -427,17 +471,20 @@ HRESULT CD3DApplication::Create(const std::vector<std::string>& args) {
 }
 
 void CD3DApplication::Pause(bool pause) {
-    (void)pause;  // time base handling is implicit: Render3DEnvironment clamps catch-up to 20 ticks
+    (void)pause;  // nothing to do: after a long stop, XApplication::FrameMove takes at most 10 ticks and the rest are dropped
 }
 
 void CD3DApplication::UpdateStats() {
-    float t = AppTimeMs() * 0.001f;
+    // (in whole milliseconds: as seconds in a float the time loses precision over a long session,
+    // and JudgeVSync compares the rate to within half a percent)
+    DWORD t = AppTimeMs();
     statsFrames_++;
-    if (t - statsLastTime_ > 1.0f) {
-        m_fFPS = statsFrames_ / (t - statsLastTime_);
+    if (t - statsLastTime_ > 1000) {
+        m_fFPS = statsFrames_ * 1000.f / (float)(t - statsLastTime_);
         g_frameRate = m_fFPS;
         statsFrames_ = 0;
         statsLastTime_ = t;
+        UpdateRefreshRate();  // (the window may have been moved to another monitor)
         JudgeVSync();
     }
 }
@@ -452,7 +499,11 @@ void CD3DApplication::HoldTickPhase(uint64_t nowNs, uint64_t tickNow) {
     }
     uint64_t phase = (uint64_t)(g_tickAlpha * kTickNs);
     if (phase >= kTickNs) phase = kTickNs - 1;
-    SetLastTick(nowNs - phase);
+    // on a whole millisecond, rounded down: the ticks are counted from the frame's time in
+    // milliseconds, so a latest tick between two of them would make every later tick come due
+    // up to 1 ms late, the picture standing still meanwhile (found in the review of 2026-11-09).
+    // The picture carries on at most a tenth of a tick further along, never back.
+    SetLastTick((nowNs - phase) / 1000000 * 1000000);
 }
 
 HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
@@ -460,7 +511,7 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
     // automation and the menu see), as before; the nanosecond clock only places the picture
     // between two ticks
     uint64_t nowNs = AppTimeNs();
-    if (nowNs < lastTickNs_) SetLastTick(nowNs);
+    if (nowNs < lastTickNs_) SetLastTick(nowNs / 1000000 * 1000000);  // (on a whole millisecond, as every tick)
     uint64_t tickNow = (uint64_t)now * 1000000;
     menu_->Update(now);
     if (menu_->IsOpen()) {
@@ -473,7 +524,7 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
         menu_->Render(&GetDevice());
         UpdateStats();
         GetDevice().Present();
-        SDL_GL_SwapWindow(window_);
+        SwapFrame();
         return S_OK;
     }
     // with Smooth motion, the first frame after the menu or a pause carries on from the held
@@ -507,7 +558,7 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
     if (FAILED(hr)) return hr;
     UpdateStats();
     GetDevice().Present();
-    SDL_GL_SwapWindow(window_);
+    SwapFrame();
     return S_OK;
 }
 
@@ -572,6 +623,19 @@ void CD3DApplication::HandleAutomation(DWORD now) {
             OnAutomation(s.action, s.arg);
         }
     }
+}
+
+// The frame limiter's wait, to the moment itself: asleep until 1.5 ms before, then watching the
+// clock. A sleep comes back up to a millisecond late (which made limited frames start 0.3 ms
+// late on average and up to 1.3: the review of 2026-11-09, issue 9), so the last stretch isn't
+// slept. Measured: frames start within 0.05 ms of when they are due, for 1.5 ms of processor
+// time a frame (6% of one core at a limit of 60, 16% at 141). SDL_DelayPrecise alone costs
+// less but still comes back up to a millisecond late now and then.
+static void WaitNs(uint64_t ns) {
+    constexpr uint64_t kWatchNs = 1500000;
+    uint64_t end = SDL_GetTicksNS() + ns;
+    if (ns > kWatchNs) SDL_DelayNS(ns - kWatchNs);
+    while (SDL_GetTicksNS() < end) SDL_CPUPauseInstruction();
 }
 
 int CD3DApplication::Run() {
@@ -646,15 +710,17 @@ int CD3DApplication::Run() {
         // frame pacing for the interpolated (decoupled) path; the options menu always redraws (max 60 fps)
         bool menuOpen = menu_->IsOpen();
         bool force = cfg.interpolation || menuOpen;
-        int cap = menuOpen ? 60 : cfg.maxFps;
-        bool capped = force && cap > 0;
+        // (a limit that is a part of the refresh rate is the driver's to pace while VSync shows a
+        // picture every n-th refresh: SwapPaced)
+        double cap = menuOpen ? 60.0 : SwapPaced() ? 0.0 : FrameLimit();
+        bool capped = force && cap > 0.0;
         if (capped) {
             double minDt = 1.0 / cap;
             uint64_t counter = SDL_GetPerformanceCounter();
             double dt = (double)(counter - lastPresent) / perfFreq;
             if (dt < minDt) {
-                SDL_DelayPrecise((uint64_t)((minDt - dt) * 1e9 * 0.9));
-                continue;
+                WaitNs((uint64_t)((minDt - dt) * 1e9));
+                continue;  // (the events and the time are read afresh, right before the frame)
             }
             // the next frame is due one interval after this one was due, not after it is drawn
             // (else the drawing time adds to every frame: a limit of 60 gave 58); a frame more
@@ -663,8 +729,15 @@ int CD3DApplication::Run() {
         }
         DWORD before = m_dwLastFrameTime;
         if (FAILED(Render3DEnvironment(now, force))) quit_ = true;
-        if (!force && m_dwLastFrameTime == before) SDL_Delay(1);  // original only renders on tick boundaries
-        else if (!capped) lastPresent = SDL_GetPerformanceCounter();
+        if (!force && m_dwLastFrameTime == before) {
+            // the original only draws on frames with a tick: wait for the next one to come due
+            // (to the moment itself: waiting a millisecond at a time drew each frame up to 2 ms
+            // after its tick, by a different amount each time)
+            uint64_t due = lastTickNs_ + kTickNs, t = AppTimeNs();
+            if (due > t) SDL_DelayPrecise(std::min(due - t, kTickNs));
+        } else if (!capped) {
+            lastPresent = SDL_GetPerformanceCounter();
+        }
     }
     if (windowChangedAt_) SaveWindowState();  // a resize or move just before quitting
     DeleteDeviceObjects();

@@ -293,8 +293,9 @@ void XGameScene::SetDeviceState(Device* d) {
 
 void XGameScene::Render(Device* d, BackBuffer* bb) {
     if (state_ == NON || !heroA_) return;
-    // native (smooth motion): the level's 3D is drawn between the last two ticks (the mages, their
-    // shadows and the camera so far); the shop, the HUD and the fade as they are
+    // native (smooth motion): the level's 3D is drawn between the last two ticks (the camera and
+    // everything that moves in the level); the HUD and the fade as they are, the shop's slide
+    // blended further down
     Interp::SetScope(true);
     Interp::BeginFrame();
     D3DMATRIX view = camera_.BlendedView();
