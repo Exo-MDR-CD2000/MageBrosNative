@@ -86,6 +86,7 @@ bool Config::Load(const std::string& file) {
             else if (k == "aspect") aspect = (AspectMode)std::clamp(iv, 0, 2);
             else if (k == "fov_scale") fovScale = std::clamp((float)atof(v.c_str()), 0.5f, 2.0f);
             else if (k == "show_fps") showFps = toBool(v);
+            else if (k == "stats_overlay") statsOverlay = std::clamp(iv, 0, 2);
             else if (k == "hud_layout") hudLayout = std::clamp(iv, 0, 1);
             else if (k == "hud_scale") hudScale = std::clamp((float)atof(v.c_str()), 0.5f, 2.0f);
             else if (k == "hud_max_aspect") {
@@ -341,6 +342,12 @@ bool Config::Save() const {
     P("; show_fps: 1 = show the original frames-per-second counter, at the bottom\n"
       ";   right of every screen. 0 = hide (default).\n");
     fprintf(f, "show_fps = %d\n\n", showFps ? 1 : 0);
+    P("; stats_overlay: the Statistics Overlay (F9 cycles it), a see-through panel\n"
+      ";   of how the game is running and on what, at the left of every screen.\n"
+      ";   0 = off (default), 1 = compact (performance and the game's timing),\n"
+      ";   2 = full (also the display settings in effect and the graphics card).\n"
+      ";   It only shows figures: the game plays the same with it on.\n");
+    fprintf(f, "stats_overlay = %d\n\n", statsOverlay);
     P("; hud_layout: where the in-game HUD (status display, FPS counter) goes\n"
       ";   when aspect = 2. 0 = the original's place inside the centred 4:3 area\n"
       ";   (default). 1 = at the screen edges. No effect with aspect 0 or 1.\n");

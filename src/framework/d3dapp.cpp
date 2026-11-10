@@ -7,8 +7,12 @@
 #include "../input/input.h"
 #include "../audio/midi.h"
 #include "../ui/options_menu.h"
+#include "../ui/stats_overlay.h"
+#include "version.h"
 #include <SDL3/SDL.h>
+#include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <sstream>
 
@@ -27,9 +31,11 @@ HRESULT BackBuffer::Blt(const RECT* dst, Surface* src, const RECT* srcRect, bool
 }
 HRESULT BackBuffer::ColorFill(const RECT* dst, uint32_t rgb) { return GetDevice().ColorFill(dst, rgb); }
 
-CD3DApplication::CD3DApplication() : menu_(std::make_unique<OptionsMenu>(this)) {}
+CD3DApplication::CD3DApplication()
+    : menu_(std::make_unique<OptionsMenu>(this)), statsOverlay_(std::make_unique<StatsOverlay>()) {}
 CD3DApplication::~CD3DApplication() {
     menu_.reset();  // owns a GL texture: free it while the context still exists
+    statsOverlay_.reset();  // (the same)
     D3DTextr_FreeAll();
     GetDevice().Shutdown();
     if (glContext_) SDL_GL_DestroyContext((SDL_GLContext)glContext_);
@@ -49,8 +55,22 @@ void CD3DApplication::OpenOptions() {
 // waited for afterwards: a driver may otherwise hold several finished frames in a queue, each a
 // refresh of delay.
 void CD3DApplication::SwapFrame() {
+    // (the Statistics Overlay's times: the frame's work up to here, the swap, the wait for the card)
+    uint64_t t0 = AppTimeNs();
     SDL_GL_SwapWindow(window_);
-    if (GetConfig().lowLatency && vsyncInEffect_ > 0) GetDevice().WaitForGpu();
+    uint64_t t1 = AppTimeNs();
+    bool gpu = GetConfig().lowLatency && vsyncInEffect_ > 0;
+    if (gpu) GetDevice().WaitForGpu();
+    uint64_t t2 = gpu ? AppTimeNs() : t1;
+    if (frameStartNs_ && t0 >= frameStartNs_) {
+        statsWin_.cpuSum += (double)(t0 - frameStartNs_) / 1e6;
+        statsWin_.swapSum += (double)(t1 - t0) / 1e6;
+        statsWin_.swaps++;
+        if (gpu) {
+            statsWin_.gpuSum += (double)(t2 - t1) / 1e6;
+            statsWin_.gpuWaits++;
+        }
+    }
 }
 
 void CD3DApplication::UpdateRefreshRate() {
@@ -482,11 +502,150 @@ void CD3DApplication::UpdateStats() {
     if (t - statsLastTime_ > 1000) {
         m_fFPS = statsFrames_ * 1000.f / (float)(t - statsLastTime_);
         g_frameRate = m_fFPS;
+        SummarizeStats(t - statsLastTime_);
         statsFrames_ = 0;
         statsLastTime_ = t;
         UpdateRefreshRate();  // (the window may have been moved to another monitor)
         JudgeVSync();
     }
+}
+
+// ---------------------------------------------------------------- the Statistics Overlay (F9)
+
+// A frame is about to be drawn, started at `nowNs`, having run `ticks` ticks; `late`: count how
+// long after its latest tick it started (Smooth motion off, where each frame belongs to a tick).
+void CD3DApplication::StatsFrameStart(uint64_t nowNs, DWORD ticks, bool late) {
+    StatsWindow& w = statsWin_;
+    if (w.lastStartNs && nowNs > w.lastStartNs && nowNs - w.lastStartNs < 1000000000ull) {
+        double ms = (double)(nowNs - w.lastStartNs) / 1e6;
+        if (w.frames == 0 || ms < w.frameMin) w.frameMin = ms;
+        if (w.frames == 0 || ms > w.frameMax) w.frameMax = ms;
+        w.frameSum += ms;
+        w.frames++;
+    }
+    w.lastStartNs = nowNs;
+    frameStartNs_ = nowNs;
+    w.ticks += (int)ticks;
+    w.tickFrames[std::min<DWORD>(ticks, 2)]++;
+    if (late && nowNs >= lastTickNs_) {
+        double ms = (double)(nowNs - lastTickNs_) / 1e6;
+        w.lateSum += ms;
+        w.lateMax = std::max(w.lateMax, ms);
+        w.lateFrames++;
+    }
+}
+
+// Once a second, with the frame rate: the second just measured becomes the one shown.
+void CD3DApplication::SummarizeStats(DWORD elapsedMs) {
+    StatsWindow& w = statsWin_;
+    StatsSecond& s = statsSec_;
+    s.valid = true;
+    s.fps = m_fFPS;
+    s.frameAvg = w.frames ? w.frameSum / w.frames : 0;
+    s.frameMin = w.frameMin;
+    s.frameMax = w.frameMax;
+    s.cpu = w.swaps ? w.cpuSum / w.swaps : 0;
+    s.swap = w.swaps ? w.swapSum / w.swaps : 0;
+    s.gpu = w.gpuWaits ? w.gpuSum / w.gpuWaits : -1;
+    s.ticksPerSecond = elapsedMs ? (int)std::lround(w.ticks * 1000.0 / elapsedMs) : 0;
+    int drawn = w.tickFrames[0] + w.tickFrames[1] + w.tickFrames[2];
+    for (int i = 0; i < 3; i++) s.tickPct[i] = drawn ? (int)std::lround(w.tickFrames[i] * 100.0 / drawn) : 0;
+    s.lateAvg = w.lateFrames ? w.lateSum / w.lateFrames : -1;
+    s.lateMax = w.lateFrames ? w.lateMax : -1;
+    s.alpha = g_tickAlpha;
+    uint64_t last = w.lastStartNs;
+    w = StatsWindow{};
+    w.lastStartNs = last;  // (the next frame's time is counted from the last one drawn)
+}
+
+// F9: Off, Compact, Full, Off. Saved, so it is as it was at the next start.
+void CD3DApplication::CycleStatsOverlay() {
+    Config& cfg = GetConfig();
+    cfg.statsOverlay = (cfg.statsOverlay + 1) % 3;
+    if (!cfg.Save()) Log("Config: could not save %s", cfg.path.c_str());
+}
+
+void CD3DApplication::DrawStatsOverlay() {
+    const Config& cfg = GetConfig();
+    if (cfg.statsOverlay <= 0 || !statsOverlay_) return;
+    const StatsSecond& s = statsSec_;
+    char b[96];
+    auto num = [&](const char* fmt, double v) {
+        snprintf(b, sizeof b, fmt, v);
+        return std::string(b);
+    };
+    auto ms = [&](double v) { return num("%.2f ms", v); };
+    const std::string wait = s.valid ? "" : "...";  // the first second isn't measured yet
+
+    StatsGroup perf{"PERFORMANCE", {}};
+    perf.rows.push_back({"FPS", s.valid ? num("%.1f", s.fps) : wait});
+    perf.rows.push_back({"Frame avg", s.valid ? ms(s.frameAvg) : wait});
+    snprintf(b, sizeof b, "%.2f-%.2f ms", s.frameMin, s.frameMax);
+    perf.rows.push_back({"Frame range", s.valid ? std::string(b) : wait});
+    perf.rows.push_back({"CPU", s.valid ? ms(s.cpu) : wait});
+    perf.rows.push_back({"Swap wait", s.valid ? ms(s.swap) : wait});
+    if (s.gpu >= 0) perf.rows.push_back({"GPU wait", ms(s.gpu)});
+    else perf.rows.push_back({"GPU wait", "- (Low lat.)", true});
+
+    StatsGroup timing{"GAME TIMING", {}};
+    timing.rows.push_back({"Ticks/s", s.valid ? std::to_string(s.ticksPerSecond) : wait});
+    snprintf(b, sizeof b, "%d%% %d%% %d%%", s.tickPct[0], s.tickPct[1], s.tickPct[2]);
+    timing.rows.push_back({"Ticks 0/1/2+", s.valid ? std::string(b) : wait});
+    if (cfg.interpolation) {
+        timing.rows.push_back({"Tick late", "- (Smooth)", true});
+        timing.rows.push_back({"Blend", num("%.2f", s.alpha)});
+    } else {
+        snprintf(b, sizeof b, "%.2f max %.2f", s.lateAvg, s.lateMax);
+        timing.rows.push_back({"Tick late", s.lateAvg >= 0 ? std::string(b) : "-", s.lateAvg < 0});
+        timing.rows.push_back({"Blend", "1 (Smooth off)", true});
+    }
+
+    std::vector<StatsGroup> left{perf}, right{timing};
+    if (cfg.statsOverlay >= 2) {
+        Device& d = GetDevice();
+        const FrameLayout& L = d.Layout();
+        static const char* modes[] = {"Window", "Borderless", "Exclusive"};
+        static const char* vs[] = {"Off", "On", "Adaptive"};
+        StatsGroup disp{"DISPLAY", {}};
+        disp.rows.push_back({"Mode", modes[std::clamp((int)cfg.fullscreen, 0, 2)]});
+        snprintf(b, sizeof b, "%dx%d", L.windowW, L.windowH);
+        disp.rows.push_back({"Window", b});
+        snprintf(b, sizeof b, "%dx%d", L.destW, L.destH);
+        disp.rows.push_back({"Picture", b});
+        snprintf(b, sizeof b, "%dx%d %d%%", L.fboW, L.fboH, (int)std::lround(cfg.renderScale * 100));
+        disp.rows.push_back({"Rendered", b});
+        disp.rows.push_back({"Refresh", refreshHz_ > 0 ? num("%.2f Hz", refreshHz_) : std::string("?")});
+        const char* mon = window_ ? SDL_GetDisplayName(SDL_GetDisplayForWindow(window_)) : nullptr;
+        disp.rows.push_back({"", mon ? mon : "?", true});
+        disp.rows.push_back({"VSync", vs[std::clamp(cfg.vsync, 0, 2)]});
+        std::string inUse = vs[std::clamp(vsyncInEffect_, 0, 2)];
+        if (vsyncOverride_ > 0) inUse += ", forced off?";
+        else if (vsyncOverride_ < 0) inUse += ", forced on?";
+        disp.rows.push_back({"VSync in use", inUse});
+        disp.rows.push_back({"Swap interval", vsyncInEffect_ > 0 ? std::to_string(swapEvery_) : std::string("-")});
+        double lim = FrameLimit();
+        if (!cfg.interpolation) disp.rows.push_back({"Frame limit", "- (Smooth off)", true});
+        else if (lim <= 0) disp.rows.push_back({"Frame limit", "None"});
+        else disp.rows.push_back({"Frame limit", num("%.1f ", lim) + (SwapPaced() ? "driver" : "limiter")});
+        disp.rows.push_back({"Low latency", cfg.lowLatency ? (vsyncInEffect_ > 0 ? "On" : "On (no VSync)") : "Off"});
+        disp.rows.push_back({"Smooth motion", cfg.interpolation ? "On" : "Off"});
+
+        StatsGroup sys{"SYSTEM", {}};
+        sys.rows.push_back({"", d.GLRenderer()});
+        sys.rows.push_back({"", d.GLVendor(), true});
+        sys.rows.push_back({"", "OpenGL " + d.GLVersion(), true});
+        sys.rows.push_back({"Antialiasing", d.Samples() > 0 ? std::to_string(d.Samples()) + "x" : std::string("Off")});
+        int af = cfg.anisotropy > 1 && d.MaxAnisotropy() > 1.f ? (int)std::min((float)cfg.anisotropy, d.MaxAnisotropy()) : 0;
+        sys.rows.push_back({"Tex filtering", af > 1 ? std::to_string(af) + "x" : std::string("Off")});
+
+        // two columns: how the game runs on the left, on what on the right; one: all stacked
+        left = {perf, timing};
+        right = {disp, sys};
+    }
+    // below the HUD's level info (its two rows end at about 58, grown by the HUD size in a level)
+    float top = 4.f + 58.f * (InLevel() ? std::max(1.0f, cfg.hudScale) : 1.0f);
+    std::string sub = std::string(cfg.statsOverlay >= 2 ? "FULL" : "COMPACT") + "  v" + MBN_VERSION_STRING;
+    statsOverlay_->Render(&GetDevice(), top, "STATISTICS OVERLAY", sub, left, right);
 }
 
 // With Smooth motion on, the game standing still keeps the alpha of the last frame drawn: the
@@ -518,9 +677,11 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
         // game paused underneath: keep showing the last frame, don't accumulate catch-up time
         HoldTickPhase(nowNs, tickNow);
         heldLastFrame_ = true;
+        StatsFrameStart(nowNs, 0, false);
         GetDevice().BeginFrame();
         HRESULT hr = Render();
         if (FAILED(hr)) return hr;
+        DrawStatsOverlay();
         menu_->Render(&GetDevice());
         UpdateStats();
         GetDevice().Present();
@@ -537,14 +698,18 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
     uint64_t elapsed = tickNow > lastTickNs_ ? tickNow - lastTickNs_ : 0;
     DWORD ticks = (DWORD)(elapsed / kTickNs);
     if (ticks == 0 && !forceRender) return S_OK;
+    DWORD ran = 0;
     if (ticks > 0) {
         SetLastTick(tickNow - elapsed % kTickNs);
         if (m_bFrameMoving || m_bSingleStep) {
             HRESULT hr = FrameMove(ticks);
             if (FAILED(hr)) return hr;
             m_bSingleStep = false;
+            ran = ticks;
         }
     }
+    // (with Smooth motion off a frame is drawn for its tick: how long after the tick it started)
+    StatsFrameStart(nowNs, ran, ran > 0 && !GetConfig().interpolation);
     if (m_bFrameMoving) {
         g_tickAlpha = nowNs > lastTickNs_ ? (float)(nowNs - lastTickNs_) / (float)kTickNs : 0.f;
         if (g_tickAlpha > 1.f) g_tickAlpha = 1.f;
@@ -556,6 +721,7 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
     GetDevice().BeginFrame();
     HRESULT hr = Render();
     if (FAILED(hr)) return hr;
+    DrawStatsOverlay();
     UpdateStats();
     GetDevice().Present();
     SwapFrame();
@@ -670,7 +836,8 @@ int CD3DApplication::Run() {
                     break;
                 case SDL_EVENT_KEY_DOWN:
                     if (!e.key.repeat && ((e.key.scancode == SDL_SCANCODE_RETURN && (e.key.mod & SDL_KMOD_ALT)) ||
-                                          e.key.scancode == SDL_SCANCODE_F11 || e.key.scancode == SDL_SCANCODE_F12)) {
+                                          e.key.scancode == SDL_SCANCODE_F9 || e.key.scancode == SDL_SCANCODE_F11 ||
+                                          e.key.scancode == SDL_SCANCODE_F12)) {
                     } else if (menu_->HandleEvent(e)) {
                         break;
                     }
@@ -678,6 +845,10 @@ int CD3DApplication::Run() {
                     if ((e.key.scancode == SDL_SCANCODE_RETURN && (e.key.mod & SDL_KMOD_ALT)) ||
                         e.key.scancode == SDL_SCANCODE_F11) {
                         ToggleFullscreen();
+                        break;
+                    }
+                    if (e.key.scancode == SDL_SCANCODE_F9) {
+                        CycleStatsOverlay();
                         break;
                     }
                     if (e.key.scancode == SDL_SCANCODE_F12) {

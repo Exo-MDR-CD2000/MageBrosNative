@@ -6,7 +6,7 @@ An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2
 modern Windows. It plays exactly like the original, with optional extras: widescreen, any
 resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-**Version 0.4.33.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+**Version 0.4.34.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -32,6 +32,8 @@ Around it, Native adds:
   per-pixel lighting, soft shadows and a brightness setting.
 - **An in-game options menu** (F10) for every setting, with changes applied at once. It shows the
   game's version at the top right.
+- **Statistics Overlay** (F9): a see-through panel with the frame rate, the game's timing, the
+  display settings in effect and your graphics card. Off, Compact or Full; stays as you left it.
 - **Full controls:** rebind every key for both players, and use modern gamepads.
 - **Replacement music:** play MP3 or FLAC versions of the six tracks instead of MIDI.
 - **Cheats:** twelve of them, from Unlock all levels to Moon jump, all off by default.
@@ -68,6 +70,7 @@ Options > Controls.
 | Key | Action |
 |---|---|
 | P | Pause |
+| F9 | Statistics Overlay: off, compact, full |
 | F10 or gamepad Start | Options menu |
 | Escape | Give up the level (you lose some gold, as in the original) |
 | Alt+Enter or F11 | Switch between window and fullscreen |

@@ -267,6 +267,13 @@ bool Device::Init(SDL_Window* window) {
     window_ = window;
     if (!hgl::Load()) return false;
     Log("OpenGL %s | %s", (const char*)glGetString(GL_VERSION), (const char*)glGetString(GL_RENDERER));
+    auto glStr = [](GLenum e) {
+        const char* s = (const char*)glGetString(e);
+        return std::string(s ? s : "?");
+    };
+    glRenderer_ = glStr(GL_RENDERER);
+    glVendor_ = glStr(GL_VENDOR);
+    glVersion_ = glStr(GL_VERSION);
 
     prog_ = CompileProgram(kVS, kFS);
     progPresent_ = CompileProgram(kPresentVS, kPresentFS);
@@ -876,6 +883,47 @@ int Device::HudEdgeShift() const {
     float shift = layout_.offsetX;
     if (cfg.hudMaxAspect > 0.f) shift = std::min(shift, std::max(0.f, (480.f * cfg.hudMaxAspect - 640.f) * 0.5f));
     return (int)shift;
+}
+
+// Many UI quads in one draw (two triangles each, six vertices a quad, in drawing order), with the
+// same state as DrawUIQuad: the Statistics Overlay's letters, which one by one cost a draw each.
+void Device::DrawUIQuads(const std::vector<D3DLVERTEX>& verts, Texture* t) {
+    if (verts.empty()) return;
+    ApplyState(0, true);
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_CULL_FACE);
+    float sx = 2.f / layout_.virtualW, sy = -2.f / 480.f;
+    glUniform4f(u_.viewport2D, sx, sy, layout_.offsetX * sx - 1.f, 1.f);
+    glUniform1i(u_.lighting, 0);
+    glUniform1i(u_.flat, 0);
+    glUniform1i(u_.perPixel, 0);
+    glUniform1i(u_.alphaTest, 0);
+    glUniform1i(u_.alphaFix, 0);
+    glUniform1i(u_.texOn, t != nullptr);
+    glUniform1i(u_.colorOp, D3DTOP_MODULATE);
+    glUniform1i(u_.colorArg1, D3DTA_TEXTURE);
+    glUniform1i(u_.colorArg2, D3DTA_DIFFUSE);
+    glUniform1i(u_.alphaOp, D3DTOP_MODULATE);
+    glUniform1i(u_.alphaArg1, D3DTA_TEXTURE);
+    glUniform1i(u_.alphaArg2, D3DTA_DIFFUSE);
+    glUniform4f(u_.constColor, 1, 1, 1, 1);
+    if (t) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, t->Id());
+        glUniform1i(u_.tex, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+    glBindVertexArray(vao_);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(verts.size() * sizeof(D3DLVERTEX)), verts.data(), GL_STREAM_DRAW);
+    SetupAttribs(D3DFVF_LVERTEX);
+    glDrawArrays(GL_TRIANGLES, 0, (GLsizei)verts.size());
 }
 
 void Device::DrawUIQuad(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, Texture* t,

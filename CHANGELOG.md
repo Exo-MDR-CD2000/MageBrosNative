@@ -9,6 +9,17 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.34] - 2026-11-10
+
+- **Statistics Overlay** (F9, or Options > Video): a see-through panel at the left of the screen
+  showing how the game is running and on what. **Compact** shows the frame rate, frame times,
+  processor time and the game's own timing (its 100 steps a second); **Full** adds the display
+  settings actually in effect (window, picture size, refresh rate, VSync, frame limit) and your
+  graphics card, driver and antialiasing. F9 cycles Off, Compact and Full, and the game remembers
+  your choice. It shows in F12 screenshots, so you can send one with a report. It only shows
+  figures: the game plays exactly the same with it on, and it costs next to nothing.
+- F9 can no longer be bound to a game action (F9 to F12 are reserved).
+
 ## [0.4.33] - 2026-11-10
 
 - **Every enemy in view moves on the widest screens**: the original keeps some enemies (slimes,

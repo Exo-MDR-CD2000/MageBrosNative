@@ -89,7 +89,7 @@ src/core       PE resources, SHA-256 check, bitmaps, WAV, .x models, levels, con
 src/gfx        OpenGL loader; Direct3D 7 / DirectDraw emulation (device.cpp maps the D3D states)
 src/audio      sound mixer (stereo pan, per-sound copies), MIDI (TinySoundFont), music streaming
 src/input      SDL3 -> DirectInput-style keyboard/gamepad state
-src/ui         options menu overlay
+src/ui         options menu overlay; the Statistics Overlay's panel (stats_overlay.*)
 src/framework  the DX7 SDK framework (d3dapp, d3dfile, d3dtextr, d3dutil)
 src/game       the reconstructed game: one file per original module, original class names
 src/main.cpp   AssetViewerApp: game view / level viewer / model viewer, CLI, automation
@@ -98,6 +98,7 @@ tools          MageBrosAssets (inventory / selftest / export); render_branding.p
 tests          format tests (no game needed); map, hero and collision tests
 docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status),
                SMOOTH_MOTION.md (how smooth motion works, and how it was built),
+               STATS_OVERLAY.md (a plan, not built: the statistics overlay, chunks O1 to O3),
                RENDERER_OPTIMIZATION.md (a plan, not built: the renderer's work per draw, for
                weak graphics hardware; only if the owner asks),
                RELEASING.md (building and publishing a release, for the owner),
@@ -276,6 +277,8 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
   last one stops in the middle about 45 s later and waits for a button (allow a little more:
   startup takes time).
 
+- `sdlkey=F9` cycles the Statistics Overlay (Off, Compact, Full) and saves it; for a test run,
+  `stats_overlay = 1` or `2` in the test copy's ini shows it from the start.
 - `alpha=<0..1>`: hold smooth motion's blend there (only with Smooth motion on, in a level's 3D);
   `alpha=off` frees it. `alpha=1` must give the same pictures as Smooth motion off.
 
@@ -348,7 +351,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-10, version 0.4.33 on `main`)
+## Where we are (last updated: 2026-11-10, version 0.4.34 on `main`)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -515,7 +518,9 @@ CHANGELOG section alone, as the six versions were not summed up in it). Then (0.
 the update range follows the view on views wider than about 1.83:1, so enemies at a 32:9
 screen's edges move (see the visibility convention above and the ROADMAP's "Wake range" row);
 checked here by screenshots, not yet by the owner at 32:9; and the options menu shows the
-build's version at the right of its title row. Still to
+build's version at the right of its title row. Then (0.4.34) the Statistics Overlay's O1, the
+panel (F9; `docs/STATS_OVERLAY.md`, "O1 as built"); **next**, on the owner's word after trying
+it: O2, the graphs. Still to
 be planned with the owner: mods, the config tooling (`--set`, `CONFIG.md`), and what is left of
 the window / borderless smoothness (above; the part-of-refresh frame limits answer the
 choppiness at a limit below the refresh rate, which the owner liked; whether G-Sync follows a

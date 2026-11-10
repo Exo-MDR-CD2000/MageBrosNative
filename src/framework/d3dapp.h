@@ -8,6 +8,7 @@
 class Device;
 class Surface;
 class OptionsMenu;
+class StatsOverlay;
 struct SDL_Window;
 
 // What the game sees as IDirectDrawSurface7* for the back buffer.
@@ -166,6 +167,37 @@ private:
     std::vector<int> autoHeldKeys_;
     void* autoPad_ = nullptr;  // SDL_Joystick* of the test-only virtual controller
     std::unique_ptr<OptionsMenu> menu_;
+
+    // The Statistics Overlay (F9, [video] stats_overlay). The figures are gathered on every
+    // frame drawn (a few clock reads, whether it shows or not) and summed up each second with the
+    // frame rate (UpdateStats); the panel shows the last second's. Gathering and drawing only read
+    // the frame loop: nothing here changes the ticks or when a frame starts.
+    struct StatsWindow {  // the second being measured
+        uint64_t lastStartNs = 0;
+        int frames = 0;
+        double frameSum = 0, frameMin = 0, frameMax = 0;  // ms between frame starts
+        double cpuSum = 0, swapSum = 0, gpuSum = 0;      // ms
+        int swaps = 0, gpuWaits = 0;
+        int ticks = 0;
+        int tickFrames[3] = {0, 0, 0};  // frames that ran 0, 1, 2 or more ticks
+        double lateSum = 0, lateMax = 0;  // ms, Smooth motion off: a frame's start after its tick
+        int lateFrames = 0;
+    } statsWin_;
+    struct StatsSecond {  // the last second, as shown
+        bool valid = false;
+        float fps = 0;
+        double frameAvg = 0, frameMin = 0, frameMax = 0, cpu = 0, swap = 0, gpu = -1;
+        int ticksPerSecond = 0;
+        int tickPct[3] = {0, 0, 0};
+        double lateAvg = -1, lateMax = -1;
+        float alpha = 0;
+    } statsSec_;
+    uint64_t frameStartNs_ = 0;
+    std::unique_ptr<StatsOverlay> statsOverlay_;
+    void StatsFrameStart(uint64_t nowNs, DWORD ticks, bool late);
+    void SummarizeStats(DWORD elapsedMs);
+    void DrawStatsOverlay();
+    void CycleStatsOverlay();
 };
 
 // Timer used by the framework (milliseconds, like timeGetTime)

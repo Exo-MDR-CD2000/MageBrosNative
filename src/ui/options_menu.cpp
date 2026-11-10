@@ -785,6 +785,18 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, nullptr});
+    v.push_back({"Statistics Overlay",
+                 "F9: frame rate, timing, display and graphics card figures, see-through. Full adds the details.",
+                 [] {
+                     static const char* names[] = {"Off", "Compact", "Full"};
+                     return std::string(names[std::clamp(GetConfig().statsOverlay, 0, 2)]);
+                 },
+                 [this](int d) {
+                     Config& c = GetConfig();
+                     c.statsOverlay = ((c.statsOverlay + d) % 3 + 3) % 3;
+                     Save();
+                 },
+                 nullptr, nullptr});
 
     v.push_back({"Back", "", nullptr, nullptr, [this] { Back(false); }, nullptr});
     return p;
@@ -1512,8 +1524,8 @@ bool OptionsMenu::HandleEvent(const SDL_Event& e) {
             Save();
             mode_ = Mode::Normal;
             SetMessage(captureLabel_ + " restored to " + KeyNamesFor(captureDik_) + ".");
-        } else if (sc == SDL_SCANCODE_F10 || sc == SDL_SCANCODE_F11 || sc == SDL_SCANCODE_F12) {
-            SetMessage("F10, F11 and F12 are reserved.");
+        } else if (sc == SDL_SCANCODE_F9 || sc == SDL_SCANCODE_F10 || sc == SDL_SCANCODE_F11 || sc == SDL_SCANCODE_F12) {
+            SetMessage("F9 to F12 are reserved.");
         } else {
             std::string name = SDL_GetScancodeName(sc);
             c.keyBinds[captureDik_] = {name};

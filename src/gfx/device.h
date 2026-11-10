@@ -6,6 +6,7 @@
 #include "../core/d3dtypes.h"
 #include "../core/assets.h"
 #include "gl.h"
+#include <string>
 #include <vector>
 
 struct SDL_Window;
@@ -71,6 +72,13 @@ public:
     // just finished is on its way to the screen before the next one is begun)
     void WaitForGpu();
     const FrameLayout& Layout() const { return layout_; }
+    // For the Statistics Overlay: the graphics card, its maker and the OpenGL version as the
+    // driver states them (read at Init), and the antialiasing and texture filtering in effect
+    const std::string& GLRenderer() const { return glRenderer_; }
+    const std::string& GLVendor() const { return glVendor_; }
+    const std::string& GLVersion() const { return glVersion_; }
+    int Samples() const { return samples_; }          // 0 = no antialiasing
+    float MaxAnisotropy() const { return maxAniso_; }  // the card's most (1 = none)
     // Widescreen HUD placement: how many 640x480-space pixels edge-anchored HUD elements move
     // outward (left items by -HudEdgeShift(), right items by +HudEdgeShift()). 0 unless
     // aspect = widescreen and hud_layout = 1.
@@ -125,6 +133,8 @@ public:
     // Overlay UI (options menu): quad in 480-high virtual space, alpha blended, texture x colour.
     void DrawUIQuad(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, Texture* t,
                     const float rgba[4]);
+    // Many such quads in one draw: six vertices (two triangles) a quad, drawn in order
+    void DrawUIQuads(const std::vector<D3DLVERTEX>& verts, Texture* t);
 
     int ScreenWidth() const { return 640; }
     int ScreenHeight() const { return 480; }
@@ -169,6 +179,7 @@ private:
     bool lightEnabled_ = false;
     Texture* texture_ = nullptr;
     float maxAniso_ = 1.f;
+    std::string glRenderer_, glVendor_, glVersion_;
 };
 
 Device& GetDevice();

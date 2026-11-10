@@ -2,7 +2,9 @@
 // (public-domain font8x8 by Daniel Hepper) and filled rectangles, drawn in the game's
 // 480-pixel-high virtual space on top of the finished frame.
 #pragma once
+#include "../core/d3dtypes.h"
 #include <string>
+#include <vector>
 
 class Device;
 class Texture;
@@ -22,10 +24,19 @@ public:
     // scale: 1 = 8 px glyphs. Draws a soft drop shadow under the text.
     void Text(float x, float y, const std::string& s, float scale, UIColor c, bool shadow = true);
     float TextWidth(const std::string& s, float scale) const { return (float)s.size() * 8.f * scale; }
+    // Batching (the Statistics Overlay): between BeginBatch and EndBatch, rectangles and letters
+    // are gathered and drawn in two draws at EndBatch, every rectangle first, then every letter,
+    // each in the order given. (One by one, each letter is a draw of its own.)
+    void BeginBatch();
+    void EndBatch();
 
 private:
     void EnsureFont();
+    void Quad(std::vector<D3DLVERTEX>& to, float x0, float y0, float x1, float y1, float u0, float v0, float u1,
+              float v1, UIColor c);
     Device* dev_ = nullptr;
     Texture* font_ = nullptr;
     float left_ = 0, right_ = 640;
+    bool batching_ = false;
+    std::vector<D3DLVERTEX> rects_, glyphs_;
 };
