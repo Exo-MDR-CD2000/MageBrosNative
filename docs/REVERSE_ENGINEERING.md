@@ -1034,7 +1034,21 @@ a simple shadow and a box.
   the game. At 16:9 the view never reaches 480. At 21:9 it does only at the back wall (482 to 514)
   and in the pits (542 to 570), so only an enemy there, at the very edge of the screen, could be
   seen standing still (the owner played 21:9 and saw none); where enemies walk it shows at most
-  401. At 32:9 even the middle of the level reaches 501.
+  401. At 32:9 even the middle of the level reaches 501, and the floor where enemies walk about
+  600, so enemies near the side edges stood frozen in plain view (a bee on 1-1's barrels, for
+  one).
+- **The update range on the widest views (native, 0.4.33, the owner's choice, 2026-11-10).** So that no
+  enemy is seen frozen, the update range is now the larger of the original's 480 and the view's
+  reach plus 40 (an enemy's width): 321 (the 4:3 view's reach, at the bottom of the pits) times
+  `ViewReachFactor` (the widescreen factor times the field of view above 100%). It stays exactly
+  480 up to about 1.83:1 at 100% (4:3, Stretch, 3:2, 16:10, 16:9: the original's game, checked by
+  screenshots byte for byte as 0.4.32 at 4:3 and 16:9), and grows smoothly beyond: 610 at 21:9,
+  896 at 32:9. It is set once a tick (`XGameScene::Tick`, `UpdateRange`), never while drawing, as
+  it is game logic; resizing the window changes it from the next tick. Built in, no setting. On
+  those wider views, the far enemies start their patterns earlier than in the original; a
+  defeated enemy no longer waits out of range before its death hop. Checked at 32:9 (2560 x 720,
+  1-1, `place=40,1040`): the bee on the barrels at the right edge stood still in 0.4.32 and flies
+  now.
 
 **Enemy coins** (`XCoinList::CreateEnemyCoin`): SMALL drops a small coin (3 gold, 5 in two-
 player games, model 0x180 at 0.35), KING a medium one (30 / 50, 0.6), QUEEN a heart (0x2ac, a

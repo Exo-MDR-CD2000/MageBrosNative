@@ -161,6 +161,18 @@ static float ViewWidthFactor() { return std::max(1.0f, GetDevice().Layout().virt
 // but the draw range and the sound keep the original's, so nothing is drawn or heard less.
 static float ViewReachFactor() { return ViewWidthFactor() * std::max(1.0f, GetConfig().fovScale); }
 
+// Native: the update range (XCamera::IsUpdatable, the original's 480), from the view's reach.
+// The original's 4:3 view shows at most 321 along Z from the look-at point (at the bottom of the
+// pits); the view reaches that times ViewReachFactor, and 40 (an enemy's width) more counts an
+// enemy whose body pokes into view. While that is within 480 the range is exactly the original's
+// (4:3, Stretch, 3:2, 16:10, 16:9 at 100%: up to about 1.83:1); beyond it the range follows the
+// view, so every enemy that can be seen moves (21:9: 610, 32:9: 896). It changes smoothly as the
+// window is resized, with no jump where it takes over.
+static float UpdateRange() {
+    const float kOriginalReach = 321.0f, kEnemyMargin = 40.0f;
+    return std::max(480.0f, kOriginalReach * ViewReachFactor() + kEnemyMargin);
+}
+
 void XGameScene::PlaySound(uint16_t waveId, float z) {
     // XApplication::PlaySound: panned by the Z offset from the camera, silent beyond 480 units.
     // Native: the 240 (and so the 480) grows with the view's reach (its width, and the field of
@@ -267,6 +279,9 @@ void XGameScene::Tick() {
                      cfg.moonJump / 100.0f, cfg.runSpeed / 100.0f, cfg.rapidFire};
     UpdateInput();
     app_->StatusDisplay().ProcessFrame();  // the status display first
+    // native: the update range for this tick, from the view's reach (480 unless the view reaches
+    // past it); set once a tick, never while drawing, as it is game logic
+    loop_.SetUpdateRange(UpdateRange());
     loop_.ProcessBeforeHero(camera_.LookAt().z);
     // hero A, then hero B, each with the other (the hero-on-hero collision and carrying)
     heroA_->ProcessFrame(inputA_, level_.Collision(), loop_, heroB_.get());

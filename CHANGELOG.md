@@ -9,6 +9,17 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.33] - 2026-11-10
+
+- **Every enemy in view moves on the widest screens**: the original keeps some enemies (slimes,
+  bees, wallabies, mushrooms, squids, kiwis, turtles, ghosts and fish) still until you come near.
+  Its 4:3 screen never showed them waiting, but at 32:9, and in the pits and against the back
+  wall at 21:9, they could be seen frozen at the screen's edges. They now start moving as soon
+  as they can be seen. Nothing changes up to 16:9 (or with Field of view at 100% and Aspect at
+  4:3 or Stretch): there the game is exactly as before.
+- The options menu shows the game's version at the top right of every page (as the window's
+  title bar does), so you can tell which build you are playing.
+
 ## [0.4.32] - 2026-11-10
 
 - **A much more even frame limit**: with a Frame limit set, pictures now start within a tenth of

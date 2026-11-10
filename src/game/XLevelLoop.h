@@ -56,6 +56,9 @@ public:
     void RenderObjects(Device* d, const D3DMATRIX& view);
     // Native (widescreen): how far along Z from the look-at point objects are drawn (400 at 4:3)
     void SetVisibleRange(float range);
+    // Native: how far along Z from the look-at point the far-pausing enemies move (480 as the
+    // original, wider only on views that reach past it: XGameScene::Tick)
+    void SetUpdateRange(float range);
     void RenderEffects(Device* d, const D3DMATRIX& view);
 
     // Whether this port builds the object with this level code yet (the rest stay markers).

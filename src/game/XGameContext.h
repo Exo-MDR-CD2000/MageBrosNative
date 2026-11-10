@@ -48,10 +48,15 @@ struct XGameContext {
     // original's 4:3 view never reaches 400, so its drawing test is never seen. Native: the draw
     // range (only ever used to decide what to draw) widens with the 3D view, so in widescreen
     // nothing on screen is left out (XGameScene::Render sets it each frame: 400 at 4:3). The
-    // update range, which pauses some enemies while far away, is game logic and stays 480.
+    // update range pauses nine enemy types while far away. It is game logic: the original's 480
+    // wherever the view can't reach past it (4:3 to 16:9 at 100%), and only on views that reach
+    // further (21:9, 32:9, the field of view zoomed out) as far as the view reaches, so no enemy
+    // is seen standing still at the screen's edges (the owner's choice, 2026-11-10).
+    // XGameScene::Tick sets it before each tick (UpdateRange in XGameScene.cpp).
     float visibleRange = 400.0f;
+    float updateRange = 480.0f;
     bool IsVisible(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < visibleRange; }
-    bool IsUpdatable(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < 480.0f; }
+    bool IsUpdatable(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < updateRange; }
 
     // XGameObject::GetCloserHero: hero A unless hero B is strictly closer; only heroes in the
     // NORMAL state count, and with neither, hero A

@@ -8,6 +8,7 @@
 #include "../framework/d3dapp.h"
 #include "../framework/d3dtextr.h"
 #include "../gfx/device.h"
+#include "version.h"
 #include "../input/input.h"
 #include <SDL3/SDL.h>
 #include <algorithm>
@@ -1752,7 +1753,12 @@ void OptionsMenu::Render(Device* d) {
     ui_.Rect(x0, y0, x1, y1, kPanel);
 
     Page& p = Cur();
-    ui_.Text(x0 + 16, y0 + 14, Fit(p.title, (size_t)((x1 - x0 - 32) / 24)), 3, kGold);
+    // the build's version at the right of the title row, on every page, so a player can tell which
+    // build is running (the same MBN_VERSION_STRING as the window's title bar)
+    const std::string version = std::string("v") + MBN_VERSION_STRING;
+    const float versionW = ui_.TextWidth(version, 1);
+    ui_.Text(x1 - 16 - versionW, y0 + 30, version, 1, kGrey);
+    ui_.Text(x0 + 16, y0 + 14, Fit(p.title, (size_t)((x1 - x0 - 48 - versionW) / 24)), 3, kGold);
     ui_.Rect(x0 + 16, y0 + 46, x1 - 16, y0 + 48, UIColor{kBorder.r, kBorder.g, kBorder.b, 0.6f});
 
     float y = y0 + 60;

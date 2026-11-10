@@ -338,13 +338,17 @@ Conventions:
 - Model and sound IDs are the resource IDs in hex, for example `0x179` (MageCOL) and `0x26b`.
 - Object y = floor level × 25.
 - Visibility uses the camera's look-at Z: `|camZ - z| < 400` to draw and `< 480` to update. The
-  port's draw range grows with widescreen (`XGameContext::visibleRange`); the update range never
-  changes (it is game logic). Sound panning grows the same way (`XGameScene::PlaySound`). Both
+  port's draw range grows with widescreen (`XGameContext::visibleRange`). The update range
+  (`updateRange`, game logic) is the original's 480 wherever the view can't reach past it (up to
+  about 1.83:1 at 100%, so 4:3 to 16:9 are the original's); on wider views (21:9, 32:9, the field
+  of view zoomed out) it is the view's reach plus 40 (`UpdateRange` in `XGameScene.cpp`: 321 times
+  `ViewReachFactor` plus 40, set once a tick in `Tick`, never while drawing), so no enemy is seen
+  frozen at the edges (the owner's choice, 2026-11-10: built in, no setting). Sound panning grows the same way (`XGameScene::PlaySound`). Both
   use `ViewReachFactor` in `XGameScene.cpp` (`ViewWidthFactor` times the field of view above 100%), the window's shape as laid out each frame: never
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-10, version 0.4.32 on `main`)
+## Where we are (last updated: 2026-11-10, version 0.4.33 on `main`)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -507,7 +511,11 @@ clock for the rest.
 
 **Next**: the cheats are done (0.4.26) and the frame timing review's list is closed (0.4.27 to
 0.4.32, merged into `main` on 2026-11-10 (pull request #3) and released as v0.4.32; its release notes are 0.4.32's
-CHANGELOG section alone, as the six versions were not summed up in it). Still to
+CHANGELOG section alone, as the six versions were not summed up in it). Then (0.4.33, 2026-11-10):
+the update range follows the view on views wider than about 1.83:1, so enemies at a 32:9
+screen's edges move (see the visibility convention above and the ROADMAP's "Wake range" row);
+checked here by screenshots, not yet by the owner at 32:9; and the options menu shows the
+build's version at the right of its title row. Still to
 be planned with the owner: mods, the config tooling (`--set`, `CONFIG.md`), and what is left of
 the window / borderless smoothness (above; the part-of-refresh frame limits answer the
 choppiness at a limit below the refresh rate, which the owner liked; whether G-Sync follows a
@@ -551,6 +559,11 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   `Interp::SetScope` (a level's 3D, the shop, the ending's credits and corridor); `--auto alpha=`
   holds the blend for tests. Off, the framework draws only on frames with a tick (at most 100 a
   second, the original's pace). How it works: `docs/SMOOTH_MOTION.md`, first section.
+- The build's version shows in three places, all `MBN_VERSION_STRING` (from `project(... VERSION ...)`
+  in `CMakeLists.txt`, through `res/version.h.in` at configure, so `make_release.bat`'s raised
+  version reaches all three): the window's title bar (`main.cpp`), the exe's Properties > Details
+  (`res/magebros_native.rc`) and, from 0.4.33, the options menu's title row ("v0.4.33", grey, at
+  the right of every page: `OptionsMenu::Render`).
 - The ini's `game_version` (under `config_version`) is `MBN_VERSION_STRING`, written by every
   `Config::Save` and only read for show (`Config::gameVersion`); `main.cpp` rewrites the file at
   start when it is missing or names another build (as it does for an older `config_version`), so
@@ -723,7 +736,8 @@ the owner liked the part-of-refresh frame limits (0.4.28), noticed little from L
 (0.4.29: kept, for players it may help) or from Smooth motion off's timing (0.4.31), and found
 0.4.31 and 0.4.32 both working fine after comparing them (the even frame limiter). Not tried by
 anyone: these on AMD or Intel graphics, in exclusive fullscreen, on the 60 Hz monitor, and with a
-real driver frame cap (0.4.30).
+real driver frame cap (0.4.30). The wake range of 0.4.33 was checked here at 32:9 by screenshots; the owner has no
+32:9 screen, so it waits for players with one.
 
 ### Notes from earlier stages
 

@@ -6,7 +6,7 @@ An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2
 modern Windows. It plays exactly like the original, with optional extras: widescreen, any
 resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-**Version 0.4.32.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+**Version 0.4.33.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -23,13 +23,15 @@ Around it, Native adds:
 - **Any resolution and screen mode:** a resizable window, borderless or exclusive fullscreen, any
   monitor, instead of the original's fixed 640 × 480. The window opens where you left it.
 - **Widescreen** (16:9, 21:9 and wider): see more of each level at the sides, with nothing
-  popping in at the edges and the sound panned to match. The HUD can move to the screen's edges.
+  popping in at the edges and the sound panned to match. On the widest screens (21:9, 32:9)
+  every enemy in view moves, even at the far edges. The HUD can move to the screen's edges.
 - **High refresh rates:** Smooth motion draws the game between its steps for smooth movement at
   144 Hz and beyond, and VSync, adaptive VSync and a frame limit are built in. The game's speed
   and timing never change with the frame rate.
 - **Sharper graphics, all optional:** antialiasing, texture filtering, higher render resolution,
   per-pixel lighting, soft shadows and a brightness setting.
-- **An in-game options menu** (F10) for every setting, with changes applied at once.
+- **An in-game options menu** (F10) for every setting, with changes applied at once. It shows the
+  game's version at the top right.
 - **Full controls:** rebind every key for both players, and use modern gamepads.
 - **Replacement music:** play MP3 or FLAC versions of the six tracks instead of MIDI.
 - **Cheats:** twelve of them, from Unlock all levels to Moon jump, all off by default.
