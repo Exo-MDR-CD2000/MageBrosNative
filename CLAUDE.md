@@ -336,7 +336,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-09, version 0.4.25)
+## Where we are (last updated: 2026-11-09, version 0.4.26)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -406,8 +406,8 @@ smoothness is open, and the owner may have another model review it.
   Unlock all levels, `Config::AnyCheat` (add each new cheat to it) and the CHEATS mark. C2
   (0.4.24, done): Infinite lives, Invincible, Infinite magic, No falling deaths. C3
   (0.4.25, done): Max magic level, Choose your wand (Off keeps the hero's), Max gold (9999), all at
-  each level start. C4 (0.4.26): Moon jump (150 / 200%), Run speed (125 / 150 / 200%), One-hit
-  kills, Rapid fire; run the hero tests with each off.
+  each level start. C4 (0.4.26, done): Moon jump (150 / 200%), Run speed (125 / 150 / 200%),
+  One-hit kills, Rapid fire. All twelve are in.
   - **Unlock all levels** (C1): `XSelectLevelObject`'s `MaxSelWorld` / `MaxSelLevel` give 3 / 9
     while it is on; the level status (saved) is never changed by it, but levels cleared while it
     is on count as usual (`IncreaseLevel` / `IncreaseWorld`, as the original). Entering level
@@ -430,6 +430,13 @@ smoothness is open, and the owner may have another model review it.
     before `Reset` (which reads the magic level and the wand). Saved like anything bought; turning
     a cheat on mid-level shows from the next level. The menu's wand row cycles Off and the six
     wands (the names from the shop's: single, double, triple, homing single, double, triple).
+  - **Movement and fights** (C4): `XHeroCheats::jumpHeight` (the jump starts at `kJumpSpeed`
+    times its square root, so the height scales; exactly `kJumpSpeed` at 1), `walkSpeed`
+    (multiplies `kWalkSpeed`: times 1.0 leaves the original's floats) and `rapidFire` (held fire
+    fires again every `kRapidFireTicks`, 12; magic as usual); `Config::moonJump` / `runSpeed` in
+    percent. One-hit kills reads `GetConfig().oneHitKills` in `XEnemyBase::Damage` (health to 1
+    first) and `XBossBase::Damage` (main and sub health to 1 first); turtles and ghosts override
+    `Damage` without losing health, as the original, so they stay unkillable by shots.
   - **The CHEATS mark**: `main.cpp` draws "CHEATS" (the menu's 8x8 font, `UIDraw`) at the
     bottom-left on level select and in levels while `AnyCheat()`; the FPS counter has the
     bottom-right.
@@ -442,8 +449,8 @@ smoothness is open, and the owner may have another model review it.
     `save_path = saves` in an empty folder copies the owner's saves into it first (read only):
     give it a made-up `saves/original/progress.ini` to test from a known state.
 
-**Next**: cheats C4, when the owner says "start". Mods and the config tooling (`--set`,
-`CONFIG.md`) are still to be planned with the owner.
+**Next**: the cheats are done (0.4.26). Still to be planned with the owner: mods, the config
+tooling (`--set`, `CONFIG.md`), and the window / borderless smoothness (above).
 
 **Branches**: work goes on `main`; each push publishes the version's release when that version
 has none yet (see "GitHub releases"). Two side branches were used and merged: `menu-dev` (0.4.0 to

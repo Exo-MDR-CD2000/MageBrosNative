@@ -69,10 +69,14 @@ struct Config {
     bool maxMagicLevel = false;       // magic level 7
     int cheatWand = -1;               // -1 = off (the hero's own), else the wand type 0..5
     bool maxGold = false;             // 9999 gold
+    int moonJump = 100;               // jump height, percent: 100 (off), 150 or 200
+    int runSpeed = 100;               // walking speed, percent: 100 (off), 125, 150 or 200
+    bool oneHitKills = false;         // an enemy or boss that can be hurt falls to one shot
+    bool rapidFire = false;           // holding fire keeps firing
     // Any cheat on (the HUD's CHEATS mark). Add each new cheat here.
     bool AnyCheat() const {
         return unlockAllLevels || infiniteLives || invincible || infiniteMagic || noFallingDeaths || maxMagicLevel ||
-               cheatWand >= 0 || maxGold;
+               cheatWand >= 0 || maxGold || moonJump != 100 || runSpeed != 100 || oneHitKills || rapidFire;
     }
 
     std::string path;

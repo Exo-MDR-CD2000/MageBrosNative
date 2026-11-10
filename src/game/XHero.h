@@ -95,6 +95,9 @@ struct XHeroCheats {
     bool invincible = false;       // hits do nothing: no damage, no knockback
     bool infiniteMagic = false;    // firing costs no magic
     bool noFallingDeaths = false;  // falling out of the level puts the hero back on solid ground
+    float jumpHeight = 1.0f;       // Moon jump: the jump's height, times the original's
+    float walkSpeed = 1.0f;        // Run speed: the walking speed, times the original's
+    bool rapidFire = false;        // holding fire keeps firing
 };
 
 class XHero {
@@ -186,6 +189,7 @@ private:
     float knockBackDir_ = 0, knockBackSpeed_ = 0;
     int mpRecoveryCounter_ = 0, mpRecoveryFrames_ = 80;
     int damageCounter_ = 0;
+    int rapidFireCounter_ = 0;  // native (Rapid fire): ticks the fire button has been held since a shot
     XHeroStatus defaultStatus_;
     XHeroStatus* status_ = &defaultStatus_;
     std::unique_ptr<JObject3DX> body_, wand_;

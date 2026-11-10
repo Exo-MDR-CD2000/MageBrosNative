@@ -128,6 +128,10 @@ bool Config::Load(const std::string& file) {
             else if (k == "max_magic_level") maxMagicLevel = toBool(v);
             else if (k == "wand") cheatWand = v.empty() || v == "off" ? -1 : std::clamp(iv, -1, 5);
             else if (k == "max_gold") maxGold = toBool(v);
+            else if (k == "moon_jump") moonJump = iv >= 200 ? 200 : iv >= 150 ? 150 : 100;
+            else if (k == "run_speed") runSpeed = iv >= 200 ? 200 : iv >= 150 ? 150 : iv >= 125 ? 125 : 100;
+            else if (k == "one_hit_kills") oneHitKills = toBool(v);
+            else if (k == "rapid_fire") rapidFire = toBool(v);
             else seen = before;
         } else if (section == "mods") {
             if (k == "pack") modPack = v.empty() ? "original" : v;
@@ -462,7 +466,18 @@ bool Config::Save() const {
       ";   2 triple, 3 homing single, 4 homing double, 5 homing triple.\n");
     fprintf(f, "wand = %d\n\n", cheatWand);
     P("; max_gold: 1 = 9999 gold. Default 0.\n");
-    fprintf(f, "max_gold = %d\n", maxGold ? 1 : 0);
+    fprintf(f, "max_gold = %d\n\n", maxGold ? 1 : 0);
+    P("; moon_jump: jump height in percent: 100 (off, default), 150 or 200. Falling is\n"
+      ";   unchanged.\n");
+    fprintf(f, "moon_jump = %d\n\n", moonJump);
+    P("; run_speed: walking speed in percent: 100 (off, default), 125, 150 or 200.\n");
+    fprintf(f, "run_speed = %d\n\n", runSpeed);
+    P("; one_hit_kills: 1 = every enemy and boss your shots can hurt falls to one shot\n"
+      ";   (turtles and ghosts still can't be shot, as in the original). Default 0.\n");
+    fprintf(f, "one_hit_kills = %d\n\n", oneHitKills ? 1 : 0);
+    P("; rapid_fire: 1 = holding fire keeps firing, 8 shots a second (each still costs\n"
+      ";   magic unless infinite_magic is on). Default 0.\n");
+    fprintf(f, "rapid_fire = %d\n", rapidFire ? 1 : 0);
     P("\n[mods]\n"
       "; Level packs go in mods/levelpacks/, add-ons in mods/addons/ (next to this program);\n"
       ";   (not used yet: mods come in a later version).\n"

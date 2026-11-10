@@ -1,4 +1,5 @@
 #include "game/XEnemy.h"
+#include "core/config.h"
 #include "framework/d3dutil.h"
 #include "game/JModel.h"
 #include "game/XGameContext.h"
@@ -1775,6 +1776,7 @@ void XEnemyBase::Damage(const D3DVECTOR& heroPos) {
     game_->playSound(kSoundEnemyHurt, heroPos.z);
     damageCounter_ = 12;
     model_->UseWhiteMaterial(true);
+    if (GetConfig().oneHitKills) health_ = 1;  // native: the One-hit kills cheat
     if (--health_ <= 0) {
         localCounter_ = 0;
         liveState_ = DEAD;

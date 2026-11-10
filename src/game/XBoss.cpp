@@ -1,4 +1,5 @@
 #include "game/XBoss.h"
+#include "core/config.h"
 #include "framework/d3dutil.h"
 #include "game/JModel.h"
 #include "game/XBullet.h"
@@ -85,6 +86,7 @@ void XBossBase::Damage() {
     game_->playSound(kSoundHurt, pos_.z);
     damageCounter_ = 12;
     model_->UseWhiteMaterial(true);
+    if (GetConfig().oneHitKills) healthSub_ = healthMain_ = 1;  // native: the One-hit kills cheat
     if (--healthSub_ > 0) return;
     if (--healthMain_ > 0) {
         healthSub_ = healthSubMax_;

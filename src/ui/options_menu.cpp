@@ -1258,9 +1258,36 @@ OptionsMenu::Page OptionsMenu::CheatsPage() {
          &Config::maxMagicLevel},
         {"Choose your wand", "", nullptr},  // (its own row below)
         {"Max gold", "Every level starts with 9999 gold. It stays in your save.", &Config::maxGold},
+        {"Moon jump", "", nullptr},  // (percent rows below)
+        {"Run speed", "", nullptr},
+        {"One-hit kills",
+         "Every enemy and boss your shots can hurt falls to one shot. Turtles and ghosts still can't be shot.",
+         &Config::oneHitKills},
+        {"Rapid fire", "Hold fire to keep firing, 8 shots a second. Each shot still costs magic.", &Config::rapidFire},
+    };
+    // a row stepping through percentages, the first being off
+    auto percentRow = [this](const char* label, const char* help, int Config::*field, std::vector<int> steps) {
+        return Item{label, help,
+                    [field, steps] {
+                        int v = GetConfig().*field;
+                        return v == steps[0] ? std::string("Off") : std::to_string(v) + "%";
+                    },
+                    [this, field, steps](int d) {
+                        GetConfig().*field = steps[(size_t)CycleIndex(steps, GetConfig().*field, d)];
+                        Save();
+                    },
+                    nullptr, nullptr};
     };
     for (const Cheat& ch : cheats) {
         bool Config::*f = ch.field;
+        if (!f && std::string(ch.label) == "Moon jump") {
+            p.items.push_back(percentRow(ch.label, "Jump higher. Falling is unchanged.", &Config::moonJump, {100, 150, 200}));
+            continue;
+        }
+        if (!f && std::string(ch.label) == "Run speed") {
+            p.items.push_back(percentRow(ch.label, "Walk and run faster.", &Config::runSpeed, {100, 125, 150, 200}));
+            continue;
+        }
         if (!f) {
             static const char* const kWands[] = {"Off",          "Single",        "Double",       "Triple",
                                                  "Homing single", "Homing double", "Homing triple"};

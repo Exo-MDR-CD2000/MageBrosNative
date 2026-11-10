@@ -36,6 +36,7 @@ constexpr float kDegree = 0.0174533f;
 
 // XHeroBase::UpdateMagicLevel: ticks per recovered magic point, by magic level
 const int kRecoveryFrames[8] = {80, 70, 60, 50, 40, 32, 24, 16};
+constexpr int kRapidFireTicks = 12;  // native (Rapid fire): 8 shots a second while fire is held
 }  // namespace
 
 XHeroCheats XHero::cheats;
@@ -96,6 +97,7 @@ void XHero::Reset() {
     wand_->SetCurrentFrame(status_->wandType * 2);
     mpRecoveryCounter_ = 0;
     damageCounter_ = 0;
+    rapidFireCounter_ = 0;
     // native: the original's Reset leaves the flash flag alone (its heroes are rebuilt for each
     // level); this port reuses the hero, so a level restarted mid-flash must not stay white
     body_->UseWhiteMaterial(false);
@@ -208,8 +210,9 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
             float dir = in.keyControlUsed ? GetKeyDir(in) * kQuarterPi : FindYaw(in.valueY, in.valueX);
             yaw_ = MakeAngleCloseTo(yaw_, dir, 0.15f, kTurnMinStep, kFloatMax);
             float speed = ((strength - 0.5f) / 0.4f) * 0.8f + 0.2f;
-            np.x += kWalkSpeed * speed * std::sin(dir);
-            np.z += kWalkSpeed * speed * std::cos(dir);
+            // (native: times the Run speed cheat; 1 without it, the original)
+            np.x += kWalkSpeed * cheats.walkSpeed * speed * std::sin(dir);
+            np.z += kWalkSpeed * cheats.walkSpeed * speed * std::cos(dir);
             walkCounter_++;
         } else {
             walkCounter_ = 0;
@@ -271,7 +274,11 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
     }
 
     // the wand: a fresh press with the wand down and magic to spare fires
-    if (in.button1Pressed && !wandOut_ && status_->magicPoint > 0) {
+    // (native: with the Rapid fire cheat, holding the button fires again every kRapidFireTicks)
+    bool fire = in.button1Pressed && !wandOut_;
+    if (cheats.rapidFire && in.button1Down && wandOut_ && ++rapidFireCounter_ >= kRapidFireTicks) fire = true;
+    if (fire && status_->magicPoint > 0) {
+        rapidFireCounter_ = 0;
         world.PlaySound(kSoundFireA, pos_.z);
         if (!cheats.infiniteMagic) status_->magicPoint--;  // native: the Infinite magic cheat
         mpRecoveryCounter_ = 0;
@@ -290,7 +297,9 @@ void XHero::ProcessNormal(const XHeroInput& in, const MapCollision& map, XHeroWo
             verticalSpeed_ = 0;
             if (in.button2Pressed) {
                 world.PlaySound(kSoundJump, pos_.z);
-                verticalSpeed_ = kJumpSpeed;
+                // (native: the Moon jump cheat starts faster for a jump that many times as high;
+                // falling is unchanged)
+                verticalSpeed_ = cheats.jumpHeight == 1.0f ? kJumpSpeed : kJumpSpeed * std::sqrt(cheats.jumpHeight);
                 jumpState_ = JUMP;
             }
         } else {

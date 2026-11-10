@@ -9,6 +9,20 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.26] - 2026-11-09
+
+The last four cheats in Options > Cheats, for moving and fighting. Off by default, and they can be
+turned on or off at any time:
+
+- **Moon jump**: jump 150% or 200% as high. Falling is unchanged.
+- **Run speed**: walk 125%, 150% or 200% as fast.
+- **One-hit kills**: every enemy and boss your shots can hurt falls to one shot. Turtles and ghosts
+  still can't be shot, as in the original.
+- **Rapid fire**: hold fire to keep firing, 8 shots a second. Each shot still costs magic unless
+  Infinite magic is on.
+
+That completes the cheats planned for Mage Bros. Native.
+
 ## [0.4.25] - 2026-11-09
 
 Three more cheats in Options > Cheats, for items. They apply when each level starts, to every

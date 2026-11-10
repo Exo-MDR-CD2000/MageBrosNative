@@ -5,7 +5,7 @@ An unofficial native C++ port of **Mage Bros.**, the 3D side-scrolling platforme
 SDL3 and OpenGL 3.3 instead of DirectX 7, with modern display, input and audio options, and the
 original game logic unchanged when every option is at its default.
 
-> **Status: stage 7 of 7 in progress (version 0.4.25).** The whole original game is in and plays
+> **Status: stage 7 of 7 in progress (version 0.4.26).** The whole original game is in and plays
 > from start to finish: all four worlds and all 40 levels, every enemy and boss, one player or
 > two, with the original's logo, title, save slots, level select, shop, saving and ending.
 > Stage 7 adds optional modern extras: the options menu is made for Mage Bros. (the original's
@@ -17,7 +17,7 @@ original game logic unchanged when every option is at its default.
 > whole width; the HUD can be moved to the screen's edges and resized, and the field of view
 > zoomed, and Smooth motion draws the game between its steps, smooth at any refresh rate. The
 > game's logic and speed are the original's at any resolution, refresh rate and frame rate. The
-> cheats have begun (Unlock all levels); next: more cheats, then mods. See
+> cheats are in (Options > Cheats, all off by default); next: mods. See
 > [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what
 > changed in each version.
 
@@ -111,8 +111,8 @@ level of all four worlds on level select, without changing your saved progress; 
 title screen), **Infinite lives** (hits never take your last life), **Invincible** (enemies,
 bullets and flames can't hurt or push you), **Infinite magic** (firing costs nothing) and **No
 falling deaths** (a pit or the water puts you back where you last stood), and, at each level
-start, **Max magic level**, **Choose your wand** and **Max gold** (kept in your save); more
-cheats are coming.
+start, **Max magic level**, **Choose your wand** and **Max gold** (kept in your save), and
+**Moon jump**, **Run speed**, **One-hit kills** and **Rapid fire**.
 All are off by default, and a small CHEATS mark shows in the bottom-left corner while any is on. Mods are not ready for Mage Bros. yet and are greyed out. Put `Music01.mp3` (or `.flac`) to `Music06` in a `music` folder next to `MageBros.exe`
 to replace the MIDI music.
 

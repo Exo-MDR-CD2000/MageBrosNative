@@ -263,7 +263,8 @@ bool XGameScene::PlayerHasControl() const {
 void XGameScene::Tick() {
     // native: the cheats that change the heroes (Options > Cheats; all off: the original)
     const Config& cfg = GetConfig();
-    XHero::cheats = {cfg.infiniteLives, cfg.invincible, cfg.infiniteMagic, cfg.noFallingDeaths};
+    XHero::cheats = {cfg.infiniteLives, cfg.invincible, cfg.infiniteMagic, cfg.noFallingDeaths,
+                     cfg.moonJump / 100.0f, cfg.runSpeed / 100.0f, cfg.rapidFire};
     UpdateInput();
     app_->StatusDisplay().ProcessFrame();  // the status display first
     loop_.ProcessBeforeHero(camera_.LookAt().z);
