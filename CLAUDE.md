@@ -700,7 +700,10 @@ exclusive fullscreen and back included (2026-10-25), and so were 0.4.2 (refresh 
 The ending in widescreen (0.4.11) was checked by the owner with 0.4.12's F3 (2026-10-26: "seems to
 work"). Waiting for the owner's check: 0.4.7 (the menus' background and fades in widescreen), 0.4.8
 (the shop in widescreen), 0.4.9 (the shop's keys) and 0.4.10 (the logo in widescreen), checked here
-by screenshots only. The widescreen screenshots so far are at 16:9, 21:9 and 32:9; 16:10 wasn't
+by screenshots only. The widescreen screenshots so far are at 16:9, 21:9 and 32:9, and 3:2 (0.4.32,
+2026-11-10, a 1500 x 1000 window: the logo, title, 1-1 with the HUD Centered and at Edges, the shop
+and the ending all fill the view correctly; nothing needed changing; two-player and fades mid-way
+not captured); 16:10 wasn't
 captured (the owner judged it fine: every fix works from the view's width, so 16:10, between 4:3
 and 16:9, needs nothing of its own). The HUD settings of 0.4.13 were tried by the owner ("seems to
 work fine"), who then found the lost-gold messages overlapping in two-player games, a slip in the
