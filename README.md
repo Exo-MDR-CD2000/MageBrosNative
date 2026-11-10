@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/banner.png" alt="Mage Bros. Native" width="100%"></p>
+
 # Mage Bros. Native
 
 An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2003–2009), for

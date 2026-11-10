@@ -9,6 +9,10 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+- **`MageBrosNative.exe` has its own icon**: a blue wizard hat on a tiled floor before a
+  torchlit brick wall, shown in Explorer, on the taskbar and in the game's title bar. Its
+  version now shows under Properties > Details. The README has a banner in the same style.
+
 ## [0.4.26] - 2026-11-09
 
 The last four cheats in Options > Cheats, for moving and fighting. Off by default, and they can be

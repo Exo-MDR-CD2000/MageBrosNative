@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Mage Bros. Native program icon, 16 to 32 px: the same hat and floor, simplified (no
+       bricks, glow or star; straight sides and a thick band). Original artwork. -->
+  <defs><clipPath id="tile"><rect x="8" y="8" width="240" height="240" rx="52"/></clipPath></defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="#3a1a0d"/>
+  <g clip-path="url(#tile)"><rect x="8" y="176" width="240" height="80" fill="#3f8f8a"/></g>
+  <g transform="translate(128 208) scale(0.88)">
+    <ellipse rx="108" ry="30" fill="#2a4fb8"/>
+    <path d="M-70 -8 L 22 -206 L 70 -8 Z" fill="#4c7df0"/>
+    <rect x="-68" y="-40" width="138" height="28" fill="#ffd25e"/>
+  </g>
+</svg>

@@ -93,11 +93,14 @@ src/ui         options menu overlay
 src/framework  the DX7 SDK framework (d3dapp, d3dfile, d3dtextr, d3dutil)
 src/game       the reconstructed game: one file per original module, original class names
 src/main.cpp   AssetViewerApp: game view / level viewer / model viewer, CLI, automation
-tools          MageBrosAssets (inventory / selftest / export)
+tools          MageBrosAssets (inventory / selftest / export); render_branding.py (re-renders
+               docs/banner.png and res/magebros_native.ico from docs/branding's SVGs)
 tests          format tests (no game needed); map, hero and collision tests
 docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status),
                SMOOTH_MOTION.md (how smooth motion works, and how it was built),
-               RELEASING.md (building and publishing a release, for the owner)
+               RELEASING.md (building and publishing a release, for the owner),
+               banner.png and branding/ (the README banner and the icon: SVG sources)
+res            version.h.in, magebros_native.rc (the exe's icon and version info), .ico
 third_party    ColDet 1.2, TinySoundFont, dr_libs, stb, cgltf, font8x8
 ```
 

@@ -102,7 +102,14 @@ if(MBN_BUILD_GAME)
     src/main.cpp src/core/assets.cpp src/core/config.cpp src/core/mods.cpp src/core/saves.cpp
     src/core/third_party_impl.cpp)
   if(WIN32)
-    add_executable(MageBrosNative WIN32 ${MBN_GAME_SOURCES})
+    # the icon and version information (res/magebros_native.rc)
+    add_executable(MageBrosNative WIN32 ${MBN_GAME_SOURCES} res/magebros_native.rc)
+    # the resource compiler doesn't track header changes: rebuild the version info when it changes
+    set_source_files_properties(res/magebros_native.rc PROPERTIES OBJECT_DEPENDS ${CMAKE_BINARY_DIR}/generated/version.h)
+    if(MINGW)
+      # windres looks for the icon relative to the build folder, so point it at res/ as well
+      set_property(SOURCE res/magebros_native.rc APPEND PROPERTY INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/res)
+    endif()
   else()
     add_executable(MageBrosNative ${MBN_GAME_SOURCES})
   endif()

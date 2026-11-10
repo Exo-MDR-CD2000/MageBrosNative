@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Mage Bros. Native program icon, 40 px and up. Original artwork (no game images). -->
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c140b"/><stop offset="1" stop-color="#1b0d08"/></linearGradient>
+    <pattern id="brick" width="64" height="32" patternUnits="userSpaceOnUse"><path d="M0 1 H64 M0 17 H64 M32 0 V16 M0 16 V32 M64 16 V32" stroke="#0c0503" stroke-width="3" fill="none"/></pattern>
+    <radialGradient id="warm" cx="0.5" cy="0.42" r="0.62"><stop offset="0" stop-color="#ff9a3c" stop-opacity="0.65"/><stop offset="0.55" stop-color="#ff6a1a" stop-opacity="0.2"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="hatBlue" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2f5fd0"/><stop offset="0.55" stop-color="#4c7df0"/><stop offset="1" stop-color="#1f3f99"/></linearGradient>
+    <clipPath id="tile"><rect x="8" y="8" width="240" height="240" rx="52"/></clipPath>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#wall)"/>
+  <g clip-path="url(#tile)">
+    <rect x="8" y="8" width="240" height="160" fill="url(#brick)"/>
+    <rect x="8" y="8" width="240" height="240" fill="url(#warm)"/>
+    <g stroke="#173e45" stroke-width="1.5">
+      <polygon points="0,168 64,168 40,200 -30,200" fill="#3f8f8a"/><polygon points="64,168 128,168 128,200 40,200" fill="#2b6a6c"/><polygon points="128,168 192,168 216,200 128,200" fill="#3f8f8a"/><polygon points="192,168 256,168 300,200 216,200" fill="#2b6a6c"/>
+      <polygon points="-30,200 40,200 10,256 -80,256" fill="#2b6a6c"/><polygon points="40,200 128,200 128,256 10,256" fill="#3f8f8a"/><polygon points="128,200 216,200 246,256 128,256" fill="#2b6a6c"/><polygon points="216,200 300,200 340,256 246,256" fill="#3f8f8a"/>
+    </g>
+    <rect x="8" y="166" width="240" height="4" fill="#000" opacity="0.35"/>
+  </g>
+  <g transform="translate(124 200) scale(0.8)">
+    <ellipse rx="98" ry="22" fill="#1c3888"/>
+    <path d="M-64 -6 C -54 -80, -20 -146, 12 -182 C 26 -196, 56 -200, 70 -186 C 46 -184, 32 -160, 32 -128 C 34 -80, 54 -34, 64 -6 Z" fill="url(#hatBlue)"/>
+    <path d="M-62 -17 C -27 -2, 29 -2, 63 -17 L 64 -6 C 29 9, -29 9, -64 -6 Z" fill="#ffd25e"/>
+    <path d="M4 -100 l7 15 17 3 -12 11 3 17 -15 -8 -15 8 3 -17 -12 -11 17 -3z" fill="#ffe28a"/>
+  </g>
+</svg>
