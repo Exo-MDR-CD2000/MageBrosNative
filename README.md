@@ -6,7 +6,7 @@ An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2
 modern Windows. It plays exactly like the original, with optional extras: widescreen, any
 resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-**Version 0.4.38.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+**Version 0.4.40.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -29,7 +29,8 @@ Around it, Native adds:
   144 Hz and beyond, and VSync, adaptive VSync and a frame limit are built in. The game's speed
   and timing never change with the frame rate.
 - **Sharper graphics, all optional:** antialiasing, texture filtering, higher render resolution,
-  per-pixel lighting, soft shadows and a brightness setting.
+  smoother textures, ambient occlusion (soft shading in corners and under objects) and a
+  brightness setting.
 - **An in-game options menu** (F10) for every setting, with changes applied at once. It shows the
   game's version at the top right.
 - **Statistics Overlay** (F9): a see-through panel with the frame rate, the game's timing (with
@@ -109,8 +110,8 @@ Texture filtering, both on by default; turn them off for the original's exact pi
   **Aspect** (4:3, Stretch or Widescreen, which shows more of each level at the sides); HUD
   position and size; and **Field of view**, which is **experimental: we recommend leaving it at
   100%**, the view the original's levels were made for.
-- **Graphics:** antialiasing, texture filtering, render scale (up to 200%), smoother textures and lighting,
-  soft shadows and brightness.
+- **Graphics:** antialiasing, texture filtering, render scale (up to 200%), smoother textures,
+  ambient occlusion and brightness.
 - **Audio:** volume levels, where the music comes from, and the MIDI synth. See
   [Your own music](#your-own-music).
 - **Menu font** (on the Video page): the font of the menus and the Statistics Overlay. See below.

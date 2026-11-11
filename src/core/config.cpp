@@ -79,8 +79,8 @@ bool Config::Load(const std::string& file) {
             else if (k == "anisotropy") anisotropy = std::clamp(iv, 1, 16);
             else if (k == "smooth_textures") smoothTextures = toBool(v);
             else if (k == "smooth_sprites") smoothSprites = toBool(v);
-            else if (k == "per_pixel_lighting") perPixelLighting = toBool(v);
-            else if (k == "enhanced_shadows") enhancedShadows = toBool(v);
+            else if (k == "ambient_occlusion") ambientOcclusion = iv > 0;  // (0.4.39 had 1 low and 2 high: both on)
+            else if (k == "per_pixel_lighting" || k == "enhanced_shadows") {}  // removed in 0.4.39 (Per-pixel lighting, Soft shadows)
             else if (k == "brightness") brightness = std::clamp(iv, 50, 150);
             else if (k == "render_scale") renderScale = std::clamp((float)atof(v.c_str()), 0.25f, 2.0f);  // (4.0 before 0.4.38)
             else if (k == "aspect") aspect = (AspectMode)std::clamp(iv, 0, 2);
@@ -330,12 +330,9 @@ bool Config::Save() const {
     P("; smooth_sprites: 1 = smooth scaling of 2D images (logo, menus, HUD).\n"
       ";   0 = sharp pixels (default).\n");
     fprintf(f, "smooth_sprites = %d\n\n", smoothSprites ? 1 : 0);
-    P("; per_pixel_lighting: 1 = the original lights calculated per pixel (smoother\n"
-      ";   shading on round objects). 0 = per corner, like the original (default).\n");
-    fprintf(f, "per_pixel_lighting = %d\n\n", perPixelLighting ? 1 : 0);
-    P("; enhanced_shadows: 1 = soft-edged shadows under characters and objects.\n"
-      ";   0 = original shadows (default).\n");
-    fprintf(f, "enhanced_shadows = %d\n\n", enhancedShadows ? 1 : 0);
+    P("; ambient_occlusion: 1 = soft shading where floors meet walls, under ledges\n"
+      ";   and around objects, in levels. 0 = off, the original look (default).\n");
+    fprintf(f, "ambient_occlusion = %d\n\n", ambientOcclusion ? 1 : 0);
     P("; brightness: picture brightness in percent, 50 to 150. 100 = original\n"
       ";   (default). Higher lifts dark and middle tones (whites stay white), lower\n"
       ";   darkens them.\n");

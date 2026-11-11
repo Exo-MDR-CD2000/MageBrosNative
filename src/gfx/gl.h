@@ -22,6 +22,7 @@ typedef char GLchar;
 typedef ptrdiff_t GLsizeiptr;
 typedef ptrdiff_t GLintptr;
 typedef unsigned char GLubyte;
+typedef uint64_t GLuint64;
 
 #define GL_FALSE 0
 #define GL_TRUE 1
@@ -84,6 +85,7 @@ typedef unsigned char GLubyte;
 #define GL_REPEAT 0x2901
 #define GL_CLAMP_TO_EDGE 0x812F
 #define GL_TEXTURE0 0x84C0
+#define GL_TEXTURE1 0x84C1
 #define GL_TEXTURE_MAX_ANISOTROPY 0x84FE
 #define GL_MAX_TEXTURE_MAX_ANISOTROPY 0x84FF
 #define GL_ARRAY_BUFFER 0x8892
@@ -117,6 +119,12 @@ typedef unsigned char GLubyte;
 #define GL_EXTENSIONS 0x1F03
 #define GL_NUM_EXTENSIONS 0x821D
 #define GL_TEXTURE_2D_MULTISAMPLE 0x9100
+#define GL_TIME_ELAPSED 0x88BF
+#define GL_RED 0x1903
+#define GL_R8 0x8229
+#define GL_R32F 0x822E
+#define GL_QUERY_RESULT 0x8866
+#define GL_QUERY_RESULT_AVAILABLE 0x8867
 
 #define MBN_GL_FUNCS(X)                                                                                   \
     X(void, glClear, (GLbitfield mask))                                                                      \
@@ -153,6 +161,13 @@ typedef unsigned char GLubyte;
     X(void, glGenerateMipmap, (GLenum t))                                                                    \
     X(void, glDrawArrays, (GLenum m, GLint first, GLsizei count))                                            \
     X(void, glDrawElements, (GLenum m, GLsizei count, GLenum type, const void* idx))                         \
+    X(void, glDrawElementsBaseVertex, (GLenum m, GLsizei count, GLenum type, const void* idx, GLint base))    \
+    X(void, glGenQueries, (GLsizei n, GLuint * q))                                                           \
+    X(void, glDeleteQueries, (GLsizei n, const GLuint* q))                                                   \
+    X(void, glBeginQuery, (GLenum t, GLuint q))                                                              \
+    X(void, glEndQuery, (GLenum t))                                                                          \
+    X(void, glGetQueryObjectiv, (GLuint q, GLenum p, GLint * v))                                             \
+    X(void, glGetQueryObjectui64v, (GLuint q, GLenum p, GLuint64 * v))                                       \
     X(void, glGenBuffers, (GLsizei n, GLuint * b))                                                           \
     X(void, glDeleteBuffers, (GLsizei n, const GLuint* b))                                                   \
     X(void, glBindBuffer, (GLenum t, GLuint b))                                                              \

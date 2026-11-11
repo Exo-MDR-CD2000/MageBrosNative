@@ -559,6 +559,13 @@ void CD3DApplication::SummarizeStats(DWORD elapsedMs) {
     s.lateAvg = w.lateFrames ? w.lateSum / w.lateFrames : -1;
     s.lateMax = w.lateFrames ? w.lateMax : -1;
     s.alpha = g_tickAlpha;
+    double gpuSum = 0;
+    int gpuFrames = 0;
+    GetDevice().TakeGpu3D(&gpuSum, &gpuFrames);
+    s.gpu3D = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
+    s.draws3D = GetDevice().Draws3D();
+    GetDevice().TakeGpuAO(&gpuSum, &gpuFrames);
+    s.gpuAO = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
     uint64_t last = w.lastStartNs;
     w = StatsWindow{};
     w.lastStartNs = last;  // (the next frame's time is counted from the last one drawn)
@@ -643,6 +650,13 @@ void CD3DApplication::DrawStatsOverlay() {
         sys.rows.push_back({"Antialiasing", d.Samples() > 0 ? std::to_string(d.Samples()) + "x" : std::string("Off")});
         int af = cfg.anisotropy > 1 && d.MaxAnisotropy() > 1.f ? (int)std::min((float)cfg.anisotropy, d.MaxAnisotropy()) : 0;
         sys.rows.push_back({"Tex filtering", af > 1 ? std::to_string(af) + "x" : std::string("Off")});
+
+        // the graphics card's time for a level's 3D (the recorded draws, G2), and how many
+        if (!d.Recording3D()) perf.rows.push_back({"GPU 3D", "- (off)", true});  // (MBN_NO_RECORD)
+        else if (s.gpu3D >= 0) perf.rows.push_back({"GPU 3D", ms(s.gpu3D)});
+        else perf.rows.push_back({"GPU 3D", "- (no level)", true});
+        if (s.gpu3D >= 0) perf.rows.push_back({"3D draws", std::to_string(s.draws3D)});
+        if (cfg.ambientOcclusion && s.gpuAO >= 0) perf.rows.push_back({"GPU AO", ms(s.gpuAO)});
 
         // two columns: how the game runs on the left, on what on the right; one: all stacked
         left = {perf, timing};

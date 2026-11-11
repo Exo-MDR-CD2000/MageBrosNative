@@ -9,6 +9,27 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.40] - 2026-11-11
+
+- **Ambient occlusion is now just Off or On.** The Low setting looked poor, so it is gone; On is
+  the former High. If you had chosen Low or High, it is now On.
+
+## [0.4.39] - 2026-11-11
+
+The first test build of the graphics upgrades (from the `graphics-enhancements` branch).
+
+- **Ambient occlusion** (Options > Graphics, off by default): soft shading where floors meet walls,
+  at the feet of walls, pillars and fences, round barrels and pots and under the enemies, in
+  levels. **Low** works at half resolution and costs less; **High** is sharper. Off, the game
+  looks exactly as before. The Statistics Overlay (Full) shows what it costs (GPU AO).
+- **Per-pixel lighting and Soft shadows are gone** from Options > Graphics. They made very
+  little difference to how the game looks; better shadows and lighting are being worked on to
+  take their place. Both were off by default, so the game looks exactly as before; if you had
+  turned them on, they are simply ignored.
+- **Statistics Overlay** (F9, Full): two new rows, **GPU 3D**, the graphics card's time for a
+  level's 3D each frame, and **3D draws**. Behind the scenes a level's 3D is now gathered before
+  it is drawn, to make room for the graphics upgrades to come; the picture is exactly the same.
+
 ## [0.4.38] - 2026-11-10
 
 - **Render scale now goes up to 200%** (Options > Graphics). 300% and 400% asked far more of your

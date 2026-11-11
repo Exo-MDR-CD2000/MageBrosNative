@@ -150,7 +150,6 @@ void OptionsMenu::ResetAllSettings() {
         app_->ApplyDisplaySettings();
     app_->ApplyVSync();
     GetDevice().OnSettingsChanged();  // antialiasing, render scale, aspect
-    if (old.enhancedShadows != c.enhancedShadows) D3DTextr_InvalidateTexture(0xa3);
     Audio::SetMasterVolumes(c.masterVolume / 100.f, c.sfxVolume / 100.f, c.musicVolume / 100.f);
     if (old.soundFont != c.soundFont) Midi::SwitchSynth(c.soundFont);
     Midi::SetVolume(c.masterVolume / 100.f * c.musicVolume / 100.f);
@@ -874,18 +873,10 @@ OptionsMenu::Page OptionsMenu::GraphicsPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Per-pixel lighting", "The original lights calculated per pixel for smoother shading.",
-                 [] { return OnOff(GetConfig().perPixelLighting); },
+    v.push_back({"Ambient occlusion", "Soft shading in corners and under objects, in levels.",
+                 [] { return OnOff(GetConfig().ambientOcclusion); },
                  [this](int) {
-                     GetConfig().perPixelLighting = !GetConfig().perPixelLighting;
-                     Save();
-                 },
-                 nullptr, nullptr});
-    v.push_back({"Soft shadows", "Soft-edged blob shadows under characters and objects.",
-                 [] { return OnOff(GetConfig().enhancedShadows); },
-                 [this](int) {
-                     GetConfig().enhancedShadows = !GetConfig().enhancedShadows;
-                     D3DTextr_InvalidateTexture(0xa3);
+                     GetConfig().ambientOcclusion = !GetConfig().ambientOcclusion;
                      Save();
                  },
                  nullptr, nullptr});

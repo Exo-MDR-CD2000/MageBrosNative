@@ -102,6 +102,10 @@ docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status)
                players' debug report, planned),
                RENDERER_OPTIMIZATION.md (a plan, not built: the renderer's work per draw, for
                weak graphics hardware; only if the owner asks),
+               GRAPHICS_ENHANCEMENTS.md (a plan, not built yet: ambient occlusion,
+               dynamic shadows, dynamic lights and bloom, on the
+               `graphics-enhancements` branch; Per-pixel lighting and Soft shadows
+               removed in G1),
                RELEASING.md (building and publishing a release, for the owner),
                banner.png and branding/ (the README banner and the icon: SVG sources)
 res            version.h.in, magebros_native.rc (the exe's icon and version info), .ico
@@ -546,6 +550,37 @@ the window / borderless smoothness (above; the part-of-refresh frame limits answ
 choppiness at a limit below the refresh rate, which the owner liked; whether G-Sync follows a
 window is up to the driver and Windows).
 
+**Graphics enhancements (planned 2026-11-10)**: the owner wants optional visual upgrades beyond
+the original's look, on a new branch, **`graphics-enhancements`** (made from `main` at 0.4.38).
+Per-pixel lighting and Soft shadows are to be removed (the owner: they add little), and four
+opt-in effects added, levels only, off by default, with every picture byte for byte as before when
+they are off: ambient occlusion, dynamic shadows from the game's own light, dynamic lights from
+the game's own flames and shots, and bloom on the game's own glowing sprites. The renderer records
+a level's 3D and draws it afterwards (extra passes first, the game's draws in their own order), so
+nothing in `src/game` changes. The plan, its chunks G1 to G7 (0.4.39 on, a version each) and the
+owner's open decisions: `docs/GRAPHICS_ENHANCEMENTS.md`. Decided: the blob shadow stays as it is
+with Dynamic shadows on (the owner, 2026-11-10). **G1 is built (2026-11-11)**: Per-pixel lighting
+and Soft shadows removed, pictures byte for byte as 0.4.38. **G2 is built (2026-11-11)**: a
+level's 3D is recorded while `SetGameplayView` is on and sent when it is turned off
+(`Device::FlushRecording`), each draw with its own upload as before (a single shared upload gave
+two pixels a shade apart on NVIDIA, so it is kept for the extra passes only); anything that talks
+to OpenGL during a level's 3D must call `FlushRecording()` first; `MBN_NO_RECORD=1` draws without
+recording, to compare; the overlay's Full page shows GPU 3D and 3D draws. **G3 is built
+(2026-11-11)**: Ambient occlusion (Options > Graphics, `ambient_occlusion` 0..2, off by default),
+`Device::ComputeAO` before the replay (depth pass from one shared upload, occlusion, blur), applied
+by the main shader to the level and solid models only (`DrawKind`); with it off every picture is as
+G2's. After testing 0.4.39 the owner kept High and had Low removed: the row is Off / On (On = the
+former High; old ini values 1 and 2 read as on), built as 0.4.40. A puzzle noted in the plan's
+"G3 as built": two pixels of 1-6's slime one shade apart between runs that differed only in an ini
+digit, which questions G2's "shared buffer" explanation. Windows Defender flagged the unsigned
+0.4.39 build (an ML false positive; restored by the owner). The owner wants the first test build with G3. The build is still
+built as **0.4.39** (2026-11-11, the owner: one version for G1 to G3, the first test build;
+`make_release.bat 0.4.39`, a copy kept in `build\fix-builds`). The plan's later chunks take the
+next numbers from 0.4.41 (0.4.40 is AO's Low removed). Built on the branch only: `main` stays at 0.4.38 and off these numbers
+until the branch merges.
+Start each next chunk on the owner's word. The owner's graphics card is an **RTX 5080** from
+2026-11-11 (the frame rates measured before that, in these docs, were on an RTX 3090 Ti).
+
 **Branches**: work goes on `main`; each push to `main` publishes the version's release when that version
 has none yet (see "GitHub releases"). Three side branches were used and merged: `menu-dev` (0.4.0 to
 0.4.13, pull request #1, 2026-10-26), `interpolation-test` (smooth motion, merged directly
@@ -855,6 +890,9 @@ SoundFonts).
   screenshots can't; a temporary hook can force a rare event (e.g. calling `Damage` once).
   Remove both before the release build. Writing C++ with a backslash-n escape through a Bash
   heredoc and Python turned it into a real newline here; use the Edit tool or `chr(92)`.
+- **Byte-for-byte runs**: the first run of a build in a fresh test folder (saves copied in, no
+  window position yet) can differ from every later run in moving things, by timing alone
+  (2026-11-11). Run each folder once before the runs you compare, or compare several runs.
 - **Screenshots**: `--auto` times are milliseconds. After `level=` the mage drops for about 3 s;
   after `place=` the camera eases at most 5 units a tick (500 a second), so a far `place`
   needs several seconds before the shot. Shots are 1280 × 960 BMPs: shrink them to PNG (e.g.

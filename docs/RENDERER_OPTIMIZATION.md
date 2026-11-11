@@ -36,13 +36,13 @@ Everything is handed to OpenGL at each draw:
    - depth test, depth write, blending and its two factors, culling and its winding;
    - **26 shader values** (`glUniform*`): the world, view and projection matrices, the lighting
      switch, the material's three colours, the ambient colour, the light's direction and colour,
-     flat shading, per-pixel lighting, the six texture stage settings, the alpha test and the
+     flat shading, per-pixel lighting (removed in 0.4.39), the six texture stage settings, the alpha test and the
      2D and colour flags;
    - the texture bound, and its filtering set on the texture itself (`glTexParameteri` for the
      minifying and magnifying filters and the anisotropy), because the same texture may be drawn
      with different filtering by different settings;
-   - `GetConfig()` read for the field of view, per-pixel lighting, smooth textures and
-     anisotropy.
+   - `GetConfig()` read for the field of view, smooth textures and anisotropy (and per-pixel
+     lighting until 0.4.39).
 2. **The vertices and indices uploaded** (`glBufferData` into the one `vbo_` and the one `ibo_`),
    for every draw. A model with three materials uploads **all its vertices three times**, once
    per material, each time with that material's part of the indices
@@ -70,7 +70,7 @@ A level frame is a few hundred draws; nobody has counted them (chunk R0).
 
 **Known:**
 
-- On the owner's machine (RTX 3090 Ti), VSync off: about 1,070 frames a second in 3-10 with all
+- On the owner's machine (then an RTX 3090 Ti; an RTX 5080 since 2026-11-11, not yet measured), VSync off: about 1,070 frames a second in 3-10 with all
   40 birds, about 1,790 to 1,900 in 1-1 at 1280 x 960, 490 in 4K borderless (where the card's
   pixel work, not this, is the limit). So a whole frame, game ticks included, takes 0.5 to
   0.9 ms of processor time.
@@ -181,6 +181,13 @@ Small and low risk; worth doing with R1.
 
 ### R3. Keep the models and the level on the graphics card
 
+**A warning from the graphics enhancements' G2 (2026-11-11):** drawing the game's draws from one
+shared buffer, instead of each from its own upload, gave two pixels of 1-6 one shade apart on
+NVIDIA, every time (`GRAPHICS_ENHANCEMENTS.md`, "G2 as built"). Keeping meshes on the card in
+buffers of their own may well hit the same, so R3 would have to be checked pixel by pixel and
+might not keep rule 1 at all. The recorder G2 built (a level's 3D gathered, then sent) is also
+where R1 and R2 would now go.
+
 The largest change, because `Device::DrawIndexedPrimitive` is given a bare pointer to vertices
 and can't know whether they are the same as last time. Guessing from the pointer is not safe: a
 new level's geometry can land at the same address as the last one's, and rectangles rewrite
@@ -241,8 +248,7 @@ shown untouched"), wider, because this touches every picture:
    motion's suite; the logo, title, save slots and level select; the ending; a level at 16:9 and
    21:9; the Tab viewers.
 2. **Every Graphics option**, since each changes what `ApplyState` sends: Antialiasing off and
-   on, Texture filtering off and 8x, Smooth textures, Smooth 2D images, Per-pixel lighting, Soft
-   shadows, Render scale 100% and 200%, Brightness, Field of view 100% and 150%.
+   on, Texture filtering off and 8x, Smooth textures, Smooth 2D images, Render scale 100% and 200%, Brightness, Field of view 100% and 150%.
 3. **The special paths**: a mage hit (the white material flash); the see-through pass of models;
    the additive particles (`DESTALPHA`); the water; the shop's panel over the level; Smooth
    motion on at `alpha=0.5`; the options menu opened over a level and closed again (it draws

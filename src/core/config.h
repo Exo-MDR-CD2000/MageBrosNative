@@ -30,8 +30,7 @@ struct Config {
     int anisotropy = 8;            // 1 = off
     bool smoothTextures = false;   // force linear filtering on 3D textures that used point sampling
     bool smoothSprites = false;    // bilinear scaling of 2D sprites
-    bool perPixelLighting = false; // evaluate the original lighting per pixel instead of per vertex
-    bool enhancedShadows = false;  // softer blob shadows
+    bool ambientOcclusion = false; // levels' 3D: off (the original) or on (graphics enhancements G3)
     int brightness = 100;          // 50..150 %, applied as a gamma curve to the final picture
     float renderScale = 1.0f;      // supersampling factor for the 3D scene
     AspectMode aspect = AspectMode::Original4x3;
