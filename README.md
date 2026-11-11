@@ -6,7 +6,7 @@ An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2
 modern Windows. It plays exactly like the original, with optional extras: widescreen, any
 resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-**Version 0.4.37.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+**Version 0.4.38.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -53,6 +53,18 @@ Around it, Native adds:
    `Music01.mid` to `Music06.mid` files.
 4. Run `MageBrosNative.exe`.
 
+**`MageBrosNative.exe` is the only file you need to play.** The rest of the zip is optional:
+
+| In the zip | What it is |
+|---|---|
+| `MageBrosAssets.exe` | A tool that lists, checks or exports the resources in your `MageBros.exe` |
+| `mbn_tests.exe`, `mbn_collision_tests.exe` | The project's automated tests |
+| `README.md`, `docs` | This guide, and documents for developers |
+| `LICENSE`, `THIRD_PARTY_NOTICES.md`, `licenses` | The licences of the port and of the libraries built into it |
+
+You can leave these in the zip. If you pass the game on to someone else, include the licence
+files with it.
+
 You need Windows 10 or 11 (64-bit). The game checks that `MageBros.exe` is the 2.0 freeware build
 (SHA-256 `ac191080af002b8ad0615e432faa92a2a47ce76a9aaa667bacf628836c098c49`); other builds are
 refused unless you start it with `--allow-unverified`. If the game is somewhere else, start it
@@ -97,7 +109,7 @@ Texture filtering, both on by default; turn them off for the original's exact pi
   **Aspect** (4:3, Stretch or Widescreen, which shows more of each level at the sides); HUD
   position and size; and **Field of view**, which is **experimental: we recommend leaving it at
   100%**, the view the original's levels were made for.
-- **Graphics:** antialiasing, texture filtering, render scale, smoother textures and lighting,
+- **Graphics:** antialiasing, texture filtering, render scale (up to 200%), smoother textures and lighting,
   soft shadows and brightness.
 - **Audio:** volume levels, where the music comes from, and the MIDI synth. See
   [Your own music](#your-own-music).
@@ -187,19 +199,35 @@ give you stays in your save.
 
 ## For developers
 
+The repository holds everything needed to build the port, but none of the game's files: to run
+it, or to run the tests that need the game, you still need your own `MageBros.exe`.
+
 - **Building:** any C++17 compiler and CMake 3.20 or newer. On Windows, double-click
   `make_release.bat` (needs Visual Studio 2022 or newer with "Desktop development with C++"); it
   builds, runs the tests and writes the release zip to `build\`. Step by step, including how a
   release is published: [docs/RELEASING.md](docs/RELEASING.md).
 - **Other platforms:** the tools and tests build on Linux and macOS (`-DMBN_BUILD_GAME=OFF`), and
   the Windows game cross-compiles with MinGW-w64
-  (`-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`). Add `-DMBN_GAME_EXE=<path to MageBros.exe>`
-  to run the map and hero tests on your copy.
+  (`-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`).
+- **What gets built:**
+
+  | Program | What it does | Needs the game | In the zip |
+  |---|---|---|---|
+  | `MageBrosNative.exe` | The game | Yes | Yes |
+  | `MageBrosAssets.exe` | Lists (`--inventory`), checks (`--selftest`) or exports (`--export FOLDER`) the resources in your `MageBros.exe` | Yes | Yes |
+  | `mbn_tests.exe` | Tests the file-format readers on small built-in samples | No | Yes |
+  | `mbn_collision_tests.exe` | Tests that the ColDet collision library answers the game's kinds of query | No | Yes |
+  | `mbn_map_tests.exe` | Builds all 40 levels' geometry from your copy and checks it | Yes | No |
+  | `mbn_hero_tests.exe` | Runs player 1's movement on all 40 levels: landing on each start floor, the original's jump height, and long random play that must never leave the hero inside a wall | Yes | No |
+
+  `ctest --test-dir build` runs the tests (add `-C Release` for a Visual Studio build); the last
+  two only when CMake was configured with
+  `-DMBN_GAME_EXE=<path to MageBros.exe>` (or run them with `--game <path>`). Each prints
+  "passed" or what failed, and exits with 1 on a failure. The two tests in the zip only show
+  that the build works on your machine; players never need them. Files exported by
+  `MageBrosAssets.exe` are Saito Games' work: don't share them.
 - **Test keys** (games started with them aren't saved): N / B change level, F2 switches between
   one and two players, F3 jumps to the ending, Tab opens the level and model viewers.
-- **`MageBrosAssets.exe`** lists (`--inventory`), checks (`--selftest`) or exports
-  (`--export FOLDER`) the resources in your copy. Exported files are Saito Games' work: don't share
-  them.
 - **More:** [docs/ROADMAP.md](docs/ROADMAP.md) (status and plans),
   [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md) (how the original works, and its bugs
   and quirks), [docs/SMOOTH_MOTION.md](docs/SMOOTH_MOTION.md), and [CLAUDE.md](CLAUDE.md) (the

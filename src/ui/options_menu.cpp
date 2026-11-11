@@ -839,10 +839,11 @@ OptionsMenu::Page OptionsMenu::GraphicsPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Render scale", "Renders the 3D scene larger (smoother, slower) or smaller (faster) than the screen. 300%+ is very demanding.",
+    // (up to 200%, the owner's cap from 0.4.38: 300% and 400% cost far more for little to see)
+    v.push_back({"Render scale", "Renders the 3D scene larger (smoother, slower) or smaller (faster) than the screen. Up to 200%.",
                  [] { return std::to_string((int)std::lround(GetConfig().renderScale * 100)) + "%"; },
                  [this](int d) {
-                     static const std::vector<float> l{0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 3.0f, 4.0f};
+                     static const std::vector<float> l{0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f};
                      GetConfig().renderScale = StepFloat(l, GetConfig().renderScale, d);
                      GetDevice().OnSettingsChanged();
                      Save();

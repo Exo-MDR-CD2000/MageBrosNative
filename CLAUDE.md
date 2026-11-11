@@ -230,7 +230,11 @@ that version's section of `CHANGELOG.md` (the commit message if there is none) a
 full changelog. If that release already exists it does nothing, so a push only releases
 when the version was raised: run `make_release.bat patch` for each chunk (or the exact version,
 when one must be skipped) and commit `CMakeLists.txt` with it. Pushing therefore publishes publicly; the zip holds no game
-content.
+content. What it does hold (`install(...)` in `CMakeLists.txt`): the game, `MageBrosAssets.exe`,
+the tests `mbn_tests.exe` and `mbn_collision_tests.exe`, the README, LICENSE, notices, the
+`licenses` folder (ColDet's LGPL text must travel with the program) and `docs`. The README's
+"Getting started" tells players only the game is needed, in a table of the rest: keep it in step
+with the install rules (and `docs/RELEASING.md`).
 
 **Cross-compile for Windows from Linux** (llvm-mingw):
 
@@ -352,7 +356,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-10, version 0.4.37 on `main`)
+## Where we are (last updated: 2026-11-10, version 0.4.38 on `main`)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -396,7 +400,9 @@ Stage 7 so far:
 - **The graphics options review** (0.4.21): Texture filtering, Render scale above 200% and
   Brightness in screenshots fixed (the ROADMAP's "Graphics review" row). Antialiasing 4x and
   Texture filtering 8x stay on by default (the owner, 2026-10-29); Off in each gives the
-  original's picture.
+  original's picture. From 0.4.38 Render scale goes up to 200% only (the owner's cap: the menu
+  stops there and the ini's `render_scale` is read as at most 2.0, so an older 3.0 or 4.0 becomes
+  2.0); the above-200% mipmap path (`resolveMips_`) is kept, unreached, for if it is ever lifted.
 
 **Windowed / borderless smoothness (2026-10-29)**: the owner found Smooth motion choppy and
 sluggish in a window and borderless at frame limits below the refresh rate (exclusive fullscreen
@@ -530,7 +536,8 @@ cell so no layout moves. The owner's decision (2026-11-10), after trying twelve 
 no fonts ship with the game, so the exe stays small and no font licences travel with it; players
 bring their own. A missing or unreadable font falls back to Classic (logged; the menu shows "(not
 found)"). Then (0.4.37) SoundFonts can also sit in a `soundfonts` folder (the SoundFonts note
-under the options menu below). Planned for later, on the owner's word: O3, a **debug report** players can send
+under the options menu below), and (0.4.38) Render scale is capped at 200% (the graphics
+review note above). Planned for later, on the owner's word: O3, a **debug report** players can send
 in (Shift+F9 records 30 seconds of frames, with the settings, system and the end of the log, to a
 text file in a `reports` folder, user name hidden from paths): `docs/STATS_OVERLAY.md`, "O3, the
 debug report". Still to
@@ -762,8 +769,8 @@ original as well: fixed in every mode in 0.4.13 (player 2's message 12 lower), s
 here through a temporary `ShowLostGoldMessage` call in `InitForGame` (removed). The field of view of
 0.4.15 was tried by the owner too. Smooth motion: the owner's play tests found A, B1 and the ending
 (C) fine after the fixes recorded in `docs/SMOOTH_MOTION.md`; no separate result was reported for
-B2 (0.4.18) or D (0.4.20) before the owner chose to merge. 0.4.21's Render scale at 300% and 400%
-is still to be judged by eye (screenshots are taken before the picture is shrunk to the window).
+B2 (0.4.18) or D (0.4.20) before the owner chose to merge. (0.4.21's Render scale at 300% and
+400% was never judged by eye; 0.4.38 removed those settings.)
 MP3/FLAC music is the one feature not yet tried by anyone. (0.4.4's VSync driver override warning
 can only be tried by changing the NVIDIA Control Panel's own VSync setting.) The cheats (0.4.23 to
 0.4.26) were each released on the owner's "commit and push", checked here by screenshots, saves

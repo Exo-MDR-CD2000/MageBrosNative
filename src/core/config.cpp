@@ -82,7 +82,7 @@ bool Config::Load(const std::string& file) {
             else if (k == "per_pixel_lighting") perPixelLighting = toBool(v);
             else if (k == "enhanced_shadows") enhancedShadows = toBool(v);
             else if (k == "brightness") brightness = std::clamp(iv, 50, 150);
-            else if (k == "render_scale") renderScale = std::clamp((float)atof(v.c_str()), 0.25f, 4.0f);
+            else if (k == "render_scale") renderScale = std::clamp((float)atof(v.c_str()), 0.25f, 2.0f);  // (4.0 before 0.4.38)
             else if (k == "aspect") aspect = (AspectMode)std::clamp(iv, 0, 2);
             else if (k == "fov_scale") fovScale = std::clamp((float)atof(v.c_str()), 0.5f, 2.0f);
             else if (k == "show_fps") showFps = toBool(v);
@@ -308,8 +308,8 @@ bool Config::Save() const {
     fprintf(f, "anisotropy = %d\n\n", anisotropy);
     P("; render_scale: draws the 3D scene at this multiple of the screen size, then\n"
       ";   scales it to fit. 1.0 = native (default). Above 1.0 = supersampling\n"
-      ";   (smoother edges and detail, slower; 3.0 and 4.0 are very demanding).\n"
-      ";   Below 1.0 = faster, blurrier. Range 0.25 to 4.0.\n");
+      ";   (smoother edges and detail, slower). Below 1.0 = faster, blurrier.\n"
+      ";   Range 0.25 to 2.0.\n");
     fprintf(f, "render_scale = %.2f\n\n", renderScale);
     P("; aspect: 0 = original 4:3 picture with black bars on wide screens (default)\n"
       ";         1 = stretch 4:3 to fill the window (distorted)\n"

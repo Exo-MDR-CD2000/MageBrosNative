@@ -9,6 +9,13 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.38] - 2026-11-10
+
+- **Render scale now goes up to 200%** (Options > Graphics). 300% and 400% asked far more of your
+  graphics card for very little difference on screen. If you had chosen one of them, the game now
+  uses 200%.
+- The README now says which files of the download you need: only `MageBrosNative.exe`.
+
 ## [0.4.37] - 2026-11-10
 
 - **SoundFonts in their own folder**: MIDI SoundFonts (`.sf2`) can now also go in a `soundfonts`

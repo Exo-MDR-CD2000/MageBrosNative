@@ -161,7 +161,8 @@ private:
     GLuint sceneFbo_ = 0, sceneColorRb_ = 0, sceneDepthRb_ = 0;
     GLuint resolveFbo_ = 0, resolveTex_ = 0;
     // Render scale above 2x: the scene is shrunk to the window through mipmaps (made each frame),
-    // so every rendered pixel counts; plain bilinear skips most of them past 2x
+    // so every rendered pixel counts; plain bilinear skips most of them past 2x. (Not reached
+    // since 0.4.38, which caps the render scale at 2x; kept for if the cap is ever lifted.)
     bool resolveMips_ = false;
     int samples_ = 0;
     bool inScene_ = false;

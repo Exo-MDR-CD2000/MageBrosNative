@@ -45,6 +45,13 @@ It then:
 
 The game itself is also at `build\Release\MageBrosNative.exe`, the same program as in the zip.
 
+**What the zip holds** (the `install(...)` lines in `CMakeLists.txt` decide it): the game,
+`MageBrosNative.exe`; the asset tool `MageBrosAssets.exe`; the tests `mbn_tests.exe` and
+`mbn_collision_tests.exe`; `README.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`; the `licenses`
+folder (ColDet's LGPL text must travel with the program); and the `docs` folder. Players only
+need the game; the README's "Getting started" says so in a table. If what's packaged changes,
+change that table too.
+
 **If something fails**, the script prints `Release failed.` and puts a raised version back, so
 `CMakeLists.txt` is as it was. Scroll up to see the build error or the failed test.
 
