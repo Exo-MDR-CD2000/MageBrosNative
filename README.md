@@ -6,7 +6,7 @@ An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2
 modern Windows. It plays exactly like the original, with optional extras: widescreen, any
 resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-**Version 0.4.35.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+**Version 0.4.36.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -34,6 +34,8 @@ Around it, Native adds:
   game's version at the top right.
 - **Statistics Overlay** (F9): a see-through panel with the frame rate, the game's timing (with
   graphs), the display settings in effect and your graphics card. Off, Compact or Full; stays as you left it.
+- **Menu font:** the Classic pixel font, or a font of your own, sharp at any resolution
+  ([how](#your-own-menu-font)).
 - **Full controls:** rebind every key for both players, and use modern gamepads.
 - **Replacement music:** play MP3 or FLAC versions of the six tracks instead of MIDI.
 - **Cheats:** twelve of them, from Unlock all levels to Moon jump, all off by default.
@@ -98,7 +100,23 @@ Texture filtering, both on by default; turn them off for the original's exact pi
   soft shadows and brightness.
 - **Audio:** volume levels. To replace the MIDI music, put `Music01.mp3` (or `.flac`) to
   `Music06` in a `music` folder next to `MageBros.exe`.
+- **Menu font** (on the Video page): the font of the menus and the Statistics Overlay. See below.
 - **Controls:** rebind both players' keys and the gamepad buttons.
+
+### Your own menu font
+
+The menus, the Statistics Overlay and the CHEATS mark use the game's Classic pixel font. You can
+use any font you like instead; it is drawn sharp at your screen's resolution.
+
+1. Make a folder called `fonts` next to `MageBros.exe`.
+2. Put one or more font files in it (`.ttf` or `.otf`).
+3. In the game, open Options (F10) > Video > **Menu font** and press Left or Right to go through
+   your fonts. The change shows at once and is remembered.
+
+To go back, choose **Classic**. Fixed-width (monospace) fonts look best, since every letter sits
+in the same space; with other fonts, narrow letters like "i" stand a little apart. If a font
+shows "(not found)", its file was moved or can't be read, and Classic is used meanwhile. No fonts
+come with the game, so check that you're allowed to use the ones you add.
 
 ### Cheats
 

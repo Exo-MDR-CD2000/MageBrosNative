@@ -22,8 +22,12 @@ public:
     bool HasMips() const { return mips_; }
     // A mod image with its own transparency (originals only have colour-key cut-outs).
     bool SoftAlpha() const { return softAlpha_; }
+    // Overlay UI text drawn from a font at the screen's size: sampled smoothly, not as pixels
+    void SetUILinear(bool on) { uiLinear_ = on; }
+    bool UILinear() const { return uiLinear_; }
 
 private:
+    bool uiLinear_ = false;
     int width_ = 0, height_ = 0;
     GLuint id_ = 0;
     bool mips_ = false;

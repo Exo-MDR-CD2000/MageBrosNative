@@ -9,6 +9,14 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.36] - 2026-11-10
+
+- **Your own menu font** (Options > Video > Menu font): the options menu, the Statistics Overlay
+  and the CHEATS mark use the Classic 8x8 pixel font, as always, or a font of your own. Put
+  `.ttf` or `.otf` font files in a `fonts` folder next to `MageBros.exe`, then pick one in the
+  menu: it is drawn sharp at your screen's resolution. Fixed-width (monospace) fonts fit best;
+  everything stays in the same place with any font. No fonts are added to the game itself.
+
 ## [0.4.35] - 2026-11-10
 
 - **The Statistics Overlay has graphs**: the time between pictures (an even line is smooth, a red

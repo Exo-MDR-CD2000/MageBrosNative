@@ -38,6 +38,7 @@ struct Config {
     float fovScale = 1.0f;         // multiplies the original vertical FOV (widescreen keeps vertical FOV)
     bool showFps = false;
     int statsOverlay = 0;          // the Statistics Overlay (F9): 0 off, 1 compact, 2 full
+    std::string uiFont;            // the menu's, overlay's and CHEATS mark's font: a file in a "fonts" folder; empty = Classic (8x8)
     int hudLayout = 0;             // widescreen only: 0 = original centred 4:3 HUD (default), 1 = HUD at screen edges
     float hudMaxAspect = 2.4f;     // edges layout spreads at most this wide (0 = no limit)
     float hudScale = 1.0f;         // in-game HUD size (0.5..2.0); each part grows from its screen corner

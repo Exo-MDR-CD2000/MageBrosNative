@@ -104,7 +104,7 @@ docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status)
                RELEASING.md (building and publishing a release, for the owner),
                banner.png and branding/ (the README banner and the icon: SVG sources)
 res            version.h.in, magebros_native.rc (the exe's icon and version info), .ico
-third_party    ColDet 1.2, TinySoundFont, dr_libs, stb, cgltf, font8x8
+third_party    ColDet 1.2, TinySoundFont, dr_libs, stb (stb_truetype too), cgltf, font8x8
 ```
 
 `src/game` is collected by `file(GLOB_RECURSE ... CONFIGURE_DEPENDS)`, so new files only need
@@ -351,7 +351,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-10, version 0.4.35 on `main`)
+## Where we are (last updated: 2026-11-10, version 0.4.36 on `main`)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -452,7 +452,7 @@ smoothness is open, and the owner may have another model review it.
     percent. One-hit kills reads `GetConfig().oneHitKills` in `XEnemyBase::Damage` (health to 1
     first) and `XBossBase::Damage` (main and sub health to 1 first); turtles and ghosts override
     `Damage` without losing health, as the original, so they stay unkillable by shots.
-  - **The CHEATS mark**: `main.cpp` draws "CHEATS" (the menu's 8x8 font, `UIDraw`) at the
+  - **The CHEATS mark**: `main.cpp` draws "CHEATS" (the menu's font, `UIDraw`) at the
     bottom-left on level select and in levels while `AnyCheat()`; the FPS counter has the
     bottom-right.
   - **Testing**: with every cheat off, level select and 1-1 screenshots must stay byte for byte
@@ -520,7 +520,15 @@ screen's edges move (see the visibility convention above and the ROADMAP's "Wake
 checked here by screenshots, not yet by the owner at 32:9; and the options menu shows the
 build's version at the right of its title row. Then (0.4.34) the Statistics Overlay's O1, the
 panel (F9; `docs/STATS_OVERLAY.md`, "O1 as built"), and (0.4.35) O2, its graphs ("O2 as built":
-no extra F9 state was needed). O3, recording to a file, is optional, for the owner to decide
+no extra F9 state was needed), and (0.4.36) a Menu font choice: Classic (the 8x8, the
+only font in the game) or a player's own `.ttf` / `.otf` from a `fonts` folder next to MageBros.exe
+or the program (`[video] ui_font` = its file name; `UIDraw::AvailableFonts`, `FontInfo`), drawn by
+`UIDraw` with stb_truetype from its outlines at the screen's size (an atlas per text scale, made
+again when the render target's height or the font changes), each letter centred in the same 8 x 8
+cell so no layout moves. The owner's decision (2026-11-10), after trying twelve built-in fonts:
+no fonts ship with the game, so the exe stays small and no font licences travel with it; players
+bring their own. A missing or unreadable font falls back to Classic (logged; the menu shows "(not
+found)"). O3, recording to a file, is optional, for the owner to decide
 after trying them. Still to
 be planned with the owner: mods, the config tooling (`--set`, `CONFIG.md`), and what is left of
 the window / borderless smoothness (above; the part-of-refresh frame limits answer the
@@ -570,6 +578,19 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   version reaches all three): the window's title bar (`main.cpp`), the exe's Properties > Details
   (`res/magebros_native.rc`) and, from 0.4.33, the options menu's title row ("v0.4.33", grey, at
   the right of every page: `OptionsMenu::Render`).
+- **Text and the menu font** (0.4.36): all overlay text (the options menu, the Statistics Overlay,
+  the CHEATS mark) goes through `UIDraw` (`src/ui/ui_draw.*`), which draws the Classic 8x8 font
+  (`third_party/font8x8_basic.h`), or, when `[video] ui_font` names a file, the player's own font:
+  `.ttf` / `.otf` files in a `fonts` folder next to MageBros.exe or the program (found as the
+  music folder is, any capitalisation), read with stb_truetype and rasterized at the screen's
+  size (`FontAtlas`: one atlas per text scale, remade when the render target's height or the font
+  changes), each letter centred in the same 8 x 8 cell, so `TextWidth` and every layout stay as
+  they are. The Menu font row (Options > Video) steps Classic and `UIDraw::AvailableFonts()`. No
+  fonts ship with the game (the owner, 2026-11-10: keep the exe small, no font licences to
+  carry): never add one to the repository. A missing or unreadable font falls back to Classic.
+  Testing one: put a font in a `fonts` folder beside the test copy's exe and set `ui_font` (or
+  step to it with `sdlkey=Up` / `Right` on the Video page); the log says "Menu font: ... loaded".
+  With `ui_font` empty, screenshots must stay byte for byte as before.
 - The ini's `game_version` (under `config_version`) is `MBN_VERSION_STRING`, written by every
   `Config::Save` and only read for show (`Config::gameVersion`); `main.cpp` rewrites the file at
   start when it is missing or names another build (as it does for an older `config_version`), so

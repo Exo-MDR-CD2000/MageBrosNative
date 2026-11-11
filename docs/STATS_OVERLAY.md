@@ -20,7 +20,7 @@ smoothness").
 - **Off, nothing changes**: screenshots byte for byte as the build before it, on the logo, the
   title, a level and the ending.
 - **On, the cost is small**: a few clock reads a frame, and one small panel drawn in the menu's
-  8x8 font (`UIDraw`) and plain rectangles. Measured with it on and off; reported in each chunk.
+  font (`UIDraw`: Classic 8x8, or from 0.4.36 the player's own) and plain rectangles. Measured with it on and off; reported in each chunk.
 - Drawn after the game's picture and before the options menu (the menu covers it), on every
   screen, so it shows in F12 screenshots.
 

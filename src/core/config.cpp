@@ -87,6 +87,7 @@ bool Config::Load(const std::string& file) {
             else if (k == "fov_scale") fovScale = std::clamp((float)atof(v.c_str()), 0.5f, 2.0f);
             else if (k == "show_fps") showFps = toBool(v);
             else if (k == "stats_overlay") statsOverlay = std::clamp(iv, 0, 2);
+            else if (k == "ui_font") uiFont = v;
             else if (k == "hud_layout") hudLayout = std::clamp(iv, 0, 1);
             else if (k == "hud_scale") hudScale = std::clamp((float)atof(v.c_str()), 0.5f, 2.0f);
             else if (k == "hud_max_aspect") {
@@ -348,6 +349,12 @@ bool Config::Save() const {
       ";   2 = full (also the display settings in effect and the graphics card).\n"
       ";   It only shows figures: the game plays the same with it on.\n");
     fprintf(f, "stats_overlay = %d\n\n", statsOverlay);
+    P("; ui_font: the font of the options menu, the Statistics Overlay and the\n"
+      ";   CHEATS mark. Empty = Classic, the game's 8x8 pixel font (default). Or the\n"
+      ";   file name of a font of your own (.ttf or .otf) in a \"fonts\" folder next to\n"
+      ";   MageBros.exe (or next to this program), drawn sharp at your screen's\n"
+      ";   resolution. Fixed-width fonts fit best; the layout is the same with any.\n");
+    fprintf(f, "ui_font = %s\n\n", uiFont.c_str());
     P("; hud_layout: where the in-game HUD (status display, FPS counter) goes\n"
       ";   when aspect = 2. 0 = the original's place inside the centred 4:3 area\n"
       ";   (default). 1 = at the screen edges. No effect with aspect 0 or 1.\n");

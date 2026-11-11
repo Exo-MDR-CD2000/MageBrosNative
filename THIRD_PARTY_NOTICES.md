@@ -6,6 +6,7 @@
 | [TinySoundFont](https://github.com/schellingb/TinySoundFont) (tsf, tml) by Bernhard Schelling | `third_party/tsf.h`, `third_party/tml.h` | MIT. See `third_party/TinySoundFont-LICENSE` |
 | [dr_mp3, dr_flac](https://github.com/mackron/dr_libs) by David Reid | `third_party/dr_mp3.h`, `third_party/dr_flac.h` | Public domain (Unlicense) or MIT No Attribution, your choice. See `third_party/dr_libs-LICENSE` |
 | [stb_image, stb_vorbis](https://github.com/nothings/stb) by Sean Barrett | `third_party/stb_image.h`, `third_party/stb_vorbis.c` | Public domain (Unlicense) or MIT, your choice. See `third_party/stb-LICENSE` |
+| [stb_truetype](https://github.com/nothings/stb) by Sean Barrett (v1.26) | `third_party/stb_truetype.h` | Public domain (Unlicense) or MIT, your choice. See `third_party/stb-LICENSE` |
 | [cgltf](https://github.com/jkuhlmann/cgltf) by Johannes Kuhlmann | `third_party/cgltf.h` | MIT. See `third_party/cgltf-LICENSE` |
 | [font8x8](https://github.com/dhepper/font8x8) by Daniel Hepper, based on Marcel Sondaar's public-domain font | `third_party/font8x8_basic.h` | Public domain |
 | [SDL3](https://libsdl.org) | Not included; CMake downloads it at build time | zlib license |

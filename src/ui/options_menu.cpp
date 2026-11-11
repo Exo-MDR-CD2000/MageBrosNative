@@ -12,6 +12,7 @@
 #include "../input/input.h"
 #include <SDL3/SDL.h>
 #include <algorithm>
+#include <cstring>
 #include <cmath>
 
 namespace {
@@ -794,6 +795,29 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                  [this](int d) {
                      Config& c = GetConfig();
                      c.statsOverlay = ((c.statsOverlay + d) % 3 + 3) % 3;
+                     Save();
+                 },
+                 nullptr, nullptr});
+    // Classic, then the player's own fonts (.ttf / .otf files in a "fonts" folder), by file name
+    v.push_back({"Menu font",
+                 "Classic, or a font of your own: put .ttf or .otf files in a \"fonts\" folder next to MageBros.exe.",
+                 [] {
+                     const std::string& f = GetConfig().uiFont;
+                     if (f.empty()) return std::string("Classic");
+                     std::string name = f.substr(0, f.find_last_of('.'));
+                     // (shown without a "-Regular" ending, to leave the row room)
+                     for (const char* tail : {"-Regular", "_Regular", " Regular"})
+                         if (name.size() > strlen(tail) && name.compare(name.size() - strlen(tail), std::string::npos, tail) == 0)
+                             name.erase(name.size() - strlen(tail));
+                     return UIDraw::FontUsable(f) ? name : name + " (not found)";
+                 },
+                 [this](int d) {
+                     std::vector<std::string> fonts = UIDraw::AvailableFonts();
+                     fonts.insert(fonts.begin(), std::string());  // Classic first
+                     int n = (int)fonts.size();
+                     int i = (int)(std::find(fonts.begin(), fonts.end(), GetConfig().uiFont) - fonts.begin());
+                     if (i >= n) i = 0;  // (a font no longer in the folder: start again from Classic)
+                     GetConfig().uiFont = fonts[(size_t)(((i + d) % n + n) % n)];
                      Save();
                  },
                  nullptr, nullptr});
