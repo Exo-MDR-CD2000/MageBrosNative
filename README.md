@@ -6,7 +6,7 @@ An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2
 modern Windows. It plays exactly like the original, with optional extras: widescreen, any
 resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-**Version 0.4.36.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+**Version 0.4.37.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -127,10 +127,16 @@ track loop seamlessly from a point other than its start, give the file `LOOPSTAR
 it loops from the end back to the start. To use other file names, set `music_1` to `music_6` in
 the settings file. To hear the original music again, set Music source to **MIDI only**.
 
-**Better-sounding MIDI instead:** put a General MIDI SoundFont (`.sf2`) next to
-`MageBrosNative.exe` or `MageBros.exe` and choose it in Options > Audio > **Music synth**. A file
-called `soundfont.sf2` or `magebros.sf2` is used automatically; without one, the game uses the
-Windows MIDI synth, as the original did.
+**Better-sounding MIDI instead:** a General MIDI SoundFont (`.sf2`) changes the instruments the
+MIDI music is played with.
+
+1. Put the `.sf2` file next to `MageBros.exe`, or keep them tidy in a folder called `soundfonts`
+   next to it.
+2. In the game, open Options (F10) > Audio > **Music synth** and press Left or Right to choose it.
+   The music switches at once and the choice is remembered.
+
+A file called `soundfont.sf2` or `magebros.sf2` in either place is used automatically. **Windows synth** plays the music as the original did, and **Automatic** goes back to the
+default.
 
 ### Your own menu font
 

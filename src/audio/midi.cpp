@@ -284,6 +284,34 @@ void SystemThread() {
 
 namespace Midi {
 
+std::vector<SoundFontDir> SoundFontDirs() {
+    std::vector<SoundFontDir> out;
+    std::string base = SDL_GetBasePath() ? SDL_GetBasePath() : "";
+    std::string game = Assets::GameDir();
+    auto add = [&](const std::string& dir, const std::string& name) {
+        if (dir.empty()) return;
+        for (const SoundFontDir& d : out)
+            if (d.dir == dir) return;
+        out.push_back({dir, name});
+    };
+    add(base, "");
+    add(game, game);
+    // then a "soundfonts" folder in each, matched case-insensitively (as the music folder)
+    for (const std::string& parent : {base, game}) {
+        if (parent.empty()) continue;
+        int n = 0;
+        char** names = SDL_GlobDirectory(parent.c_str(), "soundfonts", SDL_GLOB_CASEINSENSITIVE, &n);
+        for (int i = 0; i < n; i++) {
+            std::string d = parent + names[i];
+            SDL_PathInfo info;
+            if (SDL_GetPathInfo(d.c_str(), &info) && info.type == SDL_PATHTYPE_DIRECTORY)
+                add(d + "/", parent == base ? std::string(names[i]) + "/" : d + "/");
+        }
+        SDL_free(names);
+    }
+    return out;
+}
+
 bool Init(const std::string& soundFontPath) {
     std::string sf = soundFontPath;
     if (sf == "system") {
@@ -293,13 +321,16 @@ bool Init(const std::string& soundFontPath) {
         bool absolute = sf[0] == '/' || sf[0] == '\\' || (sf.size() > 1 && sf[1] == ':');
         if (!absolute) sf = std::string(SDL_GetBasePath() ? SDL_GetBasePath() : "") + sf;
     } else {
+        // automatic: soundfont.sf2, then magebros.sf2, each looked for next to the program, next
+        // to MageBros.exe, then in their "soundfonts" folders
+        std::vector<SoundFontDir> dirs = SoundFontDirs();
         for (const char* cand : {"soundfont.sf2", "magebros.sf2"}) {
-            std::string p1 = std::string(SDL_GetBasePath() ? SDL_GetBasePath() : "") + cand;
-            FILE* f = OpenFileUtf8(p1.c_str(), "rb");
-            if (f) { fclose(f); sf = p1; break; }
-            std::string p2 = Assets::ResolveGameFile(cand);
-            f = OpenFileUtf8(p2.c_str(), "rb");
-            if (f) { fclose(f); sf = p2; break; }
+            for (const SoundFontDir& d : dirs) {
+                std::string p = d.dir + cand;
+                FILE* f = OpenFileUtf8(p.c_str(), "rb");
+                if (f) { fclose(f); sf = p; break; }
+            }
+            if (!sf.empty()) break;
         }
     }
     if (!sf.empty()) {

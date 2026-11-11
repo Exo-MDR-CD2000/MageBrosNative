@@ -375,10 +375,12 @@ bool Config::Save() const {
     fprintf(f, "master_volume = %d\nsfx_volume = %d\nmusic_volume = %d\n\n", masterVolume, sfxVolume, musicVolume);
     P("; soundfont: a General MIDI SoundFont (.sf2) to play the music with. Leave\n"
       ";   empty to use soundfont.sf2 or magebros.sf2 if one is in the program or game\n"
-      ";   folder, otherwise the Windows built-in MIDI synth (like the original).\n"
+      ";   folder, or in a \"soundfonts\" folder in either, otherwise the Windows\n"
+      ";   built-in MIDI synth (like the original).\n"
       ";   system = always use the Windows MIDI synth.\n"
       ";   A relative path is relative to this program's folder.\n"
-      ";   Example: soundfont = C:\\SoundFonts\\GeneralUser GS.sf2\n");
+      ";   Examples: soundfont = soundfonts\\GeneralUser GS.sf2\n"
+      ";             soundfont = C:\\SoundFonts\\GeneralUser GS.sf2\n");
     fprintf(f, "soundfont = %s\n\n", soundFont.c_str());
     P("; music_source: where the music comes from.\n"
       ";   auto = MP3 or FLAC files from a folder named \"music\" next to MageBros.exe\n"

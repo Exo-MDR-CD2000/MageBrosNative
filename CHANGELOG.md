@@ -9,6 +9,12 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.37] - 2026-11-10
+
+- **SoundFonts in their own folder**: MIDI SoundFonts (`.sf2`) can now also go in a `soundfonts`
+  folder next to `MageBros.exe`, as well as next to it. Options > Audio > Music synth lists them
+  all, and `soundfont.sf2` or `magebros.sf2` is still picked up automatically from either place.
+
 ## [0.4.36] - 2026-11-10
 
 - **Your own menu font** (Options > Video > Menu font): the options menu, the Statistics Overlay

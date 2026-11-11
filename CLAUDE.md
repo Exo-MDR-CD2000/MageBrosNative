@@ -352,7 +352,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-10, version 0.4.36 on `main`)
+## Where we are (last updated: 2026-11-10, version 0.4.37 on `main`)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -529,7 +529,8 @@ again when the render target's height or the font changes), each letter centred 
 cell so no layout moves. The owner's decision (2026-11-10), after trying twelve built-in fonts:
 no fonts ship with the game, so the exe stays small and no font licences travel with it; players
 bring their own. A missing or unreadable font falls back to Classic (logged; the menu shows "(not
-found)"). Planned for later, on the owner's word: O3, a **debug report** players can send
+found)"). Then (0.4.37) SoundFonts can also sit in a `soundfonts` folder (the SoundFonts note
+under the options menu below). Planned for later, on the owner's word: O3, a **debug report** players can send
 in (Shift+F9 records 30 seconds of frames, with the settings, system and the end of the log, to a
 text file in a `reports` folder, user name hidden from paths): `docs/STATS_OVERLAY.md`, "O3, the
 debug report". Still to
@@ -566,6 +567,13 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   - `OnKeyDown(DIK_P)`: the original's pause, toggling `m_bFrameMoving`.
 - `PlayMusic` in `main.cpp` is `JMidiList::Play` with Hopmon Native's MP3/FLAC replacement
   (`MusicStream::FindReplacement`); `XApplication::StopMusic` closes both players.
+- SoundFonts (`[audio] soundfont`, Options > Audio > Music synth): `Midi::SoundFontDirs()` is the one
+  list of places for both the automatic pick (`soundfont.sf2`, then `magebros.sf2`) and the menu's
+  list (`OptionsMenu::SynthList`): next to the program, next to MageBros.exe, then a `soundfonts`
+  folder (any capitalisation) in each (since 0.4.37). Files in the program's own folders are
+  stored relative to it (`soundfonts/x.sf2`), others with the full path. Player-facing steps:
+  the README's "Your own music". Testing: the owner has SoundFonts in Downloads and on the
+  Desktop (`Hopmon Native Extras`, one of 4 GB); copy them into a test copy, never move them.
 - `XFPSDisplay` (`src/game`) is the original's counter, drawn by `XApplication::Render(d, bb,
   showFps, fps)`.
 - The key pages are built from `kKeyActions` in `options_menu.cpp` (group, label, DIK):
@@ -767,7 +775,11 @@ the owner liked the part-of-refresh frame limits (0.4.28), noticed little from L
 0.4.31 and 0.4.32 both working fine after comparing them (the even frame limiter). Not tried by
 anyone: these on AMD or Intel graphics, in exclusive fullscreen, on the 60 Hz monitor, and with a
 real driver frame cap (0.4.30). The wake range of 0.4.33 was checked here at 32:9 by screenshots; the owner has no
-32:9 screen, so it waits for players with one.
+32:9 screen, so it waits for players with one. Checked here only, by screenshots and logs in a
+test copy, with no result of the owner's own play reported yet: a player's menu font from a
+`fonts` folder (0.4.36; the owner compared the twelve built-in fonts in play before choosing to
+ship none) and SoundFonts from a `soundfonts` folder (0.4.37, with copies of the owner's own
+SoundFonts).
 
 ### Notes from earlier stages
 

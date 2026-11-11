@@ -376,16 +376,13 @@ std::vector<std::string> OptionsMenu::SynthList() const {
 #if defined(_WIN32)
     out.push_back("system");
 #endif
-    std::vector<std::string> dirs;
-    if (const char* b = SDL_GetBasePath()) dirs.push_back(b);
-    std::string gameDir = Assets::GameDir();
-    if (!gameDir.empty() && std::find(dirs.begin(), dirs.end(), gameDir) == dirs.end()) dirs.push_back(gameDir);
-    for (size_t d = 0; d < dirs.size(); d++) {
+    // next to the program, next to MageBros.exe, then their "soundfonts" folders (Midi::SoundFontDirs);
+    // files in the program's own folders are stored relative to it (portable), others in full
+    for (const Midi::SoundFontDir& d : Midi::SoundFontDirs()) {
         int n = 0;
-        char** files = SDL_GlobDirectory(dirs[d].c_str(), "*.sf2", SDL_GLOB_CASEINSENSITIVE, &n);
+        char** files = SDL_GlobDirectory(d.dir.c_str(), "*.sf2", SDL_GLOB_CASEINSENSITIVE, &n);
         for (int i = 0; i < n; i++) {
-            // files next to the program are stored by name (portable); others with their full path
-            std::string v = d == 0 ? std::string(files[i]) : dirs[d] + files[i];
+            std::string v = d.name + files[i];
             if (std::find(out.begin(), out.end(), v) == out.end()) out.push_back(v);
         }
         SDL_free(files);
