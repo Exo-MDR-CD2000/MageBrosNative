@@ -1,4 +1,4 @@
-# The Statistics Overlay (O1 built as 0.4.34, O2 as 0.4.35; O3 optional)
+# The Statistics Overlay (O1 built as 0.4.34, O2 as 0.4.35; O3, the debug report, planned)
 
 A panel of statistics and information drawn over the game, turned on and off by the player: how
 the game is running (frame rate, frame times, the game's ticks, smooth motion's blend) and on what
@@ -150,11 +150,72 @@ Below the text, three strips of the last 2 to 3 seconds, one column a frame:
   144 Hz with VSync, 6.95 ms and ticks 0 and 1 in turn; a limit of 60, 16.66 to 16.68 ms and 1 or
   2 ticks a frame; the limit of 72 paced by the driver at 13.90 ms (two refreshes).
 
-### O3, recording (optional, the owner to decide)
+### O3, the debug report (planned, not built; for later, on the owner's word)
 
-A Record row (and perhaps Shift+F9) writes the same figures for each frame, for 30 seconds, to a
-CSV file beside the game, headed by the System and Display lines: a file a player can send in
-with a report. Only if the owner wants it once O1 and O2 have been tried.
+The purpose (the owner, 2026-11-10): **players submit a report file for debugging**, so that a
+problem on hardware the owner doesn't have (AMD or Intel graphics, a 60 Hz or 32:9 screen, a
+weak computer) can be read exactly instead of described. A screenshot of the overlay shows one
+moment and its graphs the last few seconds; the report covers a stretch of play, with everything
+needed to read it in one file. One chunk, a version of its own.
+
+**What the player does.** Press **Shift+F9** (or Options > Video > **Record debug report**) right
+after a stutter or slowdown, and keep playing. For 30 seconds a small "RECORDING 23s" shows in a
+corner (drawn like the CHEATS mark, whether the overlay is on or not); then "Report saved:
+reports\MageBrosNative-report-<date>-<time>.txt" for a few seconds. Pressing again while it
+records stops it early and saves what it has.
+
+**What the file holds** (one plain text file, readable by anyone, that can be attached to a
+GitHub issue):
+
+1. **Header**: the game's version and the date; Windows' version (`SDL_GetPlatform`, and the build
+   number), the processor's core count and the memory (`SDL_GetNumLogicalCPUCores`,
+   `SDL_GetSystemRAM`); the graphics card, vendor and OpenGL version; every monitor (name,
+   resolution, refresh rate, scale) and which one the game is on.
+2. **The settings in effect**: the overlay's Full Display and System groups (display mode, window
+   and picture sizes, render scale, VSync chosen and in use and the driver verdict, the swap
+   interval, the frame limit and who paces it, Low latency, Smooth motion, antialiasing, texture
+   filtering), the menu font (Classic or a player's), and the ini's video and graphics values as
+   written.
+3. **A summary of the recording**: frames a second; frame time average, shortest, longest and the
+   99th and 99.9th percentiles ("1% and 0.1% lows"); how many frames were stutters (half again as
+   long as expected, as the overlay's red bars); ticks a second (100 is right); tick lateness with
+   Smooth motion off; the screen it was recorded on (a level, the title, ...).
+4. **Every frame**, as a CSV block a spreadsheet opens: time since the recording began, frame time,
+   processor time, the swap's wait, the card's wait (Low latency), ticks run, the blend, tick
+   lateness. It starts with the frames **before** the key was pressed (the 512 frames the overlay
+   already keeps, so the stutter just seen is in the file), then the 30 seconds after.
+5. **The end of the log** (`magebros_native.log`, its last 100 lines or so: the monitors, VSync,
+   the menu font, warnings).
+
+**Privacy.** Nothing in the report may identify the player. Folder paths in the log can contain
+the Windows user name (`C:\Users\<name>\...`, for the save folder): every path is written with the
+user folder replaced by `%USERPROFILE%` (and the game's folder by `<game>`), and the report's
+header says the file holds no personal data. No network: the game never sends anything; the
+player chooses to attach the file.
+
+**Where it goes in the code.** `src/framework/d3dapp.*`: while recording, `StatsFrameStart` and
+`SwapFrame` also append each frame's record to a buffer (about 40 bytes a frame: 30 seconds at
+2,000 frames a second is 2.4 MB, kept in memory); at the end the file is written in one go
+(`SDL_IOFromFile`), off the frame loop if it takes noticeable time (a few milliseconds at most).
+The key beside F9 in `Run`; the menu row in `options_menu.cpp`; the corner message drawn beside
+`DrawStatsOverlay`. The `reports` folder is next to the program (beside the ini and the log),
+made on first use.
+
+**Rules, as the overlay's**: recording only reads the frame loop; it never changes the game, the
+ticks or when a frame starts. Not recording, screenshots stay byte for byte as before.
+
+**Checks when built**: the figures in a report against the overlay's at the same moment; a
+recording at 100, 144 and an unlimited frame rate (the file's size, and no hitch in play when it
+is written); the report opened in a spreadsheet; a search of the file for the user name (none);
+not recording, screenshots as the build before.
+
+**For the README when built** (a short player section): "If the game stutters or runs slowly,
+press Shift+F9 right after it happens and keep playing for 30 seconds. The report is saved in
+the `reports` folder next to the game; attach it to your report on GitHub Issues." The owner may
+want a GitHub issue template that asks for it.
+
+**To decide when building**: the length (30 seconds proposed); Shift+F9 or another key; whether to
+add a GitHub issue template.
 
 ## Decided with the owner (2026-11-10)
 

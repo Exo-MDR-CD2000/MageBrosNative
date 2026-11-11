@@ -98,7 +98,8 @@ tools          MageBrosAssets (inventory / selftest / export); render_branding.p
 tests          format tests (no game needed); map, hero and collision tests
 docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status),
                SMOOTH_MOTION.md (how smooth motion works, and how it was built),
-               STATS_OVERLAY.md (a plan, not built: the statistics overlay, chunks O1 to O3),
+               STATS_OVERLAY.md (the Statistics Overlay: O1 and O2 as built, O3, the
+               players' debug report, planned),
                RENDERER_OPTIMIZATION.md (a plan, not built: the renderer's work per draw, for
                weak graphics hardware; only if the owner asks),
                RELEASING.md (building and publishing a release, for the owner),
@@ -528,8 +529,10 @@ again when the render target's height or the font changes), each letter centred 
 cell so no layout moves. The owner's decision (2026-11-10), after trying twelve built-in fonts:
 no fonts ship with the game, so the exe stays small and no font licences travel with it; players
 bring their own. A missing or unreadable font falls back to Classic (logged; the menu shows "(not
-found)"). O3, recording to a file, is optional, for the owner to decide
-after trying them. Still to
+found)"). Planned for later, on the owner's word: O3, a **debug report** players can send
+in (Shift+F9 records 30 seconds of frames, with the settings, system and the end of the log, to a
+text file in a `reports` folder, user name hidden from paths): `docs/STATS_OVERLAY.md`, "O3, the
+debug report". Still to
 be planned with the owner: mods, the config tooling (`--set`, `CONFIG.md`), and what is left of
 the window / borderless smoothness (above; the part-of-refresh frame limits answer the
 choppiness at a limit below the refresh rate, which the owner liked; whether G-Sync follows a

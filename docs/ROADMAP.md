@@ -172,10 +172,11 @@ ticks a second and every picture is drawn where it should be, to within 0.035 ms
 The renderer's work per draw (6) is not planned (written up for later in
 [RENDERER_OPTIMIZATION.md](RENDERER_OPTIMIZATION.md)). The list is closed; the branch was merged into `main` on 2026-11-10 (pull request #3) and released as v0.4.32.
 
-**The Statistics Overlay** (planned 2026-11-10; O1 built as 0.4.34, O2 (the graphs) as 0.4.35, O3 optional): F9, off by default, reading values
+**The Statistics Overlay** (planned 2026-11-10; O1 built as 0.4.34, O2 (the graphs) as 0.4.35, O3 planned): F9, off by default, reading values
 only: frame rate and frame times, the game's ticks, smooth motion's blend, the display settings
-in effect, the graphics card and driver; chunks O1 (the panel), O2 (the graphs) and O3 (recording
-to a file, optional), in [STATS_OVERLAY.md](STATS_OVERLAY.md). It was set aside as a debug overlay
+in effect, the graphics card and driver; chunks O1 (the panel), O2 (the graphs) and O3 (a debug
+report players can send in: 30 seconds of frames with the settings, system and log, in a text
+file, the user name hidden; for later, on the owner's word), in [STATS_OVERLAY.md](STATS_OVERLAY.md). It was set aside as a debug overlay
 on 2026-10-27.
 
 **Still open, to be planned with the owner**: mods (add-ons and level packs, with `MODDING.md`; the Mods pages are greyed out and

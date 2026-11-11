@@ -37,7 +37,8 @@ Around it, Native adds:
 - **Menu font:** the Classic pixel font, or a font of your own, sharp at any resolution
   ([how](#your-own-menu-font)).
 - **Full controls:** rebind every key for both players, and use modern gamepads.
-- **Replacement music:** play MP3 or FLAC versions of the six tracks instead of MIDI.
+- **Replacement music:** play MP3 or FLAC versions of the six tracks instead of MIDI, or the MIDI
+  through a SoundFont of your choice ([how](#your-own-music)).
 - **Cheats:** twelve of them, from Unlock all levels to Moon jump, all off by default.
 - **Saves you can back up:** your progress is kept in a plain file under `%APPDATA%`.
 - **A few fixes:** small slips of the original, such as overlapping messages in two-player games,
@@ -98,10 +99,38 @@ Texture filtering, both on by default; turn them off for the original's exact pi
   100%**, the view the original's levels were made for.
 - **Graphics:** antialiasing, texture filtering, render scale, smoother textures and lighting,
   soft shadows and brightness.
-- **Audio:** volume levels. To replace the MIDI music, put `Music01.mp3` (or `.flac`) to
-  `Music06` in a `music` folder next to `MageBros.exe`.
+- **Audio:** volume levels, where the music comes from, and the MIDI synth. See
+  [Your own music](#your-own-music).
 - **Menu font** (on the Video page): the font of the menus and the Statistics Overlay. See below.
 - **Controls:** rebind both players' keys and the gamepad buttons.
+
+### Your own music
+
+The game plays its six original MIDI tracks. You can replace any of them with MP3 or FLAC files of
+your own, for example a recording or a remix.
+
+1. Make a folder called `music` next to `MageBros.exe`.
+2. Put your files in it, named after the track they replace: `Music01.mp3` (or `Music01.flac`)
+   replaces `Music01.mid`, and so on up to `Music06`. You can replace one track or all six.
+3. Start the game. Options (F10) > Audio > **Music source** must be **Auto** (the default).
+
+| Track | Plays on |
+|---|---|
+| Music01 | The title, save slots, level select and the ending |
+| Music02 to Music05 | The levels of worlds 1 to 4 |
+| Music06 | Boss levels |
+
+A track without a file of its own plays its MIDI as usual. If both an MP3 and a FLAC are there,
+the FLAC is used. Your music plays, loops, stops and pauses just like the original's. To make a
+track loop seamlessly from a point other than its start, give the file `LOOPSTART` and
+`LOOPLENGTH` (or `LOOPEND`) tags, in samples, as many game-music files already have; without them
+it loops from the end back to the start. To use other file names, set `music_1` to `music_6` in
+the settings file. To hear the original music again, set Music source to **MIDI only**.
+
+**Better-sounding MIDI instead:** put a General MIDI SoundFont (`.sf2`) next to
+`MageBrosNative.exe` or `MageBros.exe` and choose it in Options > Audio > **Music synth**. A file
+called `soundfont.sf2` or `magebros.sf2` is used automatically; without one, the game uses the
+Windows MIDI synth, as the original did.
 
 ### Your own menu font
 
