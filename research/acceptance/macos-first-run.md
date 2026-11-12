@@ -98,6 +98,35 @@ The bundle and the build tree keep nothing beside the executable. On first run, 
 `save_location.txt` contains the save folder path; `saves/` is where a campaign's
 `progress.ini` is written once the game saves.
 
+## The save path, through the front end
+
+The `--auto level=` hook sets `slot_ = -1`, and `XApplication::DoSaveData` deliberately writes
+nothing then, so the save can only be checked by going through the front end. The screens are
+slow on purpose: the logo runs 950 ticks and every fade 254, so the timeline below is in
+milliseconds and waits them out. `Escape` on the level-select screen chooses "Back", and
+leaving that screen for the title is what saves.
+
+```sh
+./MageBrosNative.app/Contents/MacOS/MageBrosNative --game /path/to/MageBros.exe \
+  --auto "13000:down=Return;13100:up=Return;19500:down=Return;19600:up=Return;24500:shot=sa-1.png;26200:down=Escape;26300:up=Escape;29000:shot=sa-2.png;29800:quit"
+```
+
+- 13.0 s: `Return` on the title chooses 1 PLAYER.
+- 19.5 s: `Return` on the save-slot screen picks slot 1 (2.54 s of fade have passed).
+- 24.5 s: the level-select screen is up (screenshot `sa-1.png`).
+- 26.2 s: `Escape` chooses Back.
+- 29.0 s: the title is back (screenshot `sa-2.png`) and the save has been written.
+
+The result, on a machine where no slot had ever been used:
+
+```
+~/Library/Application Support/MageBrosNative/saves/original/progress.ini
+```
+
+with `save_version = 1`, `pack = original`, `month = 11`, `day = 12`, `world = 0`,
+`level = 0`, `a_life = 5`, `a_magic = 10` — the empty slot as the game starts it. The folder
+`save_location.txt` points at stays the same.
+
 ## The package
 
 ```sh
@@ -162,12 +191,14 @@ Every scenario in `specs/native-platforms/spec.md`, with the evidence for it.
 | A missing provoking-vertex function is not fatal | Not verified | This driver exports the function, so the branch was not exercised; the loader and `device.cpp` treat it as optional by construction |
 | Package runs on a machine without SDL3 | Partial | The bundle links only system libraries (no `/opt/homebrew`) and ran from a temporary folder; it was not tried on a second Mac |
 | Licences travel with the binary | Pass | The zip listing: `LICENSE`, `THIRD_PARTY_NOTICES.md`, `licenses/coldet-LGPL.txt` |
+| A save file is written | Pass | Slot 1 chosen on the save-slot screen, then Back from level select: `saves/original/progress.ini` with the date and the starting values (see "The save path, through the front end") |
+| A save written after real progress | Not verified | `progress.ini` needs a cleared level; the save path itself is proven above |
 
 ## Not verified
 
-- A save written after real progress: the folder and the pointer file appear, but
-  `progress.ini` is written by `XApplication::DoSaveData` when a level is completed, and no
-  session above completed one. Sound was confirmed by the owner on this machine.
+- A save written after real progress (a cleared level): `progress.ini` is written and its
+  contents are correct for an untouched slot, but no session cleared a level and returned to
+  level select.
 - Gamepad input on macOS.
 - Side-by-side comparison with the original on Windows for the same input. The automation
   command above is the material for it; the comparison is the next change's work.
