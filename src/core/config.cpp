@@ -79,9 +79,12 @@ bool Config::Load(const std::string& file) {
             else if (k == "anisotropy") anisotropy = std::clamp(iv, 1, 16);
             else if (k == "smooth_textures") smoothTextures = toBool(v);
             else if (k == "smooth_sprites") smoothSprites = toBool(v);
-            else if (k == "ambient_occlusion") ambientOcclusion = iv > 0;
+            else if (k == "ambient_occlusion") ambientOcclusion = iv > 0;  // (0.4.39 had 1 low and 2 high: both on)
             else if (k == "dynamic_shadows") dynamicShadows = std::clamp(iv, 0, 3);
-            else if (k == "shadow_strength") shadowStrength = std::clamp(iv, 50, 100);  // (0.4.39 had 1 low and 2 high: both on)
+            else if (k == "shadow_strength") shadowStrength = std::clamp(iv, 50, 100);
+            else if (k == "dynamic_lights") dynamicLights = toBool(v);
+            else if (k == "light_strength") lightStrength = std::clamp(iv, 50, 150);
+            else if (k == "lights_ambient") lightsAmbient = iv >= 93 ? 100 : (iv >= 78 ? 85 : 70);  // (the nearest of 100, 85, 70)
             else if (k == "per_pixel_lighting" || k == "enhanced_shadows") {}  // removed in 0.4.39 (Per-pixel lighting, Soft shadows)
             else if (k == "brightness") brightness = std::clamp(iv, 50, 150);
             else if (k == "render_scale") renderScale = std::clamp((float)atof(v.c_str()), 0.25f, 2.0f);  // (4.0 before 0.4.38)
@@ -342,6 +345,15 @@ bool Config::Save() const {
     fprintf(f, "dynamic_shadows = %d\n\n", dynamicShadows);
     P("; shadow_strength: how dark the dynamic shadows are, 50 to 100 (%%).\n");
     fprintf(f, "shadow_strength = %d\n\n", shadowStrength);
+    P("; dynamic_lights: 1 = lit torches and candles, the mages' shots, flames and\n"
+      ";   explosions light the floors, walls and models round them, in levels.\n"
+      ";   0 = off, the original look (default).\n");
+    fprintf(f, "dynamic_lights = %d\n\n", dynamicLights ? 1 : 0);
+    P("; light_strength: how bright the dynamic lights are, 50 to 150 (%%).\n");
+    fprintf(f, "light_strength = %d\n\n", lightStrength);
+    P("; lights_ambient: with dynamic lights on, how bright the level is round them:\n"
+      ";   100 = the original (default), 85 or 70 = dimmer, so the lights stand out.\n");
+    fprintf(f, "lights_ambient = %d\n\n", lightsAmbient);
     P("; brightness: picture brightness in percent, 50 to 150. 100 = original\n"
       ";   (default). Higher lifts dark and middle tones (whites stay white), lower\n"
       ";   darkens them.\n");

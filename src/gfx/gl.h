@@ -211,6 +211,8 @@ typedef uint64_t GLuint64;
     X(void, glUniform3f, (GLint l, GLfloat a, GLfloat b, GLfloat c))                                         \
     X(void, glUniform4f, (GLint l, GLfloat a, GLfloat b, GLfloat c, GLfloat d))                              \
     X(void, glUniform4fv, (GLint l, GLsizei n, const GLfloat* v))                                            \
+    X(void, glUniform3fv, (GLint l, GLsizei n, const GLfloat* v))                                            \
+    X(void, glUniform1fv, (GLint l, GLsizei n, const GLfloat* v))                                            \
     X(void, glUniformMatrix4fv, (GLint l, GLsizei n, GLboolean t, const GLfloat* v))                         \
     X(void, glGenFramebuffers, (GLsizei n, GLuint * f))                                                      \
     X(void, glDeleteFramebuffers, (GLsizei n, const GLuint* f))                                              \

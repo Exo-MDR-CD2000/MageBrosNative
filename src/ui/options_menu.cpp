@@ -898,6 +898,28 @@ OptionsMenu::Page OptionsMenu::GraphicsPage() {
                      Save();
                  },
                  nullptr, nullptr});
+    v.push_back({"Dynamic lights", "Lit torches, candles, shots, flames and explosions light their surroundings, in levels.",
+                 [] { return OnOff(GetConfig().dynamicLights); },
+                 [this](int) {
+                     GetConfig().dynamicLights = !GetConfig().dynamicLights;
+                     Save();
+                 },
+                 nullptr, nullptr});
+    v.push_back({"Light strength", "How bright the dynamic lights are.",
+                 [] { return Pct(GetConfig().lightStrength); },
+                 [this](int d) {
+                     GetConfig().lightStrength = std::clamp(GetConfig().lightStrength + d * 10, 50, 150);
+                     Save();
+                 },
+                 nullptr, nullptr});
+    v.push_back({"Ambient light", "With Dynamic lights on: lower dims the level so the lights stand out. 100% = original.",
+                 [] { return Pct(GetConfig().lightsAmbient); },
+                 [this](int d) {
+                     static const std::vector<int> l{70, 85, 100};
+                     GetConfig().lightsAmbient = l[(size_t)CycleIndex(l, GetConfig().lightsAmbient, d)];
+                     Save();
+                 },
+                 nullptr, nullptr});
     {
         Item it{"Brightness", "Adjusts how bright the picture looks. 100% = original.",
                 [] { return Pct(GetConfig().brightness); },

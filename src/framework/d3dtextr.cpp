@@ -38,6 +38,7 @@ static void Restore(TextureContainer& tc) {
     bool key = (tc.flags & 3) != 0;
     uint32_t keyRGB = (tc.flags & 2) ? 0x000000 : 0xFFFFFF;
     tc.tex = Texture::Create(tc.image, key, keyRGB, true);
+    tc.tex->SetResId(tc.resId);  // (the dynamic lights know the game's glowing sprites by it)
 }
 
 Texture* D3DTextr_GetSurface(WORD resId) {

@@ -97,6 +97,16 @@ uniform sampler2DShadow uShadowMap;
 uniform mat4 uLightVP;
 uniform float uShadowTexel, uShadowOffset, uShadowStrength;
 uniform vec3 uEye, uLightDir;
+// Dynamic lights (G5): how this draw takes them (0 not at all, 1 a pre-lit or unlit surface: its
+// texture lit, 2 a lit model: its material lit), and the frame's lights (position, colour with
+// brightness, reach)
+uniform int uLightKind, uLightCount;
+uniform vec3 uLightPos[16], uLightColor[16];
+uniform float uLightReach[16];
+uniform vec4 uMatDiffuse;
+// With Dynamic lights, the level dimmed so they stand out (1 = as the original; the Ambient light
+// setting). Every draw of a level's 3D but the glowing sprites and the blob shadows.
+uniform float uSceneDim;
 out vec4 fragColor;
 // How lit a point is by the game's light, 0 to 1: the map read on a grid round it (each read
 // already blended over 2 x 2 map pixels by the card), fading out near the map's edges
@@ -151,6 +161,22 @@ void main() {
     }
     result.rgb *= levelShade;
     if (uAOStrength > 0.0) result.rgb *= mix(1.0, texture(uAOTex, gl_FragCoord.xy / uFboSize).r, uAOStrength);
+    result.rgb *= uSceneDim;
+    if (uLightKind != 0) {
+        // after the shadows and the AO: a torch lights a shaded corner
+        vec3 n = uLightKind == 2 ? normalize(vNormal) : normalize(faceN);
+        if (uLightKind == 1 && dot(n, uEye - vWorldPos) < 0.0) n = -n;
+        vec3 sum = vec3(0.0);
+        for (int i = 0; i < uLightCount; i++) {
+            vec3 L = uLightPos[i] - vWorldPos;
+            float d = length(L);
+            float a = clamp(1.0 - d / uLightReach[i], 0.0, 1.0);
+            float facing = clamp((dot(n, L / max(d, 1e-3)) + 0.3) / 1.3, 0.0, 1.0);  // (a little round the side too)
+            sum += uLightColor[i] * (a * a * facing);
+        }
+        vec3 albedo = uLightKind == 2 ? uMatDiffuse.rgb : (uTexOn ? texture(uTex, vUV).rgb : vec3(1.0));
+        result.rgb = min(result.rgb + albedo * sum, vec3(1.0));
+    }
     fragColor = result * uConstColor;
 }
 )GLSL";
@@ -333,6 +359,13 @@ void Texture::Upload(const Image& img, bool colorKey, uint32_t keyRGB) {
         uint8_t r = (c >> 16) & 0xFF, g = (c >> 8) & 0xFF, b = c & 0xFF;
         px[i] = (uint32_t)r | (uint32_t)g << 8 | (uint32_t)b << 16 | a << 24;
     }
+    {  // the average colour of the visible pixels (for the dynamic lights)
+        double sr = 0, sg = 0, sb = 0;
+        size_t n = 0;
+        for (uint32_t c : px)
+            if (c >> 24) sr += c & 0xFF, sg += (c >> 8) & 0xFF, sb += (c >> 16) & 0xFF, n++;
+        if (n) avg_[0] = (float)(sr / n / 255.0), avg_[1] = (float)(sg / n / 255.0), avg_[2] = (float)(sb / n / 255.0);
+    }
     if (colorKey || img.hasAlpha) {
         // Transparent pixels keep the key colour (e.g. black), which smooth filtering and mipmaps
         // would blend into the visible edge as a dark fringe. Give them the colour of their visible
@@ -480,10 +513,14 @@ bool Device::Init(SDL_Window* window) {
     u_.shadowKind = loc("uShadowKind"); u_.shadowMap = loc("uShadowMap"); u_.lightVP = loc("uLightVP");
     u_.shadowTexel = loc("uShadowTexel"); u_.shadowOffset = loc("uShadowOffset");
     u_.shadowStrength = loc("uShadowStrength"); u_.shadowGrid = loc("uShadowGrid"); u_.eye = loc("uEye");
+    u_.lightKind = loc("uLightKind"); u_.lightCount = loc("uLightCount"); u_.lightPos = loc("uLightPos");
+    u_.lightColor = loc("uLightColor"); u_.lightReach = loc("uLightReach"); u_.sceneDim = loc("uSceneDim");
     glUseProgram(prog_);
     glUniform1i(u_.aoTex, 1);      // (the AO texture on unit 1; the draws' own on 0)
     glUniform1i(u_.shadowMap, 2);  // (the shadow map on unit 2)
     glUniform1i(u_.shadowKind, 0);
+    glUniform1i(u_.lightKind, 0);
+    glUniform1f(u_.sceneDim, 1.f);
     progShadow_ = CompileProgram(kShadowVS, kShadowFS);
     shadowLoc_[0] = glGetUniformLocation(progShadow_, "uWorld");
     shadowLoc_[1] = glGetUniformLocation(progShadow_, "uLightVP");
@@ -897,6 +934,8 @@ void Device::ApplyState(DWORD fvf, bool twoD) {
     glUniform1i(u_.alphaFix, 0);
     glUniform1f(u_.aoStrength, 0.f);
     glUniform1i(u_.shadowKind, 0);
+    glUniform1i(u_.lightKind, 0);
+    glUniform1f(u_.sceneDim, 1.f);
 }
 
 // A 3D draw's state sent to OpenGL: the draw being asked for now, or a recorded one (the state
@@ -911,6 +950,8 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf) {
     glUniform1i(u_.alphaFix, 0);
     glUniform1f(u_.aoStrength, 0.f);  // (the replay sets it for the draws that take AO)
     glUniform1i(u_.shadowKind, 0);    // (and the shadows' way, likewise)
+    glUniform1i(u_.lightKind, 0);     // (and the lights')
+    glUniform1f(u_.sceneDim, 1.f);    // (and the dimming)
 
     // depth
     if (st.zEnable) {
@@ -1131,6 +1172,18 @@ void Device::FlushRecording() {
         glBindTexture(GL_TEXTURE_2D, shadowTex_);
         glActiveTexture(GL_TEXTURE0);
     }
+    lightsActive_ = GetConfig().dynamicLights && CollectLights() > 0;
+    // Ambient light below 100% (with Dynamic lights on, lights in view or not): the level dimmed
+    const float sceneDim = GetConfig().dynamicLights ? std::clamp(GetConfig().lightsAmbient, 50, 100) / 100.f : 1.f;
+    if (lightsActive_) {
+        glUseProgram(prog_);
+        glUniform1i(u_.lightCount, lightCount_);
+        glUniform3fv(u_.lightPos, lightCount_, lightPos_);
+        glUniform3fv(u_.lightColor, lightCount_, lightColor_);
+        glUniform1fv(u_.lightReach, lightCount_, lightReach_);
+        glUniform3f(u_.eye, shadowEye_.x, shadowEye_.y, shadowEye_.z);
+        glUniform4f(u_.matDiffuse, 1, 1, 1, 1);
+    }
     gpu3D_.Begin();
     // Each draw exactly as it would have been sent when it was asked for: its state, then its own
     // vertices and indices uploaded on their own. (Drawing them all from one shared upload, with a
@@ -1143,9 +1196,17 @@ void Device::FlushRecording() {
     static constexpr float kAOLevel = 0.9f, kAOModel = 0.7f;
     for (const RecordedDraw& d : rec_) {
         ApplyDrawState(d.st, d.fvf);
-        if (shadowActive_) {
+        if (sceneDim < 1.f && d.st.gameplayView) {
+            // not the glowing (added) sprites, nor the blob shadows (multiplied onto the floor)
+            bool added = d.st.blendEnable && (d.st.destBlend == D3DBLEND_DESTALPHA || d.st.destBlend == D3DBLEND_ONE);
+            bool multiplied = d.st.blendEnable && d.st.srcBlend == D3DBLEND_ZERO && d.st.destBlend == D3DBLEND_SRCCOLOR;
+            if (!added && !multiplied) glUniform1f(u_.sceneDim, sceneDim);
+        }
+        if (shadowActive_ || lightsActive_) {
             int kind = DrawKind(d);
-            if (kind) glUniform1i(u_.shadowKind, kind == 2 && d.st.lighting ? 2 : 1);
+            int way = kind == 0 ? 0 : (kind == 2 && d.st.lighting ? 2 : 1);
+            if (shadowActive_ && way) glUniform1i(u_.shadowKind, way);
+            if (lightsActive_ && way) glUniform1i(u_.lightKind, way);
         }
         if (aoActive_) {
             int kind = DrawKind(d);
@@ -1171,6 +1232,7 @@ void Device::FlushRecording() {
     gpu3D_.End();
     aoActive_ = false;
     shadowActive_ = false;
+    lightsActive_ = false;
     frameDraws3D_ += (int)rec_.size();
     rec_.clear();
     recVerts_.clear();
@@ -1342,6 +1404,111 @@ void Device::EnsureShadowTarget(int size) {
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) Log("Shadow framebuffer incomplete");
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     Log("Dynamic shadows map %dx%d", size, size);
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic lights (graphics enhancements, G5)
+// ---------------------------------------------------------------------------
+
+// The game's glowing sprites that give light, by texture: how far (world units) and how bright.
+// Their colour is the texture's own average, times the sprite's colour and fade. Not lights: the
+// smoke (0x198), the shots' trails (0x15d, 0x185), coin sparkles (0x294), landing dust (0x295),
+// water waves (0x18f) and the water's glints. Nor the torches' and candles' sparks (0x188): a lit
+// torch or candle keeps one steady flame (0x187, only its size flickers) and sends a spark up
+// every 12 or 15 ticks that fades in about a quarter of a second; lit by the sparks, every torch
+// strobed about 8 times a second (found by the owner in 0.4.42), so only the steady flame lights.
+struct LightSource {
+    uint16_t tex;
+    float reach, bright;
+};
+static const LightSource kLightSources[] = {
+    {0x187, 160.f, 1.0f},  // torch and candle flames, the steady ones (the candles hang high on the walls)
+    {0x15c, 100.f, 1.1f},  // player 1's shot
+    {0x184, 100.f, 1.1f},  // player 2's shot
+    {0x194, 90.f, 0.9f},   // the shots' flash (player 1), the wizard's wand
+    {0x195, 90.f, 0.9f},   // the shots' flash (player 2)
+    {0x190, 140.f, 1.3f},  // enemy explosions
+    {0x192, 120.f, 1.1f},  // the dragon's flame, bullet explosions
+    {0x1a5, 80.f, 0.5f},   // the warp ring
+};
+
+// The frame's lights from the recorded additive sprites: each at its sprite's centre, merged with
+// any already found within 20 units (so a torch's few flames make one light), the brightest 16
+// kept. Returns how many.
+int Device::CollectLights() {
+    struct Found {
+        D3DVECTOR pos;
+        float w;            // the total weight (for the merged position)
+        float rgb[3];
+        float reach;
+    };
+    std::vector<Found> found;
+    const float strength = std::clamp(GetConfig().lightStrength, 50, 150) / 100.f;
+    for (const RecordedDraw& d : rec_) {
+        const DrawState& st = d.st;
+        if (!st.gameplayView || !st.blendEnable || !st.texture || d.fvf != D3DFVF_LVERTEX) continue;
+        if (st.destBlend != D3DBLEND_DESTALPHA && st.destBlend != D3DBLEND_ONE) continue;  // additive only
+        const LightSource* src = nullptr;
+        for (const LightSource& l : kLightSources)
+            if (l.tex == st.texture->ResId()) src = &l;
+        if (!src || d.numVerts == 0) continue;
+        // the sprite's centre in the level and its average colour and fade
+        const D3DLVERTEX* v = (const D3DLVERTEX*)(recVerts_.data() + d.firstVertex * 32);
+        float cx = 0, cy = 0, cz = 0, cr = 0, cg = 0, cb = 0, ca = 0;
+        for (size_t k = 0; k < d.numVerts; k++) {
+            cx += v[k].x, cy += v[k].y, cz += v[k].z;
+            D3DCOLOR col = v[k].color;
+            cr += ((col >> 16) & 0xFF) / 255.f, cg += ((col >> 8) & 0xFF) / 255.f, cb += (col & 0xFF) / 255.f;
+            ca += ((col >> 24) & 0xFF) / 255.f;
+        }
+        float inv = 1.f / (float)d.numVerts;
+        cx *= inv, cy *= inv, cz *= inv, cr *= inv, cg *= inv, cb *= inv, ca *= inv;
+        const D3DMATRIX& W = st.world;  // (row vectors)
+        D3DVECTOR pos(cx * W._11 + cy * W._21 + cz * W._31 + W._41, cx * W._12 + cy * W._22 + cz * W._32 + W._42,
+                      cx * W._13 + cy * W._23 + cz * W._33 + W._43);
+        // the texture's hue at full brightness, then the sprite's colour, its fade and the source's own
+        const float* avg = st.texture->AvgColor();
+        float peak = std::max({avg[0], avg[1], avg[2], 1e-3f});
+        float k = src->bright * ca * strength;
+        if (k <= 0.01f) continue;
+        float rgb[3] = {avg[0] / peak * cr * k, avg[1] / peak * cg * k, avg[2] / peak * cb * k};
+        Found* into = nullptr;
+        for (Found& f : found)
+            if (Magnitude(f.pos - pos) < 20.f) {
+                into = &f;
+                break;
+            }
+        if (!into) {
+            found.push_back({pos, k, {rgb[0], rgb[1], rgb[2]}, src->reach});
+            continue;
+        }
+        float tw = into->w + k;
+        into->pos = (into->pos * into->w + pos * k) / tw;
+        into->w = tw;
+        for (int j = 0; j < 3; j++) into->rgb[j] = std::min(into->rgb[j] + rgb[j], 2.f);  // (a cluster, not a sun)
+        into->reach = std::max(into->reach, src->reach);
+    }
+    std::sort(found.begin(), found.end(), [](const Found& a, const Found& b) {
+        return a.rgb[0] + a.rgb[1] + a.rgb[2] > b.rgb[0] + b.rgb[1] + b.rgb[2];
+    });
+    lightCount_ = std::min((int)found.size(), kMaxLights);
+    for (int i = 0; i < lightCount_; i++) {
+        const Found& f = found[(size_t)i];
+        lightPos_[i * 3] = f.pos.x, lightPos_[i * 3 + 1] = f.pos.y, lightPos_[i * 3 + 2] = f.pos.z;
+        for (int j = 0; j < 3; j++) lightColor_[i * 3 + j] = f.rgb[j];
+        lightReach_[i] = f.reach;
+    }
+    if (lightCount_ > 0) lastLights_ = lightCount_;
+    // the camera, for the side of a surface the lights shine on (ComputeShadows works it out too)
+    for (const RecordedDraw& d : rec_)
+        if (d.st.gameplayView) {
+            const D3DMATRIX& V = d.st.view;
+            D3DVECTOR t(V._41, V._42, V._43);
+            shadowEye_ = D3DVECTOR(-(t.x * V._11 + t.y * V._12 + t.z * V._13), -(t.x * V._21 + t.y * V._22 + t.z * V._23),
+                                   -(t.x * V._31 + t.y * V._32 + t.z * V._33));
+            break;
+        }
+    return lightCount_;
 }
 
 // The shadow map for the recorded draws (false when there is no level or no directional light).

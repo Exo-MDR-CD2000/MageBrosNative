@@ -9,6 +9,28 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.44] - 2026-11-11
+
+- **Ambient light** (Options > Graphics, with Dynamic lights on): 100% keeps the level as bright as
+  the original; 85% and 70% dim it, so the candles, torches and shots stand out more. The HUD and
+  the glowing effects themselves are not dimmed. A trial: tell us which you prefer.
+- No preset row on the Graphics page: every option is set on its own.
+
+## [0.4.43] - 2026-11-11
+
+- **Dynamic lights: no more strobing torches.** The light of lit torches and wall candles
+  flickered several times a second, worst with more than one on screen: it came from the sparks
+  the original sends up from every flame. It now comes from the steady flame alone, so each torch
+  gives an even glow. The fire itself looks as it always did.
+
+## [0.4.42] - 2026-11-11
+
+- **Dynamic lights** (Options > Graphics, off by default): the wall candles, lit torches, the
+  mages' shots, the dragon's flame, explosions and the warp light the floors, walls and models
+  around them, in their own colours, flickering with their flames. **Light strength** (50% to
+  150%) sets how bright. In the bright daylight levels the effect is gentle. Off, the game looks
+  exactly as before. The Statistics Overlay (Full) shows how many lights are in view.
+
 ## [0.4.41] - 2026-11-11
 
 - **Dynamic shadows** (Options > Graphics, off by default): real shadows from the game's own

@@ -25,8 +25,15 @@ public:
     // Overlay UI text drawn from a font at the screen's size: sampled smoothly, not as pixels
     void SetUILinear(bool on) { uiLinear_ = on; }
     bool UILinear() const { return uiLinear_; }
+    // The game resource it was made from (0 if none), and the average colour of its visible pixels
+    // (0..1): the dynamic lights (G5) find the game's glowing sprites and their colours by them
+    void SetResId(uint16_t id) { resId_ = id; }
+    uint16_t ResId() const { return resId_; }
+    const float* AvgColor() const { return avg_; }
 
 private:
+    uint16_t resId_ = 0;
+    float avg_[3] = {1.f, 1.f, 1.f};
     void Upload(const Image& img, bool colorKey, uint32_t keyRGB);  // (Update without sending the recording)
     bool uiLinear_ = false;
     int width_ = 0, height_ = 0;
@@ -114,6 +121,8 @@ public:
     void TakeGpuAO(double* sumMs, int* frames) { gpuAO_.Take(sumMs, frames); }
     // And for the dynamic shadows' map (G4)
     void TakeGpuShadows(double* sumMs, int* frames) { gpuShadow_.Take(sumMs, frames); }
+    // The dynamic lights in the last frame that had any (G5)
+    int DynamicLights() const { return lastLights_; }
     int Draws3D() const { return lastDraws3D_; }
     bool Recording3D() const { return recordEnabled_; }
     // Rows at the bottom of the window that are off the screen (the borderless window's extra
@@ -223,6 +232,13 @@ private:
     bool ComputeShadows(int quality);
     void EnsureShadowTarget(int size);
     void DestroyShadowTarget();
+    // Dynamic lights (G5): the frame's lights, found among the recorded draws (the game's own
+    // glowing sprites: flames, shots, flashes, explosions), merged and given to the main pass
+    static constexpr int kMaxLights = 16;
+    int CollectLights();
+    float lightPos_[kMaxLights * 3] = {}, lightColor_[kMaxLights * 3] = {}, lightReach_[kMaxLights] = {};
+    int lightCount_ = 0, lastLights_ = 0;
+    bool lightsActive_ = false;
     bool shadowActive_ = false;
     int shadowSize_ = 0;
     GLuint progShadow_ = 0, shadowFbo_ = 0, shadowTex_ = 0;
@@ -273,7 +289,8 @@ private:
         GLint world, view, proj, lighting, matDiffuse, matAmbient, matEmissive, ambient, lightOn, lightDir,
             lightDiffuse, flat, texOn, colorOp, colorArg1, colorArg2, alphaOp, alphaArg1, alphaArg2, alphaTest,
             hasVertexColor, tex, constColor, screen2D, viewport2D, alphaFix, aoStrength, aoTex, fboSize,
-            shadowKind, shadowMap, lightVP, shadowTexel, shadowOffset, shadowStrength, shadowGrid, eye;
+            shadowKind, shadowMap, lightVP, shadowTexel, shadowOffset, shadowStrength, shadowGrid, eye,
+            lightKind, lightCount, lightPos, lightColor, lightReach, sceneDim;
     } u_{};
     GLint presentTexLoc_ = -1, presentGammaLoc_ = -1;
 

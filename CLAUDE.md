@@ -576,10 +576,23 @@ digit, which questions G2's "shared buffer" explanation. Windows Defender flagge
 0.4.39 build (an ML false positive; restored by the owner). **G4 is built (2026-11-11, after
 0.4.40)**: Dynamic shadows (Off / Low / Medium / High, `dynamic_shadows`; Shadow strength,
 `shadow_strength` 50..100, 80 by default), `Device::ComputeShadows` before the replay; with them
-off every picture is as 0.4.40's. Built as 0.4.41; the next chunks take numbers from 0.4.42. The owner wants the first test build with G3. The build is still
+off every picture is as 0.4.40's. Built as 0.4.41; the next chunks take numbers from 0.4.42.
+**G5 is built (2026-11-11)**: Dynamic lights (Off / On, `dynamic_lights`; Light strength,
+`light_strength` 50..150) from the game's own additive sprites (`kLightSources` by texture
+resource ID, `Device::CollectLights`); off, every picture is as 0.4.41's. Built as 0.4.42; the
+next chunks take numbers from 0.4.43. After the owner's test: lit torches and candles strobed (the
+light came from the sparks the original sends up every 12 or 15 ticks); now only their steady
+flame (texture 0x187) gives light, built as 0.4.43; the next chunks take numbers from 0.4.44.
+The owner (2026-11-11): **no Preset row**; the ambient dimming tried both ways in one build: an
+**Ambient light** row (100 / 85 / 70%, `lights_ambient`, with Dynamic lights on; the plan's
+"Ambient light (after G5)"), built as 0.4.44, for the owner to keep, change or remove.
+See-through models (slimes 70%, king and queen 80%, ghosts 60%, the wizard's wand, blade and
+fireball) cast no dynamic shadow, by design (blended draws stay out of the map); the owner chose
+to leave it (2026-11-11), documented in the plan's "G4 as built" and its later ideas. Next
+numbers from 0.4.45. Open for the owner: dimming the ambient for the lights. The owner wants the first test build with G3. The build is still
 built as **0.4.39** (2026-11-11, the owner: one version for G1 to G3, the first test build;
 `make_release.bat 0.4.39`, a copy kept in `build\fix-builds`). The plan's later chunks take the
-next numbers from 0.4.42 (0.4.40 is AO's Low removed, 0.4.41 dynamic shadows). Built on the branch only: `main` stays at 0.4.38 and off these numbers
+next numbers from 0.4.43 (0.4.40 is AO's Low removed, 0.4.41 dynamic shadows, 0.4.42 dynamic lights). Built on the branch only: `main` stays at 0.4.38 and off these numbers
 until the branch merges.
 Start each next chunk on the owner's word. The owner's graphics card is an **RTX 5080** from
 2026-11-11 (the frame rates measured before that, in these docs, were on an RTX 3090 Ti).

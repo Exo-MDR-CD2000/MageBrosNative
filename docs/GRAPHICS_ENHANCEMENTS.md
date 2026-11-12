@@ -1,10 +1,11 @@
-# Graphics enhancements (G1 to G4 built; the rest planned)
+# Graphics enhancements (G1 to G5 built; G6 and G7 planned)
 
 **Status: planned 2026-11-10, on the `graphics-enhancements` branch (made from `main` at
 0.4.38). G1, G2 and G3 are built (2026-11-11, each with an "as built" section below) and were
 built together as 0.4.39, the first test build (the owner's choice); AO's Low was removed after
 the owner's test, as 0.4.40; the later chunks take the next numbers from 0.4.41. G4 (dynamic shadows, G4a and G4b together) is built too (2026-11-11,
-"G4 as built"), as 0.4.41; the later chunks take the next numbers from 0.4.42. Nothing else is.** Each chunk below is a version of its own and stops for the
+"G4 as built"), as 0.4.41; G5 (dynamic lights, G5a and G5b together) is built too ("G5 as built"), as 0.4.42 (the torches' strobe
+fixed in 0.4.43); the later chunks take the next numbers from 0.4.44. Nothing else is.** Each chunk below is a version of its own and stops for the
 owner's test; the owner says when to start each one. Written from reading the code at 0.4.38;
 nothing in it has been measured yet, and every cost below is an estimate until the chunk that
 measures it.
@@ -173,8 +174,8 @@ shadow's centre does to the floor).
 | G3 | 0.4.41 | Ambient occlusion (**built**, 2026-11-11) | Low to medium |
 | G4a | 0.4.42 | Dynamic shadows: the shadow map, models and level casting and receiving (**built** with G4b, 2026-11-11) | Medium |
 | G4b | 0.4.43 | Dynamic shadows: soft edges, steadiness, quality levels (**built** with G4a) | Low |
-| G5a | 0.4.44 | Dynamic lights: finding the lights | Low |
-| G5b | 0.4.45 | Dynamic lights: lighting the level and the models | Medium |
+| G5a | 0.4.44 | Dynamic lights: finding the lights (**built** with G5b, 2026-11-11) | Low |
+| G5b | 0.4.45 | Dynamic lights: lighting the level and the models (**built** with G5a) | Medium |
 | G6 | 0.4.46 | Bloom | Low |
 | G7 | 0.4.47 | The page, presets, the overlay, final checks, docs; merge | Low |
 
@@ -517,6 +518,27 @@ shows **GPU shadows** (the map's pass).
   - cost at 1920 x 1440, VSync off (the overlay's GPU shadows: the map's pass; the lookups are in
     GPU 3D): 1-1 Low 0.03 ms, Medium 0.09, High 0.16; 3-10 Low 0.22, Medium 0.28, High 0.28. The
     frame rates moved more between runs than the shadows cost.
+- **See-through models cast no dynamic shadow** (by design; noticed by the owner in 0.4.44 with
+  the slimes, left as it is, the owner's choice of 2026-11-11). A model whose material is less than
+  fully opaque is drawn in the see-through pass (`CD3DFileObject::Render`, blending on), and
+  `DrawKind` leaves blended draws out of the shadow map (and out of the AO and the lights). In the
+  original's models (their `.x` materials, read from the resources):
+
+  | Model | Resources | Opacity |
+  |---|---|---|
+  | Slime | 0x16d, 0x16e, 0x16f | 70% |
+  | King slime | 0x1e1 to 0x1e3 | 80% |
+  | Queen slime | 0x2c0 to 0x2c2 | 80% |
+  | Ghost | 0x1de, 0x1df | 60% |
+  | The wizard's wand / blade | 0x29b / 0x29c | 70% |
+  | The wizard's fireball | 0x29d | 65% |
+  | Not placed in any level | 0x15e, 0x189 | 40%, 50% |
+
+  Only a slime's eyes (opaque) cast a little. Their blob shadows are the original's, as always.
+  Ways to give them shadows, if wanted later (see "Later ideas"): a second, small map of how much
+  light passes through see-through casters, so each shades at its own opacity (a slime at 70%, a
+  ghost at 60%; the recommended way); or let them cast full shadows (quick, but jelly as dark as a
+  pillar and solid ghost shadows); or a cut-off (65% and above cast fully, ghosts not).
 - **Not checked here**: the edges' steadiness with the camera moving (by construction they shouldn't
   crawl; the owner's play will show), the mage on a moving platform, the bosses, two players, 4K,
   the integrated AMD graphics. For the owner to judge: the strength's default (80%) and whether all
@@ -570,6 +592,95 @@ flying along a wall at night-ish 3-x levels; the nest's 40 birds with the mage f
 lights at once); the wizard's fireballs; two players' shot colours; Smooth motion (lights move
 with the blended sprites).
 
+### G5 as built (2026-11-11)
+
+G5a and G5b were built together (one test build). **Options > Graphics > Dynamic lights: Off / On**
+(`[video] dynamic_lights`, off by default) and **Light strength** (50% to 150% in steps of 10,
+`light_strength`, 100 by default). Code: `Device::CollectLights` (run by `FlushRecording` after the
+AO and the shadows), the main shader, `src/framework/d3dtextr.cpp` (textures carry their resource
+ID), config and menu; the overlay's Full page shows **Lights** (the last frame's count).
+
+- **Finding them**: every recorded draw in a level's 3D that is an additive sprite (`D3DFVF_LVERTEX`,
+  blending on, destination `DESTALPHA` or `ONE`) and whose texture is in `kLightSources` gives a
+  light at the sprite's centre (its four vertices averaged and turned by its world matrix: the
+  blended position with Smooth motion). The table (in `device.cpp`; the plan's separate
+  `light_sources.cpp` wasn't needed), with reach in world units and brightness:
+
+  | Texture | What | Reach | Brightness |
+  |---|---|---|---|
+  | 0x187 | torch and wall-candle flames (the steady one; 0x188, the sparks, until 0.4.42) | 160 | 1.0 |
+  | 0x15c, 0x184 | player 1's and 2's shots | 100 | 1.1 |
+  | 0x194, 0x195 | the shots' flashes (0x194 also the wizard's wand) | 90 | 0.9 |
+  | 0x190 | enemy explosions | 140 | 1.3 |
+  | 0x192 | the dragon's flame, bullet explosions | 120 | 1.1 |
+  | 0x1a5 | the warp ring | 80 | 0.5 |
+
+  Not lights: smoke (0x198), the shots' trails (0x15d, 0x185), coin sparkles (0x294), landing
+  dust (0x295), water waves (0x18f), the water's glints. The first reaches tried (90 for flames)
+  were too short: the wall candles hang high and lit only a patch of wall; 160 reaches the floor.
+- **Colour**: the texture's own average colour of its visible pixels (worked out when a texture is
+  made, `Texture::AvgColor`), brought to full brightness, times the sprite's vertex colour and its
+  fade (alpha), the table's brightness and Light strength. So a fading flame dims its light, and
+  the torches' and candles' flicker (their flames are particles coming and going) carries over.
+- **Merging**: a light within 20 units of one already found joins it (position weighted, colours
+  added up to 2 a channel), so a torch's few flames make one light; the brightest 16 are kept.
+  The plan's **easing over frames was not built**: the lights follow the particles' own fades, and
+  easing on the drawing clock would make pictures depend on the frame rate.
+- **Lighting** (the main shader, after the shadows and the AO, so a flame lights a shaded corner;
+  `uLightKind` set per draw by the replay, the same way as the shadows): for each light, a falloff
+  `(1 - distance / reach)^2` and the surface's facing, softened (`(N . L + 0.3) / 1.3`, so a little
+  light reaches round the side); the level (and unlit models) add their **texture** times the
+  light, lit models their **material colour** times it; clamped to white. Normals as for the
+  shadows (the model's, or the surface's from screen-space derivatives turned towards the camera).
+  See-through model parts don't take the lights (the plan had them; left out to keep the draw kinds
+  as the shadows'). The lights cast no shadows of their own.
+- **Lit torches**: a torch's flames exist only once it is lit, so lighting a torch now lights its
+  surroundings (not seen in a test run here: lighting one needs a jump-fire over the post).
+- **The torches' strobe (found by the owner in 0.4.42, fixed in 0.4.43)**: the original's lit
+  torches and wall candles are two kinds of particle: one **steady flame** (0x187: `TorchFire1`,
+  `CandleFire1`), which stays and only changes size at random every 2 ticks, and a **spark**
+  (0x188: `TorchFire2`, `CandleFire2`) sent up every 12 (torch) or 15 (candle) ticks, rising 1.6 or
+  0.8 a tick and fading out in about 24 or 19 ticks. As sprites the sparks make the fire lively,
+  as the original meant; as lights, each one flared, drifted off its torch's light (beyond the 20
+  units of merging) and vanished, about 8 times a second a torch, so several torches out of step
+  strobed. Now only the steady flame gives light (0x188 left out of the table): one steady light a
+  torch or candle. Measured in 3-10, 12 screenshots 40 ms apart, a wall patch beside a candle
+  (clear of its sprite): 0.4.42 swung over 9.6 levels of brightness, the fix stays within 0.1
+  (113.5 with lights off, 120.2 on). Lights off still byte for byte as 0.4.42 (14 shots).
+- **Checked** (RTX 5080):
+  - the four tests pass;
+  - **lights off, byte for byte**: the 14-shot suite against 0.4.41, identical in the second run;
+    the first run's 1-6 differed by 7 bytes of 1 (the slime again; see "A puzzle for later"), the
+    same build's second run matched exactly;
+  - lights on, by eye and by difference images against off: the shot's pool of light on the floor
+    in 1-1 (and its colour, bluish), the glow round each wall candle in 3-10 and 1-6, the nest
+    with 12 lights at once;
+  - cost: in 3-10 at 1920 x 1440 (12 lights), 862 frames a second off and 833 on, within a run's
+    spread.
+- **Not checked here**: a lit torch, the dragon's flame, the wizard, explosions, two players'
+  colours together, Smooth motion's `alpha` with lights on.
+- **The owner's decision, still open** ("Decisions", 3): in daylight levels the lights are subtle
+  (bright floors and walls take little more); dimming the ambient for them would change the
+  original's mood and is left for the owner, after playing.
+
+### Ambient light (after G5, 2026-11-11: a trial, 0.4.44)
+
+The owner chose to try both answers to decision 3 (dimming the ambient for the lights) side by
+side, in one build rather than two: **Options > Graphics > Ambient light: 100% / 85% / 70%**
+(`[video] lights_ambient`, 100 by default; any other number reads as the nearest). It only acts
+while Dynamic lights is on: every draw of a level's 3D is multiplied by it (`uSceneDim`, set per
+draw by the replay), after its shadows and AO and before the dynamic lights are added, **except**
+the glowing sprites (added: they are the lights) and the blob shadows (multiplied onto the floor:
+dimming them would darken the shadows instead). The water, see-through model parts, the level and
+the models are all dimmed; the HUD, the shop's panel and the menus are not (they are not the
+level's 3D).
+
+Checked: the 14-shot suite with everything off, and the lights-on shots at 100%, byte for byte as
+0.4.43 in two runs; the average brightness of 1-1, 1-6 and 3-10 with lights and shadows on falls
+as set (1-1: 101 at 100%, 87 at 85%, 73 at 70%); by eye, at 70% the candles' glow stands out on
+3-10's darker walls where at 100% it mostly blends in. For the owner: keep 100% as the default
+and the row, choose another default, or remove the row.
+
 ### G6. Bloom (0.4.46)
 
 Setting: **Bloom: Off / Low / High** (`[video] bloom = 0..2`).
@@ -591,9 +702,7 @@ glowing level (the dim and the panel over it, not under); MSAA on and off; Rende
 ### G7. The page, presets, the overlay and the merge (0.4.47)
 
 - **The Graphics page**, finished (below), with help lines in plain words saying what each costs.
-- **A Preset row** at the top (decision): Original (everything at the original's picture,
-  Antialiasing and Texture filtering off too), Default (today's), Enhanced (AO High, shadows
-  Medium, lights On, bloom Low), Custom (shown when anything differs).
+- ~~A Preset row~~: **not built** (the owner, 2026-11-11: players can set each option themselves).
 - **The Statistics Overlay** (Full): the enhancements in effect, and the GPU time of each pass
   (from G2).
 - **README** (a line in Options > Graphics), **CHANGELOG**, **CLAUDE.md**, **ROADMAP**, this file's
@@ -606,7 +715,6 @@ glowing level (the dim and the panel over it, not under); MSAA on and off; Rende
 
 | Row | Values | Default | ini (`[video]`) |
 |---|---|---|---|
-| Preset (G7, decision) | Original / Default / Enhanced / Custom | Default | `graphics_preset` |
 | Antialiasing | Off, 2x, 4x, 8x, 16x | 4x | `msaa` |
 | Render scale | 50% to 200% | 100% | `render_scale` |
 | Texture filtering | Off, 2x to 16x | 8x | `anisotropy` |
@@ -677,11 +785,13 @@ To settle before or during the chunks (the ones marked **before** block their ch
    original draws it. It shows where a jumping mage lands, which the slanted real shadow doesn't.
 2. **Shadow strength's default**: by eye, from screenshots (during G4a). AO's strength was set by
    eye in G3 (0.9 on the level, 0.7 on models; "G3 as built"), for the owner to judge in play.
-3. **Dimming the ambient for Dynamic lights** (**during G5b**): none (proposed to start), or a
-   separate "Moodier lighting" choice.
+3. **Dimming the ambient for Dynamic lights**: **to be tried both ways** (the owner,
+   2026-11-11): an **Ambient light** setting (100%, 85%, 70%; with Dynamic lights on) in one test
+   build, so both looks can be compared in the same spot; the owner then keeps one as the default
+   or has the row removed. See "Ambient light (after G5)".
 4. **Other screens**: levels only (proposed), or later also the title's mages and the ending's
    corridor.
-5. **The Preset row** (**before G7**): wanted or not, and what Enhanced holds.
+5. **The Preset row: decided (the owner, 2026-11-11): none.** Players set each option themselves.
 6. **Default settings**: all new options off by default (the project's rule; proposed). Any
    exception, as with Antialiasing and Texture filtering in 0.4.21, is the owner's call after
    playing with them.
@@ -689,6 +799,11 @@ To settle before or during the chunks (the ones marked **before** block their ch
 ## Later ideas (not in this plan)
 
 Noted so they aren't lost; each would be its own small plan:
+
+- **Shadows from see-through models** (slimes, ghosts, the wizard's wand, blade and fireball):
+  none today ("G4 as built"); the way recommended: a second shadow map of how much light passes
+  through them, so each casts a shadow as see-through as itself. Left as it is by the owner
+  (2026-11-11).
 
 - **Antialiased cut-outs** (alpha to coverage with MSAA) for any colour-keyed 3D surfaces, if any
   show jagged edges (to check: the original's models are untextured, so likely only mods).
