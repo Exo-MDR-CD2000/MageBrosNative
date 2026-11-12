@@ -116,6 +116,27 @@ The zip was unpacked into a temporary folder and started from there; it reached 
 and exited with code 0. Packaged executable SHA-256:
 `e0c972d30757b74fd8d74b0eaf2db1339ad0c893719593c05a2c9e516f9bcb5d`.
 
+## CI, checked locally
+
+`.github/workflows/ci.yml` was checked with `actionlint` (no findings) and run with `act` in a
+Linux container, because GitHub's macOS runner cannot be reproduced on a workstation:
+
+```sh
+act -j macos -P macos-latest=<image with cmake and the SDL Linux build deps> --pull=false
+```
+
+The job passed: configure with `MBN_SDL_FROM_SOURCE=ON` built SDL3 from the pinned source, the
+game built, and `formats` and `collision` passed. The container run proves the workflow file
+and the commands; it does not exercise Apple's toolchain, which the macOS runs above did.
+
+Two real portability defects came out of it, both invisible to Apple clang and MSVC because
+both pull the header in transitively:
+
+- `src/framework/d3dfile.cpp` used `std::max({...})` without `<algorithm>`.
+- `src/game/XWater.cpp` used a brace-enclosed range-for without `<initializer_list>`.
+
+After both fixes, every `src/**/*.cpp` passes `g++ -std=c++17 -fsyntax-only` under GCC 15.
+
 ## Screenshots (separate evidence, not committed)
 
 | File | SHA-256 | Shows |
@@ -134,7 +155,7 @@ Every scenario in `specs/native-platforms/spec.md`, with the evidence for it.
 | Clean checkout builds | Pass | A fresh `git clone` into a temporary folder, the README commands only: configure, build, `mbn_tests` and `mbn_collision_tests` pass, package written |
 | No Windows components are required | Pass | That same build used the default `MBN_BUILD_GAME=ON` on macOS with no Windows SDK, `winmm` or resource compiler |
 | Level 1-1 is played | Pass | The automated session above: level rendered, `Right` moved the hero, `Right Shift` jumped, `Right Ctrl` fired |
-| Audio is audible | Not verified | The device opened at 44100 Hz stereo; nobody has listened to it yet |
+| Audio is audible | Pass | The audio device opened at 44100 Hz stereo; the owner confirmed hearing the sounds in a macOS session |
 | First run on macOS creates the data folder | Pass | The folder was removed, the game run, and `magebros_native.ini`, `magebros_native.log`, `save_location.txt` and `saves/` appeared |
 | A configured path still wins | Pass | `save_path = /tmp/mbn-save-test` in the ini: the log reported `Saves: /tmp/mbn-save-test/` and the folder was created there |
 | Capabilities appear in the log | Pass | The log excerpt above: vendor, renderer, version, `MSAA 4x`, provoking vertex |
@@ -144,11 +165,9 @@ Every scenario in `specs/native-platforms/spec.md`, with the evidence for it.
 
 ## Not verified
 
-- Audibility of music and effects by ear. The audio device opened (44100 Hz stereo) and the
-  game ran, but the owner has not yet confirmed that sound is heard. No SoundFont is installed
-  on this machine, so music reports "no synthesizer available" exactly as it would on Windows.
-- A save written after real progress (the folder and the pointer file appear; `progress.ini`
-  needs a session that saves).
+- A save written after real progress: the folder and the pointer file appear, but
+  `progress.ini` is written by `XApplication::DoSaveData` when a level is completed, and no
+  session above completed one. Sound was confirmed by the owner on this machine.
 - Gamepad input on macOS.
 - Side-by-side comparison with the original on Windows for the same input. The automation
   command above is the material for it; the comparison is the next change's work.
