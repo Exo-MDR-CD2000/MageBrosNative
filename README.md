@@ -211,9 +211,25 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   `make_release.bat` (needs Visual Studio 2022 or newer with "Desktop development with C++"); it
   builds, runs the tests and writes the release zip to `build\`. Step by step, including how a
   release is published: [docs/RELEASING.md](docs/RELEASING.md).
-- **Other platforms:** the tools and tests build on Linux and macOS (`-DMBN_BUILD_GAME=OFF`), and
-  the Windows game cross-compiles with MinGW-w64
-  (`-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`).
+- **macOS:** Apple Silicon, macOS 12 or newer, with CMake 3.20+ and the Xcode command line tools
+  (`xcode-select --install`). Nothing else: SDL3 is built from the pinned source, so the zip
+  needs no Homebrew and no separately installed SDL3.
+
+  ```sh
+  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMBN_SDL_FROM_SOURCE=ON
+  cmake --build build                          # build/MageBrosNative.app
+  ctest --test-dir build                       # the tests that need no game files
+  ./build/MageBrosNative.app/Contents/MacOS/MageBrosNative --game /path/to/MageBros.exe
+  cmake --build build --target package         # MageBrosNative-<version>-macos-arm64.zip
+  ```
+
+  Settings, saves and the log live in `~/Library/Application Support/MageBrosNative`; the
+  application bundle itself is never written to. Music needs a General MIDI SoundFont, as on
+  Windows.
+- **Linux and the R36S:** the tools and tests build on Linux (`-DMBN_BUILD_GAME=OFF`), and the
+  Windows game cross-compiles with MinGW-w64
+  (`-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`). The game on Linux and the R36S needs
+  the GLES renderer, which is still to come.
 - **What gets built:**
 
   | Program | What it does | Needs the game | In the zip |
