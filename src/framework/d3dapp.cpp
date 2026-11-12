@@ -37,8 +37,11 @@ CD3DApplication::~CD3DApplication() {
     menu_.reset();  // owns a GL texture: free it while the context still exists
     statsOverlay_.reset();  // (the same)
     D3DTextr_FreeAll();
+    Log("Shutdown: device");
     GetDevice().Shutdown();
+    Log("Shutdown: GL context");
     if (glContext_) SDL_GL_DestroyContext((SDL_GLContext)glContext_);
+    Log("Shutdown: window");
     if (window_) SDL_DestroyWindow(window_);
 }
 
@@ -430,9 +433,15 @@ HRESULT CD3DApplication::Create(const std::vector<std::string>& args) {
         }
     }
 
+#if defined(MBN_GLES)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+#else
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+#endif
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
@@ -467,7 +476,13 @@ HRESULT CD3DApplication::Create(const std::vector<std::string>& args) {
     PlaceWindow();
     glContext_ = SDL_GL_CreateContext(window_);
     if (!glContext_) {
-        Log("OpenGL 3.3 context creation failed: %s", SDL_GetError());
+        Log("OpenGL %s context creation failed: %s",
+#if defined(MBN_GLES)
+            "ES 3.0",
+#else
+            "3.3",
+#endif
+            SDL_GetError());
         return E_FAIL;
     }
     SDL_GL_MakeCurrent(window_, (SDL_GLContext)glContext_);

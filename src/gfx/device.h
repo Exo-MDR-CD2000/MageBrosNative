@@ -172,7 +172,7 @@ private:
     struct Uniforms {
         GLint world, view, proj, lighting, matDiffuse, matAmbient, matEmissive, ambient, lightOn, lightDir,
             lightDiffuse, flat, texOn, colorOp, colorArg1, colorArg2, alphaOp, alphaArg1, alphaArg2, alphaTest,
-            hasVertexColor, perPixel, tex, constColor, screen2D, viewport2D, alphaFix;
+            hasVertexColor, perPixel, tex, constColor, screen2D, viewport2D, alphaFix, bgra;
     } u_{};
     GLint presentTexLoc_ = -1, presentGammaLoc_ = -1;
 

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <set>
 
 static Device g_device;
 Device& GetDevice() { return g_device; }
@@ -13,14 +14,23 @@ Device& GetDevice() { return g_device; }
 // ---------------------------------------------------------------------------
 // Shaders: D3D7 fixed-function subset
 // ---------------------------------------------------------------------------
-static const char* kVS = R"GLSL(
-#version 330 core
+// One set of sources serves desktop GL and GLSL ES; only the version line and the ES precision
+// defaults differ. uBgra swizzles the original's packed BGRA vertex colours, which desktop GL
+// accepts as an attribute type and ES does not.
+#if defined(MBN_GLES)
+#define MBN_GLSL_HEADER "#version 300 es\nprecision highp float;\nprecision highp sampler2D;\n"
+#else
+#define MBN_GLSL_HEADER "#version 330 core\n"
+#endif
+
+static const char* kVS = MBN_GLSL_HEADER R"GLSL(
 layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNormal;
 layout(location=2) in vec4 aColor;
 layout(location=4) in vec2 aUV;
 uniform mat4 uWorld, uView, uProj;
 uniform bool uLighting, uLightOn, uHasVertexColor, uScreen2D;
+uniform float uBgra;  // 1: the colours arrived as RGBA and are really BGRA (ES attribute)
 uniform vec4 uMatDiffuse, uMatAmbient, uMatEmissive, uAmbient, uLightDiffuse;
 uniform vec3 uLightDir;
 uniform vec4 uViewport2D;
@@ -28,6 +38,7 @@ out vec4 vColor;
 flat out vec4 vColorFlat;
 out vec2 vUV;
 out vec3 vNormal;
+vec4 vc(vec4 c) { return uBgra > 0.5 ? c.bgra : c; }
 vec4 d3dLight(vec3 n) {
     vec3 c = uMatEmissive.rgb + uAmbient.rgb * uMatAmbient.rgb;
     if (uLightOn) c += uLightDiffuse.rgb * uMatDiffuse.rgb * max(dot(n, uLightDir), 0.0);
@@ -36,7 +47,7 @@ vec4 d3dLight(vec3 n) {
 void main() {
     if (uScreen2D) {
         gl_Position = vec4(aPos.x * uViewport2D.x + uViewport2D.z, aPos.y * uViewport2D.y + uViewport2D.w, 0.0, 1.0);
-        vColor = aColor; vColorFlat = aColor; vUV = aUV; vNormal = vec3(0.0);
+        vColor = vc(aColor); vColorFlat = vc(aColor); vUV = aUV; vNormal = vec3(0.0);
         return;
     }
     vec4 wp = uWorld * vec4(aPos, 1.0);
@@ -48,13 +59,12 @@ void main() {
     // normals 1/s long, so small scaled models (the coins at 0.35 and 0.6) light up brighter.
     vec3 n = transpose(inverse(mat3(uWorld))) * aNormal;
     vNormal = n;
-    vec4 col = uLighting ? d3dLight(n) : (uHasVertexColor ? aColor : vec4(1.0));
+    vec4 col = uLighting ? d3dLight(n) : (uHasVertexColor ? vc(aColor) : vec4(1.0));
     vColor = col; vColorFlat = col; vUV = aUV;
 }
 )GLSL";
 
-static const char* kFS = R"GLSL(
-#version 330 core
+static const char* kFS = MBN_GLSL_HEADER R"GLSL(
 in vec4 vColor;
 flat in vec4 vColorFlat;
 in vec2 vUV;
@@ -103,15 +113,13 @@ void main() {
 }
 )GLSL";
 
-static const char* kPresentVS = R"GLSL(
-#version 330 core
+static const char* kPresentVS = MBN_GLSL_HEADER R"GLSL(
 layout(location=0) in vec3 aPos;
 layout(location=4) in vec2 aUV;
 out vec2 vUV;
 void main() { gl_Position = vec4(aPos.xy, 0.0, 1.0); vUV = aUV; }
 )GLSL";
-static const char* kPresentFS = R"GLSL(
-#version 330 core
+static const char* kPresentFS = MBN_GLSL_HEADER R"GLSL(
 in vec2 vUV;
 uniform sampler2D uTex;
 uniform float uGamma;  // 1.0 = unchanged; brightness setting as a gamma curve
@@ -192,6 +200,14 @@ void Texture::Update(const Image& img, bool colorKey, uint32_t keyRGB) {
     else glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+#ifdef MBN_TEXTURE_DIAG
+    {
+        static std::set<uint32_t> seen;
+        if (seen.insert(((uint32_t)width_ << 16) | (uint32_t)height_).second)
+            Log("Texture %dx%d mipmaps=%d", width_, height_, mips_ ? 1 : 0);
+    }
+    if (GLenum e = glGetError()) Log("Texture %dx%d: GL error 0x%x", width_, height_, (unsigned)e);
+#endif
 }
 
 Surface::Surface(const Image& img) : image_(img) {}
@@ -275,6 +291,11 @@ bool Device::Init(SDL_Window* window) {
     glVendor_ = glStr(GL_VENDOR);
     glVersion_ = glStr(GL_VERSION);
     Log("OpenGL vendor: %s", glVendor_.c_str());
+#if defined(MBN_GLES)
+    Log("Renderer backend: gles");
+#else
+    Log("Renderer backend: desktop");
+#endif
 
     prog_ = CompileProgram(kVS, kFS);
     progPresent_ = CompileProgram(kPresentVS, kPresentFS);
@@ -289,9 +310,22 @@ bool Device::Init(SDL_Window* window) {
     u_.alphaArg2 = loc("uAlphaArg2"); u_.alphaTest = loc("uAlphaTest"); u_.alphaFix = loc("uAlphaFix"); u_.hasVertexColor = loc("uHasVertexColor");
     u_.perPixel = loc("uPerPixel"); u_.tex = loc("uTex"); u_.constColor = loc("uConstColor");
     u_.screen2D = loc("uScreen2D"); u_.viewport2D = loc("uViewport2D");
+    u_.bgra = loc("uBgra");
 #undef U
     presentTexLoc_ = glGetUniformLocation(progPresent_, "uTex");
     presentGammaLoc_ = glGetUniformLocation(progPresent_, "uGamma");
+
+    // The ES attribute has no BGRA type, so the vertex shader swizzles; desktop GL does not.
+#if defined(MBN_GLES)
+    constexpr float kBgraSwizzle = 1.0f;
+#else
+    constexpr float kBgraSwizzle = 0.0f;
+#endif
+    if (u_.bgra >= 0) {
+        glUseProgram(prog_);
+        glUniform1f(u_.bgra, kBgraSwizzle);
+        glUseProgram(0);
+    }
 
     glGenVertexArrays(1, &vao_);
     glGenBuffers(1, &vbo_);
@@ -531,7 +565,11 @@ HRESULT Device::Clear(DWORD, const RECT*, DWORD flags, D3DCOLOR color, float z, 
     }
     if (flags & D3DCLEAR_ZBUFFER) {
         glDepthMask(GL_TRUE);
+#if defined(MBN_GLES)
+        if (glClearDepthf) glClearDepthf((GLfloat)z);  // ES has no double-precision clear
+#else
         glClearDepth(z);
+#endif
         mask |= GL_DEPTH_BUFFER_BIT;
     }
     glClear(mask);
@@ -744,7 +782,13 @@ static void SetupAttribs(DWORD fvf) {
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(D3DLVERTEX), (void*)0);
         glEnableVertexAttribArray(2);
+#if defined(MBN_GLES)
+        // ES has no BGRA vertex-array form (desktop's ARB_vertex_array_bgra takes GL_BGRA as the
+        // size): four normalised bytes, swizzled in the shader (uBgra)
+        glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(D3DLVERTEX), (void*)16);
+#else
         glVertexAttribPointer(2, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(D3DLVERTEX), (void*)16);
+#endif
         glEnableVertexAttribArray(4);
         glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(D3DLVERTEX), (void*)24);
         glVertexAttrib4f(1, 0, 0, 0, 0);

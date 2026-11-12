@@ -8,11 +8,24 @@ namespace hgl {
 MBN_GL_FUNCS(MBN_GL_DEFINE)
 #undef MBN_GL_DEFINE
 
+namespace {
+// The pair of depth-clear calls differs by backend: GLES has the f form, desktop GL the double
+// one. Provoking-vertex control is optional everywhere: the game only shades smoothly.
+bool OptionalOnThisBackend(const char* name) {
+    if (strcmp(name, "glProvokingVertex") == 0) return true;
+#if defined(MBN_GLES)
+    return strcmp(name, "glClearDepth") == 0;
+#else
+    return strcmp(name, "glClearDepthf") == 0;
+#endif
+}
+}  // namespace
+
 bool Load() {
     bool ok = true;
 #define MBN_GL_LOAD(ret, name, args)                                       \
     name = (PFN_##name)SDL_GL_GetProcAddress(#name);                          \
-    if (!name && strcmp(#name, "glProvokingVertex") != 0) {                   \
+    if (!name && !OptionalOnThisBackend(#name)) {                             \
         Log("OpenGL: missing function %s", #name);                            \
         ok = false;                                                           \
     }
