@@ -1,0 +1,30 @@
+# Compiles the game on macOS on every push and pull request. The runner has no MageBros.exe
+# (it must never be uploaded), so only the tests that need no game files run here; the map,
+# hero and collision tests need the original and run locally. SDL3 is built from the pinned
+# source, which is the same path the macos package uses.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMBN_SDL_FROM_SOURCE=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test (no game files)
+        run: ctest --test-dir build --output-on-failure
