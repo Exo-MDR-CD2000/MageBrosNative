@@ -145,10 +145,44 @@ hardware, so only `back:b12,start:b13` had to be added; SDL now reports the mapp
 **The game stutters.** Deferred by the owner's decision; the frame time was not measured in this
 session.
 
+## Owner session on the console
+
+After the fixes above the owner played the console and confirmed:
+
+- the game starts from the **Ports menu** (the entry appears once EmulationStation rescans);
+- the **d-pad** moves and navigates correctly (the final mapping keeps SDL's d-pad order 8/9/10/11
+  and adds only `back:b12,start:b13`);
+- **Start** opens the PAUSED menu with "Level select" and "Quit game";
+- **Select+Start** quits from anywhere and returns to the Ports menu;
+- **music is heard** once `soundfont.sf2` and the six `Music*.mid` files are in the folder;
+- level 1-1 can be played through.
+
+The owner reports stutter during play, tolerable for now and deferred by their decision; frame
+time and memory were not measured.
+
+## Specification scenarios
+
+Every scenario in the two delta specs, with the evidence for it.
+
+| Scenario | Result | Evidence |
+|---|---|---|
+| An ES context is created on the device | Pass | Game log: `OpenGL ES 3.2 … Mali-G31`; probe created the context first |
+| The shaders are valid ES shaders | Pass | No shader compile or link errors in any device run |
+| The backend and driver appear in the log | Pass | `Renderer backend: gles`, `OpenGL vendor: ARM`, version and GLSL version |
+| The same scene draws the same way | Pass | The 640x480 console frame matches the macOS frame; format, map and hero tests unchanged |
+| Vertex colours survive a format the driver rejects | Pass | After `glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, …)` the walls/floor colours match macOS and no GL errors are reported |
+| A missing optional feature is not fatal | Pass | `Provoking vertex: absent (smooth shading only)` and the game runs |
+| The container build produces an aarch64 executable | Pass | `tools/r36s/build.sh`, `file` reports ARM aarch64 |
+| Nothing extra is needed at run time | Pass | `readelf -d` and on-device `ldd`: only the C++ runtime, libc and libm |
+| Level 1-1 is played on the console | Pass | Owner session |
+| The console's controls work | Pass | Owner session: d-pad, jump and fire |
+| Sound is heard | Pass | Owner session: effects and, with the SoundFont installed, music |
+| Launched from the Ports menu | Pass | Owner session |
+| Launched over SSH | Pass | `timeout 12 /roms2/ports/MageBros.sh` reached KMSDRM and wrote the log |
+
 ## Not verified
 
-- Starting from the Ports menu. EmulationStation scans `/roms2/ports` at start; the entry was
-  added while it was running, so the owner needs to restart the frontend and pick it once.
-- Gamepad movement, jump and fire during play; sound audibility; exiting back to the menu and
-  the console recovering. The launcher and the ES session are the owner's next step.
-- Frame time and memory under a real session.
+- Frame time and memory under a real session. The owner reports stutter and deferred it by
+  their decision; this change does not attempt a performance pass.
+- Long sessions (several levels, saving and returning to level select) and the console's
+  behaviour if the game is killed rather than quit normally.
