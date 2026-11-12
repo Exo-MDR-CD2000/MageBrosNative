@@ -9,6 +9,71 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.46] - 2026-11-12
+
+- The Statistics Overlay (Full) lists the graphics enhancements in effect: ambient occlusion,
+  shadows, lights, ambient light and bloom, each as you set it, greyed out where it doesn't run
+  (outside levels).
+
+## [0.4.45] - 2026-11-11
+
+- **Bloom** (Options > Graphics, off by default): a soft glow round the flames, the mages' shots,
+  flashes, explosions and the warp. **Low** is a gentle halo, **High** a clear glow. Only the
+  glowing effects glow, and walls in front of them hide their glow. Off, the game looks exactly
+  as before. The Statistics Overlay (Full) shows what it costs (GPU bloom).
+
+## [0.4.44] - 2026-11-11
+
+- **Ambient light** (Options > Graphics, with Dynamic lights on): 100% keeps the level as bright as
+  the original; 85% and 70% dim it, so the candles, torches and shots stand out more. The HUD and
+  the glowing effects themselves are not dimmed. A trial: tell us which you prefer.
+- No preset row on the Graphics page: every option is set on its own.
+
+## [0.4.43] - 2026-11-11
+
+- **Dynamic lights: no more strobing torches.** The light of lit torches and wall candles
+  flickered several times a second, worst with more than one on screen: it came from the sparks
+  the original sends up from every flame. It now comes from the steady flame alone, so each torch
+  gives an even glow. The fire itself looks as it always did.
+
+## [0.4.42] - 2026-11-11
+
+- **Dynamic lights** (Options > Graphics, off by default): the wall candles, lit torches, the
+  mages' shots, the dragon's flame, explosions and the warp light the floors, walls and models
+  around them, in their own colours, flickering with their flames. **Light strength** (50% to
+  150%) sets how bright. In the bright daylight levels the effect is gentle. Off, the game looks
+  exactly as before. The Statistics Overlay (Full) shows how many lights are in view.
+
+## [0.4.41] - 2026-11-11
+
+- **Dynamic shadows** (Options > Graphics, off by default): real shadows from the game's own
+  light. The walls, the mages, enemies, pillars, spikes, fences and everything solid shade the
+  floor, the walls and each other. **Low**, **Medium** and **High** (sharper, a little more
+  work for the graphics card), and **Shadow strength** (50% to 100%, 80% to start) for how dark
+  they are. The original blob shadows under the mages stay. Off, the game looks exactly as
+  before. The Statistics Overlay (Full) shows what the shadows cost (GPU shadows).
+
+## [0.4.40] - 2026-11-11
+
+- **Ambient occlusion is now just Off or On.** The Low setting looked poor, so it is gone; On is
+  the former High. If you had chosen Low or High, it is now On.
+
+## [0.4.39] - 2026-11-11
+
+The first test build of the graphics upgrades (from the `graphics-enhancements` branch).
+
+- **Ambient occlusion** (Options > Graphics, off by default): soft shading where floors meet walls,
+  at the feet of walls, pillars and fences, round barrels and pots and under the enemies, in
+  levels. **Low** works at half resolution and costs less; **High** is sharper. Off, the game
+  looks exactly as before. The Statistics Overlay (Full) shows what it costs (GPU AO).
+- **Per-pixel lighting and Soft shadows are gone** from Options > Graphics. They made very
+  little difference to how the game looks; better shadows and lighting are being worked on to
+  take their place. Both were off by default, so the game looks exactly as before; if you had
+  turned them on, they are simply ignored.
+- **Statistics Overlay** (F9, Full): two new rows, **GPU 3D**, the graphics card's time for a
+  level's 3D each frame, and **3D draws**. Behind the scenes a level's 3D is now gathered before
+  it is drawn, to make room for the graphics upgrades to come; the picture is exactly the same.
+
 ## [0.4.38] - 2026-11-10
 
 - **Render scale now goes up to 200%** (Options > Graphics). 300% and 400% asked far more of your

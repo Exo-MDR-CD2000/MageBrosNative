@@ -1,4 +1,4 @@
-# The Statistics Overlay (O1 built as 0.4.34, O2 as 0.4.35; O3, the debug report, planned)
+# The Statistics Overlay (O1 built as 0.4.34, O2 as 0.4.35; the graphics rows from 0.4.39; O3, the debug report, planned)
 
 A panel of statistics and information drawn over the game, turned on and off by the player: how
 the game is running (frame rate, frame times, the game's ticks, smooth motion's blend) and on what
@@ -78,6 +78,7 @@ The font stays the menu's 8x8 at one size throughout; only the arrangement chang
 | Game timing | Ticks in the last second (100 is right); ticks per frame (how many frames ran 0, 1, 2 or more); the latest tick's lateness (ms); smooth motion's blend (alpha) |
 | Display in effect | Window, Borderless or Exclusive; the window's size and the picture's (and the render scale's target); the monitor's name and refresh rate; VSync chosen and in effect, and whether the driver seems to force it; the swap interval; the frame limit and who paces it (the driver or the limiter); Low latency; Smooth motion |
 | System | The graphics card and vendor; the OpenGL version; antialiasing and texture filtering in effect; the game's version |
+| Enhancements | (Full; added by the graphics enhancements, 0.4.46, on `graphics-enhancements`) each enhancement as set, dimmed where it doesn't run: see "The graphics enhancements' rows" below |
 
 The F9 key, the menu row and the ini key come with it. Checks: off, screenshots byte for byte as
 the build before; on, a screenshot on each screen, the figures compared with the log at a few
@@ -149,6 +150,38 @@ Below the text, three strips of the last 2 to 3 seconds, one column a frame:
   72 (refresh over 2) and 32:9 Full. Seen: Smooth motion off, flat 10 ms and one tick a frame;
   144 Hz with VSync, 6.95 ms and ticks 0 and 1 in turn; a limit of 60, 16.66 to 16.68 ms and 1 or
   2 ticks a frame; the limit of 72 paced by the driver at 13.90 ms (two refreshes).
+
+### The graphics enhancements' rows (0.4.39 to 0.4.46, on `graphics-enhancements`)
+
+Added to the PERFORMANCE group of the **Full** page by the graphics enhancements
+(`docs/GRAPHICS_ENHANCEMENTS.md`), each from the graphics card's own timer queries
+(`Device::GpuTimer`: `GL_TIME_ELAPSED`, read frames later without waiting) or the renderer's
+counts, summed over the last second (`CD3DApplication::SummarizeStats`):
+
+| Row | What | Shown |
+|---|---|---|
+| GPU 3D | the card's time for a level's 3D a frame (the recorded draws; the card's timeline, waiting for the processor included, so an upper bound) | always in Full; "- (no level)" outside one, "- (off)" with `MBN_NO_RECORD` |
+| 3D draws | the level's 3D draws in the last frame that had any | with GPU 3D |
+| GPU AO | ambient occlusion's three passes a frame | Ambient occlusion on |
+| GPU shadows | the dynamic shadows' map a frame (the lookups are in GPU 3D) | Dynamic shadows on |
+| GPU bloom | the bloom's resolve, blur and adding a frame | Bloom on |
+| Lights | the dynamic lights in the last frame that had any (16 at most) | Dynamic lights on |
+
+They cost nothing measurable (a few queries a frame). Compact is unchanged.
+
+**The enhancements in effect** (G7, 0.4.46, 2026-11-12): a group of its own,
+ENHANCEMENTS, on the Full page, with a row for each: Ambient occl. (On / Off), Shadows (the
+quality and the strength, "Medium, 80%"), Lights (On and the strength), Ambient light (its
+percentage, or "- (lights off)") and Bloom (Off / Low / High), all read from the config as it is.
+An option that is off is dimmed. Where nothing runs them, every row is dimmed under a line
+saying why: "Not running (levels only)" on any screen but a level (no level's 3D in the last
+second), "Not running (recorder off)" with `MBN_NO_RECORD`. In two columns (from about 16:9) the
+group goes under SYSTEM; in one column (4:3 to 16:10), where the column has no room left, it
+heads the graphs' side panel (`StatsOverlay::Render`'s `extra` groups). Checked by screenshots at
+4:3 (a level and the logo), 4:3 in a 16:9 window and 16:9 widescreen; with the overlay off
+nothing is drawn, as before. The heights move: Full in two columns now ends at about 444 at HUD
+size 100% (was 396; at larger HUD sizes it moves up over the HUD's level info, as it was built
+to), and the side panel at 4:3 grows from about 106 high to about 180.
 
 ### O3, the debug report (planned, not built; for later, on the owner's word)
 

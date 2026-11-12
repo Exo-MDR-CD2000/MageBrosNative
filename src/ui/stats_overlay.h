@@ -39,10 +39,12 @@ public:
     // about 16:10), the groups of both lists are stacked in one column; wider (about 16:9 and up),
     // `left` and `right` sit side by side. The graphs go below the figures, across the panel; only
     // where they don't fit (`full` in one column) do they get a small panel of their own beside
-    // it, from `sideTop` (below the HUD's top-right panel).
+    // it, from `sideTop` (below the HUD's top-right panel). `extra` goes under `right` in two
+    // columns, and in that side panel above the graphs in one (the column has no room for it).
     void Render(Device* d, float top, float sideTop, bool full, const std::string& header,
                 const std::string& subheader, const std::vector<StatsGroup>& left,
-                const std::vector<StatsGroup>& right, const StatsGraphs& graphs);
+                const std::vector<StatsGroup>& right, const std::vector<StatsGroup>& extra,
+                const StatsGraphs& graphs);
 
     static constexpr float kTwoColumnView = 800.f;  // the view's width (640 at 4:3, 853 at 16:9)
 

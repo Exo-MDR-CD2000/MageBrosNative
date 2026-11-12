@@ -33,49 +33,12 @@ HRESULT D3DTextr_CreateTextureFromResource(WORD resId, DWORD flags, DWORD stage)
     return S_OK;
 }
 
-// Visual upgrade ("enhanced_shadows"): the blob-shadow texture (0xa3) is a hard-edged disc that is
-// multiplied onto the floor. Blurring it gives a soft penumbra; the white border stays white, so
-// the shadow's size and position are unchanged.
-static Image SoftenShadow(const Image& src) {
-    Image img = src;
-    int w = img.width, h = img.height;
-    if (w < 4 || h < 4) return img;
-    int r = std::max(1, w / 10);
-    std::vector<float> a(w * h), b(w * h);
-    for (int i = 0; i < w * h; i++) a[i] = (float)((img.pixels[i] >> 8) & 0xFF);  // green as luminance
-    auto at = [&](const std::vector<float>& v, int x, int y) {
-        return (x < 0 || y < 0 || x >= w || y >= h) ? 255.f : v[y * w + x];
-    };
-    for (int pass = 0; pass < 3; pass++) {
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++) {
-                float sum = 0;
-                for (int k = -r; k <= r; k++) sum += at(a, x + k, y);
-                b[y * w + x] = sum / (2 * r + 1);
-            }
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++) {
-                float sum = 0;
-                for (int k = -r; k <= r; k++) sum += at(b, x, y + k);
-                a[y * w + x] = sum / (2 * r + 1);
-            }
-    }
-    for (int i = 0; i < w * h; i++) {
-        uint32_t v = (uint32_t)std::min(255.f, std::max(0.f, a[i] + 0.5f));
-        img.pixels[i] = 0xFF000000u | (v << 16) | (v << 8) | v;
-    }
-    return img;
-}
-
 static void Restore(TextureContainer& tc) {
     if (tc.tex) return;
-    if (tc.resId == 0xa3 && GetConfig().enhancedShadows) {
-        tc.tex = Texture::Create(SoftenShadow(tc.image), false, 0, true);
-        return;
-    }
     bool key = (tc.flags & 3) != 0;
     uint32_t keyRGB = (tc.flags & 2) ? 0x000000 : 0xFFFFFF;
     tc.tex = Texture::Create(tc.image, key, keyRGB, true);
+    tc.tex->SetResId(tc.resId);  // (the dynamic lights know the game's glowing sprites by it)
 }
 
 Texture* D3DTextr_GetSurface(WORD resId) {

@@ -25,8 +25,16 @@ public:
     // Overlay UI text drawn from a font at the screen's size: sampled smoothly, not as pixels
     void SetUILinear(bool on) { uiLinear_ = on; }
     bool UILinear() const { return uiLinear_; }
+    // The game resource it was made from (0 if none), and the average colour of its visible pixels
+    // (0..1): the dynamic lights (G5) find the game's glowing sprites and their colours by them
+    void SetResId(uint16_t id) { resId_ = id; }
+    uint16_t ResId() const { return resId_; }
+    const float* AvgColor() const { return avg_; }
 
 private:
+    uint16_t resId_ = 0;
+    float avg_[3] = {1.f, 1.f, 1.f};
+    void Upload(const Image& img, bool colorKey, uint32_t keyRGB);  // (Update without sending the recording)
     bool uiLinear_ = false;
     int width_ = 0, height_ = 0;
     GLuint id_ = 0;
@@ -97,8 +105,28 @@ public:
     void BeginHudScale(float scale, float anchorX, float anchorY, float shiftX = 0.f);
     void EndHudScale();
     // fov_scale applies only while this is on: XGameScene::Render turns it on for the level's 3D
-    // and off before the shop and the HUD, every frame.
-    void SetGameplayView(bool on) { gameplayView_ = on; }
+    // and off before the shop and the HUD, every frame. While it is on, the 3D draws are recorded
+    // and sent to OpenGL together, in their order, when it is turned off (the graphics
+    // enhancements' frame: docs/GRAPHICS_ENHANCEMENTS.md, G2), so passes can be drawn before them.
+    void SetGameplayView(bool on);
+    // Sends whatever has been recorded (in its order), then records on. Called before anything
+    // that draws or changes OpenGL state outside the recording (2D, clears, the present, textures
+    // being made, changed or deleted), so the picture is as if each draw had been sent at once.
+    void FlushRecording();
+    // For the Statistics Overlay: the graphics card's time for the level's 3D (the recorded
+    // draws), summed over the frames since the last call, and how many frames drew one; and the
+    // number of 3D draws in the last frame that had any. Read without waiting (a frame or two late).
+    void TakeGpu3D(double* sumMs, int* frames) { gpu3D_.Take(sumMs, frames); }
+    // The same for ambient occlusion (its depth pass, the occlusion and the blur, G3)
+    void TakeGpuAO(double* sumMs, int* frames) { gpuAO_.Take(sumMs, frames); }
+    // And for the dynamic shadows' map (G4)
+    void TakeGpuShadows(double* sumMs, int* frames) { gpuShadow_.Take(sumMs, frames); }
+    // And for the bloom's blur and adding it (G6)
+    void TakeGpuBloom(double* sumMs, int* frames) { gpuBloom_.Take(sumMs, frames); }
+    // The dynamic lights in the last frame that had any (G5)
+    int DynamicLights() const { return lastLights_; }
+    int Draws3D() const { return lastDraws3D_; }
+    bool Recording3D() const { return recordEnabled_; }
     // Rows at the bottom of the window that are off the screen (the borderless window's extra
     // row): the picture is laid out on the rows above them (from the next frame on).
     void SetHiddenBottomRows(int n) { hiddenBottomRows_ = n; }
@@ -144,6 +172,109 @@ public:
     int ScreenHeight() const { return 480; }
 
 private:
+    // Everything ApplyState reads of the emulated Direct3D state for a 3D draw: what the setters
+    // last stored when the draw was asked for (copied into each recorded draw).
+    struct DrawState {
+        D3DMATRIX world, view, proj;
+        D3DMATERIAL7 material;
+        D3DLIGHT7 light;
+        bool lightEnabled, gameplayView;
+        Texture* texture;
+        DWORD zEnable, zWrite, blendEnable, srcBlend, destBlend, cullMode, lighting, ambient, shadeMode;
+        DWORD colorOp, colorArg1, colorArg2, alphaOp, alphaArg1, alphaArg2, magFilter, minFilter;
+    };
+    struct RecordedDraw {
+        DrawState st;
+        DWORD fvf;
+        GLenum mode;
+        GLsizei count;        // indices (indexed) or vertices
+        size_t firstVertex, numVerts;   // in recVerts_ (32 bytes a vertex, both formats)
+        size_t firstIndex, numIndices;  // in recIdx_ (indexed draws only)
+        bool indexed;
+    };
+    DrawState CurrentState() const;
+    void ApplyDrawState(const DrawState& st, DWORD fvf);
+    void Record(D3DPRIMITIVETYPE type, DWORD fvf, const void* verts, DWORD numVerts, const WORD* indices,
+                DWORD numIndices);
+    // A graphics-card stopwatch: queries used in turn, read frames later without waiting (a query
+    // still pending when its turn comes round leaves that run untimed)
+    struct GpuTimer {
+        static constexpr int kQueries = 8;
+        GLuint q[kQueries] = {};
+        bool busy[kQueries] = {};
+        int next = 0;
+        bool timedThisFrame = false;
+        bool running = false;
+        double sumMs = 0;  // every query read since Take (a frame may hold several)
+        int frames = 0;    // frames timed since Take
+        void Init();
+        void Free();
+        void Begin();
+        void End();
+        void Poll();
+        void FrameDone();
+        void Take(double* s, int* f);
+    };
+    GpuTimer gpu3D_, gpuAO_, gpuShadow_, gpuBloom_;
+    // Ambient occlusion (G3): a depth pass of the recorded solid draws into a texture of view-space
+    // depth, the occlusion worked out from it, then blurred; the main pass multiplies the level and
+    // the solid models by it. Sized to the picture (not the render scale).
+    D3DMATRIX DrawProj(const DrawState& st) const;  // the lens a 3D draw is drawn with
+    static int DrawKind(const RecordedDraw& d);     // 1 level-like, 2 solid model, 0 anything else
+    bool ComputeAO();
+    void EnsureAOTargets(int w, int h);
+    void DestroyAOTargets();
+    // The frame's vertices in one upload, for the extra passes (depth only: AO's and the shadows')
+    void UploadPrep();
+    bool prepUploaded_ = false;
+    // Dynamic shadows (G4): a depth map of the solid draws seen from the game's own light, fitted
+    // each frame round the part of the level the camera sees and snapped to whole map pixels;
+    // the main pass looks each pixel up in it. Lit models lose only their direct light in shadow,
+    // pre-lit surfaces facing the light are darkened.
+    bool ComputeShadows(int quality);
+    void EnsureShadowTarget(int size);
+    void DestroyShadowTarget();
+    // Dynamic lights (G5): the frame's lights, found among the recorded draws (the game's own
+    // glowing sprites: flames, shots, flashes, explosions), merged and given to the main pass
+    static constexpr int kMaxLights = 16;
+    int CollectLights();
+    float lightPos_[kMaxLights * 3] = {}, lightColor_[kMaxLights * 3] = {}, lightReach_[kMaxLights] = {};
+    int lightCount_ = 0, lastLights_ = 0;
+    bool lightsActive_ = false;
+    // Bloom (G6): with it on, the scene target has a second colour layer (glowRb_) that only the
+    // game's glowing sprites light up during the level's 3D (solid things in front darken it,
+    // as on screen); it is then resolved, blurred down and up a chain of halved textures and
+    // added onto the scene, before the HUD.
+    static constexpr int kBloomLevels = 7;
+    void ComputeBloom(int level);
+    void EnsureBloomTargets(int w, int h);
+    void DestroyBloomTargets();
+    GLuint glowRb_ = 0;
+    GLuint bloomFbo_[kBloomLevels] = {}, bloomTex_[kBloomLevels] = {};
+    int bloomW_ = 0, bloomH_ = 0;
+    GLuint progBloomDown_ = 0, progBloomUp_ = 0, progBloomAdd_ = 0;
+    bool bloomActive_ = false;
+    bool shadowActive_ = false;
+    int shadowSize_ = 0;
+    GLuint progShadow_ = 0, shadowFbo_ = 0, shadowTex_ = 0;
+    GLint shadowLoc_[2] = {-1, -1};                   // world, lightVP
+    float lightVP_[16] = {};                          // world to the shadow map (column-major)
+    float shadowTexelWorld_ = 1.f;                    // a map pixel's width in the level
+    D3DVECTOR shadowEye_;                             // the camera, in the level
+    bool aoActive_ = false;
+    int aoW_ = 0, aoH_ = 0;
+    GLuint progDepth_ = 0, progAO_ = 0, progBlur_ = 0, emptyVao_ = 0, prepVbo_ = 0, prepIbo_ = 0;
+    GLuint aoFbo_[3] = {}, aoZTex_ = 0, aoDepthRb_ = 0, aoTex_[2] = {};
+    GLint depthLoc_[3] = {-1, -1, -1};                // world, view, proj
+    GLint aoLoc_[5] = {-1, -1, -1, -1, -1};          // z, texel, projScale, radius, samples
+    GLint blurLoc_[3] = {-1, -1, -1};                 // z, ao, texel
+    bool recordEnabled_ = true;   // off with the environment variable MBN_NO_RECORD=1 (for comparing)
+    bool recording_ = false;
+    std::vector<RecordedDraw> rec_;
+    std::vector<unsigned char> recVerts_;
+    std::vector<WORD> recIdx_;
+    int frameDraws3D_ = 0, lastDraws3D_ = 0;
+
     float hudScale_ = 1.f, hudAnchorX_ = 0.f, hudAnchorY_ = 0.f, hudShiftX_ = 0.f;
     bool gameplayView_ = false;
     int hiddenBottomRows_ = 0;
@@ -172,7 +303,9 @@ private:
     struct Uniforms {
         GLint world, view, proj, lighting, matDiffuse, matAmbient, matEmissive, ambient, lightOn, lightDir,
             lightDiffuse, flat, texOn, colorOp, colorArg1, colorArg2, alphaOp, alphaArg1, alphaArg2, alphaTest,
-            hasVertexColor, perPixel, tex, constColor, screen2D, viewport2D, alphaFix;
+            hasVertexColor, tex, constColor, screen2D, viewport2D, alphaFix, aoStrength, aoTex, fboSize,
+            shadowKind, shadowMap, lightVP, shadowTexel, shadowOffset, shadowStrength, shadowGrid, eye,
+            lightKind, lightCount, lightPos, lightColor, lightReach, sceneDim, glowMode;
     } u_{};
     GLint presentTexLoc_ = -1, presentGammaLoc_ = -1;
 

@@ -30,8 +30,13 @@ struct Config {
     int anisotropy = 8;            // 1 = off
     bool smoothTextures = false;   // force linear filtering on 3D textures that used point sampling
     bool smoothSprites = false;    // bilinear scaling of 2D sprites
-    bool perPixelLighting = false; // evaluate the original lighting per pixel instead of per vertex
-    bool enhancedShadows = false;  // softer blob shadows
+    bool ambientOcclusion = false; // levels' 3D: off (the original) or on (graphics enhancements G3)
+    int dynamicShadows = 0;        // levels' 3D: 0 off (the original), 1 low, 2 medium, 3 high (G4)
+    int shadowStrength = 80;       // 50..100 %: how dark the dynamic shadows are
+    bool dynamicLights = false;    // levels' 3D: the game's flames, shots and explosions light their surroundings (G5)
+    int lightStrength = 100;       // 50..150 %: how bright those lights are
+    int bloom = 0;                 // levels' 3D: a glow round the game's glowing sprites: 0 off, 1 low, 2 high (G6)
+    int lightsAmbient = 100;       // 100, 85 or 70 %: with Dynamic lights, the level's 3D dimmed so they stand out (a trial)
     int brightness = 100;          // 50..150 %, applied as a gamma curve to the final picture
     float renderScale = 1.0f;      // supersampling factor for the 3D scene
     AspectMode aspect = AspectMode::Original4x3;

@@ -157,6 +157,15 @@ release then shows on the **Releases** page with its zip.
   wasn't raised, or that release already existed. Check the Actions tab for the run's log.
 - **Releasing again under the same number.** Not possible: the workflow skips versions that are
   already released. Raise the version instead.
+- **Building on a side branch** (as `graphics-enhancements`): `make_release.bat <x.y.z>` works the
+  same; pushing the branch publishes nothing (only `main` releases). Its versions take the next
+  numbers, and `main` stays off them until the branch merges.
+- **Windows Defender removes the new exe** (it happened to 0.4.39 as
+  `Behavior:Win32/DefenseEvasion.A!ml`: a machine-learning guess about a new, unsigned program,
+  not a known threat). Restore it in Windows Security > Virus & threat protection > Protection
+  history, and if you like report it at microsoft.com/wdsi/filesubmission. Defender may also take
+  the identical copies in `build\Release` and `build\fix-builds`. Signing the exe (a code-signing
+  certificate) would make this rarer; not set up.
 
 ## Where the version lives
 

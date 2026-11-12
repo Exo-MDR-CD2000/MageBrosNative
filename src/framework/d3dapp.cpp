@@ -559,6 +559,18 @@ void CD3DApplication::SummarizeStats(DWORD elapsedMs) {
     s.lateAvg = w.lateFrames ? w.lateSum / w.lateFrames : -1;
     s.lateMax = w.lateFrames ? w.lateMax : -1;
     s.alpha = g_tickAlpha;
+    double gpuSum = 0;
+    int gpuFrames = 0;
+    GetDevice().TakeGpu3D(&gpuSum, &gpuFrames);
+    s.gpu3D = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
+    s.draws3D = GetDevice().Draws3D();
+    s.lights = GetDevice().DynamicLights();
+    GetDevice().TakeGpuAO(&gpuSum, &gpuFrames);
+    s.gpuAO = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
+    GetDevice().TakeGpuShadows(&gpuSum, &gpuFrames);
+    s.gpuShadows = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
+    GetDevice().TakeGpuBloom(&gpuSum, &gpuFrames);
+    s.gpuBloom = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
     uint64_t last = w.lastStartNs;
     w = StatsWindow{};
     w.lastStartNs = last;  // (the next frame's time is counted from the last one drawn)
@@ -606,7 +618,7 @@ void CD3DApplication::DrawStatsOverlay() {
         timing.rows.push_back({"Blend", "1 (Smooth off)", true});
     }
 
-    std::vector<StatsGroup> left{perf}, right{timing};
+    std::vector<StatsGroup> left{perf}, right{timing}, extra;
     if (cfg.statsOverlay >= 2) {
         Device& d = GetDevice();
         const FrameLayout& L = d.Layout();
@@ -644,9 +656,45 @@ void CD3DApplication::DrawStatsOverlay() {
         int af = cfg.anisotropy > 1 && d.MaxAnisotropy() > 1.f ? (int)std::min((float)cfg.anisotropy, d.MaxAnisotropy()) : 0;
         sys.rows.push_back({"Tex filtering", af > 1 ? std::to_string(af) + "x" : std::string("Off")});
 
+        // The graphics enhancements in effect (G7): what is chosen, dimmed when nothing runs them
+        // (they draw only in a level's recorded 3D: not on the other screens, nor with
+        // MBN_NO_RECORD), with a line saying why. Every value read from the config as it is now.
+        StatsGroup enh{"ENHANCEMENTS", {}};
+        const bool running = d.Recording3D() && s.gpu3D >= 0;
+        if (!d.Recording3D()) enh.rows.push_back({"", "Not running (recorder off)", true});
+        else if (s.valid && s.gpu3D < 0) enh.rows.push_back({"", "Not running (levels only)", true});
+        static const char* shadowQ[] = {"Off", "Low", "Medium", "High"};
+        static const char* bloomQ[] = {"Off", "Low", "High"};
+        auto pct = [&](const char* what, int v) {
+            snprintf(b, sizeof b, "%s, %d%%", what, v);
+            return std::string(b);
+        };
+        const bool ao = cfg.ambientOcclusion;
+        const int sh = std::clamp(cfg.dynamicShadows, 0, 3);
+        const int bl = std::clamp(cfg.bloom, 0, 2);
+        enh.rows.push_back({"Ambient occl.", ao ? "On" : "Off", !running || !ao});
+        enh.rows.push_back({"Shadows", sh > 0 ? pct(shadowQ[sh], cfg.shadowStrength) : std::string("Off"),
+                            !running || sh == 0});
+        enh.rows.push_back({"Lights", cfg.dynamicLights ? pct("On", cfg.lightStrength) : std::string("Off"),
+                            !running || !cfg.dynamicLights});
+        if (cfg.dynamicLights) enh.rows.push_back({"Ambient light", num("%.0f%%", (double)cfg.lightsAmbient), !running});
+        else enh.rows.push_back({"Ambient light", "- (lights off)", true});
+        enh.rows.push_back({"Bloom", bloomQ[bl], !running || bl == 0});
+
+        // the graphics card's time for a level's 3D (the recorded draws, G2), and how many
+        if (!d.Recording3D()) perf.rows.push_back({"GPU 3D", "- (off)", true});  // (MBN_NO_RECORD)
+        else if (s.gpu3D >= 0) perf.rows.push_back({"GPU 3D", ms(s.gpu3D)});
+        else perf.rows.push_back({"GPU 3D", "- (no level)", true});
+        if (s.gpu3D >= 0) perf.rows.push_back({"3D draws", std::to_string(s.draws3D)});
+        if (cfg.ambientOcclusion && s.gpuAO >= 0) perf.rows.push_back({"GPU AO", ms(s.gpuAO)});
+        if (cfg.dynamicShadows > 0 && s.gpuShadows >= 0) perf.rows.push_back({"GPU shadows", ms(s.gpuShadows)});
+        if (cfg.bloom > 0 && s.gpuBloom >= 0) perf.rows.push_back({"GPU bloom", ms(s.gpuBloom)});
+        if (cfg.dynamicLights && s.gpu3D >= 0) perf.rows.push_back({"Lights", std::to_string(s.lights)});
+
         // two columns: how the game runs on the left, on what on the right; one: all stacked
         left = {perf, timing};
         right = {disp, sys};
+        extra = {enh};
     }
     // The graphs (O2): the frames kept, oldest first, and the frame time to expect: with Smooth
     // motion off a tick (10 ms: the original's 100 a second); on, the frame limit, else with VSync
@@ -679,7 +727,7 @@ void CD3DApplication::DrawStatsOverlay() {
     float top = 4.f + 58.f * hud, sideTop = 4.f + 80.f * hud;
     std::string sub = std::string(cfg.statsOverlay >= 2 ? "FULL" : "COMPACT") + "  v" + MBN_VERSION_STRING;
     statsOverlay_->Render(&GetDevice(), top, sideTop, cfg.statsOverlay >= 2, "STATISTICS OVERLAY", sub, left, right,
-                          graphs);
+                          extra, graphs);
 }
 
 // With Smooth motion on, the game standing still keeps the alpha of the last frame drawn: the

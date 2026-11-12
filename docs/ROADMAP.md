@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats done (C1 to C4, 0.4.23 to 0.4.26); frame timing reviewed and reworked (0.4.27 to 0.4.32, merged into `main` on 2026-11-10); enemies in view wake on the widest screens and the version shows in the options menu (0.4.33); the Statistics Overlay (its panel 0.4.34, its graphs 0.4.35); players' own menu font (0.4.36) and SoundFonts from a folder (0.4.37); mods and the config tooling still to come |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats done (C1 to C4, 0.4.23 to 0.4.26); frame timing reviewed and reworked (0.4.27 to 0.4.32, merged into `main` on 2026-11-10); enemies in view wake on the widest screens and the version shows in the options menu (0.4.33); the Statistics Overlay (its panel 0.4.34, its graphs 0.4.35); players' own menu font (0.4.36) and SoundFonts from a folder (0.4.37); the graphics enhancements G1 to G6 on the `graphics-enhancements` branch (0.4.39 to 0.4.45, [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md)), and G7's overlay rows (0.4.46); next there, the rest of G7 and the merge (the water, G8, was planned and set aside on 2026-11-12); mods and the config tooling still to come |
 
 ## Stage 4, chunk by chunk
 
@@ -136,6 +136,14 @@ makes them Mage Bros.' own and finishes the ones that need the game's help.
 | Menu font | A player's own font for the options menu, the Statistics Overlay and the CHEATS mark (Options > Video > Menu font, `ui_font` = a file name): `.ttf` / `.otf` files in a `fonts` folder next to MageBros.exe (or the program), drawn with stb_truetype from their outlines at the screen's real size, so sharp at any resolution; each letter centred in the 8 x 8 cell the layout uses, so nothing moves (fixed-width fonts fit best; proportional ones leave narrow letters standing apart). Classic (the 8x8) stays the default and the only font in the game, byte for byte as 0.4.35. How it was decided: twelve fonts were built in and compared (JetBrains Mono, Fira Mono, IBM Plex Mono, Source Code Pro, Press Start 2P, Terminus, Spleen, Orange Kid, Midnight Letters, Ithaca, Pixeloid Mono, Public Pixel), and two left out for their licences (Born2bSporty FS: its file says "FontStruct Non-Commercial License"; Upheaval Pro: no altering or distributing for profit, "All rights reserved"); the owner then chose to ship none (2026-11-10): the exe stays at about 4 MB and no font licences need to travel with the game | a font from a `fonts` folder, a missing one, stepping through them in the menu | Done (0.4.36) |
 | SoundFont folder | MIDI SoundFonts (`.sf2`) found in a `soundfonts` folder (any capitalisation) next to MageBros.exe or the program, as well as beside them: one list of places (`Midi::SoundFontDirs`) for the automatic pick (`soundfont.sf2`, then `magebros.sf2`; the root first, as before) and the Music synth list; a SoundFont in the program's own folder is saved relative to it (`soundfonts/x.sf2`). Player steps in the README's "Your own music" | a SoundFont in the folder picked automatically and from the menu, kept after a restart; a root one still first | Done (0.4.37) |
 | Render scale cap | Options > Graphics > Render scale offers 50% to 200% (300% and 400% removed: far more work for the graphics card for little to see), and the ini's `render_scale` is read as at most 2.0, so an older 3.0 or 4.0 becomes 2.0 and is saved so (the owner's decision, 2026-11-10). The above-200% mipmap path of the graphics review (0.4.21) is kept but no longer reached | an old 3.0 read as 2.0; Right at 200% stays, Left gives 175% | Done (0.4.38) |
+| Graphics G1 | On the `graphics-enhancements` branch: Per-pixel lighting and Soft shadows removed from Options > Graphics (the owner: they add little; better shadows and lighting are planned in [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md)). Old ini keys ignored quietly and dropped on the next save. Checked: nine screenshots byte for byte as 0.4.38 over repeated runs; tests pass | the Graphics page; an old ini with both on | Done (2026-11-11; in 0.4.39) |
+| Graphics G2 | On the `graphics-enhancements` branch: a level's 3D recorded and drawn when it ends (`Device::FlushRecording`), each draw as before, so passes can come first in later chunks; the Statistics Overlay's Full page shows GPU 3D (the card's time for it, by timer queries) and 3D draws. One shared upload for the frame was tried and dropped: two pixels of 1-6 a shade apart on NVIDIA. `MBN_NO_RECORD=1` draws as before, to compare. Checked: 14 shots byte for byte against G1 and against the recorder off; frame rates unchanged or a little higher (1-1 about 2050, 3-10 about 1110, RTX 5080) | the overlay's Full page in a level; F9 | Done (2026-11-11; in 0.4.39) |
+| Graphics G3 | Ambient occlusion (Options > Graphics: Off / Low / High in 0.4.39; **Off / On** after the owner's test, Low removed as it looked poor; `ambient_occlusion`, off by default): a depth pass of the level's solid draws (from the G2 recording), the occlusion out to 30 world units with outline-free weighting, a 4 x 4 depth-aware blur, applied to the level (0.9) and solid models (0.7) only; GPU AO in the overlay. Checked: Off byte for byte as G2 (14 shots); High and Low by eye in six levels, widescreen with Render scale 200% and Field of view 150%; Smooth motion `alpha=1` as Smooth motion off with AO on; cost 0.2 to 0.5 ms (RTX 5080) | Options > Graphics > Ambient occlusion in any level | Done (2026-11-11); G1 to G3 built together as 0.4.39, the first test build |
+| Graphics G4 | Dynamic shadows (Options > Graphics: Off / Low / Medium / High, `dynamic_shadows`, and Shadow strength 50% to 100%, 80% by default; off by default): a shadow map from the game's own light, fitted each frame to the part of the level in view and snapped to whole map pixels, the solid draws casting; lit models lose their direct light in shadow, the pre-lit level is darkened where it faces the light; soft edges from a grid of filtered reads; the blob shadows stay. Checked: Off byte for byte as 0.4.40 (14 shots, two runs); six levels by eye; widescreen with Render scale 200% and Field of view 150%; Smooth motion `alpha=1` as off; cost 0.03 to 0.3 ms (RTX 5080) | Options > Graphics > Dynamic shadows in any level | Done (2026-11-11; G4a and G4b together, as 0.4.41) |
+| Graphics G5 | Dynamic lights (Options > Graphics: Off / On, `dynamic_lights`, and Light strength 50% to 150%; off by default): the game's own glowing sprites (flames, shots, flashes, explosions, the warp ring; a table by texture) found among the recorded draws, merged within 20 units, at most 16, coloured by their texture and fade; the level and solid models lit by them after the shadows and AO, with a soft falloff. Checked: Off byte for byte as 0.4.41; on, by eye and difference images in 1-1, 1-6, 3-10 (12 lights); no measurable cost | Options > Graphics > Dynamic lights near wall candles, firing | Done (2026-11-11; G5a and G5b together, as 0.4.42) |
+| Ambient light (trial) | With Dynamic lights on, the level's 3D dimmed to 85% or 70% (Options > Graphics > Ambient light, `lights_ambient`, 100% by default) so the lights stand out; glowing sprites, blob shadows and the HUD untouched. The owner's way of comparing both answers to the plan's decision 3 in one build. No Preset row (the owner) | Ambient light at 100 / 85 / 70% near the candles in 3-10 | Built as 0.4.44 (2026-11-11), for the owner's verdict |
+| Graphics G6 | Bloom (Options > Graphics: Off / Low / High, `bloom`, off by default): a glow layer in the scene target lit only by the game's glowing sprites during a level's 3D (anything solid in front writes black, so walls hide glows), blurred down and up a chain of halved textures (each level adding onto its own) and added onto the scene before the HUD. Checked: Off byte for byte as 0.4.44 (beyond the slimes' known run-to-run shade); Low and High by eye; the candles' glow flickers with the original's flame (measured); cost about 0.3 ms (RTX 5080) | Options > Graphics > Bloom near candles, firing | Done (2026-11-11, as 0.4.45) |
+| Graphics G7, the overlay | The Statistics Overlay's Full page lists the enhancements in effect (ENHANCEMENTS: Ambient occl., Shadows, Lights, Ambient light, Bloom, each as set, dimmed where it doesn't run, with "Not running (levels only)" or "(recorder off)"); under SYSTEM in two columns, atop the graphs' side panel at 4:3 to 16:10. Checked by screenshots at 4:3 (a level, the logo) and 16:9; overlay off, nothing drawn | F9 twice, in a level and outside one | Done (0.4.46, `graphics-enhancements`) |
 | Smooth motion | Drawing the game between its ticks at any refresh rate, the game itself unchanged: A the clock, the camera and the mages (0.4.16); B1 every model in a level (0.4.17); B2 sprites: particles, shots, the flame, the water (0.4.18); C the shop's slide and the ending's credits (0.4.19); D help text, docs, final checks (0.4.20). Off by default. Built on the `interpolation-test` branch, merged into `main` on 2026-10-28 and released as v0.4.20. How it works, each chunk's plan and checks: [SMOOTH_MOTION.md](SMOOTH_MOTION.md) | Options > Video > Smooth motion at 60 and 144 Hz | Done (0.4.16 to 0.4.20) |
 | Graphics review | Options > Graphics checked setting by setting on Mage Bros.' scenes (1-6 with each setting alone; pixel counts and close-ups), 2026-10-29. Fixed: **Texture filtering** never reached the game's own (point-filtered) textures, so 2x to 16x looked the same and only switched on point-sampled mipmaps; now, on, textures shrunk on screen (far or at an angle) get trilinear and anisotropic filtering while magnified ones keep the original's point sampling (`Device` texture state); **Render scale** above 200% was shrunk to the window by plain bilinear, skipping most pixels; now through mipmaps made each frame (`resolveMips_`); **screenshots** now take the Brightness curve. Checked: Texture filtering off and Smooth textures on byte for byte the same as 0.4.20 (24 shots); Brightness 100% screenshots unchanged; the steep walls of 2-4 clean at 8x where they were noisy; render scale 2x to 4x run without errors. Working as they were: Antialiasing, Smooth textures, Smooth 2D images, Per-pixel lighting, Soft shadows. **Decided (the owner, 2026-10-29): Antialiasing (4x) and Texture filtering (8x) stay on by default**, inherited from Hopmon Native, an exception to the rule of the original's look by default (both only smooth edges and distant textures; Off in each gives the original's picture) | Options > Graphics, Texture filtering on steep walls, Render scale 300% and 400%, F12 with Brightness changed | Done (0.4.21) |
 | Cheats C1 | Options > Cheats opened; **Unlock all levels** wired to level select (every level of the four worlds offered; the saved level status never changed by it; a current level past those reached moves back once the cheat is off); `Config::AnyCheat` and a CHEATS mark at the bottom-left on level select and in levels. Checked: with the cheat off, level select (two save states) and 1-1 byte for byte as 0.4.21; with it on, world 4 picked and played from a save with only 1-3 reached, the save's progress unchanged afterwards | Options > Cheats from the title; level select with the cheat on and off | Done (0.4.23) |
@@ -146,7 +154,12 @@ makes them Mage Bros.' own and finishes the ones that need the game's help.
 
 **Done**: chunk 1 (the options menu), chunk 2 (the Video page; the options menu in widescreen is
 left as it is, the owner's choice), smooth motion (0.4.16 to 0.4.20), the graphics review
-(0.4.21) and the cheats (C1 to C4, 0.4.23 to 0.4.26). The per-frame items in the "frame-rate dependence" table below are settled: each is
+(0.4.21), the cheats (C1 to C4, 0.4.23 to 0.4.26), the frame timing rework (0.4.27 to 0.4.32), the
+wake range and the version in the menu (0.4.33), the Statistics Overlay O1 and O2 (0.4.34,
+0.4.35), the menu font (0.4.36), the SoundFont folder (0.4.37) and the Render scale cap (0.4.38),
+all on `main`. On the `graphics-enhancements` branch: the graphics enhancements G1 to G6 (0.4.39
+to 0.4.45) and G7's overlay rows (0.4.46); next there, the rest of G7 (the water, G8, was
+planned and then set aside: "Set aside for later" below). The per-frame items in the "frame-rate dependence" table below are settled: each is
 handled or kept by the owner's choice.
 
 **Set aside (the owner, 2026-10-29): the present path.** Presenting through a DXGI flip swapchain
@@ -161,8 +174,8 @@ README no longer recommends it; window and borderless smoothness is still open (
 **Reviewed (2026-11-09, 0.4.26): refresh rates, VSync, the frame limit and smooth motion.** The
 design holds at any refresh rate; one small bug (ticks up to 1 ms late after the menu or a pause)
 and seven improvements are listed in [SMOOTH_MOTION.md](SMOOTH_MOTION.md) ("Review of
-2026-11-09"), being built one at a time on the `smooth-motion-rework` branch, a version each
-(0.4.27 to 0.4.32 so far): the bug is fixed
+2026-11-09"), and were built one at a time on the `smooth-motion-rework` branch, a version each
+(0.4.27 to 0.4.32): the bug is fixed
 there (measured before and after), and so are the frame limits that fit the monitor (the
 refresh rate and its half, third and quarter, paced by the driver with VSync; liked by
 the owner) and a Low latency setting (off by default: no finished frames queued in the driver
@@ -181,11 +194,31 @@ report players can send in: 30 seconds of frames with the settings, system and l
 file, the user name hidden; for later, on the owner's word), in [STATS_OVERLAY.md](STATS_OVERLAY.md). It was set aside as a debug overlay
 on 2026-10-27.
 
+**Graphics enhancements** (planned 2026-11-10; G1 to G6 built 2026-11-11, G7's overlay rows 2026-11-12, on the
+`graphics-enhancements` branch, 0.4.39 to 0.4.46): Per-pixel lighting and Soft shadows removed
+(G1), the level's 3D recorded before it is drawn (G2), ambient occlusion (G3), dynamic shadows
+(G4), dynamic lights (G5; steadied for the torches in 0.4.43; the Ambient light trial, 0.4.44) and
+bloom (G6), each opt-in and off by default (the rows above). Left: G7 (the page's last touches,
+the overlay (its ENHANCEMENTS rows done, 0.4.46), the checks each chunk left, the owner's
+verdicts) and the merge into `main`. The
+plan and each chunk as built: [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md).
+
 **Still open, to be planned with the owner**: mods (add-ons and level packs, with `MODDING.md`; the Mods pages are greyed out and
 `core/mods.cpp` is a stub); the config tooling (`--set`, `CONFIG.md`) and the README sections
 Hopmon Native has.
 
 **Set aside for later** (the owner's notes; maybe more than a game of this size needs):
+
+- better water (G8: reflections of the level in the pits' water and a rippling, glinting surface,
+  as one Graphics row, Original by default). Planned on 2026-11-12 at the owner's request; the
+  reflections were begun and working in test runs when the owner cancelled it the same day,
+  perhaps for later. Nothing of it is in the build. The plan and what the trial found are in
+  [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md), "G8";
+
+- dynamic shadows from see-through models (slimes, ghosts, the wizard's wand, blade and fireball
+  cast none: their materials are part see-through, and see-through draws stay out of the shadow
+  map). Left as it is (the owner, 2026-11-11); the ways to add them are in
+  [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md), "G4 as built";
 
 - the renderer's work per draw (every draw sets all its state and uploads its mesh again): an
   optimization for weak graphics hardware only, changing no game logic and no picture. Written
@@ -195,7 +228,7 @@ Hopmon Native has.
   below the near edge, taller walls, something past the ends) so zooming out holds up;
 - perhaps a "widescreen max width" setting (the picture limited to a chosen shape, with bars
   beyond, as HUD max width does for the HUD). The frozen enemies at 32:9 it was first thought
-  of for are answered by the update range (below, 0.4.33);
+  of for are answered by the update range (the "Wake range" row above, 0.4.33);
 - a frame-limit choice for G-Sync / FreeSync (the monitor's refresh rate less 3): planned in
   smooth motion's chunk D and then dropped (2026-10-28: a few milliseconds at most, and the
   graphics drivers already offer the cap); why, and how it would be built, are in

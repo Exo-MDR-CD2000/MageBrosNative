@@ -150,7 +150,6 @@ void OptionsMenu::ResetAllSettings() {
         app_->ApplyDisplaySettings();
     app_->ApplyVSync();
     GetDevice().OnSettingsChanged();  // antialiasing, render scale, aspect
-    if (old.enhancedShadows != c.enhancedShadows) D3DTextr_InvalidateTexture(0xa3);
     Audio::SetMasterVolumes(c.masterVolume / 100.f, c.sfxVolume / 100.f, c.musicVolume / 100.f);
     if (old.soundFont != c.soundFont) Midi::SwitchSynth(c.soundFont);
     Midi::SetVolume(c.masterVolume / 100.f * c.musicVolume / 100.f);
@@ -874,18 +873,62 @@ OptionsMenu::Page OptionsMenu::GraphicsPage() {
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Per-pixel lighting", "The original lights calculated per pixel for smoother shading.",
-                 [] { return OnOff(GetConfig().perPixelLighting); },
+    v.push_back({"Ambient occlusion", "Soft shading in corners and under objects, in levels.",
+                 [] { return OnOff(GetConfig().ambientOcclusion); },
                  [this](int) {
-                     GetConfig().perPixelLighting = !GetConfig().perPixelLighting;
+                     GetConfig().ambientOcclusion = !GetConfig().ambientOcclusion;
                      Save();
                  },
                  nullptr, nullptr});
-    v.push_back({"Soft shadows", "Soft-edged blob shadows under characters and objects.",
-                 [] { return OnOff(GetConfig().enhancedShadows); },
+    v.push_back({"Dynamic shadows", "Real shadows from the game's light, in levels. Higher is sharper and costs more.",
+                 [] {
+                     static const char* names[] = {"Off", "Low", "Medium", "High"};
+                     return std::string(names[std::clamp(GetConfig().dynamicShadows, 0, 3)]);
+                 },
+                 [this](int d) {
+                     static const std::vector<int> l{0, 1, 2, 3};
+                     GetConfig().dynamicShadows = l[(size_t)CycleIndex(l, GetConfig().dynamicShadows, d)];
+                     Save();
+                 },
+                 nullptr, nullptr});
+    v.push_back({"Shadow strength", "How dark the dynamic shadows are.",
+                 [] { return Pct(GetConfig().shadowStrength); },
+                 [this](int d) {
+                     GetConfig().shadowStrength = std::clamp(GetConfig().shadowStrength + d * 10, 50, 100);
+                     Save();
+                 },
+                 nullptr, nullptr});
+    v.push_back({"Dynamic lights", "Lit torches, candles, shots, flames and explosions light their surroundings, in levels.",
+                 [] { return OnOff(GetConfig().dynamicLights); },
                  [this](int) {
-                     GetConfig().enhancedShadows = !GetConfig().enhancedShadows;
-                     D3DTextr_InvalidateTexture(0xa3);
+                     GetConfig().dynamicLights = !GetConfig().dynamicLights;
+                     Save();
+                 },
+                 nullptr, nullptr});
+    v.push_back({"Light strength", "How bright the dynamic lights are.",
+                 [] { return Pct(GetConfig().lightStrength); },
+                 [this](int d) {
+                     GetConfig().lightStrength = std::clamp(GetConfig().lightStrength + d * 10, 50, 150);
+                     Save();
+                 },
+                 nullptr, nullptr});
+    v.push_back({"Bloom", "A soft glow round flames, shots and explosions, in levels.",
+                 [] {
+                     static const char* names[] = {"Off", "Low", "High"};
+                     return std::string(names[std::clamp(GetConfig().bloom, 0, 2)]);
+                 },
+                 [this](int d) {
+                     static const std::vector<int> l{0, 1, 2};
+                     GetConfig().bloom = l[(size_t)CycleIndex(l, GetConfig().bloom, d)];
+                     GetDevice().OnSettingsChanged();  // (the scene target gains or loses its glow layer)
+                     Save();
+                 },
+                 nullptr, nullptr});
+    v.push_back({"Ambient light", "With Dynamic lights on: lower dims the level so the lights stand out. 100% = original.",
+                 [] { return Pct(GetConfig().lightsAmbient); },
+                 [this](int d) {
+                     static const std::vector<int> l{70, 85, 100};
+                     GetConfig().lightsAmbient = l[(size_t)CycleIndex(l, GetConfig().lightsAmbient, d)];
                      Save();
                  },
                  nullptr, nullptr});

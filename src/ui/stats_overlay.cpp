@@ -126,9 +126,12 @@ void StatsOverlay::Graphs(float x, float y, float width, const StatsGraphs& g) {
 
 void StatsOverlay::Render(Device* d, float top, float sideTop, bool full, const std::string& header,
                           const std::string& subheader, const std::vector<StatsGroup>& left,
-                          const std::vector<StatsGroup>& right, const StatsGraphs& graphs) {
+                          const std::vector<StatsGroup>& rightIn, const std::vector<StatsGroup>& extra,
+                          const StatsGraphs& graphs) {
     ui_.Begin(d);
-    const bool two = ui_.Right() - ui_.Left() >= kTwoColumnView && !right.empty();
+    const bool two = ui_.Right() - ui_.Left() >= kTwoColumnView && !rightIn.empty();
+    std::vector<StatsGroup> right = rightIn;
+    if (two) right.insert(right.end(), extra.begin(), extra.end());
     // Full in one column (4:3 to about 16:10) has no room left under it: its graphs go beside it
     const bool side = full && !two;
     const float x0 = ui_.Left() + 6.f;
@@ -158,9 +161,11 @@ void StatsOverlay::Render(Device* d, float top, float sideTop, bool full, const 
     }
     if (side) {
         const float sx0 = x1 + kGap, sx1 = sx0 + kColumn;
-        const float sy0 = std::max(4.f, std::min(sideTop, 474.f - (kPad + kGraphsH + kPad)));
-        Panel(sx0, sy0, sx1, sy0 + kPad + kGraphsH + kPad);
-        Graphs(sx0 + kPad, sy0 + kPad - 4.f, kColumn - 2 * kPad, graphs);
+        const float sideH = kPad + Height(extra) + kGraphsH + kPad;
+        const float sy0 = std::max(4.f, std::min(sideTop, 474.f - sideH));
+        Panel(sx0, sy0, sx1, sy0 + sideH);
+        Column(sx0 + kPad, sy0 + kPad - 4.f, extra);
+        Graphs(sx0 + kPad, sy0 + kPad - 4.f + Height(extra), kColumn - 2 * kPad, graphs);
     } else {
         Graphs(tx, y + body - kGraphsH, width - 2 * kPad, graphs);
     }
