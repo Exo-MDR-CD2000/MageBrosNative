@@ -70,6 +70,7 @@ endif()
 # being brought up module by module; see docs/ROADMAP.md. Until the game logic lands it opens
 # the asset viewer.
 option(MBN_BUILD_GAME "Build the MageBrosNative game executable" ON)
+option(MBN_BUILD_R36S_PROBE "Build the R36S platform probe (uses the game's SDL3)" OFF)
 option(MBN_FETCH_SDL "Download and build SDL3 if it is not installed" ON)
 # Packaging and the R36S build must not pick up whatever SDL3 the host happens to have:
 # this forces the pinned source build even when a system package is installed.
@@ -162,6 +163,22 @@ if(MBN_BUILD_GAME)
     install(TARGETS MageBrosNative BUNDLE DESTINATION .)
   else()
     install(TARGETS MageBrosNative RUNTIME DESTINATION .)
+  endif()
+
+  # The R36S platform probe: does SDL3's KMSDRM video, GLES context, ALSA and gamepad work on
+  # this device? A development tool, never packaged with the game.
+  if(MBN_BUILD_R36S_PROBE)
+    add_executable(mbn_r36s_probe tools/r36s/probe.cpp src/gfx/gl.cpp src/core/log.cpp)
+    target_include_directories(mbn_r36s_probe PRIVATE src third_party)
+    target_link_libraries(mbn_r36s_probe PRIVATE mbn_core)
+    if(TARGET SDL3::SDL3)
+      target_link_libraries(mbn_r36s_probe PRIVATE SDL3::SDL3)
+    else()
+      target_link_libraries(mbn_r36s_probe PRIVATE SDL3::SDL3-static)
+    endif()
+    if(NOT WIN32 AND NOT APPLE)
+      target_link_libraries(mbn_r36s_probe PRIVATE m pthread)
+    endif()
   endif()
 endif()
 
