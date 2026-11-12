@@ -71,12 +71,21 @@ endif()
 # the asset viewer.
 option(MBN_BUILD_GAME "Build the MageBrosNative game executable" ON)
 option(MBN_FETCH_SDL "Download and build SDL3 if it is not installed" ON)
+# Packaging and the R36S build must not pick up whatever SDL3 the host happens to have:
+# this forces the pinned source build even when a system package is installed.
+option(MBN_SDL_FROM_SOURCE "Build the pinned SDL3 from source even if a system one is installed" OFF)
 
 if(MBN_BUILD_GAME)
-  find_package(SDL3 CONFIG QUIET)
+  if(NOT MBN_SDL_FROM_SOURCE)
+    find_package(SDL3 CONFIG QUIET)
+  endif()
+  if(SDL3_FOUND)
+    # say which SDL the build will use: the platform ports differ in how they get it
+    message(STATUS "SDL3: system package at ${SDL3_DIR}")
+  endif()
   if(NOT SDL3_FOUND)
     if(MBN_FETCH_SDL)
-      message(STATUS "SDL3 not found - fetching release-3.4.18 from GitHub")
+      message(STATUS "SDL3: building release-3.4.18 from source")
       include(FetchContent)
       set(SDL_SHARED OFF CACHE BOOL "" FORCE)
       set(SDL_STATIC ON CACHE BOOL "" FORCE)
@@ -111,9 +120,22 @@ if(MBN_BUILD_GAME)
       set_property(SOURCE res/magebros_native.rc APPEND PROPERTY INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/res)
     endif()
   else()
-    add_executable(MageBrosNative ${MBN_GAME_SOURCES})
+    if(APPLE)
+      # a bundle: double-clickable, and it keeps the executable where SDL's base path expects it
+      add_executable(MageBrosNative MACOSX_BUNDLE ${MBN_GAME_SOURCES})
+    else()
+      add_executable(MageBrosNative ${MBN_GAME_SOURCES})
+    endif()
   endif()
   configure_file(res/version.h.in ${CMAKE_BINARY_DIR}/generated/version.h @ONLY)
+  if(APPLE)
+    set_target_properties(MageBrosNative PROPERTIES
+      MACOSX_BUNDLE_BUNDLE_NAME MageBrosNative
+      MACOSX_BUNDLE_GUI_IDENTIFIER com.magebros.native
+      MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+      MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+      MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/res/Info.plist.in)
+  endif()
   target_include_directories(MageBrosNative PRIVATE src third_party ${CMAKE_BINARY_DIR}/generated)
   target_link_libraries(MageBrosNative PRIVATE mbn_core)
   if(TARGET coldet)
@@ -133,7 +155,11 @@ if(MBN_BUILD_GAME)
     # main() entry point in a Windows GUI program
     target_link_options(MageBrosNative PRIVATE /ENTRY:mainCRTStartup)
   endif()
-  install(TARGETS MageBrosNative RUNTIME DESTINATION .)
+  if(APPLE)
+    install(TARGETS MageBrosNative BUNDLE DESTINATION .)
+  else()
+    install(TARGETS MageBrosNative RUNTIME DESTINATION .)
+  endif()
 endif()
 
 # ---------------------------------------------------------------------------------------------
@@ -152,6 +178,8 @@ set(CPACK_PACKAGE_NAME MageBrosNative)
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 if(WIN32)
   set(CPACK_SYSTEM_NAME windows-x64)
+elseif(APPLE)
+  set(CPACK_SYSTEM_NAME macos-arm64)  # Apple Silicon only, as the port targets it
 endif()
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 include(CPack)
