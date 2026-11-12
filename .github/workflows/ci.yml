@@ -2,6 +2,10 @@
 # (it must never be uploaded), so only the tests that need no game files run here; the map,
 # hero and collision tests need the original and run locally. SDL3 is built from the pinned
 # source, which is the same path the macos package uses.
+#
+# Locally: `actionlint` checks this file; `act -j macos -P macos-latest=<image with cmake>`
+# runs the steps in a Linux container. GitHub's macOS runner cannot be reproduced locally, so
+# the container run proves the workflow's shape and commands, not Apple's toolchain.
 name: CI
 
 on:
