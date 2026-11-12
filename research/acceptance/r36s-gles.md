@@ -122,6 +122,28 @@ Both were invisible on macOS and Windows:
 player's `MageBros.exe`, `magebros.log`). Nothing on the system is replaced. `tools/r36s/install.sh`
 writes both over SSH.
 
+## Defects found in the first play session
+
+The owner played level 1-1 on the console and reported three things.
+
+**The music was silent.** The console has no system MIDI synthesizer, so the port needs a
+General MIDI SoundFont, and the original's `Music*.mid` files next to `MageBros.exe`. Both were
+missing from the installed folder. With `soundfont.sf2` (a 3.2 MB GM bank already on the device,
+from GZDoom's data) and the six `Music*.mid` files copied in, the log reports
+`MIDI: using built-in synthesizer with .../soundfont.sf2` and
+`music: SoundFont synth`. This is a packaging gap, not a renderer defect; it is now documented in
+the README and the launcher's folder.
+
+**There was no way out of a level.** SDL's generated gamepad mapping for this pad stops at the
+triggers (`b0..b7`); the launcher shipped that mapping, so SDL never emitted a START event. The
+in-game menu (F10 / Start) is where "Level select" and "Quit game" live, so on a console with no
+keyboard there was no exit at all. Select and Start follow the triggers in the kernel's evdev
+order (`BTN_SELECT` 314, `BTN_START` 315), i.e. `b8` and `b9`; the mapping now says
+`back:b8,start:b9`.
+
+**The game stutters.** Deferred by the owner's decision; the frame time was not measured in this
+session.
+
 ## Not verified
 
 - Starting from the Ports menu. EmulationStation scans `/roms2/ports` at start; the entry was

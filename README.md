@@ -229,10 +229,12 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   ```
 
   Put your own `MageBros.exe` in `/roms2/ports/magebros/`, then start **MageBros** from the
-  console's Ports menu. The launcher sets the one environment hint this device needs
-  (`SDL_EGL_LIBRARY=libMali.so`, because the console's EGL/GLES live in libMali and SDL does not
-  find them by itself), runs the game through OpenGL ES 3.0 on KMSDRM at 640x480, and writes a
-  log to `/roms2/ports/magebros/magebros.log`. Nothing on the system is replaced.
+  console's Ports menu. Copy the game's own `Music*.mid` files there too, and any General MIDI
+  `.sf2` as `soundfont.sf2`: the console has no system synthesizer, so without a SoundFont the
+  effects play but the music stays silent. The launcher sets the one environment hint this
+  device needs (`SDL_EGL_LIBRARY=libMali.so`, because the console's EGL/GLES live in libMali and
+  SDL does not find them by itself), runs the game through OpenGL ES 3.0 on KMSDRM at 640x480,
+  and writes a log to `/roms2/ports/magebros/magebros.log`. Nothing on the system is replaced.
 - **Linux desktop:** the tools and tests build with `-DMBN_BUILD_GAME=OFF`, and a GLES-only
   Linux device can be built with `-DMBN_GLES=ON`; a desktop with OpenGL 3.3 uses the default
   backend. The Windows game cross-compiles with MinGW-w64
