@@ -7,7 +7,7 @@ be built. Written from reading the code at 0.4.32. **Nothing in this file has be
 tried**: the first chunk below is to measure, and the plan after it should be judged again from
 those numbers.
 
-**Since then (2026-11-11, on the `graphics-enhancements` branch):** the graphics enhancements'
+**Since then (2026-11-11, on the `graphics-enhancements` branch, merged into `main` as 0.4.46):** the graphics enhancements'
 G2 built a recorder in `Device` (`docs/GRAPHICS_ENHANCEMENTS.md`, "G2 as built"): a level's 3D
 draws are now gathered with their state (`DrawState`) and sent together, `ApplyState` became
 `ApplyDrawState`, and the Statistics Overlay shows the card's time for them (GPU 3D) and their

@@ -108,8 +108,8 @@ docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status)
                weak graphics hardware; only if the owner asks),
                GRAPHICS_ENHANCEMENTS.md (ambient occlusion, dynamic shadows and lights,
                bloom: the plan and each chunk as built, G1 to G6 and G7's
-               overlay rows; G8, the water, planned, tried and set aside; on the
-               `graphics-enhancements` branch),
+               overlay rows, merged into `main` as 0.4.46; the rest of G7 and
+               G8, the water, set aside),
                RELEASING.md (building and publishing a release, for the owner),
                banner.png and branding/ (the README banner and the icon: SVG sources)
 res            version.h.in, magebros_native.rc (the exe's icon and version info), .ico
@@ -368,7 +368,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-12: 0.4.38 on `main`, 0.4.46 on `graphics-enhancements`)
+## Where we are (last updated: 2026-11-12: 0.4.46 on `main`, the graphics enhancements merged)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -558,10 +558,11 @@ the window / borderless smoothness (above; the part-of-refresh frame limits answ
 choppiness at a limit below the refresh rate, which the owner liked; whether G-Sync follows a
 window is up to the driver and Windows).
 
-**Graphics enhancements** (planned 2026-11-10, G1 to G6 of seven built 2026-11-11, G7's overlay
-rows 2026-11-12): optional
-visual upgrades on the **`graphics-enhancements`** branch (made from `main` at 0.4.38; on GitHub up
-to 0.4.46). The plan, every chunk's "as built" and the owner's open
+**Graphics enhancements** (planned 2026-11-10, G1 to G6 built 2026-11-11, G7's overlay rows
+2026-11-12; **done for now**): optional visual upgrades, built on the `graphics-enhancements`
+branch (made from `main` at 0.4.38) and merged into `main` by the owner on 2026-11-12 (pull
+request #5, released as v0.4.46). The owner then called the graphics work done for now: the rest
+of G7 and G8, the water, are set aside (below). The plan, every chunk's "as built" and the owner's open
 decisions: `docs/GRAPHICS_ENHANCEMENTS.md` ("As built, at a glance" first).
 
 - **What is in** (Options > Graphics, all off by default, levels only; with each off every picture
@@ -588,12 +589,12 @@ decisions: `docs/GRAPHICS_ENHANCEMENTS.md` ("As built, at a glance" first).
     side panel (`StatsOverlay::Render`'s `extra`).
 - **Versions** (the owner's choice each time; each build kept in `build\fix-builds`): 0.4.39 G1 to
   G3 (the first test build), 0.4.40 AO Off / On, 0.4.41 shadows, 0.4.42 lights, 0.4.43 steady
-  torch lights, 0.4.44 Ambient light, 0.4.45 bloom, 0.4.46 the overlay's ENHANCEMENTS rows (G7). The next take 0.4.47 on; `main` stays at 0.4.38
-  and off these numbers until the branch merges (a pull request, as `smooth-motion-rework`).
+  torch lights, 0.4.44 Ambient light, 0.4.45 bloom, 0.4.46 the overlay's ENHANCEMENTS rows (G7). The branch was
+  merged into `main` as 0.4.46 (pull request #5); whatever comes next takes 0.4.47.
 - **Decided by the owner**: the blob shadow stays with Dynamic shadows on; no Preset row; the
   ambient dimming tried as a setting in one build rather than two builds; see-through models
   (slimes, ghosts, the wizard's wand, blade and fireball) cast no dynamic shadow, left as it is.
-- **Open**: the Ambient light verdict; the shadows' three quality levels (they look alike); other
+- **Left open** (set aside with the rest of G7, for later on the owner's word): the Ambient light verdict; the shadows' three quality levels (they look alike); other
   screens than levels; the checks each chunk left (the plan's G7 lists them). Settled 2026-11-12: the
   slimes' "one-shade puzzle" is run-to-run noise (a pixel or two of see-through surfaces, water or
   slimes, one shade apart now and then in every build; invisible in play; compare several runs in
@@ -603,20 +604,19 @@ decisions: `docs/GRAPHICS_ENHANCEMENTS.md` ("As built, at a glance" first).
   owner cancelled it the same day; the code went back to 0.4.46 exactly and nothing was
   committed. The owner had the notes kept, as a possible feature for later: the plan and what the
   trial found are in `docs/GRAPHICS_ENHANCEMENTS.md`, "G8". Don't build it unless the owner
-  asks.) **Next is the rest of G7** (the page's last touches, the final checks, the merge; its
-  overlay rows are done, 0.4.46), on the owner's word.
+  asks.) **The rest of G7 is set aside too** (the page's last touches and the final checks; the
+  owner, 2026-11-12: the graphics work is done for now). Don't resume either unless the owner asks.
 - Windows Defender flagged the unsigned 0.4.39 build (a machine-learning false positive; the
   owner restored it). Code signing is the owner's decision. The owner's graphics card is an **RTX
   5080** from 2026-11-11 (the frame rates measured before that, in these docs, were on an RTX
   3090 Ti).
 
 **Branches**: work goes on `main`; each push to `main` publishes the version's release when that version
-has none yet (see "GitHub releases"). Three side branches were used and merged: `menu-dev` (0.4.0 to
+has none yet (see "GitHub releases"). Four side branches were used and merged: `menu-dev` (0.4.0 to
 0.4.13, pull request #1, 2026-10-26), `interpolation-test` (smooth motion, merged directly
-2026-10-28) and `smooth-motion-rework` (the frame timing fixes, 0.4.27 to 0.4.32, pull request #3,
-2026-11-10). All are kept on GitHub; nothing goes there any more. **`graphics-enhancements`**
-(from 0.4.38, 2026-11-10) is the side branch in use: the graphics enhancements above, 0.4.39 on,
-pushed to GitHub (pushing it publishes no release; only `main` does). Perhaps a branch for the
+2026-10-28), `smooth-motion-rework` (the frame timing fixes, 0.4.27 to 0.4.32, pull request #3,
+2026-11-10) and `graphics-enhancements` (the graphics enhancements, 0.4.39 to 0.4.46, pull
+request #5, 2026-11-12). All are kept on GitHub; nothing goes there any more. Perhaps a branch for the
 modding work later; a side branch's builds take the next version numbers and `main` stays off them
 until it merges.
 
@@ -853,7 +853,7 @@ test copy, with no result of the owner's own play reported yet: a player's menu 
 `fonts` folder (0.4.36; the owner compared the twelve built-in fonts in play before choosing to
 ship none) and SoundFonts from a `soundfonts` folder (0.4.37, with copies of the owner's own
 SoundFonts).
-The graphics enhancements (`graphics-enhancements`, 0.4.39 to 0.4.46): the owner tried each build
+The graphics enhancements (0.4.39 to 0.4.46, merged into `main`): the owner tried each build
 (AO: liked High, had Low removed; shadows "working well"; lights: found the torches' strobe, fixed
 in 0.4.43, then "much more bearable"; Ambient light "seems to work fine"; bloom and 0.4.46's overlay rows not reported yet).
 Not tried by anyone: these on AMD or Intel graphics, the bosses and two players with them on.

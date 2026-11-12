@@ -1,12 +1,13 @@
-# Graphics enhancements (G1 to G6 built; G7 under way; G8 water set aside)
+# Graphics enhancements (G1 to G6 and G7's overlay rows built and merged; done for now)
 
-**Status (2026-11-12): G1 to G6 are built on the `graphics-enhancements` branch** (made from
-`main` at 0.4.38; on GitHub up to 0.4.46), each with an "as built" section
-below, and tried by the owner build by build. **G7** (the page's last touches, the overlay, the
-final checks and the merge into `main`) is what is left; its overlay rows are done (0.4.46). **G8, the water** (Original / Enhanced /
-Enhanced + reflections; the owner's request of 2026-11-12) was planned, begun and **set aside the
-same day** (the owner's decision: perhaps a feature for later; nothing of its code is in the
-build). Its plan and what the trial found are kept under "G8". The plan below was written on 2026-11-10
+**Status (2026-11-12): done for now.** G1 to G6 and G7's overlay rows were built on the
+`graphics-enhancements` branch (made from `main` at 0.4.38), each with an "as built" section
+below and tried by the owner build by build, and **merged into `main`** by the owner on
+2026-11-12 (pull request #5, released as v0.4.46). The owner then called the graphics work done
+for now: **the rest of G7** (the page's last touches and the checks each chunk left) and **G8,
+the water** (Original / Enhanced / Enhanced + reflections; planned, begun and set aside on
+2026-11-12; nothing of its code is in the build) are set aside for later. G8's plan and what
+the trial found are kept under "G8". The plan below was written on 2026-11-10
 from reading the code at 0.4.38; where the build differs, the "as built" sections and the
 summary next say so, and the plan's text has been corrected where it would mislead.
 
@@ -209,7 +210,7 @@ multiplied, by a smaller strength); `shadowDarkness` became the fixed 0.55 times
 | G6 | 0.4.46 | Bloom | Low | 2026-11-11, as 0.4.45 |
 | G8a | (0.4.47) | Water: reflections (the owner's request, 2026-11-12) | Medium (a second replay of the recording, mirrored) | set aside 2026-11-12 (tried, not kept) |
 | G8b | (0.4.48) | Water: the better surface (ripples, glints, a soft edge) | Low | set aside 2026-11-12 (not begun) |
-| G7 | 0.4.47 on | The page, the overlay, final checks, docs; merge | Low | the overlay done as 0.4.46; the rest is next |
+| G7 | 0.4.47 on | The page, the overlay, final checks, docs; merge | Low | the overlay done as 0.4.46; merged 2026-11-12 (pull request #5); the rest set aside |
 
 The planned versions were a guide; the owner chose the real ones ("As built, at a glance").
 
@@ -1011,7 +1012,7 @@ Nothing in `src/game` changes, as for G1 to G7: the water is found and drawn fro
 - **Weak hardware**: a second replay roughly doubles the level's draw count; to be measured on the
   integrated AMD graphics with G7's checks.
 
-### G7. The page, the overlay and the merge (the overlay done as 0.4.46; the rest is next, from 0.4.47)
+### G7. The page, the overlay and the merge (the overlay done as 0.4.46 and merged; the rest set aside)
 
 - **The Graphics page**, finished (below): the owner's verdicts applied (Ambient light; the
   shadows' quality levels), help lines in plain words saying what each costs.
@@ -1027,8 +1028,8 @@ Nothing in `src/game` changes, as for G1 to G7: the water is found and drawn fro
   build. (The slimes' one-shade difference, once listed here, was settled as run-to-run noise on
   2026-11-12: see "Run-to-run noise", under "G3 as built".)
 - **README**, **CHANGELOG**, **CLAUDE.md**, **ROADMAP**, this file, `STATS_OVERLAY.md`.
-- The owner's play test, then the merge into `main` (a pull request, as `smooth-motion-rework`),
-  released as its last version.
+- The merge into `main`: **done** (2026-11-12, pull request #5, released as v0.4.46). The owner
+  then set the rest of this list aside (the graphics work done for now, 2026-11-12).
 
 ## The Graphics page, after
 

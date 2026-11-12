@@ -157,7 +157,7 @@ release then shows on the **Releases** page with its zip.
   wasn't raised, or that release already existed. Check the Actions tab for the run's log.
 - **Releasing again under the same number.** Not possible: the workflow skips versions that are
   already released. Raise the version instead.
-- **Building on a side branch** (as `graphics-enhancements`): `make_release.bat <x.y.z>` works the
+- **Building on a side branch** (as `graphics-enhancements` was): `make_release.bat <x.y.z>` works the
   same; pushing the branch publishes nothing (only `main` releases). Its versions take the next
   numbers, and `main` stays off them until the branch merges.
 - **Windows Defender removes the new exe** (it happened to 0.4.39 as

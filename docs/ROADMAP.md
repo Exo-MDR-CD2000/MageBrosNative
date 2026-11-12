@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats done (C1 to C4, 0.4.23 to 0.4.26); frame timing reviewed and reworked (0.4.27 to 0.4.32, merged into `main` on 2026-11-10); enemies in view wake on the widest screens and the version shows in the options menu (0.4.33); the Statistics Overlay (its panel 0.4.34, its graphs 0.4.35); players' own menu font (0.4.36) and SoundFonts from a folder (0.4.37); the graphics enhancements G1 to G6 on the `graphics-enhancements` branch (0.4.39 to 0.4.45, [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md)), and G7's overlay rows (0.4.46); next there, the rest of G7 and the merge (the water, G8, was planned and set aside on 2026-11-12); mods and the config tooling still to come |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats done (C1 to C4, 0.4.23 to 0.4.26); frame timing reviewed and reworked (0.4.27 to 0.4.32, merged into `main` on 2026-11-10); enemies in view wake on the widest screens and the version shows in the options menu (0.4.33); the Statistics Overlay (its panel 0.4.34, its graphs 0.4.35); players' own menu font (0.4.36) and SoundFonts from a folder (0.4.37); the graphics enhancements G1 to G6 (0.4.39 to 0.4.45, [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md)) and G7's overlay rows (0.4.46), merged into `main` on 2026-11-12 and done for now (the rest of G7 and the water, G8, set aside); mods and the config tooling still to come |
 
 ## Stage 4, chunk by chunk
 
@@ -157,9 +157,9 @@ left as it is, the owner's choice), smooth motion (0.4.16 to 0.4.20), the graphi
 (0.4.21), the cheats (C1 to C4, 0.4.23 to 0.4.26), the frame timing rework (0.4.27 to 0.4.32), the
 wake range and the version in the menu (0.4.33), the Statistics Overlay O1 and O2 (0.4.34,
 0.4.35), the menu font (0.4.36), the SoundFont folder (0.4.37) and the Render scale cap (0.4.38),
-all on `main`. On the `graphics-enhancements` branch: the graphics enhancements G1 to G6 (0.4.39
-to 0.4.45) and G7's overlay rows (0.4.46); next there, the rest of G7 (the water, G8, was
-planned and then set aside: "Set aside for later" below). The per-frame items in the "frame-rate dependence" table below are settled: each is
+and the graphics enhancements G1 to G6 (0.4.39 to 0.4.45) and G7's overlay rows (0.4.46), built
+on the `graphics-enhancements` branch and merged on 2026-11-12: all on `main`. The rest of G7 and
+the water, G8, are set aside ("Set aside for later" below). The per-frame items in the "frame-rate dependence" table below are settled: each is
 handled or kept by the owner's choice.
 
 **Set aside (the owner, 2026-10-29): the present path.** Presenting through a DXGI flip swapchain
@@ -195,19 +195,23 @@ file, the user name hidden; for later, on the owner's word), in [STATS_OVERLAY.m
 on 2026-10-27.
 
 **Graphics enhancements** (planned 2026-11-10; G1 to G6 built 2026-11-11, G7's overlay rows 2026-11-12, on the
-`graphics-enhancements` branch, 0.4.39 to 0.4.46): Per-pixel lighting and Soft shadows removed
+`graphics-enhancements` branch, 0.4.39 to 0.4.46; merged into `main` on 2026-11-12, pull
+request #5): Per-pixel lighting and Soft shadows removed
 (G1), the level's 3D recorded before it is drawn (G2), ambient occlusion (G3), dynamic shadows
 (G4), dynamic lights (G5; steadied for the torches in 0.4.43; the Ambient light trial, 0.4.44) and
-bloom (G6), each opt-in and off by default (the rows above). Left: G7 (the page's last touches,
-the overlay (its ENHANCEMENTS rows done, 0.4.46), the checks each chunk left, the owner's
-verdicts) and the merge into `main`. The
-plan and each chunk as built: [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md).
+bloom (G6), each opt-in and off by default (the rows above). **Done for now** (the owner, 2026-11-12): the rest of G7 (the page's
+last touches, the checks each chunk left, the owner's verdicts) is set aside with the water
+(below). The plan and each chunk as built: [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md).
 
 **Still open, to be planned with the owner**: mods (add-ons and level packs, with `MODDING.md`; the Mods pages are greyed out and
 `core/mods.cpp` is a stub); the config tooling (`--set`, `CONFIG.md`) and the README sections
 Hopmon Native has.
 
 **Set aside for later** (the owner's notes; maybe more than a game of this size needs):
+
+- the rest of graphics G7 (the Graphics page's last touches, the Ambient light and shadow-quality
+  verdicts, the checks each chunk left: [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md),
+  "G7"). The owner called the graphics work done for now on 2026-11-12;
 
 - better water (G8: reflections of the level in the pits' water and a rippling, glinting surface,
   as one Graphics row, Original by default). Planned on 2026-11-12 at the owner's request; the

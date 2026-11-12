@@ -78,7 +78,7 @@ The font stays the menu's 8x8 at one size throughout; only the arrangement chang
 | Game timing | Ticks in the last second (100 is right); ticks per frame (how many frames ran 0, 1, 2 or more); the latest tick's lateness (ms); smooth motion's blend (alpha) |
 | Display in effect | Window, Borderless or Exclusive; the window's size and the picture's (and the render scale's target); the monitor's name and refresh rate; VSync chosen and in effect, and whether the driver seems to force it; the swap interval; the frame limit and who paces it (the driver or the limiter); Low latency; Smooth motion |
 | System | The graphics card and vendor; the OpenGL version; antialiasing and texture filtering in effect; the game's version |
-| Enhancements | (Full; added by the graphics enhancements, 0.4.46, on `graphics-enhancements`) each enhancement as set, dimmed where it doesn't run: see "The graphics enhancements' rows" below |
+| Enhancements | (Full; added by the graphics enhancements, 0.4.46) each enhancement as set, dimmed where it doesn't run: see "The graphics enhancements' rows" below |
 
 The F9 key, the menu row and the ini key come with it. Checks: off, screenshots byte for byte as
 the build before; on, a screenshot on each screen, the figures compared with the log at a few
@@ -151,7 +151,7 @@ Below the text, three strips of the last 2 to 3 seconds, one column a frame:
   144 Hz with VSync, 6.95 ms and ticks 0 and 1 in turn; a limit of 60, 16.66 to 16.68 ms and 1 or
   2 ticks a frame; the limit of 72 paced by the driver at 13.90 ms (two refreshes).
 
-### The graphics enhancements' rows (0.4.39 to 0.4.46, on `graphics-enhancements`)
+### The graphics enhancements' rows (0.4.39 to 0.4.46)
 
 Added to the PERFORMANCE group of the **Full** page by the graphics enhancements
 (`docs/GRAPHICS_ENHANCEMENTS.md`), each from the graphics card's own timer queries
