@@ -274,6 +274,7 @@ bool Device::Init(SDL_Window* window) {
     glRenderer_ = glStr(GL_RENDERER);
     glVendor_ = glStr(GL_VENDOR);
     glVersion_ = glStr(GL_VERSION);
+    Log("OpenGL vendor: %s", glVendor_.c_str());
 
     prog_ = CompileProgram(kVS, kFS);
     progPresent_ = CompileProgram(kPresentVS, kPresentFS);
@@ -296,6 +297,8 @@ bool Device::Init(SDL_Window* window) {
     glGenBuffers(1, &vbo_);
     glGenBuffers(1, &ibo_);
     if (glProvokingVertex) glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);  // D3D flat shading uses vertex 0
+    // macOS (and GLES) may not offer it; the game only shades smoothly today, so log it and carry on
+    Log("Provoking vertex: %s", glProvokingVertex ? "available" : "absent (smooth shading only)");
     if (hgl::HasExtension("GL_ARB_texture_filter_anisotropic") || hgl::HasExtension("GL_EXT_texture_filter_anisotropic"))
         glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAniso_);
 
