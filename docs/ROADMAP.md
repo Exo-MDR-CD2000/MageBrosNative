@@ -247,7 +247,8 @@ frame limit of 60, 0.480. With Smooth motion off the scroll is the original's.
 |---|---|
 | Windows | The release target: `make_release.bat` builds, tests on all 40 levels and writes the zip |
 | macOS (Apple Silicon) | Builds, runs and packages (`MageBrosNative-<version>-macos-arm64.zip`); desktop OpenGL 4.1 through SDL3, MSAA 4x on the test machine; commands in the README |
-| Linux desktop and the R36S | The game source compiles with GCC 15 (checked in a container); running it needs the GLES renderer, which has not been started |
+| R36S | Builds for aarch64 with a static SDL3 and runs through the GLES renderer (Mali-G31, ES 3.2, 4x MSAA); the device acceptance session is the remaining step |
+| Linux desktop | The tools and tests build; the game compiles with the default desktop backend, and `-DMBN_GLES=ON` covers GLES-only devices |
 
 ## Open items
 

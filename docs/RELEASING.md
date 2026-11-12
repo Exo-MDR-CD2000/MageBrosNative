@@ -78,6 +78,26 @@ zip is built by hand until the release job covers both.
 The bundle is never written to: settings, saves and the log live in
 `~/Library/Application Support/MageBrosNative`.
 
+## Building for the R36S
+
+The console is aarch64 Debian 13 with glibc 2.41, no SDL3, and its EGL/GLES entry points in
+`libMali.so`. The build therefore runs in a Debian 13 arm64 container (native on Apple
+Silicon), links SDL3 3.4.18 statically, and compiles the GLES renderer backend:
+
+```sh
+tools/r36s/build.sh                       # build + tests, output in build-r36s/
+tools/r36s/install.sh ark@192.168.0.104   # copy to /roms2/ports/ over SSH
+```
+
+`install.sh` writes `/roms2/ports/MageBros.sh` and `/roms2/ports/magebros/`; put your own
+`MageBros.exe` in that folder. The launcher needs one environment hint — `SDL_EGL_LIBRARY`
+pointing at `libMali.so` — and nothing else: `SDL_VIDEO_DRIVER`, `SDL_OPENGL_LIBRARY` and
+`SDL_OPENGL_ES_DRIVER` were each tested and are not needed. The game writes its own log next
+to the launcher's.
+
+The Ports menu is EmulationStation's; it scans `/roms2/ports` at start, so restart the frontend
+(or reboot the console) after the first install.
+
 ## Making a new release, step by step
 
 ### 1. Start from an up-to-date `main`
