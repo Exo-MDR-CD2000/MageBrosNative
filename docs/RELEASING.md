@@ -95,7 +95,7 @@ tools/r36s/install.sh ark@192.168.0.104   # copy to /roms2/ports/ over SSH
 one environment hint — `SDL_EGL_LIBRARY` pointing at `libMali.so` — and nothing else:
 `SDL_VIDEO_DRIVER`, `SDL_OPENGL_LIBRARY` and `SDL_OPENGL_ES_DRIVER` were each tested and are not
 needed. The game writes its own log next to the launcher's. In game, **Start** opens the pause
-menu with "Level select" and "Quit game".
+menu with "Level select" and "Quit game", and **Select+Start** quits from anywhere.
 
 The Ports menu is EmulationStation's; it scans `/roms2/ports` at start, so restart the frontend
 (or reboot the console) after the first install.

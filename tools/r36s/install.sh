@@ -21,8 +21,11 @@ if [ ! -f "$binary" ]; then
 fi
 
 ssh "$host" "mkdir -p '$remote_ports/magebros'"
-scp -q "$binary" "$project_dir/packaging/portmaster/gamecontrollerdb.txt" \
-    "$host:$remote_ports/magebros/"
-scp -q "$project_dir/packaging/portmaster/MageBros.sh" "$host:$remote_ports/MageBros.sh"
+# Upload beside the target and rename: the old binary may be running (ETXTBSY on overwrite),
+# and the launcher may be mid-session.
+scp -q "$binary" "$host:$remote_ports/magebros/MageBrosNative.new"
+scp -q "$project_dir/packaging/portmaster/gamecontrollerdb.txt" "$host:$remote_ports/magebros/"
+scp -q "$project_dir/packaging/portmaster/MageBros.sh" "$host:$remote_ports/MageBros.sh.new"
+ssh "$host" "mv -f '$remote_ports/magebros/MageBrosNative.new' '$remote_ports/magebros/MageBrosNative' && mv -f '$remote_ports/MageBros.sh.new' '$remote_ports/MageBros.sh'"
 ssh "$host" "chmod +x '$remote_ports/MageBros.sh' '$remote_ports/magebros/MageBrosNative'"
 echo "Installed to $host:$remote_ports (put your MageBros.exe in $remote_ports/magebros/)."
