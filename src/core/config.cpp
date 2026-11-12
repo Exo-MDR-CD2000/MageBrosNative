@@ -79,7 +79,9 @@ bool Config::Load(const std::string& file) {
             else if (k == "anisotropy") anisotropy = std::clamp(iv, 1, 16);
             else if (k == "smooth_textures") smoothTextures = toBool(v);
             else if (k == "smooth_sprites") smoothSprites = toBool(v);
-            else if (k == "ambient_occlusion") ambientOcclusion = iv > 0;  // (0.4.39 had 1 low and 2 high: both on)
+            else if (k == "ambient_occlusion") ambientOcclusion = iv > 0;
+            else if (k == "dynamic_shadows") dynamicShadows = std::clamp(iv, 0, 3);
+            else if (k == "shadow_strength") shadowStrength = std::clamp(iv, 50, 100);  // (0.4.39 had 1 low and 2 high: both on)
             else if (k == "per_pixel_lighting" || k == "enhanced_shadows") {}  // removed in 0.4.39 (Per-pixel lighting, Soft shadows)
             else if (k == "brightness") brightness = std::clamp(iv, 50, 150);
             else if (k == "render_scale") renderScale = std::clamp((float)atof(v.c_str()), 0.25f, 2.0f);  // (4.0 before 0.4.38)
@@ -333,6 +335,13 @@ bool Config::Save() const {
     P("; ambient_occlusion: 1 = soft shading where floors meet walls, under ledges\n"
       ";   and around objects, in levels. 0 = off, the original look (default).\n");
     fprintf(f, "ambient_occlusion = %d\n\n", ambientOcclusion ? 1 : 0);
+    P("; dynamic_shadows: real shadows from the game's own light in levels: the mages,\n"
+      ";   enemies, objects and walls shade the floor and each other. 0 = off, the\n"
+      ";   original look (default), 1 = low, 2 = medium, 3 = high (sharper, softer\n"
+      ";   edges, more work for the graphics card). The original blob shadows stay.\n");
+    fprintf(f, "dynamic_shadows = %d\n\n", dynamicShadows);
+    P("; shadow_strength: how dark the dynamic shadows are, 50 to 100 (%%).\n");
+    fprintf(f, "shadow_strength = %d\n\n", shadowStrength);
     P("; brightness: picture brightness in percent, 50 to 150. 100 = original\n"
       ";   (default). Higher lifts dark and middle tones (whites stay white), lower\n"
       ";   darkens them.\n");

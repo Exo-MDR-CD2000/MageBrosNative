@@ -31,6 +31,8 @@ struct Config {
     bool smoothTextures = false;   // force linear filtering on 3D textures that used point sampling
     bool smoothSprites = false;    // bilinear scaling of 2D sprites
     bool ambientOcclusion = false; // levels' 3D: off (the original) or on (graphics enhancements G3)
+    int dynamicShadows = 0;        // levels' 3D: 0 off (the original), 1 low, 2 medium, 3 high (G4)
+    int shadowStrength = 80;       // 50..100 %: how dark the dynamic shadows are
     int brightness = 100;          // 50..150 %, applied as a gamma curve to the final picture
     float renderScale = 1.0f;      // supersampling factor for the 3D scene
     AspectMode aspect = AspectMode::Original4x3;

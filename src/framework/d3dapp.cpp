@@ -566,6 +566,8 @@ void CD3DApplication::SummarizeStats(DWORD elapsedMs) {
     s.draws3D = GetDevice().Draws3D();
     GetDevice().TakeGpuAO(&gpuSum, &gpuFrames);
     s.gpuAO = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
+    GetDevice().TakeGpuShadows(&gpuSum, &gpuFrames);
+    s.gpuShadows = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
     uint64_t last = w.lastStartNs;
     w = StatsWindow{};
     w.lastStartNs = last;  // (the next frame's time is counted from the last one drawn)
@@ -657,6 +659,7 @@ void CD3DApplication::DrawStatsOverlay() {
         else perf.rows.push_back({"GPU 3D", "- (no level)", true});
         if (s.gpu3D >= 0) perf.rows.push_back({"3D draws", std::to_string(s.draws3D)});
         if (cfg.ambientOcclusion && s.gpuAO >= 0) perf.rows.push_back({"GPU AO", ms(s.gpuAO)});
+        if (cfg.dynamicShadows > 0 && s.gpuShadows >= 0) perf.rows.push_back({"GPU shadows", ms(s.gpuShadows)});
 
         // two columns: how the game runs on the left, on what on the right; one: all stacked
         left = {perf, timing};

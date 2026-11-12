@@ -9,6 +9,15 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.41] - 2026-11-11
+
+- **Dynamic shadows** (Options > Graphics, off by default): real shadows from the game's own
+  light. The walls, the mages, enemies, pillars, spikes, fences and everything solid shade the
+  floor, the walls and each other. **Low**, **Medium** and **High** (sharper, a little more
+  work for the graphics card), and **Shadow strength** (50% to 100%, 80% to start) for how dark
+  they are. The original blob shadows under the mages stay. Off, the game looks exactly as
+  before. The Statistics Overlay (Full) shows what the shadows cost (GPU shadows).
+
 ## [0.4.40] - 2026-11-11
 
 - **Ambient occlusion is now just Off or On.** The Low setting looked poor, so it is gone; On is

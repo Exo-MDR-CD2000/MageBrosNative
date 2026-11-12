@@ -1,9 +1,10 @@
-# Graphics enhancements (G1 to G3 built; the rest planned)
+# Graphics enhancements (G1 to G4 built; the rest planned)
 
 **Status: planned 2026-11-10, on the `graphics-enhancements` branch (made from `main` at
 0.4.38). G1, G2 and G3 are built (2026-11-11, each with an "as built" section below) and were
 built together as 0.4.39, the first test build (the owner's choice); AO's Low was removed after
-the owner's test, as 0.4.40; the later chunks take the next numbers from 0.4.41. Nothing else is built.** Each chunk below is a version of its own and stops for the
+the owner's test, as 0.4.40; the later chunks take the next numbers from 0.4.41. G4 (dynamic shadows, G4a and G4b together) is built too (2026-11-11,
+"G4 as built"), as 0.4.41; the later chunks take the next numbers from 0.4.42. Nothing else is.** Each chunk below is a version of its own and stops for the
 owner's test; the owner says when to start each one. Written from reading the code at 0.4.38;
 nothing in it has been measured yet, and every cost below is an estimate until the chunk that
 measures it.
@@ -170,8 +171,8 @@ shadow's centre does to the floor).
 | G1 | 0.4.39 | Per-pixel lighting and Soft shadows removed (**built**, 2026-11-11) | Low |
 | G2 | 0.4.40 | The recorder and the GPU timers: no visible change (**built**, 2026-11-11) | Medium (every level picture goes through it) |
 | G3 | 0.4.41 | Ambient occlusion (**built**, 2026-11-11) | Low to medium |
-| G4a | 0.4.42 | Dynamic shadows: the shadow map, models and level casting and receiving | Medium |
-| G4b | 0.4.43 | Dynamic shadows: soft edges, steadiness, quality levels | Low |
+| G4a | 0.4.42 | Dynamic shadows: the shadow map, models and level casting and receiving (**built** with G4b, 2026-11-11) | Medium |
+| G4b | 0.4.43 | Dynamic shadows: soft edges, steadiness, quality levels (**built** with G4a) | Low |
 | G5a | 0.4.44 | Dynamic lights: finding the lights | Low |
 | G5b | 0.4.45 | Dynamic lights: lighting the level and the models | Medium |
 | G6 | 0.4.46 | Bloom | Low |
@@ -462,6 +463,66 @@ trailing).
 Checks: as G4a, plus a camera pan recorded frame by frame (no crawling edges); the cost at each
 level on the owner's card and the integrated chip.
 
+### G4 as built (2026-11-11)
+
+G4a and G4b were built together (one test build for the owner). **Options > Graphics > Dynamic
+shadows: Off / Low / Medium / High** (`[video] dynamic_shadows` 0..3, 0 by default) and **Shadow
+strength** (50% to 100% in steps of 10, `shadow_strength`, 80 by default). Code in
+`src/gfx/device.{h,cpp}` (`ComputeShadows`, run by `FlushRecording` after the AO and before the
+replay), the shaders, `src/core/config.*`, `src/ui/options_menu.cpp`; the overlay's Full page
+shows **GPU shadows** (the map's pass).
+
+- **Which part of the level** (each frame): rays through a 9 x 9 grid of the screen, from 10 to
+  1000 along the view, clipped to the slab every level lies in (x -60 to 260, y -260 to 300; the
+  camera on the +x side), give the z range the camera sees; it is widened by 280 towards -z (the
+  light comes from +x, above and -z, so things there cast into view) and 40 the other way. This
+  follows any window shape, the Field of view and the camera's shake, and no game code is asked.
+- **The light's view**: orthographic, along the light the game set (`light.direction`, never
+  hard-coded), round that box. Its size rounded up to steps of 64 and squared, its centre snapped
+  to whole map pixels (so edges don't crawl as the camera follows the mage). Map: 1024 (Low), 2048
+  (Medium), 4096 (High) square, `GL_DEPTH_COMPONENT24` with the card's own comparison.
+- **Casters**: the solid draws (`DrawKind`: the level, solid model parts), both sides of every face,
+  pushed back by `glPolygonOffset(1.5, 2)`, from the shared upload (now `UploadPrep`, shared with
+  AO's depth pass, once a flush).
+- **Receivers** (the main shader, `uShadowKind` set per draw by the replay):
+  - **lit models** (2): the vertex shader passes the light in two parts (ambient and emissive;
+    the direct light, with D3D7's un-normalized normal kept, so the coins keep their glow); in
+    shadow the direct part is taken away by the strength: `clamp(ambient + direct x (1 -
+    shadow x strength))`. Only with shadows on: off, the old `vColor` path is drawn, byte for byte;
+  - **pre-lit surfaces** (1: the level, unlit models): darkened by up to 0.55 x strength where in
+    shadow, only where they face the light (their normal from the screen-space derivatives of the
+    position, turned towards the camera); faces turned away are already the baked dark side;
+  - nothing see-through takes them (particles, shots, water, blob shadows).
+- **Reading the map** (`LitBy`): the point moved 1.5 map pixels along its normal (against
+  self-shadowing on low-poly models), then a grid of reads, each already blended over 2 x 2 map
+  pixels by the card: 2 x 2 (Low), 3 x 3 (Medium), 4 x 4 (High), one map pixel apart; a constant
+  0.0004 of depth off; fading out over the map's last 3% so nothing stops on a line. The
+  **contact-hardening** softness of the plan (sharper at a mage's feet, softer from a pillar's
+  top) was **not built**: the grid already gives soft, even edges.
+- **The blob shadows stay** as they are (the owner, 2026-11-10).
+- **What shows**: the end walls throw long diagonal shadows across the floor and the back wall;
+  the mages, enemies, spikes, pillars, barrels, pots, fences and hammers cast shadows on the floor
+  and the back wall; the shop's roof shades the shopkeeper; models are darker on the sides away
+  from the light and where other things shade them.
+- **Checked** (RTX 5080):
+  - the four tests pass;
+  - **shadows off, byte for byte**: the 14-shot suite against 0.4.40, identical in two runs (and
+    each build identical to itself between them);
+  - High against Off by eye in 1-1, 1-6, 2-4, 3-5, 3-10, 4-2, and close-ups (the hammer, the mage):
+    clean edges, no self-shadowing marks on floors or models;
+  - Low, Medium and High side by side (3-5's hammer): nearly the same at 1280 x 960, Low a little
+    softer;
+  - 1-6 and 3-10 at 1600 x 900 Widescreen, Render scale 200%, Field of view 150%, with AO: correct;
+  - Smooth motion `alpha=1` against Smooth motion off, shadows High and AO on: byte for byte;
+  - cost at 1920 x 1440, VSync off (the overlay's GPU shadows: the map's pass; the lookups are in
+    GPU 3D): 1-1 Low 0.03 ms, Medium 0.09, High 0.16; 3-10 Low 0.22, Medium 0.28, High 0.28. The
+    frame rates moved more between runs than the shadows cost.
+- **Not checked here**: the edges' steadiness with the camera moving (by construction they shouldn't
+  crawl; the owner's play will show), the mage on a moving platform, the bosses, two players, 4K,
+  the integrated AMD graphics. For the owner to judge: the strength's default (80%) and whether all
+  three quality levels earn their place (they look much alike at this size; AO's Low was removed
+  for looking poor).
+
 ### G5a. Dynamic lights: finding them (0.4.44)
 
 No picture change yet (lights listed, not used), so the list can be checked in the log first.
@@ -553,7 +614,7 @@ glowing level (the dim and the panel over it, not under); MSAA on and off; Rende
 | Smooth 2D images | Off / On | Off | `smooth_sprites` |
 | **Ambient occlusion** | Off / On (Low removed after the owner's test) | Off | `ambient_occlusion` |
 | **Dynamic shadows** | Off / Low / Medium / High | Off | `dynamic_shadows` |
-| **Shadow strength** | 50% to 100% | to tune | `shadow_strength` |
+| **Shadow strength** | 50% to 100% | 80% | `shadow_strength` |
 | **Dynamic lights** | Off / On | Off | `dynamic_lights` |
 | **Light strength** | 50% to 150% | 100% | `light_strength` |
 | **Bloom** | Off / Low / High | Off | `bloom` |

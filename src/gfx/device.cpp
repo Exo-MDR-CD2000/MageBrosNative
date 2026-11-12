@@ -27,10 +27,15 @@ uniform bool uLighting, uLightOn, uHasVertexColor, uScreen2D;
 uniform vec4 uMatDiffuse, uMatAmbient, uMatEmissive, uAmbient, uLightDiffuse;
 uniform vec3 uLightDir;
 uniform vec4 uViewport2D;
+// Dynamic shadows (G4): 2 for a lit model, whose light is passed in two parts (what the light
+// itself gives, which a shadow takes away, and the rest); the level's position for the lookup
+uniform int uShadowKind;
 out vec4 vColor;
 flat out vec4 vColorFlat;
 out vec2 vUV;
 out vec3 vNormal;
+out vec3 vWorldPos, vAmbPart, vDirPart;
+flat out vec3 vAmbFlat, vDirFlat;
 vec4 d3dLight(vec3 n) {
     vec3 c = uMatEmissive.rgb + uAmbient.rgb * uMatAmbient.rgb;
     if (uLightOn) c += uLightDiffuse.rgb * uMatDiffuse.rgb * max(dot(n, uLightDir), 0.0);
@@ -40,6 +45,7 @@ void main() {
     if (uScreen2D) {
         gl_Position = vec4(aPos.x * uViewport2D.x + uViewport2D.z, aPos.y * uViewport2D.y + uViewport2D.w, 0.0, 1.0);
         vColor = aColor; vColorFlat = aColor; vUV = aUV; vNormal = vec3(0.0);
+        vWorldPos = vec3(0.0); vAmbPart = vDirPart = vAmbFlat = vDirFlat = vec3(0.0);
         return;
     }
     vec4 wp = uWorld * vec4(aPos, 1.0);
@@ -53,6 +59,13 @@ void main() {
     vNormal = n;
     vec4 col = uLighting ? d3dLight(n) : (uHasVertexColor ? aColor : vec4(1.0));
     vColor = col; vColorFlat = col; vUV = aUV;
+    vWorldPos = wp.xyz;
+    vec3 amb = vec3(0.0), dir = vec3(0.0);
+    if (uShadowKind == 2) {
+        amb = uMatEmissive.rgb + uAmbient.rgb * uMatAmbient.rgb;
+        if (uLightOn) dir = uLightDiffuse.rgb * uMatDiffuse.rgb * max(dot(n, uLightDir), 0.0);
+    }
+    vAmbPart = amb; vDirPart = dir; vAmbFlat = amb; vDirFlat = dir;
 }
 )GLSL";
 
@@ -75,7 +88,30 @@ uniform int uAlphaFix;
 uniform sampler2D uAOTex;
 uniform float uAOStrength;
 uniform vec2 uFboSize;
+// Dynamic shadows (G4): which way this draw takes them (0 not at all, 1 darkened where it faces
+// the light: the pre-lit level, 2 a lit model: its direct light only), the map and how to read it
+in vec3 vWorldPos, vAmbPart, vDirPart;
+flat in vec3 vAmbFlat, vDirFlat;
+uniform int uShadowKind, uShadowGrid;
+uniform sampler2DShadow uShadowMap;
+uniform mat4 uLightVP;
+uniform float uShadowTexel, uShadowOffset, uShadowStrength;
+uniform vec3 uEye, uLightDir;
 out vec4 fragColor;
+// How lit a point is by the game's light, 0 to 1: the map read on a grid round it (each read
+// already blended over 2 x 2 map pixels by the card), fading out near the map's edges
+float LitBy(vec3 wp, vec3 n) {
+    vec4 lc = uLightVP * vec4(wp + n * uShadowOffset, 1.0);
+    vec3 c = lc.xyz * 0.5 + 0.5;
+    if (c.x < 0.0 || c.y < 0.0 || c.x > 1.0 || c.y > 1.0 || c.z > 1.0) return 1.0;
+    float o = (float(uShadowGrid) - 1.0) * 0.5, s = 0.0;
+    for (int y = 0; y < uShadowGrid; y++)
+        for (int x = 0; x < uShadowGrid; x++)
+            s += texture(uShadowMap, vec3(c.xy + (vec2(float(x), float(y)) - o) * uShadowTexel, c.z - 0.0004));
+    s /= float(uShadowGrid * uShadowGrid);
+    vec2 e = min(c.xy, 1.0 - c.xy);
+    return mix(1.0, s, smoothstep(0.0, 0.03, min(e.x, e.y)));
+}
 vec4 pick(int a, vec4 diff, vec4 tex) { return a == 2 ? tex : diff; }
 vec4 op(int o, vec4 a1, vec4 a2) {
     if (o == 2) return a1;               // SELECTARG1
@@ -88,6 +124,20 @@ vec4 op(int o, vec4 a1, vec4 a2) {
 }
 void main() {
     vec4 diff = uFlat ? vColorFlat : vColor;
+    vec3 faceN = cross(dFdx(vWorldPos), dFdy(vWorldPos));  // (outside any branch, as derivatives must be)
+    float levelShade = 1.0;
+    if (uShadowKind != 0) {
+        vec3 n = uShadowKind == 2 ? normalize(vNormal) : normalize(faceN);
+        if (uShadowKind == 1 && dot(n, uEye - vWorldPos) < 0.0) n = -n;  // the side the camera sees
+        float lit = dot(n, uLightDir) > 0.0 ? LitBy(vWorldPos, n) : 1.0;
+        float shade = (1.0 - lit) * uShadowStrength;
+        if (uShadowKind == 2) {
+            vec3 a = uFlat ? vAmbFlat : vAmbPart, d = uFlat ? vDirFlat : vDirPart;
+            diff.rgb = clamp(a + d * (1.0 - shade), 0.0, 1.0);
+        } else {
+            levelShade = 1.0 - 0.55 * shade;  // (the level's baked colours: about what the blob shadow does)
+        }
+    }
     vec4 result = diff;
     if (uTexOn && uColorOp != 1) {
         vec4 t = texture(uTex, vUV);
@@ -99,6 +149,7 @@ void main() {
         float ta = texture(uTex, vUV).a;
         result.rgb = uAlphaFix == 1 ? result.rgb * ta : mix(vec3(1.0), result.rgb, ta);
     }
+    result.rgb *= levelShade;
     if (uAOStrength > 0.0) result.rgb *= mix(1.0, texture(uAOTex, gl_FragCoord.xy / uFboSize).r, uAOStrength);
     fragColor = result * uConstColor;
 }
@@ -124,6 +175,17 @@ static const char* kDepthFS = R"GLSL(
 in float vZ;
 out vec4 fragZ;
 void main() { fragZ = vec4(vZ); }
+)GLSL";
+// Dynamic shadows (G4): the solid draws seen from the light, depth only
+static const char* kShadowVS = R"GLSL(
+#version 330 core
+layout(location=0) in vec3 aPos;
+uniform mat4 uWorld, uLightVP;
+void main() { gl_Position = uLightVP * (uWorld * vec4(aPos, 1.0)); }
+)GLSL";
+static const char* kShadowFS = R"GLSL(
+#version 330 core
+void main() {}
 )GLSL";
 // A triangle over the whole target, for the passes below
 static const char* kFullVS = R"GLSL(
@@ -415,8 +477,16 @@ bool Device::Init(SDL_Window* window) {
     presentTexLoc_ = glGetUniformLocation(progPresent_, "uTex");
     presentGammaLoc_ = glGetUniformLocation(progPresent_, "uGamma");
     u_.aoStrength = loc("uAOStrength"); u_.aoTex = loc("uAOTex"); u_.fboSize = loc("uFboSize");
+    u_.shadowKind = loc("uShadowKind"); u_.shadowMap = loc("uShadowMap"); u_.lightVP = loc("uLightVP");
+    u_.shadowTexel = loc("uShadowTexel"); u_.shadowOffset = loc("uShadowOffset");
+    u_.shadowStrength = loc("uShadowStrength"); u_.shadowGrid = loc("uShadowGrid"); u_.eye = loc("uEye");
     glUseProgram(prog_);
-    glUniform1i(u_.aoTex, 1);  // (the AO texture on unit 1; the draws' own on 0)
+    glUniform1i(u_.aoTex, 1);      // (the AO texture on unit 1; the draws' own on 0)
+    glUniform1i(u_.shadowMap, 2);  // (the shadow map on unit 2)
+    glUniform1i(u_.shadowKind, 0);
+    progShadow_ = CompileProgram(kShadowVS, kShadowFS);
+    shadowLoc_[0] = glGetUniformLocation(progShadow_, "uWorld");
+    shadowLoc_[1] = glGetUniformLocation(progShadow_, "uLightVP");
     progDepth_ = CompileProgram(kDepthVS, kDepthFS);
     progAO_ = CompileProgram(kFullVS, kAOFS);
     progBlur_ = CompileProgram(kFullVS, kBlurFS);
@@ -438,6 +508,7 @@ bool Device::Init(SDL_Window* window) {
     // as before 0.4.39, to compare pictures and timings
     gpu3D_.Init();
     gpuAO_.Init();
+    gpuShadow_.Init();
     const char* noRec = SDL_getenv("MBN_NO_RECORD");
     recordEnabled_ = !(noRec && noRec[0] && noRec[0] != '0');
     if (!recordEnabled_) Log("MBN_NO_RECORD: the level's 3D is drawn without recording");
@@ -481,7 +552,11 @@ void Device::Shutdown() {
     if (ibo_) glDeleteBuffers(1, &ibo_);
     gpu3D_.Free();
     gpuAO_.Free();
+    gpuShadow_.Free();
     DestroyAOTargets();
+    DestroyShadowTarget();
+    if (progShadow_) glDeleteProgram(progShadow_);
+    progShadow_ = 0;
     if (prepVbo_) glDeleteBuffers(1, &prepVbo_);
     if (prepIbo_) glDeleteBuffers(1, &prepIbo_);
     if (emptyVao_) glDeleteVertexArrays(1, &emptyVao_);
@@ -590,6 +665,8 @@ void Device::BeginFrame() {
     gpu3D_.FrameDone();
     gpuAO_.Poll();
     gpuAO_.FrameDone();
+    gpuShadow_.Poll();
+    gpuShadow_.FrameDone();
     if (frameDraws3D_ > 0) lastDraws3D_ = frameDraws3D_;
     frameDraws3D_ = 0;
     hudTLRight_ = -1e9f;
@@ -819,6 +896,7 @@ void Device::ApplyState(DWORD fvf, bool twoD) {
     glUniform4f(u_.constColor, 1, 1, 1, 1);
     glUniform1i(u_.alphaFix, 0);
     glUniform1f(u_.aoStrength, 0.f);
+    glUniform1i(u_.shadowKind, 0);
 }
 
 // A 3D draw's state sent to OpenGL: the draw being asked for now, or a recorded one (the state
@@ -832,6 +910,7 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf) {
     glUniform4f(u_.constColor, 1, 1, 1, 1);
     glUniform1i(u_.alphaFix, 0);
     glUniform1f(u_.aoStrength, 0.f);  // (the replay sets it for the draws that take AO)
+    glUniform1i(u_.shadowKind, 0);    // (and the shadows' way, likewise)
 
     // depth
     if (st.zEnable) {
@@ -1034,7 +1113,24 @@ void Device::Record(D3DPRIMITIVETYPE type, DWORD fvf, const void* verts, DWORD n
 void Device::FlushRecording() {
     if (rec_.empty()) return;
     // the extra passes first (G3: ambient occlusion), each on the graphics card's stopwatch
+    prepUploaded_ = false;
     aoActive_ = GetConfig().ambientOcclusion && ComputeAO();
+    const int shadowQuality = std::clamp(GetConfig().dynamicShadows, 0, 3);
+    shadowActive_ = shadowQuality > 0 && ComputeShadows(shadowQuality);
+    if (shadowActive_) {
+        // what every receiving draw reads (the program keeps them)
+        static const int kGrid[4] = {1, 2, 3, 4};
+        glUseProgram(prog_);
+        glUniformMatrix4fv(u_.lightVP, 1, GL_FALSE, lightVP_);
+        glUniform1f(u_.shadowTexel, 1.f / (float)shadowSize_);
+        glUniform1f(u_.shadowOffset, 1.5f * shadowTexelWorld_);
+        glUniform1f(u_.shadowStrength, std::clamp(GetConfig().shadowStrength, 50, 100) / 100.f);
+        glUniform1i(u_.shadowGrid, kGrid[shadowQuality]);
+        glUniform3f(u_.eye, shadowEye_.x, shadowEye_.y, shadowEye_.z);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, shadowTex_);
+        glActiveTexture(GL_TEXTURE0);
+    }
     gpu3D_.Begin();
     // Each draw exactly as it would have been sent when it was asked for: its state, then its own
     // vertices and indices uploaded on their own. (Drawing them all from one shared upload, with a
@@ -1047,6 +1143,10 @@ void Device::FlushRecording() {
     static constexpr float kAOLevel = 0.9f, kAOModel = 0.7f;
     for (const RecordedDraw& d : rec_) {
         ApplyDrawState(d.st, d.fvf);
+        if (shadowActive_) {
+            int kind = DrawKind(d);
+            if (kind) glUniform1i(u_.shadowKind, kind == 2 && d.st.lighting ? 2 : 1);
+        }
         if (aoActive_) {
             int kind = DrawKind(d);
             if (kind) {
@@ -1070,6 +1170,7 @@ void Device::FlushRecording() {
     }
     gpu3D_.End();
     aoActive_ = false;
+    shadowActive_ = false;
     frameDraws3D_ += (int)rec_.size();
     rec_.clear();
     recVerts_.clear();
@@ -1190,6 +1291,182 @@ void Device::EnsureAOTargets(int w, int h) {
     Log("Ambient occlusion targets %dx%d", w, h);
 }
 
+// The frame's vertices and indices in one upload (once a flush, for whichever extra pass comes
+// first), the position pointed at for a depth-only draw
+void Device::UploadPrep() {
+    glBindVertexArray(vao_);
+    glBindBuffer(GL_ARRAY_BUFFER, prepVbo_);
+    if (!prepUploaded_)
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)recVerts_.size(), recVerts_.data(), GL_STREAM_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, prepIbo_);
+    if (!prepUploaded_ && !recIdx_.empty())
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(recIdx_.size() * sizeof(WORD)), recIdx_.data(),
+                     GL_STREAM_DRAW);
+    prepUploaded_ = true;
+    for (int i = 0; i < 6; i++) glDisableVertexAttribArray(i);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);  // (the position leads both formats)
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic shadows (graphics enhancements, G4)
+// ---------------------------------------------------------------------------
+
+void Device::DestroyShadowTarget() {
+    if (shadowFbo_) glDeleteFramebuffers(1, &shadowFbo_);
+    if (shadowTex_) glDeleteTextures(1, &shadowTex_);
+    shadowFbo_ = shadowTex_ = 0;
+    shadowSize_ = 0;
+}
+
+void Device::EnsureShadowTarget(int size) {
+    if (size == shadowSize_ && shadowFbo_) return;
+    DestroyShadowTarget();
+    shadowSize_ = size;
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &shadowTex_);
+    glBindTexture(GL_TEXTURE_2D, shadowTex_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);  // (the card blends 2 x 2 comparisons)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    glGenFramebuffers(1, &shadowFbo_);
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo_);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowTex_, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) Log("Shadow framebuffer incomplete");
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    Log("Dynamic shadows map %dx%d", size, size);
+}
+
+// The shadow map for the recorded draws (false when there is no level or no directional light).
+bool Device::ComputeShadows(int quality) {
+    const RecordedDraw* lens = nullptr;
+    for (const RecordedDraw& d : rec_)
+        if (d.st.gameplayView && DrawKind(d)) {
+            lens = &d;
+            break;
+        }
+    if (!lens || !lens->st.lightEnabled || lens->st.light.type != D3DLIGHT_DIRECTIONAL) return false;
+    D3DVECTOR travel = lens->st.light.direction;
+    if (Magnitude(travel) <= 0.f) return false;
+    static const int kSize[4] = {0, 1024, 2048, 4096};
+    EnsureShadowTarget(kSize[quality]);
+
+    // 1. What the camera sees of the level. The levels lie along z, between x -60 and 260 and y
+    //    -260 and 300 (the floors, the pits and cliff faces, the walls; the camera is on the +x
+    //    side, at y 315, looking down). Rays through a grid of the screen, from the near plane to
+    //    the far (10 to 1000 along the view), clipped to that slab: the z range they cover, which
+    //    follows any window shape, Field of view and the camera's shake.
+    const D3DMATRIX& V = lens->st.view;
+    const D3DMATRIX P = DrawProj(lens->st);
+    D3DVECTOR t(V._41, V._42, V._43);
+    D3DVECTOR eye(-(t.x * V._11 + t.y * V._12 + t.z * V._13), -(t.x * V._21 + t.y * V._22 + t.z * V._23),
+                  -(t.x * V._31 + t.y * V._32 + t.z * V._33));
+    const float x0 = -60.f, x1 = 260.f, y0 = -260.f, y1 = 300.f;
+    float zMin = 1e9f, zMax = -1e9f;
+    for (int j = 0; j <= 8; j++)
+        for (int i = 0; i <= 8; i++) {
+            float nx = -1.f + i / 4.f, ny = -1.f + j / 4.f;
+            D3DVECTOR dv(nx / P._11, ny / P._22, 1.f);  // (in the view: z = the distance along it)
+            D3DVECTOR d(dv.x * V._11 + dv.y * V._12 + dv.z * V._13, dv.x * V._21 + dv.y * V._22 + dv.z * V._23,
+                        dv.x * V._31 + dv.y * V._32 + dv.z * V._33);
+            float tIn = 10.f, tOut = 1000.f;
+            auto slab = [&](float o, float dd, float lo, float hi) {
+                if (std::fabs(dd) < 1e-6f) {
+                    if (o < lo || o > hi) tOut = -1.f;
+                    return;
+                }
+                float a = (lo - o) / dd, b = (hi - o) / dd;
+                if (a > b) std::swap(a, b);
+                tIn = std::max(tIn, a);
+                tOut = std::min(tOut, b);
+            };
+            slab(eye.x, d.x, x0, x1);
+            slab(eye.y, d.y, y0, y1);
+            if (tIn >= tOut) continue;
+            for (float tt : {tIn, tOut}) {
+                float z = eye.z + d.z * tt;
+                zMin = std::min(zMin, z);
+                zMax = std::max(zMax, z);
+            }
+        }
+    if (zMin > zMax) return false;
+    // things nearer the light (further along -z: the light comes from +x, above and -z) can cast
+    // into view: up to the slab's height times its slant
+    zMin -= 280.f;
+    zMax += 40.f;
+
+    // 2. The light's view: an orthographic box round that part of the level, along the light. Its
+    //    size rounded up to steps and its centre snapped to whole map pixels, so the shadows' edges
+    //    stay put as the camera follows the mage.
+    D3DVECTOR f = Normalize(travel);
+    D3DVECTOR up = std::fabs(f.y) < 0.99f ? D3DVECTOR(0, 1, 0) : D3DVECTOR(1, 0, 0);
+    D3DVECTOR r = Normalize(CrossProduct(up, f));
+    D3DVECTOR u = CrossProduct(f, r);
+    float lx0 = 1e9f, lx1 = -1e9f, ly0 = 1e9f, ly1 = -1e9f, lz0 = 1e9f, lz1 = -1e9f;
+    for (int k = 0; k < 8; k++) {
+        D3DVECTOR c((k & 1) ? x1 : x0, (k & 2) ? y1 : y0, (k & 4) ? zMax : zMin);
+        float a = DotProduct(c, r), b = DotProduct(c, u), z = DotProduct(c, f);
+        lx0 = std::min(lx0, a), lx1 = std::max(lx1, a);
+        ly0 = std::min(ly0, b), ly1 = std::max(ly1, b);
+        lz0 = std::min(lz0, z), lz1 = std::max(lz1, z);
+    }
+    const float step = 64.f;
+    float w = std::ceil((lx1 - lx0) / step) * step, h = std::ceil((ly1 - ly0) / step) * step;
+    float side = std::max(w, h);  // (square pixels)
+    float texel = side / (float)shadowSize_;
+    float cx = std::floor((lx0 + lx1) * 0.5f / texel) * texel, cy = std::floor((ly0 + ly1) * 0.5f / texel) * texel;
+    float zn = lz0 - 10.f, zf = lz1 + 10.f;
+    shadowTexelWorld_ = texel;
+    shadowEye_ = eye;
+    // clip = M * world, M column-major for OpenGL
+    float sx = 2.f / side, sz = 2.f / (zf - zn);
+    float rows[3][4] = {{r.x * sx, r.y * sx, r.z * sx, -cx * sx},
+                        {u.x * sx, u.y * sx, u.z * sx, -cy * sx},
+                        {f.x * sz, f.y * sz, f.z * sz, -zn * sz - 1.f}};
+    for (int col = 0; col < 4; col++) {
+        for (int row = 0; row < 3; row++) lightVP_[col * 4 + row] = rows[row][col];
+        lightVP_[col * 4 + 3] = col == 3 ? 1.f : 0.f;
+    }
+
+    // 3. The map: the solid draws' depth from the light (both sides of every face, pushed back a
+    //    little by their slope so surfaces don't shadow themselves)
+    gpuShadow_.Begin();
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo_);
+    glViewport(0, 0, shadowSize_, shadowSize_);
+    glDisable(GL_SCISSOR_TEST);
+    glDepthMask(GL_TRUE);
+    glClearDepth(1.0);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_BLEND);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(1.5f, 2.f);
+    glUseProgram(progShadow_);
+    glUniformMatrix4fv(shadowLoc_[1], 1, GL_FALSE, lightVP_);
+    UploadPrep();
+    for (const RecordedDraw& d : rec_) {
+        if (!DrawKind(d)) continue;
+        glUniformMatrix4fv(shadowLoc_[0], 1, GL_FALSE, d.st.world.m());
+        if (d.indexed)
+            glDrawElementsBaseVertex(d.mode, d.count, GL_UNSIGNED_SHORT, (void*)(d.firstIndex * sizeof(WORD)),
+                                     (GLint)d.firstVertex);
+        else
+            glDrawArrays(d.mode, (GLint)d.firstVertex, d.count);
+    }
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    gpuShadow_.End();
+    return true;
+}
+
 // The AO texture for the recorded draws (false when there is nothing solid in a level to shade).
 // Leaves it on texture unit 1 for the main pass.
 bool Device::ComputeAO() {
@@ -1220,16 +1497,7 @@ bool Device::ComputeAO() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glUseProgram(progDepth_);
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, prepVbo_);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)recVerts_.size(), recVerts_.data(), GL_STREAM_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, prepIbo_);
-    if (!recIdx_.empty())
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(recIdx_.size() * sizeof(WORD)), recIdx_.data(),
-                     GL_STREAM_DRAW);
-    for (int i = 0; i < 6; i++) glDisableVertexAttribArray(i);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);  // (the position leads both formats)
+    UploadPrep();
     for (const RecordedDraw& d : rec_) {
         if (!DrawKind(d)) continue;
         if (d.st.cullMode == D3DCULL_NONE) {

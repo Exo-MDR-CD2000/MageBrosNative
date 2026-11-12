@@ -86,6 +86,7 @@ typedef uint64_t GLuint64;
 #define GL_CLAMP_TO_EDGE 0x812F
 #define GL_TEXTURE0 0x84C0
 #define GL_TEXTURE1 0x84C1
+#define GL_TEXTURE2 0x84C2
 #define GL_TEXTURE_MAX_ANISOTROPY 0x84FE
 #define GL_MAX_TEXTURE_MAX_ANISOTROPY 0x84FF
 #define GL_ARRAY_BUFFER 0x8892
@@ -123,6 +124,11 @@ typedef uint64_t GLuint64;
 #define GL_RED 0x1903
 #define GL_R8 0x8229
 #define GL_R32F 0x822E
+#define GL_DEPTH_COMPONENT 0x1902
+#define GL_TEXTURE_COMPARE_MODE 0x884C
+#define GL_TEXTURE_COMPARE_FUNC 0x884D
+#define GL_COMPARE_REF_TO_TEXTURE 0x884E
+#define GL_POLYGON_OFFSET_FILL 0x8037
 #define GL_QUERY_RESULT 0x8866
 #define GL_QUERY_RESULT_AVAILABLE 0x8867
 
@@ -144,6 +150,9 @@ typedef uint64_t GLuint64;
     X(void, glReadPixels, (GLint x, GLint y, GLsizei w, GLsizei h, GLenum f, GLenum t, void* p))             \
     X(GLenum, glGetError, (void))                                                                            \
     X(void, glFinish, (void))                                                                                \
+    X(void, glDrawBuffer, (GLenum b))                                                                        \
+    X(void, glReadBuffer, (GLenum b))                                                                        \
+    X(void, glPolygonOffset, (GLfloat f, GLfloat u))                                                         \
     X(void, glGetIntegerv, (GLenum p, GLint * v))                                                            \
     X(void, glGetFloatv, (GLenum p, GLfloat * v))                                                            \
     X(const GLubyte*, glGetString, (GLenum n))                                                               \

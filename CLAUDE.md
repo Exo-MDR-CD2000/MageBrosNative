@@ -573,10 +573,13 @@ G2's. After testing 0.4.39 the owner kept High and had Low removed: the row is O
 former High; old ini values 1 and 2 read as on), built as 0.4.40. A puzzle noted in the plan's
 "G3 as built": two pixels of 1-6's slime one shade apart between runs that differed only in an ini
 digit, which questions G2's "shared buffer" explanation. Windows Defender flagged the unsigned
-0.4.39 build (an ML false positive; restored by the owner). The owner wants the first test build with G3. The build is still
+0.4.39 build (an ML false positive; restored by the owner). **G4 is built (2026-11-11, after
+0.4.40)**: Dynamic shadows (Off / Low / Medium / High, `dynamic_shadows`; Shadow strength,
+`shadow_strength` 50..100, 80 by default), `Device::ComputeShadows` before the replay; with them
+off every picture is as 0.4.40's. Built as 0.4.41; the next chunks take numbers from 0.4.42. The owner wants the first test build with G3. The build is still
 built as **0.4.39** (2026-11-11, the owner: one version for G1 to G3, the first test build;
 `make_release.bat 0.4.39`, a copy kept in `build\fix-builds`). The plan's later chunks take the
-next numbers from 0.4.41 (0.4.40 is AO's Low removed). Built on the branch only: `main` stays at 0.4.38 and off these numbers
+next numbers from 0.4.42 (0.4.40 is AO's Low removed, 0.4.41 dynamic shadows). Built on the branch only: `main` stays at 0.4.38 and off these numbers
 until the branch merges.
 Start each next chunk on the owner's word. The owner's graphics card is an **RTX 5080** from
 2026-11-11 (the frame rates measured before that, in these docs, were on an RTX 3090 Ti).

@@ -194,6 +194,7 @@ private:
         double gpu3D = -1;  // the graphics card's time for a level's 3D a frame (-1: none drawn)
         int draws3D = 0;    // the level's 3D draws in the last frame that had any
         double gpuAO = -1;  // the graphics card's time for ambient occlusion a frame (-1: none)
+        double gpuShadows = -1;  // the same for the dynamic shadows' map
     } statsSec_;
     uint64_t frameStartNs_ = 0;
     // The last frames drawn, for the overlay's graphs (O2): the time since the frame before, the

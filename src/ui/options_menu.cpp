@@ -880,6 +880,24 @@ OptionsMenu::Page OptionsMenu::GraphicsPage() {
                      Save();
                  },
                  nullptr, nullptr});
+    v.push_back({"Dynamic shadows", "Real shadows from the game's light, in levels. Higher is sharper and costs more.",
+                 [] {
+                     static const char* names[] = {"Off", "Low", "Medium", "High"};
+                     return std::string(names[std::clamp(GetConfig().dynamicShadows, 0, 3)]);
+                 },
+                 [this](int d) {
+                     static const std::vector<int> l{0, 1, 2, 3};
+                     GetConfig().dynamicShadows = l[(size_t)CycleIndex(l, GetConfig().dynamicShadows, d)];
+                     Save();
+                 },
+                 nullptr, nullptr});
+    v.push_back({"Shadow strength", "How dark the dynamic shadows are.",
+                 [] { return Pct(GetConfig().shadowStrength); },
+                 [this](int d) {
+                     GetConfig().shadowStrength = std::clamp(GetConfig().shadowStrength + d * 10, 50, 100);
+                     Save();
+                 },
+                 nullptr, nullptr});
     {
         Item it{"Brightness", "Adjusts how bright the picture looks. 100% = original.",
                 [] { return Pct(GetConfig().brightness); },

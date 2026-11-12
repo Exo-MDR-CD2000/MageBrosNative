@@ -112,6 +112,8 @@ public:
     void TakeGpu3D(double* sumMs, int* frames) { gpu3D_.Take(sumMs, frames); }
     // The same for ambient occlusion (its depth pass, the occlusion and the blur, G3)
     void TakeGpuAO(double* sumMs, int* frames) { gpuAO_.Take(sumMs, frames); }
+    // And for the dynamic shadows' map (G4)
+    void TakeGpuShadows(double* sumMs, int* frames) { gpuShadow_.Take(sumMs, frames); }
     int Draws3D() const { return lastDraws3D_; }
     bool Recording3D() const { return recordEnabled_; }
     // Rows at the bottom of the window that are off the screen (the borderless window's extra
@@ -202,7 +204,7 @@ private:
         void FrameDone();
         void Take(double* s, int* f);
     };
-    GpuTimer gpu3D_, gpuAO_;
+    GpuTimer gpu3D_, gpuAO_, gpuShadow_;
     // Ambient occlusion (G3): a depth pass of the recorded solid draws into a texture of view-space
     // depth, the occlusion worked out from it, then blurred; the main pass multiplies the level and
     // the solid models by it. Sized to the picture (not the render scale).
@@ -211,6 +213,23 @@ private:
     bool ComputeAO();
     void EnsureAOTargets(int w, int h);
     void DestroyAOTargets();
+    // The frame's vertices in one upload, for the extra passes (depth only: AO's and the shadows')
+    void UploadPrep();
+    bool prepUploaded_ = false;
+    // Dynamic shadows (G4): a depth map of the solid draws seen from the game's own light, fitted
+    // each frame round the part of the level the camera sees and snapped to whole map pixels;
+    // the main pass looks each pixel up in it. Lit models lose only their direct light in shadow,
+    // pre-lit surfaces facing the light are darkened.
+    bool ComputeShadows(int quality);
+    void EnsureShadowTarget(int size);
+    void DestroyShadowTarget();
+    bool shadowActive_ = false;
+    int shadowSize_ = 0;
+    GLuint progShadow_ = 0, shadowFbo_ = 0, shadowTex_ = 0;
+    GLint shadowLoc_[2] = {-1, -1};                   // world, lightVP
+    float lightVP_[16] = {};                          // world to the shadow map (column-major)
+    float shadowTexelWorld_ = 1.f;                    // a map pixel's width in the level
+    D3DVECTOR shadowEye_;                             // the camera, in the level
     bool aoActive_ = false;
     int aoW_ = 0, aoH_ = 0;
     GLuint progDepth_ = 0, progAO_ = 0, progBlur_ = 0, emptyVao_ = 0, prepVbo_ = 0, prepIbo_ = 0;
@@ -253,7 +272,8 @@ private:
     struct Uniforms {
         GLint world, view, proj, lighting, matDiffuse, matAmbient, matEmissive, ambient, lightOn, lightDir,
             lightDiffuse, flat, texOn, colorOp, colorArg1, colorArg2, alphaOp, alphaArg1, alphaArg2, alphaTest,
-            hasVertexColor, tex, constColor, screen2D, viewport2D, alphaFix, aoStrength, aoTex, fboSize;
+            hasVertexColor, tex, constColor, screen2D, viewport2D, alphaFix, aoStrength, aoTex, fboSize,
+            shadowKind, shadowMap, lightVP, shadowTexel, shadowOffset, shadowStrength, shadowGrid, eye;
     } u_{};
     GLint presentTexLoc_ = -1, presentGammaLoc_ = -1;
 
