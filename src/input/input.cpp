@@ -204,6 +204,15 @@ void SetBlocked(bool blocked) {
     }
 }
 
+bool QuitChordDown() {
+    if (!g_focused) return false;  // deliberately not g_blocked: it must work with the menu open
+    for (auto& p : g_pads)
+        if (SDL_GetGamepadButton(p.pad, SDL_GAMEPAD_BUTTON_BACK) &&
+            SDL_GetGamepadButton(p.pad, SDL_GAMEPAD_BUTTON_START))
+            return true;
+    return false;
+}
+
 void DefaultScancodesForDik(int dik, std::vector<int>* out) {
     out->clear();
     for (int sc = 1; sc < SDL_SCANCODE_COUNT; sc++)

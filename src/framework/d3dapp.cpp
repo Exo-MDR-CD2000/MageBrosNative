@@ -923,6 +923,13 @@ int CD3DApplication::Run() {
             gotEvent = SDL_PollEvent(&e);
         }
         if (quit_) break;
+        // Select+Start quits from anywhere, as the console's other ports do. Checked after the
+        // events are pumped, so the chord is still seen while the options menu is open.
+        if (Input::QuitChordDown()) {
+            Log("Quit: Select+Start");
+            quit_ = true;
+            break;
+        }
         if (Midi::PollFinished()) OnMidiNotifySuccessful();
         DWORD now = AppTimeMs();
         if (windowChangedAt_ && now - windowChangedAt_ >= kWindowSettleMs) SaveWindowState();

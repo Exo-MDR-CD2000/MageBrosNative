@@ -1,12 +1,10 @@
-# The console's own pad, measured on the R36S (SDL 3.4.18, 2026-11-12) with
-# `mbn_r36s_probe --buttons` while each button was pressed in turn.
+# The console's own pad, measured on the R36S (SDL 3.4.18, 2026-11-12).
 #
-# SDL's mapping for an unlisted pad is a guess: it invents a:b0..righttrigger:b7 and
-# dpup:b8..dpright:b11. On this device the d-pad is 8/11/10/9 and Select/Start are 12/13, so the
-# guessed d-pad silently swallowed them: no START event ever reached the game, and the in-game
-# menu (F10 / Start), the only place "Level select" and "Quit game" live, could not be opened on
-# a console with no keyboard.
+# SDL's mapping for an unlisted pad stops at the triggers (b0..b7) and leaves Select/Start
+# unmapped; on the console there is no keyboard, and the in-game menu (F10 / Start) is where
+# "Level select" and "Quit game" live, so no START event meant no way out of a level.
 #
-# Measured: Start 13, Select 12, d-pad up 8, down 11, left 10, right 9, L1 4, A 1.
-# The face-button names below keep SDL's original a:b0..y:b3; play works with them.
-1900bb3e4b4800000011000000010000,GO-Super Gamepad,a:b0,b:b1,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,dpup:b8,dpdown:b11,dpleft:b10,dpright:b9,back:b12,start:b13,leftx:a0,lefty:a1,rightx:a2,righty:a3,platform:Linux,
+# Measured with `mbn_r36s_probe --buttons` while each button was pressed: Start 13, Select 12,
+# d-pad up 8, down 9, left 10, right 11, L1 4. The d-pad order is SDL's guess and it matches the
+# hardware; only Select and Start had to be added.
+1900bb3e4b4800000011000000010000,GO-Super Gamepad,a:b0,b:b1,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,dpup:b8,dpdown:b9,dpleft:b10,dpright:b11,back:b12,start:b13,leftx:a0,lefty:a1,rightx:a2,righty:a3,platform:Linux,

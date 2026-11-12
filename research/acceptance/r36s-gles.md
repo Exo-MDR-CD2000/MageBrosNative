@@ -134,14 +134,13 @@ from GZDoom's data) and the six `Music*.mid` files copied in, the log reports
 `music: SoundFont synth`. This is a packaging gap, not a renderer defect; it is now documented in
 the README and the launcher's folder.
 
-**There was no way out of a level.** SDL's mapping for an unlisted pad is a guess: it invents
-`a:b0..righttrigger:b7` and `dpup:b8..dpright:b11`. On this device the d-pad is 8/11/10/9 and
-Select/Start are **12 and 13**, so the guessed d-pad silently swallowed them and no START event
-ever reached the game. The in-game menu (F10 / Start) is where "Level select" and "Quit game"
-live, so on a console with no keyboard there was no exit at all. Measured with
-`mbn_r36s_probe --buttons` while each button was pressed: Start 13, Select 12, d-pad up 8,
-down 11, left 10, right 9, L1 4, A 1. The shipped mapping now names them and SDL reports it back
-(with `crc:3ebb`).
+**There was no way out of a level.** SDL's mapping for an unlisted pad stops at the triggers
+(`b0..b7`) and leaves Select/Start unmapped. The in-game menu (F10 / Start) is where "Level
+select" and "Quit game" live, so on a console with no keyboard there was no exit at all.
+Measured with `mbn_r36s_probe --buttons` while each button was pressed: Start **13**, Select
+**12**, d-pad up 8, down 9, left 10, right 11, L1 4. SDL's guessed d-pad order matches the
+hardware, so only `back:b12,start:b13` had to be added; SDL now reports the mapping back with
+`crc:3ebb`. Select+Start also quits from anywhere, as the console's other ports do.
 
 **The game stutters.** Deferred by the owner's decision; the frame time was not measured in this
 session.
