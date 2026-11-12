@@ -1,6 +1,7 @@
 #include "game/XWater.h"
 #include "framework/interp.h"
 #include "game/JObject3D.h"
+#include <initializer_list>
 
 namespace {
 // water1: blended (alpha 0.4) at -38; water2: added (alpha 0.6) at -39. World 3 uses 0x28f / 0x290.
