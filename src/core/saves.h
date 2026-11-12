@@ -45,6 +45,11 @@ void Init();
 // The resolved save folder, ending with a path separator.
 const std::string& Dir();
 
+// The platform's per-user data folder for this program (created if missing), ending with a
+// path separator, or "" if unavailable. On macOS the config and the log live there too, so an
+// application bundle installed in /Applications never has to be written to.
+std::string UserFolder();
+
 // A pack id is lowercase letters, digits, '.', '_' and '-' (it becomes a folder name).
 bool IsValidPackId(const std::string& id);
 
