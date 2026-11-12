@@ -134,12 +134,14 @@ from GZDoom's data) and the six `Music*.mid` files copied in, the log reports
 `music: SoundFont synth`. This is a packaging gap, not a renderer defect; it is now documented in
 the README and the launcher's folder.
 
-**There was no way out of a level.** SDL's generated gamepad mapping for this pad stops at the
-triggers (`b0..b7`); the launcher shipped that mapping, so SDL never emitted a START event. The
-in-game menu (F10 / Start) is where "Level select" and "Quit game" live, so on a console with no
-keyboard there was no exit at all. Select and Start follow the triggers in the kernel's evdev
-order (`BTN_SELECT` 314, `BTN_START` 315), i.e. `b8` and `b9`; the mapping now says
-`back:b8,start:b9`.
+**There was no way out of a level.** SDL's mapping for an unlisted pad is a guess: it invents
+`a:b0..righttrigger:b7` and `dpup:b8..dpright:b11`. On this device the d-pad is 8/11/10/9 and
+Select/Start are **12 and 13**, so the guessed d-pad silently swallowed them and no START event
+ever reached the game. The in-game menu (F10 / Start) is where "Level select" and "Quit game"
+live, so on a console with no keyboard there was no exit at all. Measured with
+`mbn_r36s_probe --buttons` while each button was pressed: Start 13, Select 12, d-pad up 8,
+down 11, left 10, right 9, L1 4, A 1. The shipped mapping now names them and SDL reports it back
+(with `crc:3ebb`).
 
 **The game stutters.** Deferred by the owner's decision; the frame time was not measured in this
 session.

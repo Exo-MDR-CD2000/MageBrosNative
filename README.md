@@ -219,8 +219,10 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   ```
 
   Settings, saves and the log live in `~/Library/Application Support/MageBrosNative`; the
-  application bundle itself is never written to. Music needs a General MIDI SoundFont, as on
-  Windows.
+  application bundle itself is never written to. Unlike Windows, this port has no system MIDI
+  synthesizer on macOS: music needs a General MIDI `.sf2` (`soundfont.sf2` or `magebros.sf2`)
+  next to `MageBros.exe`, or in a `soundfonts` folder there, and the original's `Music*.mid`
+  files. Without them the effects play and the music is silent.
 - **R36S (aarch64 handheld):** Docker on any machine, no cross toolchain to prepare.
 
   ```sh

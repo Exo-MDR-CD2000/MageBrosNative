@@ -196,6 +196,9 @@ Every scenario in `specs/native-platforms/spec.md`, with the evidence for it.
 
 ## Not verified
 
+- Music on macOS: the owner reports it is silent. Unlike Windows, this port has no system MIDI
+  synthesizer there, so music needs a General MIDI `.sf2` and the original's `Music*.mid` files
+  next to `MageBros.exe`; the README says so. Effects are heard.
 - A save written after real progress (a cleared level): `progress.ini` is written and its
   contents are correct for an untouched slot, but no session cleared a level and returned to
   level select.
