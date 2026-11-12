@@ -90,10 +90,12 @@ tools/r36s/install.sh ark@192.168.0.104   # copy to /roms2/ports/ over SSH
 ```
 
 `install.sh` writes `/roms2/ports/MageBros.sh` and `/roms2/ports/magebros/`; put your own
-`MageBros.exe` in that folder. The launcher needs one environment hint — `SDL_EGL_LIBRARY`
-pointing at `libMali.so` — and nothing else: `SDL_VIDEO_DRIVER`, `SDL_OPENGL_LIBRARY` and
-`SDL_OPENGL_ES_DRIVER` were each tested and are not needed. The game writes its own log next
-to the launcher's.
+`MageBros.exe` and its `Music*.mid` files in that folder, plus a General MIDI `.sf2` named
+`soundfont.sf2` if you want music (the console has no system synthesizer). The launcher needs
+one environment hint — `SDL_EGL_LIBRARY` pointing at `libMali.so` — and nothing else:
+`SDL_VIDEO_DRIVER`, `SDL_OPENGL_LIBRARY` and `SDL_OPENGL_ES_DRIVER` were each tested and are not
+needed. The game writes its own log next to the launcher's. In game, **Start** opens the pause
+menu with "Level select" and "Quit game".
 
 The Ports menu is EmulationStation's; it scans `/roms2/ports` at start, so restart the frontend
 (or reboot the console) after the first install.
