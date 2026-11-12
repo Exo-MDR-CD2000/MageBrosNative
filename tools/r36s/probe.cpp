@@ -36,6 +36,7 @@ int RunButtons() {
     std::printf("joystick: %s, %d buttons\n", joy ? SDL_GetJoystickName(joy) : "?", joy ? SDL_GetNumJoystickButtons(joy) : 0);
     bool down[64] = {};
     for (int tick = 0; tick < 400; tick++) {  // 400 x 50 ms = 20 s
+        SDL_PumpEvents();  // SDL updates joystick state while pumping, not on demand
         int count = joy ? SDL_GetNumJoystickButtons(joy) : 0;
         for (int b = 0; b < count && b < 64; b++) {
             bool now = SDL_GetJoystickButton(joy, b);
