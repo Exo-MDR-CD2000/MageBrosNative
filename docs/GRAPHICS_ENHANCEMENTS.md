@@ -1,9 +1,11 @@
-# Graphics enhancements (G1 to G6 built; G7 under way)
+# Graphics enhancements (G1 to G6 built; G8 water planned; G7 under way)
 
 **Status (2026-11-12): G1 to G6 are built on the `graphics-enhancements` branch** (made from
 `main` at 0.4.38; on GitHub up to 0.4.45, 0.4.46 built locally), each with an "as built" section
 below, and tried by the owner build by build. **G7** (the page's last touches, the overlay, the
-final checks and the merge into `main`) is what is left; its overlay rows are done (0.4.46). The plan below was written on 2026-11-10
+final checks and the merge into `main`) is what is left; its overlay rows are done (0.4.46). **G8, the water** (Original / Enhanced /
+Enhanced + reflections; the owner's request of 2026-11-12) is planned to come first, from 0.4.47,
+so G7's checks cover it. The plan below was written on 2026-11-10
 from reading the code at 0.4.38; where the build differs, the "as built" sections and the
 summary next say so, and the plan's text has been corrected where it would mislead.
 
@@ -35,8 +37,9 @@ option off, only the replay runs, byte for byte as before G1.
 another default, or no row); whether shadows keep three quality levels; other screens than
 levels; any option on by default (all are off). Known, left as they are: see-through models
 (slimes, ghosts, the wizard's parts) cast no dynamic shadow ("G4 as built"); the bloom carries the
-original flame's own flicker a little further ("G6 as built"); the slimes vary by one shade in a
-few pixels from run to run ("A puzzle for later", under "G3 as built").
+original flame's own flicker a little further ("G6 as built"); byte-for-byte comparisons can
+differ by one shade in a pixel or two of see-through surfaces from run to run, invisible in play
+("Run-to-run noise", under "G3 as built").
 
 ## In short
 
@@ -203,7 +206,9 @@ multiplied, by a smaller strength); `shadowDarkness` became the fixed 0.55 times
 | G5a | 0.4.44 | Dynamic lights: finding the lights | Low | 2026-11-11, with G5b, as 0.4.42 (steadied in 0.4.43) |
 | G5b | 0.4.45 | Dynamic lights: lighting the level and the models | Medium | with G5a |
 | G6 | 0.4.46 | Bloom | Low | 2026-11-11, as 0.4.45 |
-| G7 | 0.4.47 | The page, the overlay, final checks, docs; merge | Low | the overlay done as 0.4.46; the rest to do, from 0.4.47 |
+| G8a | 0.4.47 | Water: reflections (the owner's request, 2026-11-12) | Medium (a second replay of the recording, mirrored) | planned |
+| G8b | 0.4.48 | Water: the better surface (ripples, glints, a soft edge) | Low | planned |
+| G7 | 0.4.49 | The page, the overlay, final checks, docs; merge | Low | the overlay done as 0.4.46; the rest after G8 |
 
 The planned versions were a guide; the owner chose the real ones ("As built, at a glance").
 
@@ -432,13 +437,15 @@ runs each). Not checked pixel for pixel against 0.4.39's High: Defender had remo
 the 0.4.39 exe on this machine but the owner's own (see below), and the code path is the former
 High's line for line. The cost is the High column above.
 
-**A puzzle for later (found 2026-11-11):** in those runs, 1-6's slime came out with two pixels
-one shade of green apart between the `1` and `2` runs, the same every time, and nowhere else. It
-is the same slime and the same kind of difference that G2 put down to the driver treating a shared
-buffer differently ("G2 as built"). Here nothing in the drawing differed, only one digit of the
-ini, so the cause is more likely something in how the slime is drawn that depends on what is in
-memory (a value never set, say), and G2's explanation may be wrong. Harmless (one shade, two
-pixels, no game logic involved), but worth a look before the next byte-for-byte chunk.
+**Run-to-run noise (found 2026-11-11; settled 2026-11-12):** in those runs, 1-6's slime came out
+with two pixels one shade of green apart between the `1` and `2` runs. It was first written down
+as a puzzle to look into. Re-checked on 0.4.46 (2026-11-12, at defaults, 17 runs each of 1-6 and
+2-4): 1-6 matched in 15 runs; the other 2 differed in a single pixel of the water by 1 in two
+channels, and 2-4 matched in 16 (the 17th caught another moment, the known timing noise). So it
+is not the slime as such: a pixel or two of blended, see-through surfaces (the water, the slimes)
+now and then round one shade differently on the GPU from run to run, in every build. Invisible in
+play (the owner never saw it) and no game logic involved; nothing to fix. For byte-for-byte checks:
+compare several runs, and treat a pixel or two of one shade on see-through surfaces as noise.
 
 **Windows Defender** removed the 0.4.39 test build on the owner's PC as
 `Behavior:Win32/DefenseEvasion.A!ml`, a machine-learning verdict on a new unsigned exe; judged a
@@ -676,7 +683,7 @@ ID), config and menu; the overlay's Full page shows **Lights** (the last frame's
 - **Checked** (RTX 5080):
   - the four tests pass;
   - **lights off, byte for byte**: the 14-shot suite against 0.4.41, identical in the second run;
-    the first run's 1-6 differed by 7 bytes of 1 (the slime again; see "A puzzle for later"), the
+    the first run's 1-6 differed by 7 bytes of 1 (the slime again; see "Run-to-run noise"), the
     same build's second run matched exactly;
   - lights on, by eye and by difference images against off: the shot's pool of light on the floor
     in 1-1 (and its colour, bluish), the glow round each wall candle in 3-10 and 1-6, the nest
@@ -760,8 +767,8 @@ menu; the overlay's Full page shows **GPU bloom**.
   - **Bloom off, byte for byte** against 0.4.44: the 14-shot suite and the lights-on shots (AO,
     shadows Medium, lights on), twice. Every difference was run-to-run noise in both builds: the
     whole level run of one pass (as 0.4.44's own second run), and a few pixels of one shade on the
-    slimes of 1-6 and 2-4 ("A puzzle for later": the slimes vary by a shade from run to run in
-    both builds);
+    slimes of 1-6 and 2-4 ("Run-to-run noise": see-through surfaces vary by a shade from run to
+    run in both builds);
   - Low and High by eye against Off in 1-1 (a shot), 1-6, 3-10, 4-2: a soft halo round the
     shots and flames at Low, a clear glow at High; nothing but the glowing sprites glows; walls
     in front hide it;
@@ -770,6 +777,132 @@ menu; the overlay's Full page shows **GPU bloom**.
     the driver waiting on the resolve; still far inside a 144 Hz frame's 6.9 ms).
 - **Not checked here**: explosions, the dragon's flame, the warp, Render scale and widescreen with
   Bloom, the integrated AMD graphics.
+
+### G8. Water: Original / Enhanced / Enhanced + reflections (planned 2026-11-12)
+
+The owner's request (2026-11-12): better water as a Graphics option, the original look staying the
+default. The owner's choices: **both** a better surface and reflections; built **on this branch
+before the rest of G7** (so G7's final checks and the play test cover it, and it ships in the same
+merge); **one row**.
+
+Setting: **Water: Original / Enhanced / Enhanced + reflections** (`[video] water = 0..2`, 0 by
+default). Original draws exactly as before; Enhanced is the better surface (G8b); Enhanced +
+reflections adds the mirrored level (G8a). The reflections are built first, being the bigger
+change, so Enhanced + reflections works from G8a (its surface still the original's until G8b) and
+Enhanced from G8b. Planned versions: G8a 0.4.47, G8b 0.4.48, then the rest of G7 (as ever, the
+owner chooses the real numbers).
+
+**What the water is today** (`XWater`, `docs/REVERSE_ENGINEERING.md`, "Water and fish"): two
+rectangles over the whole map, `water1_` at y -38 (see-through, alpha 0.4, texture 0x18e; World 3
+0x28f) and `water2_` at -39 (additive, alpha 0.6, 0x1a6; World 3 0x290), their textures drifting
+a little each tick. Nothing is under them: the pits show the cleared black, which is what makes
+them look deep. Worlds 1, 3 and 4 have water; World 2 none. Drawn after the enemies (so after the
+fish, below at -62, which show through) and before the particles (the wave rings, 0x18f, lie flat
+at -38).
+
+**Recognising it in the recording**: the two sheets by their textures (a table, as the glowing
+sprites in G5 and G6), the plane's height from `water1_`'s recorded world transform (not a
+hard-coded -38). No water draw recorded (World 2, the ending): no water work at all.
+
+#### G8a. Reflections (planned as 0.4.47)
+
+- **A reflection pass**, before the recorded draws (a new step between the lights and the glow
+  layer in "The new frame, in order"): the recorded draws again, **mirrored in the water's plane**
+  (the view times a reflection about y = -38), with a clip plane (`gl_ClipDistance`) keeping only
+  what is above the water, front faces flipped (a mirror turns the winding round), into a
+  reflection target of its own at **half the picture's size**, single-sample, with its own depth,
+  cleared to black (the pit's black, so an empty reflection changes nothing).
+- **What is mirrored**: the level, the models (solid and see-through), and the additive sprites
+  (the flames, shots and warp light glow in the water). Not mirrored: the water itself, the wave
+  rings, the blob shadows. The reflection takes the game's own shading only (no AO, shadows,
+  lights or bloom in it): it is dim, rippled and half-size, so they would cost without showing.
+- **Drawing it**: one extra draw of the water rectangle (its recorded vertices, just above
+  `water2_`, under `water1_`, depth-tested so floors in front still hide it), **added** onto what
+  is there: over the black it is the reflection; over a fish it is the fish and a little
+  reflection, so the fish still show. Each pixel reads the reflection target at its own screen
+  position, nudged by ripples from the two water textures at their drifting offsets (the
+  original's own motion, nothing new to animate), and the original sheets are drawn over it as
+  before. Strength set by eye (likely 35 to 50%, stronger towards the back where the view grazes
+  the water), dark enough that the pits still read as deep: the water is a hazard, so it must
+  stay plain where the floor ends.
+- **Smooth motion**: the recording is already at the blended positions, and the ripples use the
+  blended drift (`XWater::Render`), so the reflection moves with the picture.
+- **The overlay**: a **GPU water** row (Full page), and **Water** in the ENHANCEMENTS group.
+- **Checks**: Original byte for byte against 0.4.46 (the suite of "How each chunk is checked");
+  reflections by eye in 1-1, 1-6 (the pillars, the bridge, the back wall), 1-10 (the dragon over
+  the water), 3-x (World 3's textures), 3-10 (the nest), 4-x; a mage jumping over a pit and
+  falling in (the large wave); the fish jumping; `alpha=1` as Smooth motion off; Render scale 50%
+  and 200%, Antialiasing off and 8x, 21:9, Field of view 150%; a resize and Alt+Enter mid-level;
+  GPU water in the overlay, 1-1 and 3-10.
+- **Cost** (to measure): about a half-size replay of the level's 3D; GPU 3D measured 0.22 ms
+  (1-1, 100 draws) and 0.72 ms (3-10, 267 draws) at 1280 x 960 in G2's runs, so roughly 0.1 to
+  0.4 ms. If it costs more than it shows, the
+  pass can skip frames where no water is in view (a query on the previous frame's water draw).
+
+#### G8b. The better surface (planned as 0.4.48)
+
+For Enhanced and Enhanced + reflections; `water1_` is drawn with a water shader instead of its
+plain texture-times-alpha (the same draw, the same place in the order), `water2_`'s additive
+glints as before.
+
+- **Ripples**: a normal per pixel from the two drifting water textures (their brightness as a
+  height, differences across a texel), so the surface's shading moves as the original's
+  textures do.
+- **Glints**: a small, sharp highlight of the game's sun (its light direction, -1, -1, 0.5) off
+  the ripples towards the camera; with Dynamic lights on, the lights' colour on the water too
+  (torchlight and shots shimmering in the pits; the light list of G5).
+- **A soft edge** where the water meets the cliff faces: the water fades lighter (a thin line of
+  foam) where the cliff's depth is just behind it. Needs the scene's depth before the water: the
+  AO's depth pass (G3) is run for it when AO is off.
+- **Kept**: the black of the deep (no tint), the textures, the drift speeds, the wave rings.
+- **Checks**: Original byte for byte; each world's water by eye at both settings; the ripples
+  with the reflections (G8a) on; the soft edge along 1-1's pit and round the pillars; the cost
+  (inside GPU 3D, and the depth pass when AO is off).
+
+#### G8, decisions for the owner
+
+1. **The reflections' strength**: set by eye in G8a, then the owner's verdict after playing (as
+   Shadow strength in G4). A Water strength row only if one strength doesn't suit everyone.
+2. **The enhancements inside the reflection** (shadows, lights in the mirrored level): proposed
+   none (above).
+
+#### G8, where it would go in the code (as of 0.4.46)
+
+Nothing in `src/game` changes, as for G1 to G7: the water is found and drawn from the recording.
+
+- `src/gfx/device.{h,cpp}`: the reflection pass beside `ComputeAO`, `ComputeShadows` and
+  `ComputeBloom`, called from `Device::FlushRecording` before the recorded draws are replayed.
+  It replays `rec_` with each `RecordedDraw`'s `st.view` multiplied by the mirror, the cull
+  winding flipped (`ApplyDrawState` maps `cullMode` to `glFrontFace`), and a clip plane: the
+  vertex shader has no `gl_ClipDistance` yet, so that and `GL_CLIP_DISTANCE0` are new. The water
+  sheets are picked out by texture resource ID (`Texture::ResId`, as `kLightSources` picks the
+  glowing sprites); `DrawKind` may get a water kind. The extra draw of the reflection and G8b's
+  water shader go in the replay loop where the water draws come up.
+- `src/gfx/gl.h`: any OpenGL names newly used (`GL_CLIP_DISTANCE0`).
+- `src/core/config.{h,cpp}`: `int water = 0;` (`[video] water = 0..2`), with its ini comment.
+- `src/ui/options_menu.cpp`: the Water row on the Graphics page (as Bloom's), with a help line.
+- `src/framework/d3dapp.cpp`: the overlay's GPU water row and the ENHANCEMENTS group's Water row
+  (`docs/STATS_OVERLAY.md`).
+- `src/game/XWater.cpp` is read, not changed: it shows the sheets' heights, textures, blending
+  and drift.
+
+#### G8, risks and points to review
+
+- **The camera looks down steeply**, so a true-to-life reflection (Fresnel) would be very faint;
+  the strength is an artistic choice, not physics. Worth judging in screenshots before tuning.
+- **What the reflection mostly shows**: the faces that rise above the pits (the back wall, cliff
+  faces, pillars, the bridges' sides, mages and enemies over the water, the flames). The floors'
+  tops face away from the mirrored camera and mostly don't show.
+- **The ripple offset** reads the reflection a little off its own pixel: at the picture's edges
+  and where a floor's edge meets the water it could pick up a sliver of the wrong thing; clamp
+  the offset and keep it small.
+- **Draw order**: the extra reflection draw must come between `water2_` and `water1_` in the
+  replay (or just before `water2_`), never move the game's own draws, and be depth-tested
+  without writing depth.
+- **Byte for byte with Original**: every water step must be skipped entirely at `water = 0`, as
+  each option before it (rule 1 of "The rules this work keeps").
+- **Weak hardware**: a second replay roughly doubles the level's draw count; to be measured on the
+  integrated AMD graphics with G7's checks.
 
 ### G7. The page, the overlay and the merge (the overlay done as 0.4.46; the rest from 0.4.47)
 
@@ -784,7 +917,8 @@ menu; the overlay's Full page shows **GPU bloom**.
   moving, a moving platform, the bosses, two players; a lit torch, the dragon's flame, the wizard,
   explosions, the warp, with lights and bloom; widescreen and Render scale with bloom; 21:9 and
   4K; the integrated AMD graphics (the owner's Windows setting); OpenGL's error reports in a debug
-  build. And a look at the slimes' one-shade puzzle.
+  build. (The slimes' one-shade difference, once listed here, was settled as run-to-run noise on
+  2026-11-12: see "Run-to-run noise", under "G3 as built".)
 - **README**, **CHANGELOG**, **CLAUDE.md**, **ROADMAP**, this file, `STATS_OVERLAY.md`.
 - The owner's play test, then the merge into `main` (a pull request, as `smooth-motion-rework`),
   released as its last version.
@@ -804,6 +938,7 @@ menu; the overlay's Full page shows **GPU bloom**.
 | **Dynamic lights** | Off / On | Off | `dynamic_lights` |
 | **Light strength** | 50% to 150% | 100% | `light_strength` |
 | **Bloom** | Off / Low / High | Off | `bloom` |
+| **Water** (G8, planned) | Original / Enhanced / Enhanced + reflections | Original | `water` |
 | **Ambient light** (a trial, 0.4.44) | 70%, 85%, 100% (with Dynamic lights on) | 100% | `lights_ambient` |
 | Brightness | 50% to 150% | 100% | `brightness` |
 
@@ -891,7 +1026,8 @@ Noted so they aren't lost; each would be its own small plan:
   the level ends at wide Fields of view.
 - **Colour grading** (warmth, contrast, saturation) beside Brightness.
 - **Sharpening** for Render scale below 100%.
-- **The water**: reflections of the level and the mages in the pits' water.
+- ~~**The water**: reflections of the level and the mages in the pits' water.~~ Now planned as G8
+  (2026-11-12).
 - **The 2D at the window's own resolution** (the HUD and menus are drawn into the render target
   today, so Render scale and Brightness affect them): found in the graphics review of 2026-11-10.
 

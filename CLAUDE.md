@@ -105,7 +105,7 @@ docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status)
                weak graphics hardware; only if the owner asks),
                GRAPHICS_ENHANCEMENTS.md (ambient occlusion, dynamic shadows and lights,
                bloom: the plan and each chunk as built, G1 to G6 and G7's
-               overlay rows; on the
+               overlay rows; G8, the water, planned; on the
                `graphics-enhancements` branch),
                RELEASING.md (building and publishing a release, for the owner),
                banner.png and branding/ (the README banner and the icon: SVG sources)
@@ -591,10 +591,15 @@ decisions: `docs/GRAPHICS_ENHANCEMENTS.md` ("As built, at a glance" first).
   ambient dimming tried as a setting in one build rather than two builds; see-through models
   (slimes, ghosts, the wizard's wand, blade and fireball) cast no dynamic shadow, left as it is.
 - **Open**: the Ambient light verdict; the shadows' three quality levels (they look alike); other
-  screens than levels; the checks each chunk left (the plan's G7 lists them); the slimes' one-shade
-  puzzle (a few pixels on the slimes vary by one shade from run to run, in every build; it first
-  looked like a driver difference in G2). **Next is the rest of G7** (the page's last touches, the
-  final checks, the merge; its overlay rows are done, 0.4.46), on the owner's word.
+  screens than levels; the checks each chunk left (the plan's G7 lists them). Settled 2026-11-12: the
+  slimes' "one-shade puzzle" is run-to-run noise (a pixel or two of see-through surfaces, water or
+  slimes, one shade apart now and then in every build; invisible in play; compare several runs in
+  byte-for-byte checks). **Next is G8, the water** (the owner's request of 2026-11-12: one
+  Graphics row, Water: Original / Enhanced / Enhanced + reflections, Original by default; G8a
+  the reflections, a mirrored replay of the recording, planned as 0.4.47; G8b ripples, glints and
+  a soft edge, 0.4.48; the plan in `docs/GRAPHICS_ENHANCEMENTS.md`, "G8"), **then the rest of
+  G7** (the page's last touches, the final checks, the merge; its overlay rows are done, 0.4.46),
+  each on the owner's word.
 - Windows Defender flagged the unsigned 0.4.39 build (a machine-learning false positive; the
   owner restored it). Code signing is the owner's decision. The owner's graphics card is an **RTX
   5080** from 2026-11-11 (the frame rates measured before that, in these docs, were on an RTX
