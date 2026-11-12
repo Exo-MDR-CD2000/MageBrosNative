@@ -223,6 +223,9 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   synthesizer on macOS: music needs a General MIDI `.sf2` (`soundfont.sf2` or `magebros.sf2`)
   next to `MageBros.exe`, or in a `soundfonts` folder there, and the original's `Music*.mid`
   files. Without them the effects play and the music is silent.
+  **F10** (or Fn+F10: Apple keyboards use F10 for Mute by default, or Start on a gamepad)
+  opens the pause menu — Resume, video/graphics/audio/controls, Level select, Main menu and
+  Quit game. **P** freezes the game, as in the original; Esc is "back" inside menus.
 - **R36S (aarch64 handheld):** Docker on any machine, no cross toolchain to prepare.
 
   ```sh
