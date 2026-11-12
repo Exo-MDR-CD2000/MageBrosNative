@@ -9,6 +9,12 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.46] - 2026-11-12
+
+- The Statistics Overlay (Full) lists the graphics enhancements in effect: ambient occlusion,
+  shadows, lights, ambient light and bloom, each as you set it, greyed out where it doesn't run
+  (outside levels).
+
 ## [0.4.45] - 2026-11-11
 
 - **Bloom** (Options > Graphics, off by default): a soft glow round the flames, the mages' shots,

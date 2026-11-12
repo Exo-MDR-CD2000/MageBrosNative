@@ -1,9 +1,9 @@
-# Graphics enhancements (G1 to G6 built; G7 to do)
+# Graphics enhancements (G1 to G6 built; G7 under way)
 
-**Status (2026-11-11): G1 to G6 are built on the `graphics-enhancements` branch** (made from
-`main` at 0.4.38; on GitHub up to 0.4.44, 0.4.45 built locally), each with an "as built" section
+**Status (2026-11-12): G1 to G6 are built on the `graphics-enhancements` branch** (made from
+`main` at 0.4.38; on GitHub up to 0.4.45, 0.4.46 built locally), each with an "as built" section
 below, and tried by the owner build by build. **G7** (the page's last touches, the overlay, the
-final checks and the merge into `main`) is what is left. The plan below was written on 2026-11-10
+final checks and the merge into `main`) is what is left; its overlay rows are done (0.4.46). The plan below was written on 2026-11-10
 from reading the code at 0.4.38; where the build differs, the "as built" sections and the
 summary next say so, and the plan's text has been corrected where it would mislead.
 
@@ -18,6 +18,7 @@ summary next say so, and the plan's text has been corrected where it would misle
 | 0.4.43 | The torches' and candles' lights steady (from the steady flame, not the sparks) | "G5 as built" |
 | 0.4.44 | Ambient light (100 / 85 / 70%), a trial of dimming the level for the lights | "Ambient light (after G5)" |
 | 0.4.45 | G6: bloom | "G6 as built" |
+| 0.4.46 | G7, first part: the Statistics Overlay's ENHANCEMENTS rows | "G7" (and `docs/STATS_OVERLAY.md`) |
 
 The owner chose the versions (one for G1 to G3, then a version a chunk or fix), so the plan's
 numbers in "The chunks" below were not kept. Each build is kept in `build\fix-builds\`.
@@ -202,7 +203,7 @@ multiplied, by a smaller strength); `shadowDarkness` became the fixed 0.55 times
 | G5a | 0.4.44 | Dynamic lights: finding the lights | Low | 2026-11-11, with G5b, as 0.4.42 (steadied in 0.4.43) |
 | G5b | 0.4.45 | Dynamic lights: lighting the level and the models | Medium | with G5a |
 | G6 | 0.4.46 | Bloom | Low | 2026-11-11, as 0.4.45 |
-| G7 | 0.4.47 | The page, the overlay, final checks, docs; merge | Low | to do, from 0.4.46 |
+| G7 | 0.4.47 | The page, the overlay, final checks, docs; merge | Low | the overlay done as 0.4.46; the rest to do, from 0.4.47 |
 
 The planned versions were a guide; the owner chose the real ones ("As built, at a glance").
 
@@ -770,13 +771,15 @@ menu; the overlay's Full page shows **GPU bloom**.
 - **Not checked here**: explosions, the dragon's flame, the warp, Render scale and widescreen with
   Bloom, the integrated AMD graphics.
 
-### G7. The page, the overlay and the merge (to do, from 0.4.46)
+### G7. The page, the overlay and the merge (the overlay done as 0.4.46; the rest from 0.4.47)
 
 - **The Graphics page**, finished (below): the owner's verdicts applied (Ambient light; the
   shadows' quality levels), help lines in plain words saying what each costs.
 - ~~A Preset row~~: **not built** (the owner, 2026-11-11: players can set each option themselves).
-- **The Statistics Overlay** (Full): the enhancements in effect (the GPU time of each pass is
-  there already: GPU 3D, AO, shadows, bloom, and the lights' count).
+- **The Statistics Overlay** (Full): the enhancements in effect. **Done** (2026-11-12, as
+  0.4.46): an ENHANCEMENTS group with a row for each option as chosen, dimmed where it doesn't run,
+  with "Not running (levels only)" or "(recorder off)" above them; under SYSTEM in two columns,
+  atop the graphs' side panel in one. Details: `docs/STATS_OVERLAY.md`.
 - **The checks left from the chunks** (each "Not checked here"): the shadows' edges with the camera
   moving, a moving platform, the bosses, two players; a lit torch, the dragon's flame, the wizard,
   explosions, the warp, with lights and bloom; widescreen and Render scale with bloom; 21:9 and
@@ -902,7 +905,8 @@ everything sits in `device.cpp`, in sections of its own):
 | `src/gfx/device.{h,cpp}` | G1: `uPerPixel` removed. G2: the recorder (`DrawState`, `Record`, `FlushRecording`, `ApplyDrawState`), `GpuTimer`. G3: `ComputeAO`, its targets and shaders, `DrawKind`, `UploadPrep`. G4: `ComputeShadows`, its target and shaders, the split light. G5: `CollectLights`, `kLightSources`, `Texture::ResId` / `AvgColor`; the Ambient light's `uSceneDim`. G6: `ComputeBloom`, the glow layer (`glowRb_`), its chain and shaders |
 | `src/gfx/gl.h` | The OpenGL functions and values newly used (timer queries, `glDrawElementsBaseVertex`, `glDrawBuffer(s)`, `glReadBuffer`, `glClearBufferfv`, `glPolygonOffset`, `glUniform1fv` / `3fv`, depth textures and comparison, `R8`, `R32F`, `RGBA16F`) |
 | `src/framework/d3dtextr.cpp` | `SoftenShadow` removed (G1); textures carry their resource ID (G5) |
-| `src/framework/d3dapp.{h,cpp}` | The overlay's rows: GPU 3D, 3D draws, GPU AO, GPU shadows, GPU bloom, Lights |
+| `src/framework/d3dapp.{h,cpp}` | The overlay's rows: GPU 3D, 3D draws, GPU AO, GPU shadows, GPU bloom, Lights; the ENHANCEMENTS group (G7) |
+| `src/ui/stats_overlay.{h,cpp}` | `Render`'s `extra` groups: under the right column in two columns, atop the graphs' side panel in one (G7) |
 | `src/core/config.{h,cpp}` | Two settings out (G1); `ambient_occlusion`, `dynamic_shadows`, `shadow_strength`, `dynamic_lights`, `light_strength`, `lights_ambient`, `bloom` in |
 | `src/ui/options_menu.cpp` | The Graphics page's rows |
 

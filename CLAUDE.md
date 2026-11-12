@@ -98,12 +98,14 @@ tools          MageBrosAssets (inventory / selftest / export); render_branding.p
 tests          format tests (no game needed); map, hero and collision tests
 docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status),
                SMOOTH_MOTION.md (how smooth motion works, and how it was built),
-               STATS_OVERLAY.md (the Statistics Overlay: O1 and O2 as built, O3, the
-               players' debug report, planned),
+               STATS_OVERLAY.md (the Statistics Overlay: O1 and O2 as built, the
+               graphics enhancements' rows, O3, the players' debug report,
+               planned),
                RENDERER_OPTIMIZATION.md (a plan, not built: the renderer's work per draw, for
                weak graphics hardware; only if the owner asks),
                GRAPHICS_ENHANCEMENTS.md (ambient occlusion, dynamic shadows and lights,
-               bloom: the plan and each chunk as built, G1 to G6; on the
+               bloom: the plan and each chunk as built, G1 to G6 and G7's
+               overlay rows; on the
                `graphics-enhancements` branch),
                RELEASING.md (building and publishing a release, for the owner),
                banner.png and branding/ (the README banner and the icon: SVG sources)
@@ -363,7 +365,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-11: 0.4.38 on `main`, 0.4.45 on `graphics-enhancements`)
+## Where we are (last updated: 2026-11-12: 0.4.38 on `main`, 0.4.46 on `graphics-enhancements`)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -553,9 +555,10 @@ the window / borderless smoothness (above; the part-of-refresh frame limits answ
 choppiness at a limit below the refresh rate, which the owner liked; whether G-Sync follows a
 window is up to the driver and Windows).
 
-**Graphics enhancements** (planned 2026-11-10, built 2026-11-11, G1 to G6 of seven): optional
+**Graphics enhancements** (planned 2026-11-10, G1 to G6 of seven built 2026-11-11, G7's overlay
+rows 2026-11-12): optional
 visual upgrades on the **`graphics-enhancements`** branch (made from `main` at 0.4.38; on GitHub up
-to 0.4.44, 0.4.45 built locally). The plan, every chunk's "as built" and the owner's open
+to 0.4.45, 0.4.46 built locally). The plan, every chunk's "as built" and the owner's open
 decisions: `docs/GRAPHICS_ENHANCEMENTS.md` ("As built, at a glance" first).
 
 - **What is in** (Options > Graphics, all off by default, levels only; with each off every picture
@@ -576,10 +579,13 @@ decisions: `docs/GRAPHICS_ENHANCEMENTS.md` ("As built, at a glance" first).
     strobe); **Ambient light** 100 / 85 / 70% (`lights_ambient`, with Dynamic lights on), a trial;
     **Bloom**, Off / Low / High (`bloom`), from a glow layer in the scene target (`glowRb_`).
   - Each draw's part is chosen by its kind (`DrawKind`: solid pre-lit, solid model, or neither).
-  - The Statistics Overlay (Full) shows GPU 3D, 3D draws, GPU AO, GPU shadows, GPU bloom and Lights.
+  - The Statistics Overlay (Full) shows GPU 3D, 3D draws, GPU AO, GPU shadows, GPU bloom and Lights,
+    and (G7, 0.4.46) an ENHANCEMENTS group: each option as chosen, dimmed
+    where it doesn't run (outside levels, or with `MBN_NO_RECORD`); at 4:3 it heads the graphs'
+    side panel (`StatsOverlay::Render`'s `extra`).
 - **Versions** (the owner's choice each time; each build kept in `build\fix-builds`): 0.4.39 G1 to
   G3 (the first test build), 0.4.40 AO Off / On, 0.4.41 shadows, 0.4.42 lights, 0.4.43 steady
-  torch lights, 0.4.44 Ambient light, 0.4.45 bloom. The next take 0.4.46 on; `main` stays at 0.4.38
+  torch lights, 0.4.44 Ambient light, 0.4.45 bloom, 0.4.46 the overlay's ENHANCEMENTS rows (G7). The next take 0.4.47 on; `main` stays at 0.4.38
   and off these numbers until the branch merges (a pull request, as `smooth-motion-rework`).
 - **Decided by the owner**: the blob shadow stays with Dynamic shadows on; no Preset row; the
   ambient dimming tried as a setting in one build rather than two builds; see-through models
@@ -587,8 +593,8 @@ decisions: `docs/GRAPHICS_ENHANCEMENTS.md` ("As built, at a glance" first).
 - **Open**: the Ambient light verdict; the shadows' three quality levels (they look alike); other
   screens than levels; the checks each chunk left (the plan's G7 lists them); the slimes' one-shade
   puzzle (a few pixels on the slimes vary by one shade from run to run, in every build; it first
-  looked like a driver difference in G2). **Next is G7** (the page's last touches, the overlay, the
-  final checks, the merge), on the owner's word.
+  looked like a driver difference in G2). **Next is the rest of G7** (the page's last touches, the
+  final checks, the merge; its overlay rows are done, 0.4.46), on the owner's word.
 - Windows Defender flagged the unsigned 0.4.39 build (a machine-learning false positive; the
   owner restored it). Code signing is the owner's decision. The owner's graphics card is an **RTX
   5080** from 2026-11-11 (the frame rates measured before that, in these docs, were on an RTX
@@ -837,9 +843,9 @@ test copy, with no result of the owner's own play reported yet: a player's menu 
 `fonts` folder (0.4.36; the owner compared the twelve built-in fonts in play before choosing to
 ship none) and SoundFonts from a `soundfonts` folder (0.4.37, with copies of the owner's own
 SoundFonts).
-The graphics enhancements (`graphics-enhancements`, 0.4.39 to 0.4.45): the owner tried each build
+The graphics enhancements (`graphics-enhancements`, 0.4.39 to 0.4.46): the owner tried each build
 (AO: liked High, had Low removed; shadows "working well"; lights: found the torches' strobe, fixed
-in 0.4.43, then "much more bearable"; Ambient light "seems to work fine"; bloom not reported yet).
+in 0.4.43, then "much more bearable"; Ambient light "seems to work fine"; bloom and 0.4.46's overlay rows not reported yet).
 Not tried by anyone: these on AMD or Intel graphics, the bosses and two players with them on.
 
 ### Notes from earlier stages
