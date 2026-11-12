@@ -18,6 +18,8 @@
 #include "framework/d3dtextr.h"
 #include "framework/d3dutil.h"
 #include "game/XApplication.h"
+#include "game/JModel.h"
+#include "game/JSprite.h"
 #include "game/XGameScene.h"
 #include "game/XLevelView.h"
 #include "gfx/device.h"
@@ -530,13 +532,26 @@ int main(int argc, char** argv) {
     {
         AssetViewerApp app(twoPlayer, ending);
         if (FAILED(app.Create(args)))
-            FatalError("Mage Bros. Native", "Could not create the game window (OpenGL 3.3 is required).");
+            FatalError("Mage Bros. Native",
+#if defined(MBN_GLES)
+                       "Could not create the game window (OpenGL ES 3.0 is required)."
+#else
+                       "Could not create the game window (OpenGL 3.3 is required)."
+#endif
+            );
         res = app.Run();
+        // The model and bitmap caches own GL buffers and textures. Their static destructors
+        // would run after SDL_Quit, i.e. without a context, which crashes the Mali driver.
+        JModelList::Clear();
+        JSurfaceList::Clear();
     }
+    Log("Shutdown: application");
     Input::Shutdown();
     MusicStream::Shutdown();
     Midi::Shutdown();
     Audio::Shutdown();
+    Log("Shutdown: SDL");
     SDL_Quit();
+    Log("Shutdown: done");
     return res;
 }
