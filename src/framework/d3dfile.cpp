@@ -5,6 +5,7 @@
 #include "../core/log.h"
 #include "../core/mods.h"
 #include "../../third_party/cgltf.h"
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <functional>

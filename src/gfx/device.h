@@ -303,9 +303,9 @@ private:
     struct Uniforms {
         GLint world, view, proj, lighting, matDiffuse, matAmbient, matEmissive, ambient, lightOn, lightDir,
             lightDiffuse, flat, texOn, colorOp, colorArg1, colorArg2, alphaOp, alphaArg1, alphaArg2, alphaTest,
-            hasVertexColor, tex, constColor, screen2D, viewport2D, alphaFix, aoStrength, aoTex, fboSize,
-            shadowKind, shadowMap, lightVP, shadowTexel, shadowOffset, shadowStrength, shadowGrid, eye,
-            lightKind, lightCount, lightPos, lightColor, lightReach, sceneDim, glowMode;
+            hasVertexColor, tex, constColor, screen2D, viewport2D, alphaFix, bgra, aoStrength, aoTex,
+            fboSize, shadowKind, shadowMap, lightVP, shadowTexel, shadowOffset, shadowStrength, shadowGrid,
+            eye, lightKind, lightCount, lightPos, lightColor, lightReach, sceneDim, glowMode;
     } u_{};
     GLint presentTexLoc_ = -1, presentGammaLoc_ = -1;
 

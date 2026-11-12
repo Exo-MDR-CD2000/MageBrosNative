@@ -55,7 +55,7 @@ std::string ExpandVars(const std::string& in) {
 }
 
 // The standard per-user data folder for this program (created if missing), or "" if unavailable.
-std::string UserFolder() {
+std::string PrefPath() {
     char* p = SDL_GetPrefPath("", kAppFolder);
     std::string s = p ? p : "";
     SDL_free(p);
@@ -204,6 +204,9 @@ bool SameFolder(std::string a, std::string b) {
 }
 
 }  // namespace
+
+// The per-user data folder for this program (created if missing), or "" if unavailable.
+std::string UserFolder() { return PrefPath(); }
 
 // ------------------------------------------------------------------ PackSave
 std::string PackSave::Get(const std::string& section, const std::string& key, const std::string& def) const {

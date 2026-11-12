@@ -57,6 +57,49 @@ change that table too.
 
 A line saying `'vswhere.exe' is not recognized` is harmless.
 
+## Building the macOS package
+
+The Windows script is Windows-only. On an Apple Silicon Mac, with CMake 3.20+ and the Xcode
+command line tools:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMBN_SDL_FROM_SOURCE=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
+cmake --build build --target package
+```
+
+`-DMBN_SDL_FROM_SOURCE=ON` builds the pinned SDL3 from source instead of taking a system copy,
+so the zip carries its own SDL3. The result is
+`build/MageBrosNative-<version>-macos-arm64.zip`, holding `MageBrosNative.app` and the same
+licence files as the Windows zip. The GitHub workflow publishes the Windows zip only; the macOS
+zip is built by hand until the release job covers both.
+
+The bundle is never written to: settings, saves and the log live in
+`~/Library/Application Support/MageBrosNative`.
+
+## Building for the R36S
+
+The console is aarch64 Debian 13 with glibc 2.41, no SDL3, and its EGL/GLES entry points in
+`libMali.so`. The build therefore runs in a Debian 13 arm64 container (native on Apple
+Silicon), links SDL3 3.4.18 statically, and compiles the GLES renderer backend:
+
+```sh
+tools/r36s/build.sh                       # build + tests, output in build-r36s/
+tools/r36s/install.sh ark@192.168.0.104   # copy to /roms2/ports/ over SSH
+```
+
+`install.sh` writes `/roms2/ports/MageBros.sh` and `/roms2/ports/magebros/`; put your own
+`MageBros.exe` and its `Music*.mid` files in that folder, plus a General MIDI `.sf2` named
+`soundfont.sf2` if you want music (the console has no system synthesizer). The launcher needs
+one environment hint — `SDL_EGL_LIBRARY` pointing at `libMali.so` — and nothing else:
+`SDL_VIDEO_DRIVER`, `SDL_OPENGL_LIBRARY` and `SDL_OPENGL_ES_DRIVER` were each tested and are not
+needed. The game writes its own log next to the launcher's. In game, **Start** opens the pause
+menu with "Level select" and "Quit game", and **Select+Start** quits from anywhere.
+
+The Ports menu is EmulationStation's; it scans `/roms2/ports` at start, so restart the frontend
+(or reboot the console) after the first install.
+
 ## Making a new release, step by step
 
 ### 1. Start from an up-to-date `main`

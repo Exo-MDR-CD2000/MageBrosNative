@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 # The project version is the single source of the program's version number.
-project(MageBrosNative VERSION 0.4.46 LANGUAGES C CXX)
+project(MageBrosNative VERSION 0.4.47 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -40,6 +40,16 @@ add_executable(mbn_tests tests/format_tests.cpp)
 target_link_libraries(mbn_tests PRIVATE mbn_core)
 add_test(NAME formats COMMAND mbn_tests)
 
+# macOS: the platform's General MIDI synthesizer, which plays the music when no SoundFont is
+# installed. It renders directly, so no audio output device is needed.
+if(APPLE)
+  add_executable(mbn_synth_tests tests/synth_tests.cpp)
+  target_link_libraries(mbn_synth_tests PRIVATE
+    "-framework AudioToolbox" "-framework AudioUnit" "-framework CoreAudio")
+  add_test(NAME synth COMMAND mbn_synth_tests)
+  set_tests_properties(synth PROPERTIES SKIP_RETURN_CODE 77)
+endif()
+
 # The level geometry builder, checked against all 40 levels of the user's copy:
 #   mbn_map_tests --game PATH   (added to ctest when configured with -DMBN_GAME_EXE=PATH)
 add_executable(mbn_map_tests tests/map_tests.cpp src/game/XMapGeometry.cpp src/framework/d3dutil.cpp)
@@ -70,13 +80,33 @@ endif()
 # being brought up module by module; see docs/ROADMAP.md. Until the game logic lands it opens
 # the asset viewer.
 option(MBN_BUILD_GAME "Build the MageBrosNative game executable" ON)
+option(MBN_BUILD_R36S_PROBE "Build the R36S platform probe (uses the game's SDL3)" OFF)
+# Temporary diagnostics: log texture sizes and GL errors while porting the renderer.
+option(MBN_TEXTURE_DIAG "Log texture uploads and GL errors" OFF)
+if(MBN_TEXTURE_DIAG)
+  add_compile_definitions(MBN_TEXTURE_DIAG=1)
+endif()
+# The renderer compiled for OpenGL ES 3.0 (the R36S, and any GLES-only Linux device).
+option(MBN_GLES "Build the renderer for OpenGL ES 3.0" OFF)
+if(MBN_GLES)
+  add_compile_definitions(MBN_GLES=1)
+endif()
 option(MBN_FETCH_SDL "Download and build SDL3 if it is not installed" ON)
+# Packaging and the R36S build must not pick up whatever SDL3 the host happens to have:
+# this forces the pinned source build even when a system package is installed.
+option(MBN_SDL_FROM_SOURCE "Build the pinned SDL3 from source even if a system one is installed" OFF)
 
 if(MBN_BUILD_GAME)
-  find_package(SDL3 CONFIG QUIET)
+  if(NOT MBN_SDL_FROM_SOURCE)
+    find_package(SDL3 CONFIG QUIET)
+  endif()
+  if(SDL3_FOUND)
+    # say which SDL the build will use: the platform ports differ in how they get it
+    message(STATUS "SDL3: system package at ${SDL3_DIR}")
+  endif()
   if(NOT SDL3_FOUND)
     if(MBN_FETCH_SDL)
-      message(STATUS "SDL3 not found - fetching release-3.4.18 from GitHub")
+      message(STATUS "SDL3: building release-3.4.18 from source")
       include(FetchContent)
       set(SDL_SHARED OFF CACHE BOOL "" FORCE)
       set(SDL_STATIC ON CACHE BOOL "" FORCE)
@@ -98,6 +128,9 @@ if(MBN_BUILD_GAME)
     ${CMAKE_SOURCE_DIR}/src/gfx/*.cpp ${CMAKE_SOURCE_DIR}/src/audio/*.cpp
     ${CMAKE_SOURCE_DIR}/src/input/*.cpp ${CMAKE_SOURCE_DIR}/src/ui/*.cpp
     ${CMAKE_SOURCE_DIR}/src/framework/*.cpp ${CMAKE_SOURCE_DIR}/src/game/*.cpp)
+  # macOS writes AppleDouble "._name" files onto FAT cards and network shares; they are not
+  # source, and a compiler that picks them up fails with a screenful of nonsense
+  list(FILTER MBN_GAME_SOURCES EXCLUDE REGEX "/\\._[^/]*$")
   list(APPEND MBN_GAME_SOURCES
     src/main.cpp src/core/assets.cpp src/core/config.cpp src/core/mods.cpp src/core/saves.cpp
     src/core/third_party_impl.cpp)
@@ -111,9 +144,26 @@ if(MBN_BUILD_GAME)
       set_property(SOURCE res/magebros_native.rc APPEND PROPERTY INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/res)
     endif()
   else()
-    add_executable(MageBrosNative ${MBN_GAME_SOURCES})
+    if(APPLE)
+      # a bundle: double-clickable, and it keeps the executable where SDL's base path expects it
+      add_executable(MageBrosNative MACOSX_BUNDLE ${MBN_GAME_SOURCES})
+    else()
+      add_executable(MageBrosNative ${MBN_GAME_SOURCES})
+    endif()
   endif()
   configure_file(res/version.h.in ${CMAKE_BINARY_DIR}/generated/version.h @ONLY)
+  if(APPLE)
+    set_target_properties(MageBrosNative PROPERTIES
+      MACOSX_BUNDLE_BUNDLE_NAME MageBrosNative
+      MACOSX_BUNDLE_GUI_IDENTIFIER com.magebros.native
+      MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+      MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+      MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/res/Info.plist.in)
+    # Music through the platform's General MIDI synthesizer (the Apple DLS synth), used when no
+    # SoundFont is installed.
+    target_link_libraries(MageBrosNative PRIVATE
+      "-framework AudioToolbox" "-framework AudioUnit" "-framework CoreAudio")
+  endif()
   target_include_directories(MageBrosNative PRIVATE src third_party ${CMAKE_BINARY_DIR}/generated)
   target_link_libraries(MageBrosNative PRIVATE mbn_core)
   if(TARGET coldet)
@@ -133,7 +183,27 @@ if(MBN_BUILD_GAME)
     # main() entry point in a Windows GUI program
     target_link_options(MageBrosNative PRIVATE /ENTRY:mainCRTStartup)
   endif()
-  install(TARGETS MageBrosNative RUNTIME DESTINATION .)
+  if(APPLE)
+    install(TARGETS MageBrosNative BUNDLE DESTINATION .)
+  else()
+    install(TARGETS MageBrosNative RUNTIME DESTINATION .)
+  endif()
+
+  # The R36S platform probe: does SDL3's KMSDRM video, GLES context, ALSA and gamepad work on
+  # this device? A development tool, never packaged with the game.
+  if(MBN_BUILD_R36S_PROBE)
+    add_executable(mbn_r36s_probe tools/r36s/probe.cpp src/gfx/gl.cpp src/core/log.cpp)
+    target_include_directories(mbn_r36s_probe PRIVATE src third_party)
+    target_link_libraries(mbn_r36s_probe PRIVATE mbn_core)
+    if(TARGET SDL3::SDL3)
+      target_link_libraries(mbn_r36s_probe PRIVATE SDL3::SDL3)
+    else()
+      target_link_libraries(mbn_r36s_probe PRIVATE SDL3::SDL3-static)
+    endif()
+    if(NOT WIN32 AND NOT APPLE)
+      target_link_libraries(mbn_r36s_probe PRIVATE m pthread)
+    endif()
+  endif()
 endif()
 
 # ---------------------------------------------------------------------------------------------
@@ -152,6 +222,8 @@ set(CPACK_PACKAGE_NAME MageBrosNative)
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 if(WIN32)
   set(CPACK_SYSTEM_NAME windows-x64)
+elseif(APPLE)
+  set(CPACK_SYSTEM_NAME macos-arm64)  # Apple Silicon only, as the port targets it
 endif()
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 include(CPack)

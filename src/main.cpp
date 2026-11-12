@@ -18,6 +18,8 @@
 #include "framework/d3dtextr.h"
 #include "framework/d3dutil.h"
 #include "game/XApplication.h"
+#include "game/JModel.h"
+#include "game/JSprite.h"
 #include "game/XGameScene.h"
 #include "game/XLevelView.h"
 #include "gfx/device.h"
@@ -471,12 +473,19 @@ void ShowFatal(const char* title, const char* message) {
 int main(int argc, char** argv) {
     std::vector<std::string> args(argv + 1, argv + argc);
     std::string basePath = SDL_GetBasePath() ? SDL_GetBasePath() : "./";
-    LogInit((basePath + "magebros_native.log").c_str());
+    // On macOS the bundle usually lives in /Applications, which a normal user cannot write to:
+    // the ini and the log go to the per-user folder, beside the saves. Windows and Linux keep
+    // them portable, next to the executable.
+    std::string dataPath = basePath;
+#if defined(__APPLE__)
+    if (std::string user = Saves::UserFolder(); !user.empty()) dataPath = user;
+#endif
+    LogInit((dataPath + "magebros_native.log").c_str());
     SetFatalHook(ShowFatal);
     Log("Mage Bros. Native %s", MBN_VERSION_STRING);
     Config& cfg = GetConfig();
-    if (!cfg.Load(basePath + "magebros_native.ini")) {
-        cfg.path = basePath + "magebros_native.ini";
+    if (!cfg.Load(dataPath + "magebros_native.ini")) {
+        cfg.path = dataPath + "magebros_native.ini";
         cfg.firstRun = true;  // the window is then sized to the monitor (CD3DApplication::Create)
         cfg.Save();
     } else if (cfg.version < Config::kCurrentVersion || cfg.gameVersion != MBN_VERSION_STRING) {
@@ -523,13 +532,26 @@ int main(int argc, char** argv) {
     {
         AssetViewerApp app(twoPlayer, ending);
         if (FAILED(app.Create(args)))
-            FatalError("Mage Bros. Native", "Could not create the game window (OpenGL 3.3 is required).");
+            FatalError("Mage Bros. Native",
+#if defined(MBN_GLES)
+                       "Could not create the game window (OpenGL ES 3.0 is required)."
+#else
+                       "Could not create the game window (OpenGL 3.3 is required)."
+#endif
+            );
         res = app.Run();
+        // The model and bitmap caches own GL buffers and textures. Their static destructors
+        // would run after SDL_Quit, i.e. without a context, which crashes the Mali driver.
+        JModelList::Clear();
+        JSurfaceList::Clear();
     }
+    Log("Shutdown: application");
     Input::Shutdown();
     MusicStream::Shutdown();
     Midi::Shutdown();
     Audio::Shutdown();
+    Log("Shutdown: SDL");
     SDL_Quit();
+    Log("Shutdown: done");
     return res;
 }

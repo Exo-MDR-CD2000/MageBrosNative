@@ -6,7 +6,7 @@ An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2
 modern Windows. It plays exactly like the original, with optional extras: widescreen, any
 resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-**Version 0.4.46.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+**Version 0.4.47.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -144,6 +144,10 @@ track loop seamlessly from a point other than its start, give the file `LOOPSTAR
 it loops from the end back to the start. To use other file names, set `music_1` to `music_6` in
 the settings file. To hear the original music again, set Music source to **MIDI only**.
 
+The original MIDI music plays through the system synthesizer: the Windows MIDI synth the
+original used, or the macOS DLS synth. No extra file is needed for music on those systems. A
+console with no system synthesizer (the R36S) plays MIDI only with a SoundFont.
+
 **Better-sounding MIDI instead:** a General MIDI SoundFont (`.sf2`) changes the instruments the
 MIDI music is played with.
 
@@ -152,8 +156,10 @@ MIDI music is played with.
 2. In the game, open Options (F10) > Audio > **Music synth** and press Left or Right to choose it.
    The music switches at once and the choice is remembered.
 
-A file called `soundfont.sf2` or `magebros.sf2` in either place is used automatically. **Windows synth** plays the music as the original did, and **Automatic** goes back to the
-default.
+A file called `soundfont.sf2` or `magebros.sf2` in either place is used automatically and takes
+precedence over the system synthesizer. **System synth** always uses the platform's synthesizer,
+and **Automatic** goes back to the default: the SoundFont if one is present, otherwise the
+system synthesizer.
 
 ### Your own menu font
 
@@ -211,8 +217,43 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   `make_release.bat` (needs Visual Studio 2022 or newer with "Desktop development with C++"); it
   builds, runs the tests and writes the release zip to `build\`. Step by step, including how a
   release is published: [docs/RELEASING.md](docs/RELEASING.md).
-- **Other platforms:** the tools and tests build on Linux and macOS (`-DMBN_BUILD_GAME=OFF`), and
-  the Windows game cross-compiles with MinGW-w64
+- **macOS:** Apple Silicon, macOS 12 or newer, with CMake 3.20+ and the Xcode command line tools
+  (`xcode-select --install`). Nothing else: SDL3 is built from the pinned source, so the zip
+  needs no Homebrew and no separately installed SDL3.
+
+  ```sh
+  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMBN_SDL_FROM_SOURCE=ON
+  cmake --build build                          # build/MageBrosNative.app
+  ctest --test-dir build                       # the tests that need no game files
+  ./build/MageBrosNative.app/Contents/MacOS/MageBrosNative --game /path/to/MageBros.exe
+  cmake --build build --target package         # MageBrosNative-<version>-macos-arm64.zip
+  ```
+
+  Settings, saves and the log live in `~/Library/Application Support/MageBrosNative`; the
+  application bundle itself is never written to. Music plays through the macOS system
+  synthesizer (the Apple DLS synth), so no SoundFont is needed; an `.sf2` next to `MageBros.exe`
+  or in a `soundfonts` folder still takes precedence, and the original's `Music*.mid` files are
+  used in either case.
+  **F10** (or Fn+F10: Apple keyboards use F10 for Mute by default, or Start on a gamepad)
+  opens the pause menu — Resume, video/graphics/audio/controls, Level select, Main menu and
+  Quit game. **P** freezes the game, as in the original; Esc is "back" inside menus.
+- **R36S (aarch64 handheld):** Docker on any machine, no cross toolchain to prepare.
+
+  ```sh
+  tools/r36s/build.sh                    # Debian 13 container, static SDL3, GLES backend
+  tools/r36s/install.sh ark@192.168.0.104   # writes /roms2/ports/ on the console
+  ```
+
+  Put your own `MageBros.exe` in `/roms2/ports/magebros/`, then start **MageBros** from the
+  console's Ports menu. Copy the game's own `Music*.mid` files there too, and any General MIDI
+  `.sf2` as `soundfont.sf2`: the console has no system synthesizer, so without a SoundFont the
+  effects play but the music stays silent. The launcher sets the one environment hint this
+  device needs (`SDL_EGL_LIBRARY=libMali.so`, because the console's EGL/GLES live in libMali and
+  SDL does not find them by itself), runs the game through OpenGL ES 3.0 on KMSDRM at 640x480,
+  and writes a log to `/roms2/ports/magebros/magebros.log`. Nothing on the system is replaced.
+- **Linux desktop:** the tools and tests build with `-DMBN_BUILD_GAME=OFF`, and a GLES-only
+  Linux device can be built with `-DMBN_GLES=ON`; a desktop with OpenGL 3.3 uses the default
+  backend. The Windows game cross-compiles with MinGW-w64
   (`-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`).
 - **What gets built:**
 

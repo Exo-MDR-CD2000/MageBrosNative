@@ -33,6 +33,9 @@ int DikFromScancode(int sdlScancode);
 void DiksForScancode(int sdlScancode, std::vector<int>* out);
 void InjectKey(int dik, bool down);   // automation / virtual input
 
+// Start+Select held on an opened gamepad: the console's quit chord.
+bool QuitChordDown();
+
 // Re-read [keys]/[gamepad] remapping from the config (options menu).
 void ReloadBindings();
 // While blocked (options menu open) the game sees no keys, buttons or sticks. After unblocking,

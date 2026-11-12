@@ -1,6 +1,6 @@
 // Standard MIDI File sequencer replacing the MCI "sequencer" device used by the original.
-// Output goes either to the operating system MIDI synth (Windows: same synth the
-// original used) or to a built-in SoundFont synthesizer.
+// Output goes either to the platform's MIDI synthesizer (Windows' MIDI mapper, macOS' DLS
+// synth) or to a built-in SoundFont synthesizer.
 #pragma once
 #include <string>
 #include <vector>
@@ -17,7 +17,7 @@ struct SoundFontDir {
 std::vector<SoundFontDir> SoundFontDirs();
 
 // Uses the SoundFont if one is given or found (soundfont.sf2 / magebros.sf2 in SoundFontDirs);
-// otherwise the Windows system synthesizer (Windows only).
+// otherwise the platform's synthesizer (Windows' MIDI mapper, macOS' DLS synth).
 bool Init(const std::string& soundFontPath);
 void Shutdown();
 // Switch synthesizer while running (options menu); the current song keeps playing.

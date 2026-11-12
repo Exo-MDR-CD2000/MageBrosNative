@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <set>
 
 static Device g_device;
 // true while draws are recorded and not yet sent (a plain flag, so a texture freed at exit, after
@@ -16,14 +17,23 @@ Device& GetDevice() { return g_device; }
 // ---------------------------------------------------------------------------
 // Shaders: D3D7 fixed-function subset
 // ---------------------------------------------------------------------------
-static const char* kVS = R"GLSL(
-#version 330 core
+// One set of sources serves desktop GL and GLSL ES; only the version line and the ES precision
+// defaults differ. uBgra swizzles the original's packed BGRA vertex colours, which desktop GL
+// accepts as an attribute type and ES does not.
+#if defined(MBN_GLES)
+#define MBN_GLSL_HEADER "#version 300 es\nprecision highp float;\nprecision highp int;\nprecision highp sampler2D;\nprecision highp sampler2DShadow;\n"
+#else
+#define MBN_GLSL_HEADER "#version 330 core\n"
+#endif
+
+static const char* kVS = MBN_GLSL_HEADER R"GLSL(
 layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNormal;
 layout(location=2) in vec4 aColor;
 layout(location=4) in vec2 aUV;
 uniform mat4 uWorld, uView, uProj;
 uniform bool uLighting, uLightOn, uHasVertexColor, uScreen2D;
+uniform float uBgra;  // 1: the colours arrived as RGBA and are really BGRA (ES attribute)
 uniform vec4 uMatDiffuse, uMatAmbient, uMatEmissive, uAmbient, uLightDiffuse;
 uniform vec3 uLightDir;
 uniform vec4 uViewport2D;
@@ -36,6 +46,7 @@ out vec2 vUV;
 out vec3 vNormal;
 out vec3 vWorldPos, vAmbPart, vDirPart;
 flat out vec3 vAmbFlat, vDirFlat;
+vec4 vc(vec4 c) { return uBgra > 0.5 ? c.bgra : c; }
 vec4 d3dLight(vec3 n) {
     vec3 c = uMatEmissive.rgb + uAmbient.rgb * uMatAmbient.rgb;
     if (uLightOn) c += uLightDiffuse.rgb * uMatDiffuse.rgb * max(dot(n, uLightDir), 0.0);
@@ -44,7 +55,7 @@ vec4 d3dLight(vec3 n) {
 void main() {
     if (uScreen2D) {
         gl_Position = vec4(aPos.x * uViewport2D.x + uViewport2D.z, aPos.y * uViewport2D.y + uViewport2D.w, 0.0, 1.0);
-        vColor = aColor; vColorFlat = aColor; vUV = aUV; vNormal = vec3(0.0);
+        vColor = vc(aColor); vColorFlat = vc(aColor); vUV = aUV; vNormal = vec3(0.0);
         vWorldPos = vec3(0.0); vAmbPart = vDirPart = vAmbFlat = vDirFlat = vec3(0.0);
         return;
     }
@@ -57,7 +68,7 @@ void main() {
     // normals 1/s long, so small scaled models (the coins at 0.35 and 0.6) light up brighter.
     vec3 n = transpose(inverse(mat3(uWorld))) * aNormal;
     vNormal = n;
-    vec4 col = uLighting ? d3dLight(n) : (uHasVertexColor ? aColor : vec4(1.0));
+    vec4 col = uLighting ? d3dLight(n) : (uHasVertexColor ? vc(aColor) : vec4(1.0));
     vColor = col; vColorFlat = col; vUV = aUV;
     vWorldPos = wp.xyz;
     vec3 amb = vec3(0.0), dir = vec3(0.0);
@@ -69,8 +80,7 @@ void main() {
 }
 )GLSL";
 
-static const char* kFS = R"GLSL(
-#version 330 core
+static const char* kFS = MBN_GLSL_HEADER R"GLSL(
 in vec4 vColor;
 flat in vec4 vColorFlat;
 in vec2 vUV;
@@ -189,8 +199,7 @@ void main() {
 
 // Ambient occlusion (G3). The depth pass: view-space depth (distance along the view) of the solid
 // draws, 0 where nothing is drawn.
-static const char* kDepthVS = R"GLSL(
-#version 330 core
+static const char* kDepthVS = MBN_GLSL_HEADER R"GLSL(
 layout(location=0) in vec3 aPos;
 uniform mat4 uWorld, uView, uProj;
 out float vZ;
@@ -202,27 +211,23 @@ void main() {
     vZ = vp.z;
 }
 )GLSL";
-static const char* kDepthFS = R"GLSL(
-#version 330 core
+static const char* kDepthFS = MBN_GLSL_HEADER R"GLSL(
 in float vZ;
 out vec4 fragZ;
 void main() { fragZ = vec4(vZ); }
 )GLSL";
 // Dynamic shadows (G4): the solid draws seen from the light, depth only
-static const char* kShadowVS = R"GLSL(
-#version 330 core
+static const char* kShadowVS = MBN_GLSL_HEADER R"GLSL(
 layout(location=0) in vec3 aPos;
 uniform mat4 uWorld, uLightVP;
 void main() { gl_Position = uLightVP * (uWorld * vec4(aPos, 1.0)); }
 )GLSL";
-static const char* kShadowFS = R"GLSL(
-#version 330 core
+static const char* kShadowFS = MBN_GLSL_HEADER R"GLSL(
 void main() {}
 )GLSL";
 // Bloom (G6): the "dual filter" blur. Down: a texture to half its size, each pixel from 5 reads
 // (the centre and the four diagonals, half a source pixel away, each blended over 2 x 2 by the card)
-static const char* kBloomDownFS = R"GLSL(
-#version 330 core
+static const char* kBloomDownFS = MBN_GLSL_HEADER R"GLSL(
 uniform sampler2D uSrc;
 uniform vec2 uTexel, uSrcTexel;  // the target's pixel, the source's
 out vec4 fragColor;
@@ -236,8 +241,7 @@ void main() {
 }
 )GLSL";
 // Up: a texture to twice its size, each pixel from 8 reads round it
-static const char* kBloomUpFS = R"GLSL(
-#version 330 core
+static const char* kBloomUpFS = MBN_GLSL_HEADER R"GLSL(
 uniform sampler2D uSrc;
 uniform vec2 uTexel, uSrcTexel;
 out vec4 fragColor;
@@ -252,8 +256,7 @@ void main() {
 }
 )GLSL";
 // Add: the blurred glow onto the scene (blended by adding), by the strength
-static const char* kBloomAddFS = R"GLSL(
-#version 330 core
+static const char* kBloomAddFS = MBN_GLSL_HEADER R"GLSL(
 uniform sampler2D uSrc;
 uniform vec2 uTexel;
 uniform float uStrength;
@@ -261,8 +264,7 @@ out vec4 fragColor;
 void main() { fragColor = vec4(texture(uSrc, gl_FragCoord.xy * uTexel).rgb * uStrength, 1.0); }
 )GLSL";
 // A triangle over the whole target, for the passes below
-static const char* kFullVS = R"GLSL(
-#version 330 core
+static const char* kFullVS = MBN_GLSL_HEADER R"GLSL(
 void main() {
     vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
     gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
@@ -272,8 +274,7 @@ void main() {
 // then samples in the half-sphere above it, each counted as hidden where the depth there is in
 // front of it (within reach: a far wall behind doesn't count). The sample pattern turns over a 4 x 4
 // block of pixels, which the blur then evens out.
-static const char* kAOFS = R"GLSL(
-#version 330 core
+static const char* kAOFS = MBN_GLSL_HEADER R"GLSL(
 uniform sampler2D uZ;
 uniform vec2 uTexel, uProjScale;
 uniform float uRadius;
@@ -331,8 +332,7 @@ void main() {
 )GLSL";
 // The blur: the 4 x 4 block around each pixel, each weighed by how close its depth is (so the
 // shading doesn't spread across an edge onto what is in front or behind)
-static const char* kBlurFS = R"GLSL(
-#version 330 core
+static const char* kBlurFS = MBN_GLSL_HEADER R"GLSL(
 uniform sampler2D uZ, uAO;
 uniform vec2 uTexel;
 out vec4 fragAO;
@@ -354,15 +354,13 @@ void main() {
 }
 )GLSL";
 
-static const char* kPresentVS = R"GLSL(
-#version 330 core
+static const char* kPresentVS = MBN_GLSL_HEADER R"GLSL(
 layout(location=0) in vec3 aPos;
 layout(location=4) in vec2 aUV;
 out vec2 vUV;
 void main() { gl_Position = vec4(aPos.xy, 0.0, 1.0); vUV = aUV; }
 )GLSL";
-static const char* kPresentFS = R"GLSL(
-#version 330 core
+static const char* kPresentFS = MBN_GLSL_HEADER R"GLSL(
 in vec2 vUV;
 uniform sampler2D uTex;
 uniform float uGamma;  // 1.0 = unchanged; brightness setting as a gamma curve
@@ -457,6 +455,14 @@ void Texture::Upload(const Image& img, bool colorKey, uint32_t keyRGB) {
     else glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+#ifdef MBN_TEXTURE_DIAG
+    {
+        static std::set<uint32_t> seen;
+        if (seen.insert(((uint32_t)width_ << 16) | (uint32_t)height_).second)
+            Log("Texture %dx%d mipmaps=%d", width_, height_, mips_ ? 1 : 0);
+    }
+    if (GLenum e = glGetError()) Log("Texture %dx%d: GL error 0x%x", width_, height_, (unsigned)e);
+#endif
 }
 
 Surface::Surface(const Image& img) : image_(img) {}
@@ -539,6 +545,12 @@ bool Device::Init(SDL_Window* window) {
     glRenderer_ = glStr(GL_RENDERER);
     glVendor_ = glStr(GL_VENDOR);
     glVersion_ = glStr(GL_VERSION);
+    Log("OpenGL vendor: %s", glVendor_.c_str());
+#if defined(MBN_GLES)
+    Log("Renderer backend: gles");
+#else
+    Log("Renderer backend: desktop");
+#endif
 
     prog_ = CompileProgram(kVS, kFS);
     progPresent_ = CompileProgram(kPresentVS, kPresentFS);
@@ -553,6 +565,7 @@ bool Device::Init(SDL_Window* window) {
     u_.alphaArg2 = loc("uAlphaArg2"); u_.alphaTest = loc("uAlphaTest"); u_.alphaFix = loc("uAlphaFix"); u_.hasVertexColor = loc("uHasVertexColor");
     u_.tex = loc("uTex"); u_.constColor = loc("uConstColor");
     u_.screen2D = loc("uScreen2D"); u_.viewport2D = loc("uViewport2D");
+    u_.bgra = loc("uBgra");
 #undef U
     presentTexLoc_ = glGetUniformLocation(progPresent_, "uTex");
     presentGammaLoc_ = glGetUniformLocation(progPresent_, "uGamma");
@@ -590,6 +603,18 @@ bool Device::Init(SDL_Window* window) {
     glGenBuffers(1, &prepVbo_);
     glGenBuffers(1, &prepIbo_);
 
+    // The ES attribute has no BGRA type, so the vertex shader swizzles; desktop GL does not.
+#if defined(MBN_GLES)
+    constexpr float kBgraSwizzle = 1.0f;
+#else
+    constexpr float kBgraSwizzle = 0.0f;
+#endif
+    if (u_.bgra >= 0) {
+        glUseProgram(prog_);
+        glUniform1f(u_.bgra, kBgraSwizzle);
+        glUseProgram(0);
+    }
+
     glGenVertexArrays(1, &vao_);
     glGenBuffers(1, &vbo_);
     glGenBuffers(1, &ibo_);
@@ -603,6 +628,8 @@ bool Device::Init(SDL_Window* window) {
     recordEnabled_ = !(noRec && noRec[0] && noRec[0] != '0');
     if (!recordEnabled_) Log("MBN_NO_RECORD: the level's 3D is drawn without recording");
     if (glProvokingVertex) glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);  // D3D flat shading uses vertex 0
+    // macOS (and GLES) may not offer it; the game only shades smoothly today, so log it and carry on
+    Log("Provoking vertex: %s", glProvokingVertex ? "available" : "absent (smooth shading only)");
     if (hgl::HasExtension("GL_ARB_texture_filter_anisotropic") || hgl::HasExtension("GL_EXT_texture_filter_anisotropic"))
         glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAniso_);
 
@@ -880,7 +907,11 @@ HRESULT Device::Clear(DWORD, const RECT*, DWORD flags, D3DCOLOR color, float z, 
     }
     if (flags & D3DCLEAR_ZBUFFER) {
         glDepthMask(GL_TRUE);
+#if defined(MBN_GLES)
+        if (glClearDepthf) glClearDepthf((GLfloat)z);  // ES has no double-precision clear
+#else
         glClearDepth(z);
+#endif
         mask |= GL_DEPTH_BUFFER_BIT;
     }
     glClear(mask);
@@ -1143,7 +1174,13 @@ static void SetupAttribs(DWORD fvf) {
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(D3DLVERTEX), (void*)0);
         glEnableVertexAttribArray(2);
+#if defined(MBN_GLES)
+        // ES has no BGRA vertex-array form (desktop's ARB_vertex_array_bgra takes GL_BGRA as the
+        // size): four normalised bytes, swizzled in the shader (uBgra)
+        glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(D3DLVERTEX), (void*)16);
+#else
         glVertexAttribPointer(2, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(D3DLVERTEX), (void*)16);
+#endif
         glEnableVertexAttribArray(4);
         glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(D3DLVERTEX), (void*)24);
         glVertexAttrib4f(1, 0, 0, 0, 0);
@@ -1347,7 +1384,15 @@ void Device::FlushRecording() {
     g_recordPending = false;
 }
 
-void Device::GpuTimer::Init() { glGenQueries(kQueries, q); }
+void Device::GpuTimer::Init() {
+#if defined(MBN_GLES)
+    // GL_TIME_ELAPSED is core on desktop GL; on ES 3.0 it needs the timer-query extension.
+    if (!hgl::HasExtension("GL_EXT_disjoint_timer_query") &&
+        !hgl::HasExtension("GL_EXT_disjoint_timer_query_webgl2"))
+        return;
+#endif
+    glGenQueries(kQueries, q);
+}
 void Device::GpuTimer::Free() {
     if (q[0]) glDeleteQueries(kQueries, q);
     for (auto& x : q) x = 0;
@@ -1367,11 +1412,20 @@ void Device::GpuTimer::End() {
 void Device::GpuTimer::Poll() {
     for (int i = 0; i < kQueries; i++) {
         if (!busy[i]) continue;
+#if defined(MBN_GLES)
+        GLuint ready = 0;
+        glGetQueryObjectuiv(q[i], GL_QUERY_RESULT_AVAILABLE, &ready);
+        if (!ready) continue;
+        GLuint ns32 = 0;
+        glGetQueryObjectuiv(q[i], GL_QUERY_RESULT, &ns32);
+        GLuint64 ns = ns32;  // one frame's 3D: nowhere near the 32-bit wrap
+#else
         GLint ready = 0;
         glGetQueryObjectiv(q[i], GL_QUERY_RESULT_AVAILABLE, &ready);
         if (!ready) continue;
         GLuint64 ns = 0;
         glGetQueryObjectui64v(q[i], GL_QUERY_RESULT, &ns);
+#endif
         sumMs += (double)ns / 1e6;
         busy[i] = false;
     }
@@ -1592,7 +1646,9 @@ void Device::EnsureShadowTarget(int size) {
     glActiveTexture(GL_TEXTURE0);
     glGenTextures(1, &shadowTex_);
     glBindTexture(GL_TEXTURE_2D, shadowTex_);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    // GL_UNSIGNED_INT is the depth type both backends accept (ES rejects GL_FLOAT here).
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, size, size, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT,
+                 nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);  // (the card blends 2 x 2 comparisons)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -1603,7 +1659,12 @@ void Device::EnsureShadowTarget(int size) {
     glGenFramebuffers(1, &shadowFbo_);
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFbo_);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowTex_, 0);
+#if defined(MBN_GLES)
+    static const GLenum kNone[1] = {GL_NONE};  // no colour attachment on the shadow map
+    glDrawBuffers(1, kNone);
+#else
     glDrawBuffer(GL_NONE);
+#endif
     glReadBuffer(GL_NONE);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) Log("Shadow framebuffer incomplete");
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1813,7 +1874,11 @@ bool Device::ComputeShadows(int quality) {
     glViewport(0, 0, shadowSize_, shadowSize_);
     glDisable(GL_SCISSOR_TEST);
     glDepthMask(GL_TRUE);
+#if defined(MBN_GLES)
+    if (glClearDepthf) glClearDepthf(1.f);
+#else
     glClearDepth(1.0);
+#endif
     glClear(GL_DEPTH_BUFFER_BIT);
     glDisable(GL_BLEND);
     glDisable(GL_CULL_FACE);
@@ -1862,7 +1927,11 @@ bool Device::ComputeAO() {
     glColorMask(1, 1, 1, 1);
     glDepthMask(GL_TRUE);
     glClearColor(0, 0, 0, 0);
+#if defined(MBN_GLES)
+    if (glClearDepthf) glClearDepthf(1.f);
+#else
     glClearDepth(1.0);
+#endif
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
