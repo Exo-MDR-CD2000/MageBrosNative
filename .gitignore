@@ -23,6 +23,8 @@ MageBros-analysis/
 magebros_native.*
 *.bmp
 *.png
+# macOS AppleDouble files (FAT cards, network shares): never source
+._*
 # except the project's own artwork (original, nothing from the game; sources in docs/branding)
 !/docs/banner.png
 !/res/magebros_native.ico

@@ -107,6 +107,9 @@ if(MBN_BUILD_GAME)
     ${CMAKE_SOURCE_DIR}/src/gfx/*.cpp ${CMAKE_SOURCE_DIR}/src/audio/*.cpp
     ${CMAKE_SOURCE_DIR}/src/input/*.cpp ${CMAKE_SOURCE_DIR}/src/ui/*.cpp
     ${CMAKE_SOURCE_DIR}/src/framework/*.cpp ${CMAKE_SOURCE_DIR}/src/game/*.cpp)
+  # macOS writes AppleDouble "._name" files onto FAT cards and network shares; they are not
+  # source, and a compiler that picks them up fails with a screenful of nonsense
+  list(FILTER MBN_GAME_SOURCES EXCLUDE REGEX "/\\._[^/]*$")
   list(APPEND MBN_GAME_SOURCES
     src/main.cpp src/core/assets.cpp src/core/config.cpp src/core/mods.cpp src/core/saves.cpp
     src/core/third_party_impl.cpp)
