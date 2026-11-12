@@ -57,6 +57,27 @@ change that table too.
 
 A line saying `'vswhere.exe' is not recognized` is harmless.
 
+## Building the macOS package
+
+The Windows script is Windows-only. On an Apple Silicon Mac, with CMake 3.20+ and the Xcode
+command line tools:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMBN_SDL_FROM_SOURCE=ON
+cmake --build build
+ctest --test-dir build --output-on-failure
+cmake --build build --target package
+```
+
+`-DMBN_SDL_FROM_SOURCE=ON` builds the pinned SDL3 from source instead of taking a system copy,
+so the zip carries its own SDL3. The result is
+`build/MageBrosNative-<version>-macos-arm64.zip`, holding `MageBrosNative.app` and the same
+licence files as the Windows zip. The GitHub workflow publishes the Windows zip only; the macOS
+zip is built by hand until the release job covers both.
+
+The bundle is never written to: settings, saves and the log live in
+`~/Library/Application Support/MageBrosNative`.
+
 ## Making a new release, step by step
 
 ### 1. Start from an up-to-date `main`

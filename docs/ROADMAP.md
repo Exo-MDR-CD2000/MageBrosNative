@@ -241,6 +241,14 @@ faster frame rates' speed (it conveys the mages leaving at speed). Measured: at 
 second, even on every frame (Smooth motion off: 0.800 a second, 0.69 to 1.00 frame to frame); at a
 frame limit of 60, 0.480. With Smooth motion off the scroll is the original's.
 
+## Platforms
+
+| Target | State |
+|---|---|
+| Windows | The release target: `make_release.bat` builds, tests on all 40 levels and writes the zip |
+| macOS (Apple Silicon) | Builds, runs and packages (`MageBrosNative-<version>-macos-arm64.zip`); desktop OpenGL 4.1 through SDL3, MSAA 4x on the test machine; commands in the README |
+| Linux desktop and the R36S | Tools and tests build; the game needs the GLES renderer, which has not been started |
+
 ## Open items
 
 | Item | Status |
