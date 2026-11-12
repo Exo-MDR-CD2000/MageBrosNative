@@ -71,6 +71,16 @@ endif()
 # the asset viewer.
 option(MBN_BUILD_GAME "Build the MageBrosNative game executable" ON)
 option(MBN_BUILD_R36S_PROBE "Build the R36S platform probe (uses the game's SDL3)" OFF)
+# Temporary diagnostics: log texture sizes and GL errors while porting the renderer.
+option(MBN_TEXTURE_DIAG "Log texture uploads and GL errors" OFF)
+if(MBN_TEXTURE_DIAG)
+  add_compile_definitions(MBN_TEXTURE_DIAG=1)
+endif()
+# The renderer compiled for OpenGL ES 3.0 (the R36S, and any GLES-only Linux device).
+option(MBN_GLES "Build the renderer for OpenGL ES 3.0" OFF)
+if(MBN_GLES)
+  add_compile_definitions(MBN_GLES=1)
+endif()
 option(MBN_FETCH_SDL "Download and build SDL3 if it is not installed" ON)
 # Packaging and the R36S build must not pick up whatever SDL3 the host happens to have:
 # this forces the pinned source build even when a system package is installed.

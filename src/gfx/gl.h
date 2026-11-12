@@ -139,6 +139,7 @@ typedef uint64_t GLuint64;
     X(void, glClear, (GLbitfield mask))                                                                      \
     X(void, glClearColor, (GLfloat r, GLfloat g, GLfloat b, GLfloat a))                                      \
     X(void, glClearDepth, (GLdouble d))                                                                      \
+    X(void, glClearDepthf, (GLfloat d))                                                                      \
     X(void, glViewport, (GLint x, GLint y, GLsizei w, GLsizei h))                                            \
     X(void, glScissor, (GLint x, GLint y, GLsizei w, GLsizei h))                                             \
     X(void, glEnable, (GLenum cap))                                                                          \
@@ -204,7 +205,6 @@ typedef uint64_t GLuint64;
     X(void, glDeleteProgram, (GLuint p))                                                                     \
     X(void, glAttachShader, (GLuint p, GLuint s))                                                            \
     X(void, glBindAttribLocation, (GLuint p, GLuint i, const GLchar* n))                                     \
-    X(void, glBindFragDataLocation, (GLuint p, GLuint c, const GLchar* n))                                   \
     X(void, glLinkProgram, (GLuint p))                                                                       \
     X(void, glGetProgramiv, (GLuint p, GLenum q, GLint * v))                                                 \
     X(void, glGetProgramInfoLog, (GLuint p, GLsizei m, GLsizei * l, GLchar * log))                           \
