@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 # The project version is the single source of the program's version number.
-project(MageBrosNative VERSION 0.4.46 LANGUAGES C CXX)
+project(MageBrosNative VERSION 0.4.47 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,6 +39,16 @@ enable_testing()
 add_executable(mbn_tests tests/format_tests.cpp)
 target_link_libraries(mbn_tests PRIVATE mbn_core)
 add_test(NAME formats COMMAND mbn_tests)
+
+# macOS: the platform's General MIDI synthesizer, which plays the music when no SoundFont is
+# installed. It renders directly, so no audio output device is needed.
+if(APPLE)
+  add_executable(mbn_synth_tests tests/synth_tests.cpp)
+  target_link_libraries(mbn_synth_tests PRIVATE
+    "-framework AudioToolbox" "-framework AudioUnit" "-framework CoreAudio")
+  add_test(NAME synth COMMAND mbn_synth_tests)
+  set_tests_properties(synth PROPERTIES SKIP_RETURN_CODE 77)
+endif()
 
 # The level geometry builder, checked against all 40 levels of the user's copy:
 #   mbn_map_tests --game PATH   (added to ctest when configured with -DMBN_GAME_EXE=PATH)
@@ -149,6 +159,10 @@ if(MBN_BUILD_GAME)
       MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
       MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
       MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/res/Info.plist.in)
+    # Music through the platform's General MIDI synthesizer (the Apple DLS synth), used when no
+    # SoundFont is installed.
+    target_link_libraries(MageBrosNative PRIVATE
+      "-framework AudioToolbox" "-framework AudioUnit" "-framework CoreAudio")
   endif()
   target_include_directories(MageBrosNative PRIVATE src third_party ${CMAKE_BINARY_DIR}/generated)
   target_link_libraries(MageBrosNative PRIVATE mbn_core)

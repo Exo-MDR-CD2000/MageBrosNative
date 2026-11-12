@@ -9,6 +9,13 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.47] - 2026-11-13
+
+- **Music plays on macOS without a SoundFont.** The game now uses the Mac's built-in General MIDI
+  synthesizer when no `.sf2` is installed, as it already did with the Windows synthesizer on
+  Windows. A SoundFont still takes precedence when one is present. The R36S has no system
+  synthesizer and still needs one.
+
 ## [0.4.46] - 2026-11-12
 
 - The Statistics Overlay (Full) lists the graphics enhancements in effect: ambient occlusion,
@@ -73,7 +80,6 @@ The first test build of the graphics upgrades (from the `graphics-enhancements` 
 - **Statistics Overlay** (F9, Full): two new rows, **GPU 3D**, the graphics card's time for a
   level's 3D each frame, and **3D draws**. Behind the scenes a level's 3D is now gathered before
   it is drawn, to make room for the graphics upgrades to come; the picture is exactly the same.
-
 ## [0.4.38] - 2026-11-10
 
 - **Render scale now goes up to 200%** (Options > Graphics). 300% and 400% asked far more of your
