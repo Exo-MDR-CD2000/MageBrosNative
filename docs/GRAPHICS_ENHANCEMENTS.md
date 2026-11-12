@@ -1,11 +1,12 @@
-# Graphics enhancements (G1 to G6 built; G8 water planned; G7 under way)
+# Graphics enhancements (G1 to G6 built; G7 under way; G8 water set aside)
 
 **Status (2026-11-12): G1 to G6 are built on the `graphics-enhancements` branch** (made from
-`main` at 0.4.38; on GitHub up to 0.4.45, 0.4.46 built locally), each with an "as built" section
+`main` at 0.4.38; on GitHub up to 0.4.46), each with an "as built" section
 below, and tried by the owner build by build. **G7** (the page's last touches, the overlay, the
 final checks and the merge into `main`) is what is left; its overlay rows are done (0.4.46). **G8, the water** (Original / Enhanced /
-Enhanced + reflections; the owner's request of 2026-11-12) is planned to come first, from 0.4.47,
-so G7's checks cover it. The plan below was written on 2026-11-10
+Enhanced + reflections; the owner's request of 2026-11-12) was planned, begun and **set aside the
+same day** (the owner's decision: perhaps a feature for later; nothing of its code is in the
+build). Its plan and what the trial found are kept under "G8". The plan below was written on 2026-11-10
 from reading the code at 0.4.38; where the build differs, the "as built" sections and the
 summary next say so, and the plan's text has been corrected where it would mislead.
 
@@ -206,9 +207,9 @@ multiplied, by a smaller strength); `shadowDarkness` became the fixed 0.55 times
 | G5a | 0.4.44 | Dynamic lights: finding the lights | Low | 2026-11-11, with G5b, as 0.4.42 (steadied in 0.4.43) |
 | G5b | 0.4.45 | Dynamic lights: lighting the level and the models | Medium | with G5a |
 | G6 | 0.4.46 | Bloom | Low | 2026-11-11, as 0.4.45 |
-| G8a | 0.4.47 | Water: reflections (the owner's request, 2026-11-12) | Medium (a second replay of the recording, mirrored) | planned |
-| G8b | 0.4.48 | Water: the better surface (ripples, glints, a soft edge) | Low | planned |
-| G7 | 0.4.49 | The page, the overlay, final checks, docs; merge | Low | the overlay done as 0.4.46; the rest after G8 |
+| G8a | (0.4.47) | Water: reflections (the owner's request, 2026-11-12) | Medium (a second replay of the recording, mirrored) | set aside 2026-11-12 (tried, not kept) |
+| G8b | (0.4.48) | Water: the better surface (ripples, glints, a soft edge) | Low | set aside 2026-11-12 (not begun) |
+| G7 | 0.4.47 on | The page, the overlay, final checks, docs; merge | Low | the overlay done as 0.4.46; the rest is next |
 
 The planned versions were a guide; the owner chose the real ones ("As built, at a glance").
 
@@ -778,7 +779,59 @@ menu; the overlay's Full page shows **GPU bloom**.
 - **Not checked here**: explosions, the dragon's flame, the warp, Render scale and widescreen with
   Bloom, the integrated AMD graphics.
 
-### G8. Water: Original / Enhanced / Enhanced + reflections (planned 2026-11-12)
+### G8. Water: Original / Enhanced / Enhanced + reflections (planned 2026-11-12; set aside the same day, kept for later)
+
+**Status: set aside (the owner, 2026-11-12). Not in the build; no version used.** G8a was begun
+and its reflections were working in test runs when the owner cancelled it; the code was put back
+to 0.4.46 exactly (no source file differs from the 0.4.46 commit) and none of it was committed.
+The owner asked for these notes to be kept: it could be a feature for later. Nothing here is to
+be built unless the owner asks. The plan follows as it was written and revised; what the trial
+showed comes first, so a later attempt starts from it.
+
+**What the trial of G8a found (2026-11-12, RTX 5080, on 0.4.46's code):**
+
+- **The clip plane's line in the main vertex shader is safe.** `uniform vec4 uClipPlane` and
+  `gl_ClipDistance[0] = dot(wp, uClipPlane)` (1.0 in the 2D path), with `GL_CLIP_DISTANCE0`
+  (0x3000) never switched on: 14 shots (seven levels, two runs) byte for byte as 0.4.46.
+- **The mirrored replay works as planned**: each recorded draw through `ApplyDrawState` with its
+  view mirrored (the view's second row negated, and 2 x the water's height x that row added to
+  its translation), then the reflection target bound in place of the scene, front faces turned
+  round, the clip plane (0, 1, 0, -height), drawn from `UploadPrep`'s shared buffer with
+  `SetupAttribs` and `glDrawElementsBaseVertex`. The water's height is the see-through sheet's
+  recorded world `_42`; the sheets are found by texture (0x18e / 0x28f, 0x1a6 / 0x290). Models
+  kept their own shading, as expected. A level with no water draw does no work.
+- **The glowing sprites are billboards, and the separate handling works.** A billboard is
+  recognised by its world matrix's 3 x 3 being the view's turned back (its transpose, within
+  0.05); it is drawn with the normal view, its world matrix's second row negated and its height
+  mirrored, with the clip plane the other way (0, -1, 0, height). A mage's shot showed in the
+  mirrored picture, facing the camera, under the real one. Flat glowing rectangles go through the
+  mirror like the rest. Not seen in the water itself: a flame or shot right over a pit.
+- **The back wall's top does show**: a hard line across the pits where the wall ends and black
+  begins. The back walls are 240 high from the floor (`MapGeometry`'s `BackWall`), so 278 above
+  the water. **The cure that worked: fade each mirrored draw out with its height above the
+  water, inside the reflection pass** (a uniform in the main pixel shader, off everywhere else:
+  the colour times `1 - smoothstep(100, 240, |y - water|)`, or the alpha for a draw blended by
+  its alpha). A first try, fading in the extra water draw from the reflection target's depth,
+  left a seam behind the sprites (they write no depth), so it was dropped.
+- **A line half-way down a pit is not a fault**: under a bridge the water mirrors the bridge's
+  underside, with the wall above and below it. Seen by showing the reflection target itself over
+  the picture (a temporary switch: worth having again).
+- **The extra draw**: a small program of its own (the sheet's rectangle; the reflection target
+  read at `gl_FragCoord` over the scene target's size; blended ONE, ONE; depth tested, not
+  written; the second output written as zero so Bloom's glow layer is left alone), sent just
+  before the see-through sheet in the replay. The ripples: the slope of the two water textures'
+  brightness (the second at the first's position plus the difference of the two sheets' first
+  vertices' texture positions), times 45 over the pixel's depth, held within 0.02 of the screen.
+  **By eye: strength 0.5, ripple 45** (20 was too faint to see; 60 a little much). The pits
+  still read as water; the far pits take on the wall's colour.
+- **The setting as tried**: `[video] water` 0 or 2, the row Original / Reflections after Bloom's,
+  a GPU water timer and a Water row in the overlay's ENHANCEMENTS group. About 300 lines in
+  all, in `device.{h,cpp}`, `gl.h`, `config.{h,cpp}`, `options_menu.cpp` and `d3dapp.{h,cpp}`.
+- **Not done when it stopped**: the final byte-for-byte check of Original with all of it in (three
+  rounds had run: every difference was a whole shot caught at one of two moments, as the known
+  timing noise, in both builds, but not all of them had been matched up); the cost; the overlay
+  rows on screen; `alpha=1`; the other Graphics options with it; World 3 and 4, the dragon, the
+  fish; G8b entirely.
 
 The owner's request (2026-11-12): better water as a Graphics option, the original look staying the
 default. The owner's choices: **both** a better surface and reflections; built **on this branch
@@ -791,6 +844,17 @@ reflections adds the mirrored level (G8a). The reflections are built first, bein
 change, so Enhanced + reflections works from G8a (its surface still the original's until G8b) and
 Enhanced from G8b. Planned versions: G8a 0.4.47, G8b 0.4.48, then the rest of G7 (as ever, the
 owner chooses the real numbers).
+
+**Revised 2026-11-12, after checking the plan against the code** (`device.cpp`, `XWater.cpp`,
+`JObject3D.cpp`), before any of it was built. Five changes, each marked "(revised)" below: the
+glowing sprites are billboards and need their own handling in the mirror; the back wall's top may
+show in the pits; the G8a build's row has two values, not three; the reflection pass draws from
+the shared upload; the ripple's second texture position is worked out in the shader.
+
+**The row, build by build (revised).** In the G8a build "Enhanced" alone would do nothing (its
+surface comes with G8b), so that build's row offers **Original / Reflections** only (`water` 0
+and 2); G8b's build brings the final three values. The ini's values don't change between them.
+(Or G8a and G8b in one build, as G4a/b and G5a/b turned out: the owner's choice.)
 
 **What the water is today** (`XWater`, `docs/REVERSE_ENGINEERING.md`, "Water and fish"): two
 rectangles over the whole map, `water1_` at y -38 (see-through, alpha 0.4, texture 0x18e; World 3
@@ -812,22 +876,51 @@ hard-coded -38). No water draw recorded (World 2, the ending): no water work at 
   what is above the water, front faces flipped (a mirror turns the winding round), into a
   reflection target of its own at **half the picture's size**, single-sample, with its own depth,
   cleared to black (the pit's black, so an empty reflection changes nothing).
-- **What is mirrored**: the level, the models (solid and see-through), and the additive sprites
+- **Drawn from the shared upload (revised)**: each mirrored draw takes its state through
+  `ApplyDrawState` (the game's own lighting and texture stages) but its vertices from the one
+  upload the AO and shadow passes already share (`UploadPrep`, `glDrawElementsBaseVertex`), not
+  an upload of its own. The one-upload-a-draw rule ("G2 as built") exists to keep the game's own
+  picture byte for byte; the reflection is a new picture, so a shade's difference can't matter,
+  and the second replay then costs no second set of uploads (weak hardware).
+- **What is mirrored**: the level, the models (solid and see-through), and the glowing sprites
   (the flames, shots and warp light glow in the water). Not mirrored: the water itself, the wave
   rings, the blob shadows. The reflection takes the game's own shading only (no AO, shadows,
   lights or bloom in it): it is dim, rippled and half-size, so they would cost without showing.
+  Models are lit in world space (`d3dLight`: the normal by the world matrix, the light's
+  direction as set), so a mirrored model keeps its own light and dark sides with nothing added.
+- **The glowing sprites are billboards (revised)**: `JObject3DRect::Particle` rectangles are
+  turned to face the real camera when drawn, so through the mirrored view, which looks up from
+  below the water, they would be seen close to edge-on and all but vanish. They are not sent
+  through the mirror. For each one (picked out by the glow table of G6, as there), its centre is
+  mirrored in the water's plane and it is drawn there with the **normal** view, its own facing
+  kept, turned upside down about its centre (a flame's tip points down in the water), clipped
+  to what is above the water as the rest. The other additive rectangles (smoke, dust, sparks) are
+  left out of the reflection. To see in the first screenshots: whether the mirrored flames sit
+  right under their torches.
 - **Drawing it**: one extra draw of the water rectangle (its recorded vertices, just above
   `water2_`, under `water1_`, depth-tested so floors in front still hide it), **added** onto what
   is there: over the black it is the reflection; over a fish it is the fish and a little
   reflection, so the fish still show. Each pixel reads the reflection target at its own screen
   position, nudged by ripples from the two water textures at their drifting offsets (the
   original's own motion, nothing new to animate), and the original sheets are drawn over it as
-  before. Strength set by eye (likely 35 to 50%, stronger towards the back where the view grazes
+  before. **The two textures in one draw (revised)**: a rectangle carries one set of texture
+  positions, and the two sheets drift at different speeds, so the extra draw can't take both from
+  its vertices. Both are worked out in the shader from the pixel's world position (one repeat a
+  40-unit cell, as `XWater::Init` sets) plus each sheet's drift, read from the first vertex of
+  the recorded `water1_` and `water2_` draws (already the blended drift with Smooth motion).
+  Strength set by eye (likely 35 to 50%, stronger towards the back where the view grazes
   the water), dark enough that the pits still read as deep: the water is a hazard, so it must
   stay plain where the floor ends.
 - **Smooth motion**: the recording is already at the blended positions, and the ripples use the
   blended drift (`XWater::Render`), so the reflection moves with the picture.
 - **The overlay**: a **GPU water** row (Full page), and **Water** in the ENHANCEMENTS group.
+- **The order of building (revised)**: 1. the clip plane's line in the main vertex shader alone
+  (`gl_ClipDistance[0]`, written by every draw, the 2D path included, and switched on only for
+  the reflection pass), checked byte for byte against 0.4.46 before anything else: every draw
+  goes through that shader, so it is the step most likely to disturb the Original picture (G4's
+  shader change did not). 2. A bare reflection (no ripples, full strength) and screenshots of
+  1-1, 1-6 and 3-10, to see the two things the plan can't settle on paper: the mirrored sprites,
+  and the back wall's top (under "risks"). 3. The ripples, the strength, the overlay rows.
 - **Checks**: Original byte for byte against 0.4.46 (the suite of "How each chunk is checked");
   reflections by eye in 1-1, 1-6 (the pillars, the bridge, the back wall), 1-10 (the dragon over
   the water), 3-x (World 3's textures), 3-10 (the nest), 4-x; a mage jumping over a pit and
@@ -865,6 +958,8 @@ glints as before.
    Shadow strength in G4). A Water strength row only if one strength doesn't suit everyone.
 2. **The enhancements inside the reflection** (shadows, lights in the mirrored level): proposed
    none (above).
+3. **One build or two** (revised): G8a's build with a two-value row (Original / Reflections) and
+   G8b's with the final three, as proposed above, or both parts in one build.
 
 #### G8, where it would go in the code (as of 0.4.46)
 
@@ -874,7 +969,9 @@ Nothing in `src/game` changes, as for G1 to G7: the water is found and drawn fro
   `ComputeBloom`, called from `Device::FlushRecording` before the recorded draws are replayed.
   It replays `rec_` with each `RecordedDraw`'s `st.view` multiplied by the mirror, the cull
   winding flipped (`ApplyDrawState` maps `cullMode` to `glFrontFace`), and a clip plane: the
-  vertex shader has no `gl_ClipDistance` yet, so that and `GL_CLIP_DISTANCE0` are new. The water
+  vertex shader has no `gl_ClipDistance` yet, so that and `GL_CLIP_DISTANCE0` are new. Its
+  vertices come from `UploadPrep`'s shared buffer; the glowing sprites are drawn apart, at their
+  mirrored centres with the normal view (both revised, under G8a). The water
   sheets are picked out by texture resource ID (`Texture::ResId`, as `kLightSources` picks the
   glowing sprites); `DrawKind` may get a water kind. The extra draw of the reflection and G8b's
   water shader go in the replay loop where the water draws come up.
@@ -893,6 +990,16 @@ Nothing in `src/game` changes, as for G1 to G7: the water is found and drawn fro
 - **What the reflection mostly shows**: the faces that rise above the pits (the back wall, cliff
   faces, pillars, the bridges' sides, mages and enemies over the water, the flames). The floors'
   tops face away from the mirrored camera and mostly don't show.
+- **The back wall's top (revised)**: the levels are built only as far as the original's view
+  reaches (the Field of view's help line says as much). The mirrored camera looks up the back
+  wall, past where the normal view stops, so the wall's top edge and the black beyond it may show
+  as a line across the pits. Not confirmed: to be seen in the bare reflection's screenshots. If
+  it shows, the reflection fades out with the mirrored point's height above the water (from the
+  reflection target's depth, or a height written beside its colour), so the wall dims away before
+  its top; black adds nothing, so beyond it the water is simply the original's.
+- **The mirrored sprites**: see "The glowing sprites are billboards" under G8a; a sprite hidden
+  behind a wall in the level must be hidden in the water too (the reflection target's own depth
+  does this, as long as the sprite is drawn at its mirrored centre's depth).
 - **The ripple offset** reads the reflection a little off its own pixel: at the picture's edges
   and where a floor's edge meets the water it could pick up a sliver of the wrong thing; clamp
   the offset and keep it small.
@@ -904,7 +1011,7 @@ Nothing in `src/game` changes, as for G1 to G7: the water is found and drawn fro
 - **Weak hardware**: a second replay roughly doubles the level's draw count; to be measured on the
   integrated AMD graphics with G7's checks.
 
-### G7. The page, the overlay and the merge (the overlay done as 0.4.46; the rest from 0.4.47)
+### G7. The page, the overlay and the merge (the overlay done as 0.4.46; the rest is next, from 0.4.47)
 
 - **The Graphics page**, finished (below): the owner's verdicts applied (Ambient light; the
   shadows' quality levels), help lines in plain words saying what each costs.
@@ -938,11 +1045,11 @@ Nothing in `src/game` changes, as for G1 to G7: the water is found and drawn fro
 | **Dynamic lights** | Off / On | Off | `dynamic_lights` |
 | **Light strength** | 50% to 150% | 100% | `light_strength` |
 | **Bloom** | Off / Low / High | Off | `bloom` |
-| **Water** (G8, planned) | Original / Enhanced / Enhanced + reflections | Original | `water` |
 | **Ambient light** (a trial, 0.4.44) | 70%, 85%, 100% (with Dynamic lights on) | 100% | `lights_ambient` |
 | Brightness | 50% to 150% | 100% | `brightness` |
 
-Removed: Per-pixel lighting (`per_pixel_lighting`), Soft shadows (`enhanced_shadows`).
+Removed: Per-pixel lighting (`per_pixel_lighting`), Soft shadows (`enhanced_shadows`). Not
+built: a Water row (`water`; G8, set aside).
 
 The new keys need no `config_version` bump (each defaults to off when missing). Changing one
 takes effect at once, like the others (the targets made again through `OnSettingsChanged` where
@@ -1026,8 +1133,9 @@ Noted so they aren't lost; each would be its own small plan:
   the level ends at wide Fields of view.
 - **Colour grading** (warmth, contrast, saturation) beside Brightness.
 - **Sharpening** for Render scale below 100%.
-- ~~**The water**: reflections of the level and the mages in the pits' water.~~ Now planned as G8
-  (2026-11-12).
+- **The water**: reflections of the level and the mages in the pits' water, and a better
+  surface. Planned as G8 and tried on 2026-11-12, then set aside by the owner the same day,
+  perhaps for later: the plan and what the trial found are under "G8".
 - **The 2D at the window's own resolution** (the HUD and menus are drawn into the render target
   today, so Render scale and Brightness affect them): found in the graphics review of 2026-11-10.
 

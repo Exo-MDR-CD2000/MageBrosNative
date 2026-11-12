@@ -74,13 +74,14 @@ Who draws, each frame:
 | `Device::DrawUIQuad` | The options menu's text and boxes, one quad per character | Every quad is new |
 | `Device::Present` | The finished scene drawn into the window, once a frame | No |
 
-A level frame is a few hundred draws; nobody has counted them (chunk R0).
+A level frame is a few hundred draws. (Counted since by the Statistics Overlay's 3D draws row,
+0.4.39: about 100 in 1-1 and 270 in 3-10, the level's 3D alone; the 2D is not counted.)
 
 ## What it costs
 
 **Known:**
 
-- On the owner's machine (then an RTX 3090 Ti; an RTX 5080 since 2026-11-11, not yet measured), VSync off: about 1,070 frames a second in 3-10 with all
+- On the owner's machine (then an RTX 3090 Ti; an RTX 5080 since 2026-11-11: its figures are in the note at the top), VSync off: about 1,070 frames a second in 3-10 with all
   40 birds, about 1,790 to 1,900 in 1-1 at 1280 x 960, 490 in 4K borderless (where the card's
   pixel work, not this, is the limit). So a whole frame, game ticks included, takes 0.5 to
   0.9 ms of processor time.

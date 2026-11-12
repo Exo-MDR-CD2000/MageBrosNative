@@ -22,8 +22,8 @@ the original's, byte for byte (checked at each chunk).
 as before, and kept to the nanosecond (`lastTickNs_`, `SetLastTick`). Alpha comes from the
 nanosecond clock (`AppTimeNs`). The options menu and P freeze it (`HoldTickPhase`), and the first
 frame after them carries on from the held picture (`heldLastFrame_`), so nothing jumps.
-`AppFrameRate` gives the measured frame rate (the ending's corridor uses it). (From 0.4.27, on
-the `smooth-motion-rework` branch: the latest tick is always kept on a whole millisecond, and
+`AppFrameRate` gives the measured frame rate (the ending's corridor uses it). (From 0.4.27, built on
+the `smooth-motion-rework` branch and merged into `main` as v0.4.32: the latest tick is always kept on a whole millisecond, and
 the frame limit, VSync and the wait between frames were reworked; see "Review of 2026-11-09" at
 the end.)
 

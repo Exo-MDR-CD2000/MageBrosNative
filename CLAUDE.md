@@ -67,8 +67,11 @@ repository contains no game content.
 MageBros-Project/                   (C:\Users\ExoJag\Documents\MageBros-Project)
   MageBros.exe, MageBros.pdb        the original game (with its debug symbols)
   Music01.mid ... Music06.mid
-  MageBros-analysis-private.zip     private RE notes: never put these in the repo
+  Manual_E.htm, Manual_J.htm        the original's manuals
+  MageBros-analysis-private.zip     private RE notes: never put these in the repo (not in the
+                                    folder when checked on 2026-11-12; the unzipped notes are)
   MageBros-analysis/                the same notes, unzipped (listings, pdb dumps, tools)
+  MageBros-export/                  files exported from the game: never put these in the repo
   MageBrosNative-0.1.0-windows-x64.zip   an early test build (releases are now on GitHub)
   MageBrosNative/                   this repository
 ```
@@ -105,7 +108,7 @@ docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status)
                weak graphics hardware; only if the owner asks),
                GRAPHICS_ENHANCEMENTS.md (ambient occlusion, dynamic shadows and lights,
                bloom: the plan and each chunk as built, G1 to G6 and G7's
-               overlay rows; G8, the water, planned; on the
+               overlay rows; G8, the water, planned, tried and set aside; on the
                `graphics-enhancements` branch),
                RELEASING.md (building and publishing a release, for the owner),
                banner.png and branding/ (the README banner and the icon: SVG sources)
@@ -558,7 +561,7 @@ window is up to the driver and Windows).
 **Graphics enhancements** (planned 2026-11-10, G1 to G6 of seven built 2026-11-11, G7's overlay
 rows 2026-11-12): optional
 visual upgrades on the **`graphics-enhancements`** branch (made from `main` at 0.4.38; on GitHub up
-to 0.4.45, 0.4.46 built locally). The plan, every chunk's "as built" and the owner's open
+to 0.4.46). The plan, every chunk's "as built" and the owner's open
 decisions: `docs/GRAPHICS_ENHANCEMENTS.md` ("As built, at a glance" first).
 
 - **What is in** (Options > Graphics, all off by default, levels only; with each off every picture
@@ -594,12 +597,14 @@ decisions: `docs/GRAPHICS_ENHANCEMENTS.md` ("As built, at a glance" first).
   screens than levels; the checks each chunk left (the plan's G7 lists them). Settled 2026-11-12: the
   slimes' "one-shade puzzle" is run-to-run noise (a pixel or two of see-through surfaces, water or
   slimes, one shade apart now and then in every build; invisible in play; compare several runs in
-  byte-for-byte checks). **Next is G8, the water** (the owner's request of 2026-11-12: one
-  Graphics row, Water: Original / Enhanced / Enhanced + reflections, Original by default; G8a
-  the reflections, a mirrored replay of the recording, planned as 0.4.47; G8b ripples, glints and
-  a soft edge, 0.4.48; the plan in `docs/GRAPHICS_ENHANCEMENTS.md`, "G8"), **then the rest of
-  G7** (the page's last touches, the final checks, the merge; its overlay rows are done, 0.4.46),
-  each on the owner's word.
+  byte-for-byte checks). **G8, the water, is set aside** (planned at the owner's request on
+  2026-11-12: one Graphics row, Water: Original / Enhanced / Enhanced + reflections; G8a, the
+  reflections, a mirrored replay of the recording, was begun and working in test runs when the
+  owner cancelled it the same day; the code went back to 0.4.46 exactly and nothing was
+  committed. The owner had the notes kept, as a possible feature for later: the plan and what the
+  trial found are in `docs/GRAPHICS_ENHANCEMENTS.md`, "G8". Don't build it unless the owner
+  asks.) **Next is the rest of G7** (the page's last touches, the final checks, the merge; its
+  overlay rows are done, 0.4.46), on the owner's word.
 - Windows Defender flagged the unsigned 0.4.39 build (a machine-learning false positive; the
   owner restored it). Code signing is the owner's decision. The owner's graphics card is an **RTX
   5080** from 2026-11-11 (the frame rates measured before that, in these docs, were on an RTX

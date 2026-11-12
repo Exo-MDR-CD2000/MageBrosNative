@@ -10,7 +10,7 @@ Each stage ends with a Windows zip you can test with your own `MageBros.exe`.
 | 4 | First playable: World 1 with player 1 | Done |
 | 5 | The whole game: all 4 worlds, every enemy, platform and boss, two-player co-op | Done |
 | 6 | Front end: title, save slots, level select, shop, ending, saving | Done |
-| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats done (C1 to C4, 0.4.23 to 0.4.26); frame timing reviewed and reworked (0.4.27 to 0.4.32, merged into `main` on 2026-11-10); enemies in view wake on the widest screens and the version shows in the options menu (0.4.33); the Statistics Overlay (its panel 0.4.34, its graphs 0.4.35); players' own menu font (0.4.36) and SoundFonts from a folder (0.4.37); the graphics enhancements G1 to G6 on the `graphics-enhancements` branch (0.4.39 to 0.4.45, [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md)), and G7's overlay rows (0.4.46); the water (G8: Original / Enhanced / Enhanced + reflections) planned next, then the rest of G7 and the merge; mods and the config tooling still to come |
+| **7** | **Modern extras: the options menu, video, smooth motion, cheats, mods** | **In progress**: chunks 1 and 2a to 2d-ii done; 2d-iii done but the options menu, left as it is for now; 2d-iv done (below); smooth motion done (0.4.16 to 0.4.20, [SMOOTH_MOTION.md](SMOOTH_MOTION.md)); the graphics options reviewed (0.4.21); cheats done (C1 to C4, 0.4.23 to 0.4.26); frame timing reviewed and reworked (0.4.27 to 0.4.32, merged into `main` on 2026-11-10); enemies in view wake on the widest screens and the version shows in the options menu (0.4.33); the Statistics Overlay (its panel 0.4.34, its graphs 0.4.35); players' own menu font (0.4.36) and SoundFonts from a folder (0.4.37); the graphics enhancements G1 to G6 on the `graphics-enhancements` branch (0.4.39 to 0.4.45, [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md)), and G7's overlay rows (0.4.46); next there, the rest of G7 and the merge (the water, G8, was planned and set aside on 2026-11-12); mods and the config tooling still to come |
 
 ## Stage 4, chunk by chunk
 
@@ -158,8 +158,8 @@ left as it is, the owner's choice), smooth motion (0.4.16 to 0.4.20), the graphi
 wake range and the version in the menu (0.4.33), the Statistics Overlay O1 and O2 (0.4.34,
 0.4.35), the menu font (0.4.36), the SoundFont folder (0.4.37) and the Render scale cap (0.4.38),
 all on `main`. On the `graphics-enhancements` branch: the graphics enhancements G1 to G6 (0.4.39
-to 0.4.45) and G7's overlay rows (0.4.46); planned next there, G8, the water (reflections and a
-better surface as one Graphics row, Original by default), then the rest of G7. The per-frame items in the "frame-rate dependence" table below are settled: each is
+to 0.4.45) and G7's overlay rows (0.4.46); next there, the rest of G7 (the water, G8, was
+planned and then set aside: "Set aside for later" below). The per-frame items in the "frame-rate dependence" table below are settled: each is
 handled or kept by the owner's choice.
 
 **Set aside (the owner, 2026-10-29): the present path.** Presenting through a DXGI flip swapchain
@@ -174,8 +174,8 @@ README no longer recommends it; window and borderless smoothness is still open (
 **Reviewed (2026-11-09, 0.4.26): refresh rates, VSync, the frame limit and smooth motion.** The
 design holds at any refresh rate; one small bug (ticks up to 1 ms late after the menu or a pause)
 and seven improvements are listed in [SMOOTH_MOTION.md](SMOOTH_MOTION.md) ("Review of
-2026-11-09"), being built one at a time on the `smooth-motion-rework` branch, a version each
-(0.4.27 to 0.4.32 so far): the bug is fixed
+2026-11-09"), and were built one at a time on the `smooth-motion-rework` branch, a version each
+(0.4.27 to 0.4.32): the bug is fixed
 there (measured before and after), and so are the frame limits that fit the monitor (the
 refresh rate and its half, third and quarter, paced by the driver with VSync; liked by
 the owner) and a Low latency setting (off by default: no finished frames queued in the driver
@@ -209,6 +209,12 @@ Hopmon Native has.
 
 **Set aside for later** (the owner's notes; maybe more than a game of this size needs):
 
+- better water (G8: reflections of the level in the pits' water and a rippling, glinting surface,
+  as one Graphics row, Original by default). Planned on 2026-11-12 at the owner's request; the
+  reflections were begun and working in test runs when the owner cancelled it the same day,
+  perhaps for later. Nothing of it is in the build. The plan and what the trial found are in
+  [GRAPHICS_ENHANCEMENTS.md](GRAPHICS_ENHANCEMENTS.md), "G8";
+
 - dynamic shadows from see-through models (slimes, ghosts, the wizard's wand, blade and fireball
   cast none: their materials are part see-through, and see-through draws stay out of the shadow
   map). Left as it is (the owner, 2026-11-11); the ways to add them are in
@@ -222,7 +228,7 @@ Hopmon Native has.
   below the near edge, taller walls, something past the ends) so zooming out holds up;
 - perhaps a "widescreen max width" setting (the picture limited to a chosen shape, with bars
   beyond, as HUD max width does for the HUD). The frozen enemies at 32:9 it was first thought
-  of for are answered by the update range (below, 0.4.33);
+  of for are answered by the update range (the "Wake range" row above, 0.4.33);
 - a frame-limit choice for G-Sync / FreeSync (the monitor's refresh rate less 3): planned in
   smooth motion's chunk D and then dropped (2026-10-28: a few milliseconds at most, and the
   graphics drivers already offer the cap); why, and how it would be built, are in
