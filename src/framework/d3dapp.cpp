@@ -569,6 +569,8 @@ void CD3DApplication::SummarizeStats(DWORD elapsedMs) {
     s.gpuAO = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
     GetDevice().TakeGpuShadows(&gpuSum, &gpuFrames);
     s.gpuShadows = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
+    GetDevice().TakeGpuBloom(&gpuSum, &gpuFrames);
+    s.gpuBloom = gpuFrames > 0 ? gpuSum / gpuFrames : -1;
     uint64_t last = w.lastStartNs;
     w = StatsWindow{};
     w.lastStartNs = last;  // (the next frame's time is counted from the last one drawn)
@@ -661,6 +663,7 @@ void CD3DApplication::DrawStatsOverlay() {
         if (s.gpu3D >= 0) perf.rows.push_back({"3D draws", std::to_string(s.draws3D)});
         if (cfg.ambientOcclusion && s.gpuAO >= 0) perf.rows.push_back({"GPU AO", ms(s.gpuAO)});
         if (cfg.dynamicShadows > 0 && s.gpuShadows >= 0) perf.rows.push_back({"GPU shadows", ms(s.gpuShadows)});
+        if (cfg.bloom > 0 && s.gpuBloom >= 0) perf.rows.push_back({"GPU bloom", ms(s.gpuBloom)});
         if (cfg.dynamicLights && s.gpu3D >= 0) perf.rows.push_back({"Lights", std::to_string(s.lights)});
 
         // two columns: how the game runs on the left, on what on the right; one: all stacked

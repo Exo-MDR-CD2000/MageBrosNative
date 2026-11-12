@@ -102,10 +102,9 @@ docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status)
                players' debug report, planned),
                RENDERER_OPTIMIZATION.md (a plan, not built: the renderer's work per draw, for
                weak graphics hardware; only if the owner asks),
-               GRAPHICS_ENHANCEMENTS.md (a plan, not built yet: ambient occlusion,
-               dynamic shadows, dynamic lights and bloom, on the
-               `graphics-enhancements` branch; Per-pixel lighting and Soft shadows
-               removed in G1),
+               GRAPHICS_ENHANCEMENTS.md (ambient occlusion, dynamic shadows and lights,
+               bloom: the plan and each chunk as built, G1 to G6; on the
+               `graphics-enhancements` branch),
                RELEASING.md (building and publishing a release, for the owner),
                banner.png and branding/ (the README banner and the icon: SVG sources)
 res            version.h.in, magebros_native.rc (the exe's icon and version info), .ico
@@ -291,6 +290,10 @@ start, not game ticks (a tick is 10 ms). The mage drops in for a few seconds aft
 - `alpha=<0..1>`: hold smooth motion's blend there (only with Smooth motion on, in a level's 3D);
   `alpha=off` frees it. `alpha=1` must give the same pictures as Smooth motion off.
 
+Environment variables for test runs: `MBN_NO_RECORD=1` draws a level's 3D without the graphics
+enhancements' recorder (to compare pictures and timings; logged at start), `MBN_HEADLESS` hides
+the error message boxes, `MBN_BORDERLESS_WINDOW` tests the Windows borderless path.
+
 `level`, `place`, `placeB`, `players`, `ending` and `alpha` (and F3, `--ending`) are test hooks only. Key names are SDL's (`Left Ctrl`,
 `Right Ctrl`, `Left Shift`, `D`, `1`); a wrong name does nothing, silently.
 
@@ -360,7 +363,7 @@ Conventions:
   hardcode an aspect ratio (the owner: the window can be resized to anything). 2D screens use
   `Device::ViewXRange` the same way (the view's x range in 640 x 480 pixels).
 
-## Where we are (last updated: 2026-11-10, version 0.4.38 on `main`)
+## Where we are (last updated: 2026-11-11: 0.4.38 on `main`, 0.4.45 on `graphics-enhancements`)
 
 **Stages 1 to 6 are done**: the owner played the whole game on 0.3.6 from start to finish and it
 plays fine (2026-10-25), which closed stage 5 chunk 19 and stage 6 chunk 9. **Stage 7**, the
@@ -550,60 +553,56 @@ the window / borderless smoothness (above; the part-of-refresh frame limits answ
 choppiness at a limit below the refresh rate, which the owner liked; whether G-Sync follows a
 window is up to the driver and Windows).
 
-**Graphics enhancements (planned 2026-11-10)**: the owner wants optional visual upgrades beyond
-the original's look, on a new branch, **`graphics-enhancements`** (made from `main` at 0.4.38).
-Per-pixel lighting and Soft shadows are to be removed (the owner: they add little), and four
-opt-in effects added, levels only, off by default, with every picture byte for byte as before when
-they are off: ambient occlusion, dynamic shadows from the game's own light, dynamic lights from
-the game's own flames and shots, and bloom on the game's own glowing sprites. The renderer records
-a level's 3D and draws it afterwards (extra passes first, the game's draws in their own order), so
-nothing in `src/game` changes. The plan, its chunks G1 to G7 (0.4.39 on, a version each) and the
-owner's open decisions: `docs/GRAPHICS_ENHANCEMENTS.md`. Decided: the blob shadow stays as it is
-with Dynamic shadows on (the owner, 2026-11-10). **G1 is built (2026-11-11)**: Per-pixel lighting
-and Soft shadows removed, pictures byte for byte as 0.4.38. **G2 is built (2026-11-11)**: a
-level's 3D is recorded while `SetGameplayView` is on and sent when it is turned off
-(`Device::FlushRecording`), each draw with its own upload as before (a single shared upload gave
-two pixels a shade apart on NVIDIA, so it is kept for the extra passes only); anything that talks
-to OpenGL during a level's 3D must call `FlushRecording()` first; `MBN_NO_RECORD=1` draws without
-recording, to compare; the overlay's Full page shows GPU 3D and 3D draws. **G3 is built
-(2026-11-11)**: Ambient occlusion (Options > Graphics, `ambient_occlusion` 0..2, off by default),
-`Device::ComputeAO` before the replay (depth pass from one shared upload, occlusion, blur), applied
-by the main shader to the level and solid models only (`DrawKind`); with it off every picture is as
-G2's. After testing 0.4.39 the owner kept High and had Low removed: the row is Off / On (On = the
-former High; old ini values 1 and 2 read as on), built as 0.4.40. A puzzle noted in the plan's
-"G3 as built": two pixels of 1-6's slime one shade apart between runs that differed only in an ini
-digit, which questions G2's "shared buffer" explanation. Windows Defender flagged the unsigned
-0.4.39 build (an ML false positive; restored by the owner). **G4 is built (2026-11-11, after
-0.4.40)**: Dynamic shadows (Off / Low / Medium / High, `dynamic_shadows`; Shadow strength,
-`shadow_strength` 50..100, 80 by default), `Device::ComputeShadows` before the replay; with them
-off every picture is as 0.4.40's. Built as 0.4.41; the next chunks take numbers from 0.4.42.
-**G5 is built (2026-11-11)**: Dynamic lights (Off / On, `dynamic_lights`; Light strength,
-`light_strength` 50..150) from the game's own additive sprites (`kLightSources` by texture
-resource ID, `Device::CollectLights`); off, every picture is as 0.4.41's. Built as 0.4.42; the
-next chunks take numbers from 0.4.43. After the owner's test: lit torches and candles strobed (the
-light came from the sparks the original sends up every 12 or 15 ticks); now only their steady
-flame (texture 0x187) gives light, built as 0.4.43; the next chunks take numbers from 0.4.44.
-The owner (2026-11-11): **no Preset row**; the ambient dimming tried both ways in one build: an
-**Ambient light** row (100 / 85 / 70%, `lights_ambient`, with Dynamic lights on; the plan's
-"Ambient light (after G5)"), built as 0.4.44, for the owner to keep, change or remove.
-See-through models (slimes 70%, king and queen 80%, ghosts 60%, the wizard's wand, blade and
-fireball) cast no dynamic shadow, by design (blended draws stay out of the map); the owner chose
-to leave it (2026-11-11), documented in the plan's "G4 as built" and its later ideas. Next
-numbers from 0.4.45. Open for the owner: dimming the ambient for the lights. The owner wants the first test build with G3. The build is still
-built as **0.4.39** (2026-11-11, the owner: one version for G1 to G3, the first test build;
-`make_release.bat 0.4.39`, a copy kept in `build\fix-builds`). The plan's later chunks take the
-next numbers from 0.4.43 (0.4.40 is AO's Low removed, 0.4.41 dynamic shadows, 0.4.42 dynamic lights). Built on the branch only: `main` stays at 0.4.38 and off these numbers
-until the branch merges.
-Start each next chunk on the owner's word. The owner's graphics card is an **RTX 5080** from
-2026-11-11 (the frame rates measured before that, in these docs, were on an RTX 3090 Ti).
+**Graphics enhancements** (planned 2026-11-10, built 2026-11-11, G1 to G6 of seven): optional
+visual upgrades on the **`graphics-enhancements`** branch (made from `main` at 0.4.38; on GitHub up
+to 0.4.44, 0.4.45 built locally). The plan, every chunk's "as built" and the owner's open
+decisions: `docs/GRAPHICS_ENHANCEMENTS.md` ("As built, at a glance" first).
+
+- **What is in** (Options > Graphics, all off by default, levels only; with each off every picture
+  is byte for byte as before it):
+  - Per-pixel lighting and Soft shadows removed (G1; old ini keys ignored).
+  - **The recorder** (G2): while `SetGameplayView` is on, `Device` records each 3D draw (a
+    `DrawState` and a copy of its vertices) and sends them in their order at
+    `SetGameplayView(false)` (`FlushRecording`), the extra passes first. **Anything that talks to
+    OpenGL during a level's 3D must call `FlushRecording()` first.** The game's own draws keep one
+    upload each (drawing them from one shared buffer changed two pixels by a shade); the
+    depth-only passes share one upload (`UploadPrep`). `MBN_NO_RECORD=1` draws without recording,
+    to compare.
+  - **Ambient occlusion**, Off / On (`ambient_occlusion`; Low removed after the owner's test);
+    **Dynamic shadows**, Off / Low / Medium / High, and **Shadow strength** (`dynamic_shadows`,
+    `shadow_strength`, 80%); **Dynamic lights**, Off / On, and **Light strength**
+    (`dynamic_lights`, `light_strength`), from the game's glowing sprites by texture
+    (`kLightSources`), the torches' and candles' from their steady flame only (the sparks made them
+    strobe); **Ambient light** 100 / 85 / 70% (`lights_ambient`, with Dynamic lights on), a trial;
+    **Bloom**, Off / Low / High (`bloom`), from a glow layer in the scene target (`glowRb_`).
+  - Each draw's part is chosen by its kind (`DrawKind`: solid pre-lit, solid model, or neither).
+  - The Statistics Overlay (Full) shows GPU 3D, 3D draws, GPU AO, GPU shadows, GPU bloom and Lights.
+- **Versions** (the owner's choice each time; each build kept in `build\fix-builds`): 0.4.39 G1 to
+  G3 (the first test build), 0.4.40 AO Off / On, 0.4.41 shadows, 0.4.42 lights, 0.4.43 steady
+  torch lights, 0.4.44 Ambient light, 0.4.45 bloom. The next take 0.4.46 on; `main` stays at 0.4.38
+  and off these numbers until the branch merges (a pull request, as `smooth-motion-rework`).
+- **Decided by the owner**: the blob shadow stays with Dynamic shadows on; no Preset row; the
+  ambient dimming tried as a setting in one build rather than two builds; see-through models
+  (slimes, ghosts, the wizard's wand, blade and fireball) cast no dynamic shadow, left as it is.
+- **Open**: the Ambient light verdict; the shadows' three quality levels (they look alike); other
+  screens than levels; the checks each chunk left (the plan's G7 lists them); the slimes' one-shade
+  puzzle (a few pixels on the slimes vary by one shade from run to run, in every build; it first
+  looked like a driver difference in G2). **Next is G7** (the page's last touches, the overlay, the
+  final checks, the merge), on the owner's word.
+- Windows Defender flagged the unsigned 0.4.39 build (a machine-learning false positive; the
+  owner restored it). Code signing is the owner's decision. The owner's graphics card is an **RTX
+  5080** from 2026-11-11 (the frame rates measured before that, in these docs, were on an RTX
+  3090 Ti).
 
 **Branches**: work goes on `main`; each push to `main` publishes the version's release when that version
 has none yet (see "GitHub releases"). Three side branches were used and merged: `menu-dev` (0.4.0 to
 0.4.13, pull request #1, 2026-10-26), `interpolation-test` (smooth motion, merged directly
 2026-10-28) and `smooth-motion-rework` (the frame timing fixes, 0.4.27 to 0.4.32, pull request #3,
-2026-11-10). All are kept on GitHub; nothing goes there any more. Perhaps a branch for the modding
-work later; if a side branch is used again, its builds take the next version numbers and `main`
-stays off them until it merges.
+2026-11-10). All are kept on GitHub; nothing goes there any more. **`graphics-enhancements`**
+(from 0.4.38, 2026-11-10) is the side branch in use: the graphics enhancements above, 0.4.39 on,
+pushed to GitHub (pushing it publishes no release; only `main` does). Perhaps a branch for the
+modding work later; a side branch's builds take the next version numbers and `main` stays off them
+until it merges.
 
 **The options menu** (`src/ui/options_menu.*`, F10 / gamepad Start) came from Hopmon Native
 almost line for line, with its config (`src/core/config.*`), input remapping (`src/input`) and
@@ -838,6 +837,10 @@ test copy, with no result of the owner's own play reported yet: a player's menu 
 `fonts` folder (0.4.36; the owner compared the twelve built-in fonts in play before choosing to
 ship none) and SoundFonts from a `soundfonts` folder (0.4.37, with copies of the owner's own
 SoundFonts).
+The graphics enhancements (`graphics-enhancements`, 0.4.39 to 0.4.45): the owner tried each build
+(AO: liked High, had Low removed; shadows "working well"; lights: found the torches' strobe, fixed
+in 0.4.43, then "much more bearable"; Ambient light "seems to work fine"; bloom not reported yet).
+Not tried by anyone: these on AMD or Intel graphics, the bosses and two players with them on.
 
 ### Notes from earlier stages
 

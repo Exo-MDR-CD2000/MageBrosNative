@@ -84,6 +84,7 @@ bool Config::Load(const std::string& file) {
             else if (k == "shadow_strength") shadowStrength = std::clamp(iv, 50, 100);
             else if (k == "dynamic_lights") dynamicLights = toBool(v);
             else if (k == "light_strength") lightStrength = std::clamp(iv, 50, 150);
+            else if (k == "bloom") bloom = std::clamp(iv, 0, 2);
             else if (k == "lights_ambient") lightsAmbient = iv >= 93 ? 100 : (iv >= 78 ? 85 : 70);  // (the nearest of 100, 85, 70)
             else if (k == "per_pixel_lighting" || k == "enhanced_shadows") {}  // removed in 0.4.39 (Per-pixel lighting, Soft shadows)
             else if (k == "brightness") brightness = std::clamp(iv, 50, 150);
@@ -354,6 +355,9 @@ bool Config::Save() const {
     P("; lights_ambient: with dynamic lights on, how bright the level is round them:\n"
       ";   100 = the original (default), 85 or 70 = dimmer, so the lights stand out.\n");
     fprintf(f, "lights_ambient = %d\n\n", lightsAmbient);
+    P("; bloom: a soft glow round the flames, shots, flashes and explosions, in\n"
+      ";   levels. 0 = off, the original look (default), 1 = low, 2 = high.\n");
+    fprintf(f, "bloom = %d\n\n", bloom);
     P("; brightness: picture brightness in percent, 50 to 150. 100 = original\n"
       ";   (default). Higher lifts dark and middle tones (whites stay white), lower\n"
       ";   darkens them.\n");

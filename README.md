@@ -6,7 +6,7 @@ An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2
 modern Windows. It plays exactly like the original, with optional extras: widescreen, any
 resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-**Version 0.4.44.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+**Version 0.4.45.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -29,12 +29,14 @@ Around it, Native adds:
   144 Hz and beyond, and VSync, adaptive VSync and a frame limit are built in. The game's speed
   and timing never change with the frame rate.
 - **Sharper graphics, all optional:** antialiasing, texture filtering, higher render resolution,
-  smoother textures, ambient occlusion (soft shading in corners and under objects), dynamic
-  shadows, dynamic lights from flames and shots, and a brightness setting.
+  smoother textures and a brightness setting; and new effects, all off by default: ambient
+  occlusion (soft shading in corners and under objects), real shadows, light from the flames and
+  shots, and a glow round them (bloom).
 - **An in-game options menu** (F10) for every setting, with changes applied at once. It shows the
   game's version at the top right.
 - **Statistics Overlay** (F9): a see-through panel with the frame rate, the game's timing (with
-  graphs), the display settings in effect and your graphics card. Off, Compact or Full; stays as you left it.
+  graphs), the display settings in effect, your graphics card and what each graphics effect
+  costs it. Off, Compact or Full; stays as you left it.
 - **Menu font:** the Classic pixel font, or a font of your own, sharp at any resolution
   ([how](#your-own-menu-font)).
 - **Full controls:** rebind every key for both players, and use modern gamepads.
@@ -111,7 +113,9 @@ Texture filtering, both on by default; turn them off for the original's exact pi
   position and size; and **Field of view**, which is **experimental: we recommend leaving it at
   100%**, the view the original's levels were made for.
 - **Graphics:** antialiasing, texture filtering, render scale (up to 200%), smoother textures,
-  ambient occlusion, dynamic shadows and lights and their strength, and brightness.
+  ambient occlusion, dynamic shadows and dynamic lights (each with its strength), the ambient
+  light with dynamic lights on, bloom, and brightness. The new effects are all off by default:
+  with them off the game looks as before.
 - **Audio:** volume levels, where the music comes from, and the MIDI synth. See
   [Your own music](#your-own-music).
 - **Menu font** (on the Video page): the font of the menus and the Statistics Overlay. See below.
@@ -231,7 +235,9 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   one and two players, F3 jumps to the ending, Tab opens the level and model viewers.
 - **More:** [docs/ROADMAP.md](docs/ROADMAP.md) (status and plans),
   [docs/REVERSE_ENGINEERING.md](docs/REVERSE_ENGINEERING.md) (how the original works, and its bugs
-  and quirks), [docs/SMOOTH_MOTION.md](docs/SMOOTH_MOTION.md), and [CLAUDE.md](CLAUDE.md) (the
+  and quirks), [docs/SMOOTH_MOTION.md](docs/SMOOTH_MOTION.md),
+  [docs/GRAPHICS_ENHANCEMENTS.md](docs/GRAPHICS_ENHANCEMENTS.md) (how the graphics effects work),
+  and [CLAUDE.md](CLAUDE.md) (the
   contributor handoff: project rules, source layout, workflow).
 
 The port keeps the original's game logic: the code in `src/game` is reconstructed from the

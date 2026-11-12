@@ -7,6 +7,16 @@ be built. Written from reading the code at 0.4.32. **Nothing in this file has be
 tried**: the first chunk below is to measure, and the plan after it should be judged again from
 those numbers.
 
+**Since then (2026-11-11, on the `graphics-enhancements` branch):** the graphics enhancements'
+G2 built a recorder in `Device` (`docs/GRAPHICS_ENHANCEMENTS.md`, "G2 as built"): a level's 3D
+draws are now gathered with their state (`DrawState`) and sent together, `ApplyState` became
+`ApplyDrawState`, and the Statistics Overlay shows the card's time for them (GPU 3D) and their
+count (3D draws: about 100 in 1-1, 270 in 3-10), which covers much of R0's measuring. That is where
+R1 and R2 would now go. The game's own draws still upload their vertices one draw at a time: one
+shared upload changed two pixels by a shade in a test (see the warning under R3). The figures
+below are from the RTX 3090 Ti; on the RTX 5080 (2026-11-11) 1-1 runs at about 2050 frames a
+second and 3-10 at about 1110 (1280 x 960, VSync off, Smooth motion on).
+
 ## In short
 
 - The port draws by imitating the original's Direct3D 7 calls on OpenGL, one for one. For every

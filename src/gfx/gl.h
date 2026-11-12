@@ -104,6 +104,9 @@ typedef uint64_t GLuint64;
 #define GL_DRAW_FRAMEBUFFER 0x8CA9
 #define GL_RENDERBUFFER 0x8D41
 #define GL_COLOR_ATTACHMENT0 0x8CE0
+#define GL_COLOR_ATTACHMENT1 0x8CE1
+#define GL_RGBA16F 0x881A
+#define GL_COLOR 0x1800
 #define GL_DEPTH_ATTACHMENT 0x8D00
 #define GL_DEPTH_STENCIL_ATTACHMENT 0x821A
 #define GL_DEPTH24_STENCIL8 0x88F0
@@ -153,6 +156,8 @@ typedef uint64_t GLuint64;
     X(void, glDrawBuffer, (GLenum b))                                                                        \
     X(void, glReadBuffer, (GLenum b))                                                                        \
     X(void, glPolygonOffset, (GLfloat f, GLfloat u))                                                         \
+    X(void, glDrawBuffers, (GLsizei n, const GLenum* b))                                                     \
+    X(void, glClearBufferfv, (GLenum b, GLint i, const GLfloat* v))                                          \
     X(void, glGetIntegerv, (GLenum p, GLint * v))                                                            \
     X(void, glGetFloatv, (GLenum p, GLfloat * v))                                                            \
     X(const GLubyte*, glGetString, (GLenum n))                                                               \

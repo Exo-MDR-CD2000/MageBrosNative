@@ -1,14 +1,41 @@
-# Graphics enhancements (G1 to G5 built; G6 and G7 planned)
+# Graphics enhancements (G1 to G6 built; G7 to do)
 
-**Status: planned 2026-11-10, on the `graphics-enhancements` branch (made from `main` at
-0.4.38). G1, G2 and G3 are built (2026-11-11, each with an "as built" section below) and were
-built together as 0.4.39, the first test build (the owner's choice); AO's Low was removed after
-the owner's test, as 0.4.40; the later chunks take the next numbers from 0.4.41. G4 (dynamic shadows, G4a and G4b together) is built too (2026-11-11,
-"G4 as built"), as 0.4.41; G5 (dynamic lights, G5a and G5b together) is built too ("G5 as built"), as 0.4.42 (the torches' strobe
-fixed in 0.4.43); the later chunks take the next numbers from 0.4.44. Nothing else is.** Each chunk below is a version of its own and stops for the
-owner's test; the owner says when to start each one. Written from reading the code at 0.4.38;
-nothing in it has been measured yet, and every cost below is an estimate until the chunk that
-measures it.
+**Status (2026-11-11): G1 to G6 are built on the `graphics-enhancements` branch** (made from
+`main` at 0.4.38; on GitHub up to 0.4.44, 0.4.45 built locally), each with an "as built" section
+below, and tried by the owner build by build. **G7** (the page's last touches, the overlay, the
+final checks and the merge into `main`) is what is left. The plan below was written on 2026-11-10
+from reading the code at 0.4.38; where the build differs, the "as built" sections and the
+summary next say so, and the plan's text has been corrected where it would mislead.
+
+## As built, at a glance
+
+| Version | What | Section |
+|---|---|---|
+| 0.4.39 | The first test build: G1 (Per-pixel lighting and Soft shadows removed), G2 (the recorder, GPU timers), G3 (ambient occlusion, Off / Low / High) | "G1 as built", "G2 as built", "G3 as built" |
+| 0.4.40 | Ambient occlusion's Low removed after the owner's test: Off / On | "G3 as built" |
+| 0.4.41 | G4: dynamic shadows (G4a and G4b together) and Shadow strength | "G4 as built" |
+| 0.4.42 | G5: dynamic lights (G5a and G5b together) and Light strength | "G5 as built" |
+| 0.4.43 | The torches' and candles' lights steady (from the steady flame, not the sparks) | "G5 as built" |
+| 0.4.44 | Ambient light (100 / 85 / 70%), a trial of dimming the level for the lights | "Ambient light (after G5)" |
+| 0.4.45 | G6: bloom | "G6 as built" |
+
+The owner chose the versions (one for G1 to G3, then a version a chunk or fix), so the plan's
+numbers in "The chunks" below were not kept. Each build is kept in `build\fix-builds\`.
+
+**The frame, as built** (a level's 3D, at `SetGameplayView(false)`, `Device::FlushRecording`):
+the recorded draws' vertices uploaded once for the depth-only passes; **AO** (depth pass,
+occlusion, blur); the **shadow map**; the **lights** collected from the recorded sprites; with
+Bloom on the scene target's **glow layer** switched on and cleared; then **the recorded draws in
+their order**, each with its own upload as before (shadows, AO, the dimming, the lights and the
+glow chosen per draw by its kind); then **bloom** (the glow layer blurred and added). With every
+option off, only the replay runs, byte for byte as before G1.
+
+**Still open for the owner** (after playing): the Ambient light verdict (keep 100% and the row,
+another default, or no row); whether shadows keep three quality levels; other screens than
+levels; any option on by default (all are off). Known, left as they are: see-through models
+(slimes, ghosts, the wizard's parts) cast no dynamic shadow ("G4 as built"); the bloom carries the
+original flame's own flicker a little further ("G6 as built"); the slimes vary by one shade in a
+few pixels from run to run ("A puzzle for later", under "G3 as built").
 
 ## In short
 
@@ -28,7 +55,8 @@ measures it.
      and only those.
 - **The game is untouched.** No game logic changes, nothing in `src/game` asks for anything new,
   and with every new option off every picture is byte for byte as 0.4.38. All the work is in the
-  port's renderer (`src/gfx/device.cpp`) and a few files beside it.
+  port's renderer (`src/gfx/device.cpp`; the plan's separate files weren't needed) and the
+  config, the menu, the overlay and the texture loader beside it.
 
 ## The rules this work keeps
 
@@ -53,7 +81,8 @@ These are the project's rules (`CLAUDE.md`) applied to this work:
    stays off them until the branch merges), each built, measured, screenshot-checked and handed
    to the owner before the next. Ask the owner before raising the version and building
    (`make_release.bat patch`), and keep a build per chunk in `build\fix-builds\` named by what it
-   holds, as on `smooth-motion-rework`.
+   holds, as on `smooth-motion-rework`. (As built: the owner chose the versions, see "As built, at
+   a glance".)
 
 ## What the original's picture is made of (what we have to work with)
 
@@ -66,7 +95,7 @@ geometry", "Particles and shadows").
 | **The level** | A few large merged meshes, one per texture (`XLevelView::DrawMesh`: floor, underground, goal pads), `D3DLVERTEX`: **pre-lit** (the shading is baked into vertex colours; lighting off), textured, point-sampled. Built by the port's own `MapGeometry` from the original's map data | No normals in the vertices. For lighting and shadows the normal can be worked out per pixel from the surface itself (screen-space derivatives); the faces are flat, so this is exact |
 | **Models** | `CD3DFileObject::Render`: lit per vertex (`D3DFVF_VERTEX`), **untextured** (material colours only; textures only in mods), low-poly. Solid materials first, see-through materials (`hasAlpha`) in a second, blended pass. Normals are not renormalized (D3D7's default), so scaled models (coins at 0.35 and 0.6) light brighter | They live or die by their light and dark sides: shadows and AO add a lot. The vertex lighting must stay exactly as it is when the new options are off |
 | **The blob shadow** | Texture `0xa3`, a flat rectangle multiplied onto the floor (`ALPHA_SHADOW`: `ZERO, SRCCOLOR`), straight below each mage, coin and some objects | It shows where a jumping mage will land: a gameplay aid. It stays as it is, with Dynamic shadows on too (the owner, 2026-11-10) |
-| **Particles and shots** | Flat rectangles (`JObject3DRect`) with `ALPHA_PARTICLE` (`SRCALPHA, DESTALPHA`, which with the destination alpha cleared to 1 is **additive**) and no depth writing: torch flames (`CreateTorchFire2`, every 12 ticks per lit torch), the mages' shots (`fireSprite*`), flashes, explosions, warp rings and photons, coin sparkles, the water's glints (`water2_`) | The game's own "light". Additive rectangles are what Bloom glows, and the ones that are flames or shots become Dynamic lights |
+| **Particles and shots** | Flat rectangles (`JObject3DRect`) with `ALPHA_PARTICLE` (`SRCALPHA, DESTALPHA`, which with the destination alpha cleared to 1 is **additive**) and no depth writing: torch and candle flames (a steady flame, 0x187, and a spark every 12 or 15 ticks, 0x188), the mages' shots (`fireSprite*`), flashes, explosions, warp rings and photons, coin sparkles, the water's glints (`water2_`) | The game's own "light". The glowing ones (a table by texture) are what Bloom glows and what become Dynamic lights; not the sparks (they made the lights strobe, "G5 as built") |
 | **Water** | Two rectangles: `water1_` see-through (`SRCALPHA, INVSRCALPHA`), `water2_` additive | Not a caster, not lit; it keeps its look |
 | **2D** | The HUD, the shop, fades, menus: `Draw2DQuad` / `DrawUIQuad`, after the level's 3D | Untouched; the new effects end before the 2D begins (`SetGameplayView(false)`) |
 
@@ -103,9 +132,9 @@ What the recording makes possible, beyond these effects:
   |---|---|---|---|---|---|
   | Level geometry | `D3DFVF_LVERTEX`, lighting off, blending off | Yes | Yes | Yes | No |
   | Solid model part | `D3DFVF_VERTEX`, lighting on, blending off | Yes | Yes | Yes | No |
-  | See-through model part | `D3DFVF_VERTEX`, blending `SRCALPHA, INVSRCALPHA` | No (decision; could cast a lighter shadow later) | No | Yes | No |
+  | See-through model part | `D3DFVF_VERTEX`, blending `SRCALPHA, INVSRCALPHA` | No (decision; could cast a lighter shadow later) | No | No (as built; the plan had yes) | No |
   | Blob shadow | blending `ZERO, SRCCOLOR` | No | No | No | No |
-  | Additive rectangle | blending `SRCALPHA, DESTALPHA` (or `ONE, ONE`) | No | No | No | **Yes** |
+  | Additive rectangle | blending `SRCALPHA, DESTALPHA` (or `ONE, ONE`) | No | No | No (they give the lights) | **The glowing ones** (by texture) |
   | See-through rectangle (water) | `LVERTEX`, blending `SRCALPHA, INVSRCALPHA` | No | No | No | No |
 
 - **The white flash** of a hit mage (`CD3DFileObject::Render(..., white)`) is a material: it
@@ -122,64 +151,60 @@ keep storing into `rs_` etc. as now; only the sending changes. Covered by the by
 
 ## The new frame, in order (with every option on)
 
-Inside a level's 3D, at `SetGameplayView(false)`:
+Inside a level's 3D, at `SetGameplayView(false)` (as built; `Device::FlushRecording`):
 
-1. **Upload** the recorded vertices and indices once, for the extra passes (2 and 4).
-2. **Depth pre-pass** (only for AO): the solid draws (level and solid model parts), depth only,
-   from the camera, into a single-sample depth texture at the render target's size (or half, for
-   AO Low).
-3. **Ambient occlusion**: from that depth, a texture of how open each pixel is (0 to 1), blurred
-   by depth so it doesn't bleed across edges.
-4. **Shadow map**: the casters (level and solid model parts), depth only, from the light, into a
-   depth texture.
-5. **Lights**: the frame's light list made from the recorded additive rectangles (see chunk G5),
-   sent as one small uniform array.
-6. **The recorded draws, in their original order**, into the scene target (MSAA as set). The one
-   shader gets three new inputs, each used only by the draws that receive it: the shadow map, the
-   AO texture (looked up at the pixel's screen position), the light list. Additive draws also
-   write their colour into a second colour target, the **glow target**, for Bloom.
-7. **Bloom**: the glow target shrunk and blurred in a few steps, then added onto the scene.
-8. Back to the game: the shop's panel, the HUD and the fade are drawn as now.
+1. **Upload** the recorded vertices and indices once, for the depth-only passes (2 and 3).
+2. **Ambient occlusion**: the solid draws' view-space depth (at the picture's size), the
+   occlusion from it, then a blur that stops at depth edges (`ComputeAO`).
+3. **Shadow map**: the solid draws' depth from the light, fitted round the part of the level in
+   view (`ComputeShadows`).
+4. **Lights**: the frame's light list from the recorded glowing sprites, as one small uniform
+   array (`CollectLights`).
+5. **The glow layer** (Bloom on): the scene target's second colour layer switched on and cleared.
+6. **The recorded draws, in their original order**, into the scene target (MSAA as set), each with
+   its own upload as before. Per draw, by its kind: the shadows, the AO, the Ambient light dimming,
+   the lights, and what it leaves in the glow layer.
+7. **Bloom**: the glow layer resolved, blurred down and up, and added onto the scene
+   (`ComputeBloom`).
+8. Back to the game: the shop's panel, the HUD and the fade are drawn as before.
 
-With an option off, its steps are skipped entirely; with all off, steps 2 to 7 are skipped, and
-step 6 sends exactly what is sent today.
+With an option off, its steps are skipped entirely; with all off, only step 6 runs, and sends
+exactly what was sent before G2.
 
-## How each draw is shaded (the new shader paths)
+## How each draw is shaded (as built)
 
-Today a lit model's colour per vertex is `emissive + ambient x matAmbient + light x matDiffuse x
-max(N . L, 0)`, all clamped together. To shadow only the direct light, the vertex shader passes
-the two parts separately (**ambient part** and **direct part**, two new varyings) and the pixel
-shader adds them: `clamp(ambient part + direct part x shadow)`. With `shadow = 1` this is the same
-sum as today, but the clamp moves after an interpolation: to keep byte-for-byte pictures with
-Dynamic shadows off, the old path stays as it is, and the split path is used only with Dynamic
-shadows on. (The vertex normals stay un-renormalized in both paths: the coins keep their glow.)
+A lit model's colour per vertex is `emissive + ambient x matAmbient + light x matDiffuse x
+max(N . L, 0)`, all clamped together. With Dynamic shadows on, the vertex shader also passes the
+two parts separately (**ambient part** and **direct part**) and the pixel shader adds them:
+`clamp(ambient part + direct part x (1 - shadow x strength))`. With shadows off the old path is
+drawn, byte for byte. (The vertex normals stay un-renormalized in both: the coins keep their glow.)
 
-| Draw | With the new options |
+| Draw | With the new options, in this order |
 |---|---|
-| **Level** (pre-lit) | `baked colour x texture`, then x `mix(1, shadowDarkness, inShadow)` where the face turns towards the light (where it faces away, its baked colour is already the dark side), then x the AO term, then `+ texture x sum of lights (colour x falloff x max(N . toLight, 0))` with N from the surface (`normalize(cross(dFdx(pos), dFdy(pos)))`) |
-| **Solid model part** | `clamp(ambient part x AO + direct part x shadow) + material diffuse x sum of lights (colour x falloff x max(N . toLight, 0))` |
-| **See-through model part** | as today, `+` the lights' term (so a lit torch also tints the genie's steam, the ghosts) |
-| **Everything else** | as today |
+| **Level** (pre-lit) and unlit models | `baked colour x texture`; x `1 - 0.55 x shadow x strength` where it faces the light; x the AO (`mix(1, ao, 0.9)`); x the Ambient light; `+ texture x sum of lights` (each `colour x (1 - d / reach)^2 x facing`), the normal from the surface (`cross(dFdx(pos), dFdy(pos))`, turned to the camera) |
+| **Solid model part** | the split light above; x the AO (`mix(1, ao, 0.7)`); x the Ambient light; `+ material diffuse x sum of lights` |
+| **See-through model part, water** | as before; x the Ambient light |
+| **Glowing sprites** | as before; they light the glow layer |
+| **Blob shadows** | as before (neither dimmed nor glowing) |
 
-`shadowDarkness` is not a light value the original has (its level is pre-lit), so it comes from
-the Shadow strength setting (default to be tuned by eye: about 0.55, close to what the blob
-shadow's centre does to the floor).
+The plan's "AO on the ambient part only" for models was dropped in G3 (the whole colour is
+multiplied, by a smaller strength); `shadowDarkness` became the fixed 0.55 times Shadow strength.
 
 ## The chunks
 
-| Chunk | Version | What | Risk |
-|---|---|---|---|
-| G1 | 0.4.39 | Per-pixel lighting and Soft shadows removed (**built**, 2026-11-11) | Low |
-| G2 | 0.4.40 | The recorder and the GPU timers: no visible change (**built**, 2026-11-11) | Medium (every level picture goes through it) |
-| G3 | 0.4.41 | Ambient occlusion (**built**, 2026-11-11) | Low to medium |
-| G4a | 0.4.42 | Dynamic shadows: the shadow map, models and level casting and receiving (**built** with G4b, 2026-11-11) | Medium |
-| G4b | 0.4.43 | Dynamic shadows: soft edges, steadiness, quality levels (**built** with G4a) | Low |
-| G5a | 0.4.44 | Dynamic lights: finding the lights (**built** with G5b, 2026-11-11) | Low |
-| G5b | 0.4.45 | Dynamic lights: lighting the level and the models (**built** with G5a) | Medium |
-| G6 | 0.4.46 | Bloom | Low |
-| G7 | 0.4.47 | The page, presets, the overlay, final checks, docs; merge | Low |
+| Chunk | Planned version | What | Risk | Built |
+|---|---|---|---|---|
+| G1 | 0.4.39 | Per-pixel lighting and Soft shadows removed | Low | 2026-11-11, in 0.4.39 |
+| G2 | 0.4.40 | The recorder and the GPU timers: no visible change | Medium (every level picture goes through it) | 2026-11-11, in 0.4.39 |
+| G3 | 0.4.41 | Ambient occlusion | Low to medium | 2026-11-11, in 0.4.39 (Low removed in 0.4.40) |
+| G4a | 0.4.42 | Dynamic shadows: the shadow map, models and level casting and receiving | Medium | 2026-11-11, with G4b, as 0.4.41 |
+| G4b | 0.4.43 | Dynamic shadows: soft edges, steadiness, quality levels | Low | with G4a |
+| G5a | 0.4.44 | Dynamic lights: finding the lights | Low | 2026-11-11, with G5b, as 0.4.42 (steadied in 0.4.43) |
+| G5b | 0.4.45 | Dynamic lights: lighting the level and the models | Medium | with G5a |
+| G6 | 0.4.46 | Bloom | Low | 2026-11-11, as 0.4.45 |
+| G7 | 0.4.47 | The page, the overlay, final checks, docs; merge | Low | to do, from 0.4.46 |
 
-The versions are a guide: a chunk that splits takes the next number, as before.
+The planned versions were a guide; the owner chose the real ones ("As built, at a glance").
 
 ### G1. Remove Per-pixel lighting and Soft shadows (0.4.39)
 
@@ -699,17 +724,67 @@ Checks: Off byte for byte; no glow on anything but additive rectangles; the shop
 glowing level (the dim and the panel over it, not under); MSAA on and off; Render scale 50% and
 200%.
 
-### G7. The page, presets, the overlay and the merge (0.4.47)
+### G6 as built (2026-11-11, 0.4.45)
 
-- **The Graphics page**, finished (below), with help lines in plain words saying what each costs.
+**Options > Graphics > Bloom: Off / Low / High** (`[video] bloom` 0..2, off by default). Code in
+`src/gfx/device.{h,cpp}` (`ComputeBloom`, the scene target's glow layer, the replay), config and
+menu; the overlay's Full page shows **GPU bloom**.
+
+- **The glow layer, not a second colour attachment written by every draw at all times**: with Bloom
+  on, the scene target gets a second colour layer (`glowRb_`, the same samples as the scene, made
+  again by `OnSettingsChanged` when Bloom is turned on or off). Only during a level's 3D, the
+  replay draws into both layers (`glDrawBuffers`) after clearing the glow layer; everything else
+  (the HUD, the shop's panel, menus, other screens) draws into the first alone, as before.
+- **What lights the glow layer** (`uGlowMode`, set per draw by the replay; the shader's second
+  output): the game's glowing sprites, by texture (the shots 0x15c, 0x184 and their trails 0x15d,
+  0x185, the flashes 0x194, 0x195, the explosions 0x190, 0x192, the warp ring 0x1a5, the coin
+  sparkles 0x294, the steady torch and candle flames 0x187), with their own colour and blending;
+  multiplying draws (the blob shadows) leave it as it is; **everything else writes black**, so a
+  wall or a model in front of a flame hides its glow exactly as it hides the flame. Not glowing:
+  smoke, landing dust, the water's glints (a whole lake would glow), and the sparks (0x188).
+- **The blur** (the "dual filter"): the glow layer resolved into a texture of the scene's size,
+  then halved 4 times (Low) or 6 times (High) with 5 reads a pixel, and brought back up with 8,
+  **each level adding the wider blur onto its own** (first built as overwriting, which gave a glow
+  too faint to see: at most 28 levels of brightness round a shot; adding gives a strong core with a
+  soft wide edge, up to 262), then added onto the scene at 0.3 (Low) or 0.45 (High) before the HUD.
+  Half-float textures below the first level, so the sums don't clip.
+- **Flicker**: the glow follows the steady flame, which the original re-sizes at random (90% to
+  110%) every 2 ticks, so a wider glow carries that flicker further. Measured in 3-10, 12 frames
+  40 ms apart, a wall patch beside a candle's flame: the brightness ranged over 7.1 with Bloom off
+  (the flame sprite's own flicker, about 5%), 12.0 at Low (8%), 14.4 at High (9%). Leaving the
+  sparks out made no measurable difference (12.0, 14.3); they are left out anyway, as for the
+  lights. For the owner to judge in play.
+- **Checked** (RTX 5080):
+  - the four tests pass;
+  - **Bloom off, byte for byte** against 0.4.44: the 14-shot suite and the lights-on shots (AO,
+    shadows Medium, lights on), twice. Every difference was run-to-run noise in both builds: the
+    whole level run of one pass (as 0.4.44's own second run), and a few pixels of one shade on the
+    slimes of 1-6 and 2-4 ("A puzzle for later": the slimes vary by a shade from run to run in
+    both builds);
+  - Low and High by eye against Off in 1-1 (a shot), 1-6, 3-10, 4-2: a soft halo round the
+    shots and flames at Low, a clear glow at High; nothing but the glowing sprites glows; walls
+    in front hide it;
+  - cost at 1920 x 1440 in 3-10: GPU bloom 0.27 ms (Low), 0.31 ms (High); 823 frames a second off,
+    694 Low, 655 High (the processor's time per frame rose from 0.3 to about 1.4 ms, most likely
+    the driver waiting on the resolve; still far inside a 144 Hz frame's 6.9 ms).
+- **Not checked here**: explosions, the dragon's flame, the warp, Render scale and widescreen with
+  Bloom, the integrated AMD graphics.
+
+### G7. The page, the overlay and the merge (to do, from 0.4.46)
+
+- **The Graphics page**, finished (below): the owner's verdicts applied (Ambient light; the
+  shadows' quality levels), help lines in plain words saying what each costs.
 - ~~A Preset row~~: **not built** (the owner, 2026-11-11: players can set each option themselves).
-- **The Statistics Overlay** (Full): the enhancements in effect, and the GPU time of each pass
-  (from G2).
-- **README** (a line in Options > Graphics), **CHANGELOG**, **CLAUDE.md**, **ROADMAP**, this file's
-  "as built" sections; `RENDERER_OPTIMIZATION.md` updated for what the recorder already did.
-- The full check list below on the owner's machine and the integrated chip; the owner's play test;
-  then the merge into `main` (a pull request, as `smooth-motion-rework`), released as its last
-  version.
+- **The Statistics Overlay** (Full): the enhancements in effect (the GPU time of each pass is
+  there already: GPU 3D, AO, shadows, bloom, and the lights' count).
+- **The checks left from the chunks** (each "Not checked here"): the shadows' edges with the camera
+  moving, a moving platform, the bosses, two players; a lit torch, the dragon's flame, the wizard,
+  explosions, the warp, with lights and bloom; widescreen and Render scale with bloom; 21:9 and
+  4K; the integrated AMD graphics (the owner's Windows setting); OpenGL's error reports in a debug
+  build. And a look at the slimes' one-shade puzzle.
+- **README**, **CHANGELOG**, **CLAUDE.md**, **ROADMAP**, this file, `STATS_OVERLAY.md`.
+- The owner's play test, then the merge into `main` (a pull request, as `smooth-motion-rework`),
+  released as its last version.
 
 ## The Graphics page, after
 
@@ -726,6 +801,7 @@ glowing level (the dim and the panel over it, not under); MSAA on and off; Rende
 | **Dynamic lights** | Off / On | Off | `dynamic_lights` |
 | **Light strength** | 50% to 150% | 100% | `light_strength` |
 | **Bloom** | Off / Low / High | Off | `bloom` |
+| **Ambient light** (a trial, 0.4.44) | 70%, 85%, 100% (with Dynamic lights on) | 100% | `lights_ambient` |
 | Brightness | 50% to 150% | 100% | `brightness` |
 
 Removed: Per-pixel lighting (`per_pixel_lighting`), Soft shadows (`enhanced_shadows`).
@@ -734,23 +810,21 @@ The new keys need no `config_version` bump (each defaults to off when missing). 
 takes effect at once, like the others (the targets made again through `OnSettingsChanged` where
 sizes change).
 
-## Cost, what we expect (to be replaced by measurements)
+## Cost, as measured (RTX 5080)
 
-On the owner's RTX 5080 everything together should cost well under a millisecond at 1080p and
-perhaps 1 to 2 ms at 4K with High settings: nowhere near the 6.9 ms of a 144 Hz frame. The
-question is weak hardware:
+The overlay's GPU rows, VSync off, Smooth motion on (each chunk's "as built" has the details):
 
-| Pass | Grows with | Expected weight |
+| Pass | Grows with | Measured |
 |---|---|---|
-| Depth pre-pass | draws (a few hundred) | small; the extra passes draw from one upload a frame |
-| AO | pixels (resolution; not Render scale) | 0.2 to 0.5 ms on the RTX 5080 (G3); the largest on integrated graphics |
-| Shadow map | draws, and the map's size | small at Low / Medium |
-| Shadow lookups | pixels x lookups | moderate at High |
-| Lights | pixels x lights (16 at most) | small |
-| Bloom | pixels, once | small |
+| The recorder (G2) | draws | no loss: 1-1 about 2050 frames a second, 3-10 about 1110 (1280 x 960) |
+| AO (G3) | pixels (the picture's; not Render scale) | 0.2 to 0.5 ms (1280 x 960 to 1920 x 1440) |
+| Shadow map (G4) | draws, and the map's size | 0.03 to 0.16 ms in 1-1, 0.22 to 0.28 ms in 3-10 (Low to High, 1920 x 1440) |
+| Shadow lookups, lights (G4, G5) | pixels x reads, pixels x lights (16 at most) | inside GPU 3D; no measurable change in frame rate |
+| Bloom (G6) | pixels, once | 0.27 ms (Low), 0.31 ms (High) at 1920 x 1440 |
 
-Antialiasing multiplies the cost of step 6 only (the extra passes are single-sample). With every
-new option off, the cost is what the recorder costs, expected to be less than today.
+All together stays far inside the 6.9 ms of a 144 Hz frame on this card. Weak hardware (the
+integrated AMD graphics) is not measured yet (G7). Antialiasing multiplies the main pass only (the
+extra passes are single-sample).
 
 ## How each chunk is checked
 
@@ -783,18 +857,21 @@ To settle before or during the chunks (the ones marked **before** block their ch
 
 1. **The blob shadow with Dynamic shadows on: decided (the owner, 2026-11-10): keep it**, as the
    original draws it. It shows where a jumping mage lands, which the slanted real shadow doesn't.
-2. **Shadow strength's default**: by eye, from screenshots (during G4a). AO's strength was set by
-   eye in G3 (0.9 on the level, 0.7 on models; "G3 as built"), for the owner to judge in play.
-3. **Dimming the ambient for Dynamic lights**: **to be tried both ways** (the owner,
-   2026-11-11): an **Ambient light** setting (100%, 85%, 70%; with Dynamic lights on) in one test
-   build, so both looks can be compared in the same spot; the owner then keeps one as the default
-   or has the row removed. See "Ambient light (after G5)".
+2. **Shadow strength's default**: 80%, set by eye in G4; the owner found 0.4.41 "working well".
+   AO's strength was set by eye in G3 (0.9 on the level, 0.7 on models; "G3 as built"); the owner
+   liked High and had Low removed.
+3. **Dimming the ambient for Dynamic lights**: **tried both ways** (the owner, 2026-11-11): an
+   **Ambient light** setting (100%, 85%, 70%; with Dynamic lights on), built as 0.4.44; the owner
+   found it working. **Verdict open**: keep 100% as the default and the row, another default, or
+   no row. See "Ambient light (after G5)".
 4. **Other screens**: levels only (proposed), or later also the title's mages and the ending's
    corridor.
 5. **The Preset row: decided (the owner, 2026-11-11): none.** Players set each option themselves.
-6. **Default settings**: all new options off by default (the project's rule; proposed). Any
+6. **Default settings**: all new options off by default (the project's rule; as built). Any
    exception, as with Antialiasing and Texture filtering in 0.4.21, is the owner's call after
    playing with them.
+7. **The shadows' quality levels**: Low, Medium and High looked much alike at 1280 x 960 (G4);
+   keep all three or fewer (AO's Low was removed for looking poor). Open.
 
 ## Later ideas (not in this plan)
 
@@ -817,16 +894,16 @@ Noted so they aren't lost; each would be its own small plan:
 
 ## Files
 
+As built (the plan's separate `post_fx`, `shadow_map` and `light_sources` files weren't needed:
+everything sits in `device.cpp`, in sections of its own):
+
 | File | Change |
 |---|---|
-| `src/gfx/device.{h,cpp}` | The recorder and `FlushRecording` (G2); GPU timers (G2); the depth pre-pass, AO, shadow map, lights and bloom passes and their targets (G3 to G6); the shader's new paths; `uPerPixel` removed (G1) |
-| `src/gfx/post_fx.{h,cpp}` (new, G3) | The AO, blur and bloom shaders and passes, to keep `device.cpp` readable |
-| `src/gfx/shadow_map.{h,cpp}` (new, G4a) | The light's view fitting and snapping, the shadow map target |
-| `src/gfx/light_sources.{h,cpp}` (new, G5a) | The table of glowing textures; finding, merging and easing the frame's lights |
-| `src/gfx/gl.h` | The OpenGL functions newly used (depth textures and comparison, `glDrawBuffers`, timer queries, `glDrawElementsBaseVertex`) |
-| `src/framework/d3dtextr.cpp` | `SoftenShadow` removed (G1); textures carry their resource ID (G5a) |
-| `src/core/config.{h,cpp}` | Two settings out (G1), the new ones in (G3 to G7) |
+| `src/gfx/device.{h,cpp}` | G1: `uPerPixel` removed. G2: the recorder (`DrawState`, `Record`, `FlushRecording`, `ApplyDrawState`), `GpuTimer`. G3: `ComputeAO`, its targets and shaders, `DrawKind`, `UploadPrep`. G4: `ComputeShadows`, its target and shaders, the split light. G5: `CollectLights`, `kLightSources`, `Texture::ResId` / `AvgColor`; the Ambient light's `uSceneDim`. G6: `ComputeBloom`, the glow layer (`glowRb_`), its chain and shaders |
+| `src/gfx/gl.h` | The OpenGL functions and values newly used (timer queries, `glDrawElementsBaseVertex`, `glDrawBuffer(s)`, `glReadBuffer`, `glClearBufferfv`, `glPolygonOffset`, `glUniform1fv` / `3fv`, depth textures and comparison, `R8`, `R32F`, `RGBA16F`) |
+| `src/framework/d3dtextr.cpp` | `SoftenShadow` removed (G1); textures carry their resource ID (G5) |
+| `src/framework/d3dapp.{h,cpp}` | The overlay's rows: GPU 3D, 3D draws, GPU AO, GPU shadows, GPU bloom, Lights |
+| `src/core/config.{h,cpp}` | Two settings out (G1); `ambient_occlusion`, `dynamic_shadows`, `shadow_strength`, `dynamic_lights`, `light_strength`, `lights_ambient`, `bloom` in |
 | `src/ui/options_menu.cpp` | The Graphics page's rows |
-| `src/ui/stats_overlay.cpp` | The enhancements in effect and their GPU times (G2, G7) |
 
-Nothing in `src/game` changes.
+Nothing in `src/game` changed.

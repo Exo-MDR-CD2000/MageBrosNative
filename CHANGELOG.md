@@ -9,6 +9,13 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.45] - 2026-11-11
+
+- **Bloom** (Options > Graphics, off by default): a soft glow round the flames, the mages' shots,
+  flashes, explosions and the warp. **Low** is a gentle halo, **High** a clear glow. Only the
+  glowing effects glow, and walls in front of them hide their glow. Off, the game looks exactly
+  as before. The Statistics Overlay (Full) shows what it costs (GPU bloom).
+
 ## [0.4.44] - 2026-11-11
 
 - **Ambient light** (Options > Graphics, with Dynamic lights on): 100% keeps the level as bright as

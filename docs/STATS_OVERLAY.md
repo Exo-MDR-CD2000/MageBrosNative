@@ -1,4 +1,4 @@
-# The Statistics Overlay (O1 built as 0.4.34, O2 as 0.4.35; O3, the debug report, planned)
+# The Statistics Overlay (O1 built as 0.4.34, O2 as 0.4.35; the graphics rows from 0.4.39; O3, the debug report, planned)
 
 A panel of statistics and information drawn over the game, turned on and off by the player: how
 the game is running (frame rate, frame times, the game's ticks, smooth motion's blend) and on what
@@ -149,6 +149,25 @@ Below the text, three strips of the last 2 to 3 seconds, one column a frame:
   72 (refresh over 2) and 32:9 Full. Seen: Smooth motion off, flat 10 ms and one tick a frame;
   144 Hz with VSync, 6.95 ms and ticks 0 and 1 in turn; a limit of 60, 16.66 to 16.68 ms and 1 or
   2 ticks a frame; the limit of 72 paced by the driver at 13.90 ms (two refreshes).
+
+### The graphics enhancements' rows (0.4.39 to 0.4.45, on `graphics-enhancements`)
+
+Added to the PERFORMANCE group of the **Full** page by the graphics enhancements
+(`docs/GRAPHICS_ENHANCEMENTS.md`), each from the graphics card's own timer queries
+(`Device::GpuTimer`: `GL_TIME_ELAPSED`, read frames later without waiting) or the renderer's
+counts, summed over the last second (`CD3DApplication::SummarizeStats`):
+
+| Row | What | Shown |
+|---|---|---|
+| GPU 3D | the card's time for a level's 3D a frame (the recorded draws; the card's timeline, waiting for the processor included, so an upper bound) | always in Full; "- (no level)" outside one, "- (off)" with `MBN_NO_RECORD` |
+| 3D draws | the level's 3D draws in the last frame that had any | with GPU 3D |
+| GPU AO | ambient occlusion's three passes a frame | Ambient occlusion on |
+| GPU shadows | the dynamic shadows' map a frame (the lookups are in GPU 3D) | Dynamic shadows on |
+| GPU bloom | the bloom's resolve, blur and adding a frame | Bloom on |
+| Lights | the dynamic lights in the last frame that had any (16 at most) | Dynamic lights on |
+
+They cost nothing measurable (a few queries a frame). Compact is unchanged. The plan's "the
+enhancements in effect" (a row each in SYSTEM) is still to do (G7).
 
 ### O3, the debug report (planned, not built; for later, on the owner's word)
 

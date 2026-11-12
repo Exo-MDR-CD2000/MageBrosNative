@@ -121,6 +121,8 @@ public:
     void TakeGpuAO(double* sumMs, int* frames) { gpuAO_.Take(sumMs, frames); }
     // And for the dynamic shadows' map (G4)
     void TakeGpuShadows(double* sumMs, int* frames) { gpuShadow_.Take(sumMs, frames); }
+    // And for the bloom's blur and adding it (G6)
+    void TakeGpuBloom(double* sumMs, int* frames) { gpuBloom_.Take(sumMs, frames); }
     // The dynamic lights in the last frame that had any (G5)
     int DynamicLights() const { return lastLights_; }
     int Draws3D() const { return lastDraws3D_; }
@@ -213,7 +215,7 @@ private:
         void FrameDone();
         void Take(double* s, int* f);
     };
-    GpuTimer gpu3D_, gpuAO_, gpuShadow_;
+    GpuTimer gpu3D_, gpuAO_, gpuShadow_, gpuBloom_;
     // Ambient occlusion (G3): a depth pass of the recorded solid draws into a texture of view-space
     // depth, the occlusion worked out from it, then blurred; the main pass multiplies the level and
     // the solid models by it. Sized to the picture (not the render scale).
@@ -239,6 +241,19 @@ private:
     float lightPos_[kMaxLights * 3] = {}, lightColor_[kMaxLights * 3] = {}, lightReach_[kMaxLights] = {};
     int lightCount_ = 0, lastLights_ = 0;
     bool lightsActive_ = false;
+    // Bloom (G6): with it on, the scene target has a second colour layer (glowRb_) that only the
+    // game's glowing sprites light up during the level's 3D (solid things in front darken it,
+    // as on screen); it is then resolved, blurred down and up a chain of halved textures and
+    // added onto the scene, before the HUD.
+    static constexpr int kBloomLevels = 7;
+    void ComputeBloom(int level);
+    void EnsureBloomTargets(int w, int h);
+    void DestroyBloomTargets();
+    GLuint glowRb_ = 0;
+    GLuint bloomFbo_[kBloomLevels] = {}, bloomTex_[kBloomLevels] = {};
+    int bloomW_ = 0, bloomH_ = 0;
+    GLuint progBloomDown_ = 0, progBloomUp_ = 0, progBloomAdd_ = 0;
+    bool bloomActive_ = false;
     bool shadowActive_ = false;
     int shadowSize_ = 0;
     GLuint progShadow_ = 0, shadowFbo_ = 0, shadowTex_ = 0;
@@ -290,7 +305,7 @@ private:
             lightDiffuse, flat, texOn, colorOp, colorArg1, colorArg2, alphaOp, alphaArg1, alphaArg2, alphaTest,
             hasVertexColor, tex, constColor, screen2D, viewport2D, alphaFix, aoStrength, aoTex, fboSize,
             shadowKind, shadowMap, lightVP, shadowTexel, shadowOffset, shadowStrength, shadowGrid, eye,
-            lightKind, lightCount, lightPos, lightColor, lightReach, sceneDim;
+            lightKind, lightCount, lightPos, lightColor, lightReach, sceneDim, glowMode;
     } u_{};
     GLint presentTexLoc_ = -1, presentGammaLoc_ = -1;
 

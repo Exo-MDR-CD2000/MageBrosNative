@@ -912,6 +912,18 @@ OptionsMenu::Page OptionsMenu::GraphicsPage() {
                      Save();
                  },
                  nullptr, nullptr});
+    v.push_back({"Bloom", "A soft glow round flames, shots and explosions, in levels.",
+                 [] {
+                     static const char* names[] = {"Off", "Low", "High"};
+                     return std::string(names[std::clamp(GetConfig().bloom, 0, 2)]);
+                 },
+                 [this](int d) {
+                     static const std::vector<int> l{0, 1, 2};
+                     GetConfig().bloom = l[(size_t)CycleIndex(l, GetConfig().bloom, d)];
+                     GetDevice().OnSettingsChanged();  // (the scene target gains or loses its glow layer)
+                     Save();
+                 },
+                 nullptr, nullptr});
     v.push_back({"Ambient light", "With Dynamic lights on: lower dims the level so the lights stand out. 100% = original.",
                  [] { return Pct(GetConfig().lightsAmbient); },
                  [this](int d) {

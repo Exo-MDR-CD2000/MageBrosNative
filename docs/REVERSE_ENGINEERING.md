@@ -1056,7 +1056,8 @@ life). It spins at 15 slowing by 0.02 a tick to 1.8, and bounces: up at 3, gravi
 off the floor at 0.8 of its speed (sound 0x27b above 1.6), settling below 0.8. Every coin has
 radius = scale × 20 and a shadow of scale × 40; level coins spin at 1.5.
 
-**Slime** (`a` 34 × 18, 1 health, model 0x16f + frames 0x16e 0x16d 0x16e, collision 0x177, shadow
+**Slime** (its body material 70% opaque, the king's and queen's 80%: drawn in the see-through pass;
+`a` 34 × 18, 1 health, model 0x16f + frames 0x16e 0x16d 0x16e, collision 0x177, shadow
 34; `1` king 68 × 36, 20 health, 0x1e1..0x1e4; `5` queen 163.2 × 86.4, 120 health, 0x2c2.., starts
 at x = 100). A random direction; walk 40 ticks at 0.5 (king 0.75, queen still), frames every 10
 ticks; wait 10; after 2–6 waits a long wait of 60 ticks that turns the direction up to 120°
@@ -1174,7 +1175,7 @@ where 4.8 · cos(h/320 · 90°) ≈ 4, about 120 up, bobbing between roughly 107
 (not on falling out or warping), and by `Reset`; its only reader is the falling check against the
 other hero: a hero lifted by a fan doesn't land on hero B.
 
-**Ghost** (`g`, 3-5, 3-7, 3-8 and 4-9): models 0x1de (frame 0) and 0x1df (frame 1, mouth open),
+**Ghost** (`g`, 3-5, 3-7, 3-8 and 4-9; its material 60% opaque, drawn in the see-through pass): models 0x1de (frame 0) and 0x1df (frame 1, mouth open),
 collision 0x1e0, scaled 0.8 (set again every tick), box 27.2 × 36 at the start, and an `XShadow`
 27.2 (`ghostShadow`, the floor-following shadow, not `XShadowSimple`). SMALL, health 99999,
 chasable, not collidable (other enemies pass through it), random `dir` = yaw. `ghostPos` = the
@@ -1730,7 +1731,11 @@ shots.
 | BulletExplode | a bursting bullet, where it was before its move; plays 0x279 when made | particle 60, 0x192, 4 × 4 frames, 4 ticks each | 64 ticks |
 | WaterWave | things meeting the water, at −38 | flat rect, scale 24 (36 large) growing by 3 (3.5 large) × 0.95 a tick, 0x18f; sound 0x278 when asked | alpha × 0.97 every tick; gone at ≤ 0.03 |
 
-Still to come with their owners: CandleFire1/2, LampSteam, HammerEffect, WizardFireFlash.
+Built since with their owners: CandleFire1/2 (the wall candles, below), LampSteam (the genie's
+lamp), HammerEffect (the hammer), WizardFireFlash (the wizard's wand). A lit torch's or candle's
+fire is two particles: the steady flame (0x187), which stays and only changes size, and a spark
+(0x188) every 12 or 15 ticks that rises and fades; the port's dynamic lights take only the steady
+flame (the sparks made them strobe; `GRAPHICS_ENHANCEMENTS.md`, "G5 as built").
 
 **`XShadow(size)`** (the hero's is 35) draws texture 0xa3 under a position as up to four
 `JObject3D_Shadow` rects. Its square is split at the cell edge in X when the floors on either

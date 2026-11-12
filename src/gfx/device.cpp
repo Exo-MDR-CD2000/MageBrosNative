@@ -107,7 +107,12 @@ uniform vec4 uMatDiffuse;
 // With Dynamic lights, the level dimmed so they stand out (1 = as the original; the Ambient light
 // setting). Every draw of a level's 3D but the glowing sprites and the blob shadows.
 uniform float uSceneDim;
-out vec4 fragColor;
+// Bloom (G6): what this draw leaves in the glow layer (only drawn into during a level's 3D with
+// Bloom on): 1 a glowing sprite: its own colour; 2 a draw that multiplies what is there (the blob
+// shadows): nothing changed; 0 anything else: black, so it hides the glow behind it as on screen
+uniform int uGlowMode;
+layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec4 glowColor;
 // How lit a point is by the game's light, 0 to 1: the map read on a grid round it (each read
 // already blended over 2 x 2 map pixels by the card), fading out near the map's edges
 float LitBy(vec3 wp, vec3 n) {
@@ -178,6 +183,7 @@ void main() {
         result.rgb = min(result.rgb + albedo * sum, vec3(1.0));
     }
     fragColor = result * uConstColor;
+    glowColor = uGlowMode == 1 ? fragColor : (uGlowMode == 2 ? vec4(1.0) : vec4(0.0, 0.0, 0.0, fragColor.a));
 }
 )GLSL";
 
@@ -212,6 +218,47 @@ void main() { gl_Position = uLightVP * (uWorld * vec4(aPos, 1.0)); }
 static const char* kShadowFS = R"GLSL(
 #version 330 core
 void main() {}
+)GLSL";
+// Bloom (G6): the "dual filter" blur. Down: a texture to half its size, each pixel from 5 reads
+// (the centre and the four diagonals, half a source pixel away, each blended over 2 x 2 by the card)
+static const char* kBloomDownFS = R"GLSL(
+#version 330 core
+uniform sampler2D uSrc;
+uniform vec2 uTexel, uSrcTexel;  // the target's pixel, the source's
+out vec4 fragColor;
+void main() {
+    vec2 uv = gl_FragCoord.xy * uTexel;
+    vec2 h = uSrcTexel;
+    vec3 s = texture(uSrc, uv).rgb * 4.0;
+    s += texture(uSrc, uv - h).rgb + texture(uSrc, uv + h).rgb;
+    s += texture(uSrc, uv + vec2(h.x, -h.y)).rgb + texture(uSrc, uv - vec2(h.x, -h.y)).rgb;
+    fragColor = vec4(s / 8.0, 1.0);
+}
+)GLSL";
+// Up: a texture to twice its size, each pixel from 8 reads round it
+static const char* kBloomUpFS = R"GLSL(
+#version 330 core
+uniform sampler2D uSrc;
+uniform vec2 uTexel, uSrcTexel;
+out vec4 fragColor;
+void main() {
+    vec2 uv = gl_FragCoord.xy * uTexel;
+    vec2 h = uSrcTexel * 0.5;
+    vec3 s = texture(uSrc, uv + vec2(-h.x * 2.0, 0.0)).rgb + texture(uSrc, uv + vec2(h.x * 2.0, 0.0)).rgb;
+    s += texture(uSrc, uv + vec2(0.0, h.y * 2.0)).rgb + texture(uSrc, uv + vec2(0.0, -h.y * 2.0)).rgb;
+    s += (texture(uSrc, uv + vec2(-h.x, h.y)).rgb + texture(uSrc, uv + vec2(h.x, h.y)).rgb) * 2.0;
+    s += (texture(uSrc, uv + vec2(h.x, -h.y)).rgb + texture(uSrc, uv + vec2(-h.x, -h.y)).rgb) * 2.0;
+    fragColor = vec4(s / 12.0, 1.0);
+}
+)GLSL";
+// Add: the blurred glow onto the scene (blended by adding), by the strength
+static const char* kBloomAddFS = R"GLSL(
+#version 330 core
+uniform sampler2D uSrc;
+uniform vec2 uTexel;
+uniform float uStrength;
+out vec4 fragColor;
+void main() { fragColor = vec4(texture(uSrc, gl_FragCoord.xy * uTexel).rgb * uStrength, 1.0); }
 )GLSL";
 // A triangle over the whole target, for the passes below
 static const char* kFullVS = R"GLSL(
@@ -521,6 +568,11 @@ bool Device::Init(SDL_Window* window) {
     glUniform1i(u_.shadowKind, 0);
     glUniform1i(u_.lightKind, 0);
     glUniform1f(u_.sceneDim, 1.f);
+    u_.glowMode = loc("uGlowMode");
+    glUniform1i(u_.glowMode, 0);
+    progBloomDown_ = CompileProgram(kFullVS, kBloomDownFS);
+    progBloomUp_ = CompileProgram(kFullVS, kBloomUpFS);
+    progBloomAdd_ = CompileProgram(kFullVS, kBloomAddFS);
     progShadow_ = CompileProgram(kShadowVS, kShadowFS);
     shadowLoc_[0] = glGetUniformLocation(progShadow_, "uWorld");
     shadowLoc_[1] = glGetUniformLocation(progShadow_, "uLightVP");
@@ -546,6 +598,7 @@ bool Device::Init(SDL_Window* window) {
     gpu3D_.Init();
     gpuAO_.Init();
     gpuShadow_.Init();
+    gpuBloom_.Init();
     const char* noRec = SDL_getenv("MBN_NO_RECORD");
     recordEnabled_ = !(noRec && noRec[0] && noRec[0] != '0');
     if (!recordEnabled_) Log("MBN_NO_RECORD: the level's 3D is drawn without recording");
@@ -590,6 +643,10 @@ void Device::Shutdown() {
     gpu3D_.Free();
     gpuAO_.Free();
     gpuShadow_.Free();
+    gpuBloom_.Free();
+    DestroyBloomTargets();
+    for (GLuint* p : {&progBloomDown_, &progBloomUp_, &progBloomAdd_})
+        if (*p) glDeleteProgram(*p), *p = 0;
     DestroyAOTargets();
     DestroyShadowTarget();
     if (progShadow_) glDeleteProgram(progShadow_);
@@ -639,7 +696,8 @@ void Device::ComputeLayout() {
     GLint maxRb = 8192;
     L.fboW = std::min(L.fboW, (int)maxRb);
     L.fboH = std::min(L.fboH, (int)maxRb);
-    bool changed = L.fboW != layout_.fboW || L.fboH != layout_.fboH || !sceneFbo_;
+    bool changed = L.fboW != layout_.fboW || L.fboH != layout_.fboH || !sceneFbo_ ||
+                   (cfg.bloom > 0) != (glowRb_ != 0);  // (Bloom on: the glow layer, G6)
     layout_ = L;
     if (changed) CreateTargets();
 }
@@ -648,6 +706,8 @@ void Device::DestroyTargets() {
     if (sceneFbo_) glDeleteFramebuffers(1, &sceneFbo_);
     if (sceneColorRb_) glDeleteRenderbuffers(1, &sceneColorRb_);
     if (sceneDepthRb_) glDeleteRenderbuffers(1, &sceneDepthRb_);
+    if (glowRb_) glDeleteRenderbuffers(1, &glowRb_);
+    glowRb_ = 0;
     if (resolveFbo_) glDeleteFramebuffers(1, &resolveFbo_);
     if (resolveTex_) glDeleteTextures(1, &resolveTex_);
     sceneFbo_ = sceneColorRb_ = sceneDepthRb_ = resolveFbo_ = resolveTex_ = 0;
@@ -670,6 +730,14 @@ void Device::CreateTargets() {
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, sceneColorRb_);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, sceneDepthRb_);
+    if (GetConfig().bloom > 0) {
+        // the glow layer: drawn into only during a level's 3D with Bloom on (glDrawBuffers), so
+        // everything else draws as before into the first layer alone
+        glGenRenderbuffers(1, &glowRb_);
+        glBindRenderbuffer(GL_RENDERBUFFER, glowRb_);
+        glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples_, GL_RGBA8, W, H);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_RENDERBUFFER, glowRb_);
+    }
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) Log("Scene framebuffer incomplete");
     glGenTextures(1, &resolveTex_);
     glBindTexture(GL_TEXTURE_2D, resolveTex_);
@@ -704,6 +772,8 @@ void Device::BeginFrame() {
     gpuAO_.FrameDone();
     gpuShadow_.Poll();
     gpuShadow_.FrameDone();
+    gpuBloom_.Poll();
+    gpuBloom_.FrameDone();
     if (frameDraws3D_ > 0) lastDraws3D_ = frameDraws3D_;
     frameDraws3D_ = 0;
     hudTLRight_ = -1e9f;
@@ -936,6 +1006,7 @@ void Device::ApplyState(DWORD fvf, bool twoD) {
     glUniform1i(u_.shadowKind, 0);
     glUniform1i(u_.lightKind, 0);
     glUniform1f(u_.sceneDim, 1.f);
+    glUniform1i(u_.glowMode, 0);
 }
 
 // A 3D draw's state sent to OpenGL: the draw being asked for now, or a recorded one (the state
@@ -952,6 +1023,7 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf) {
     glUniform1i(u_.shadowKind, 0);    // (and the shadows' way, likewise)
     glUniform1i(u_.lightKind, 0);     // (and the lights')
     glUniform1f(u_.sceneDim, 1.f);    // (and the dimming)
+    glUniform1i(u_.glowMode, 0);      // (and what goes in the bloom's glow layer)
 
     // depth
     if (st.zEnable) {
@@ -1184,6 +1256,21 @@ void Device::FlushRecording() {
         glUniform3f(u_.eye, shadowEye_.x, shadowEye_.y, shadowEye_.z);
         glUniform4f(u_.matDiffuse, 1, 1, 1, 1);
     }
+    const int bloomLevel = glowRb_ ? std::clamp(GetConfig().bloom, 0, 2) : 0;
+    bloomActive_ = false;
+    if (bloomLevel > 0)
+        for (const RecordedDraw& d : rec_)
+            if (d.st.gameplayView) {
+                bloomActive_ = true;
+                break;
+            }
+    if (bloomActive_) {
+        static const GLenum kBoth[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+        static const GLfloat kBlack[4] = {0, 0, 0, 0};
+        glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
+        glDrawBuffers(2, kBoth);
+        glClearBufferfv(GL_COLOR, 1, kBlack);
+    }
     gpu3D_.Begin();
     // Each draw exactly as it would have been sent when it was asked for: its state, then its own
     // vertices and indices uploaded on their own. (Drawing them all from one shared upload, with a
@@ -1196,6 +1283,19 @@ void Device::FlushRecording() {
     static constexpr float kAOLevel = 0.9f, kAOModel = 0.7f;
     for (const RecordedDraw& d : rec_) {
         ApplyDrawState(d.st, d.fvf);
+        if (bloomActive_ && d.st.gameplayView) {
+            // the glow layer: the game's glowing sprites light it, multiplied draws leave it,
+            // anything else hides what is behind it
+            bool added = d.st.blendEnable && (d.st.destBlend == D3DBLEND_DESTALPHA || d.st.destBlend == D3DBLEND_ONE);
+            bool multiplies = d.st.blendEnable && (d.st.srcBlend == D3DBLEND_ZERO || d.st.srcBlend == D3DBLEND_DESTCOLOR);
+            bool glows = false;
+            if (added && d.st.texture)
+                for (uint16_t id : {0x187, 0x15c, 0x184, 0x15d, 0x185, 0x194, 0x195, 0x190, 0x192, 0x1a5, 0x294})
+                    if (d.st.texture->ResId() == id) glows = true;
+            // (not smoke, dust or the water's glints; nor the torches' and candles' sparks, 0x188,
+            // which made the glow pulse with them, as they did the lights in 0.4.42)
+            glUniform1i(u_.glowMode, glows ? 1 : (multiplies ? 2 : 0));
+        }
         if (sceneDim < 1.f && d.st.gameplayView) {
             // not the glowing (added) sprites, nor the blob shadows (multiplied onto the floor)
             bool added = d.st.blendEnable && (d.st.destBlend == D3DBLEND_DESTALPHA || d.st.destBlend == D3DBLEND_ONE);
@@ -1230,6 +1330,13 @@ void Device::FlushRecording() {
         }
     }
     gpu3D_.End();
+    if (bloomActive_) {
+        static const GLenum kFirst[1] = {GL_COLOR_ATTACHMENT0};
+        glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
+        glDrawBuffers(1, kFirst);
+        ComputeBloom(bloomLevel);
+        bloomActive_ = false;
+    }
     aoActive_ = false;
     shadowActive_ = false;
     lightsActive_ = false;
@@ -1368,6 +1475,103 @@ void Device::UploadPrep() {
     for (int i = 0; i < 6; i++) glDisableVertexAttribArray(i);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);  // (the position leads both formats)
+}
+
+// ---------------------------------------------------------------------------
+// Bloom (graphics enhancements, G6)
+// ---------------------------------------------------------------------------
+
+void Device::DestroyBloomTargets() {
+    for (int k = 0; k < kBloomLevels; k++) {
+        if (bloomFbo_[k]) glDeleteFramebuffers(1, &bloomFbo_[k]);
+        if (bloomTex_[k]) glDeleteTextures(1, &bloomTex_[k]);
+        bloomFbo_[k] = bloomTex_[k] = 0;
+    }
+    bloomW_ = bloomH_ = 0;
+}
+
+// Level 0 at the scene target's size (what the glow layer is resolved into: the same format, as a
+// multisampled resolve needs), then each level half the one before, kept in half floats
+void Device::EnsureBloomTargets(int w, int h) {
+    if (w == bloomW_ && h == bloomH_ && bloomFbo_[0]) return;
+    DestroyBloomTargets();
+    bloomW_ = w;
+    bloomH_ = h;
+    glActiveTexture(GL_TEXTURE0);
+    for (int k = 0; k < kBloomLevels; k++) {
+        int lw = std::max(1, w >> k), lh = std::max(1, h >> k);
+        glGenTextures(1, &bloomTex_[k]);
+        glBindTexture(GL_TEXTURE_2D, bloomTex_[k]);
+        if (k == 0) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, lw, lh, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        else glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, lw, lh, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+        glGenFramebuffers(1, &bloomFbo_[k]);
+        glBindFramebuffer(GL_FRAMEBUFFER, bloomFbo_[k]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomTex_[k], 0);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) Log("Bloom framebuffer incomplete");
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    Log("Bloom targets %dx%d", w, h);
+}
+
+// The glow layer resolved, blurred down the chain and back up, and added onto the scene. Low goes
+// 4 levels down (a sixteenth of the size), High 6 (a sixty-fourth: a wider, softer glow).
+void Device::ComputeBloom(int level) {
+    const int W = layout_.fboW, H = layout_.fboH;
+    EnsureBloomTargets(W, H);
+    gpuBloom_.Begin();
+    // the glow layer into level 0 (a multisampled resolve)
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, sceneFbo_);
+    glReadBuffer(GL_COLOR_ATTACHMENT1);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bloomFbo_[0]);
+    glBlitFramebuffer(0, 0, W, H, 0, 0, W, H, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, sceneFbo_);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);  // (Present and screenshots read the first layer)
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_BLEND);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_SCISSOR_TEST);
+    glBindVertexArray(emptyVao_);
+    glActiveTexture(GL_TEXTURE0);
+    const int depth = level >= 2 ? 6 : 4;
+    auto pass = [&](GLuint prog, int src, int dst) {
+        int dw = std::max(1, W >> dst), dh = std::max(1, H >> dst);
+        int sw = std::max(1, W >> src), sh = std::max(1, H >> src);
+        glBindFramebuffer(GL_FRAMEBUFFER, bloomFbo_[dst]);
+        glViewport(0, 0, dw, dh);
+        glUseProgram(prog);
+        glBindTexture(GL_TEXTURE_2D, bloomTex_[src]);
+        glUniform1i(glGetUniformLocation(prog, "uSrc"), 0);
+        glUniform2f(glGetUniformLocation(prog, "uTexel"), 1.f / dw, 1.f / dh);
+        glUniform2f(glGetUniformLocation(prog, "uSrcTexel"), 1.f / sw, 1.f / sh);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+    };
+    for (int k = 1; k <= depth; k++) pass(progBloomDown_, k - 1, k);
+    // back up, each level adding the wider blur onto its own (so the glow stays strong near its
+    // source and fades softly further out; overwriting it gave a glow too faint to see)
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE);
+    for (int k = depth - 1; k >= 1; k--) pass(progBloomUp_, k + 1, k);
+    glDisable(GL_BLEND);
+    // onto the scene (the first layer), added
+    glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
+    glViewport(0, 0, W, H);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE);
+    glUseProgram(progBloomAdd_);
+    glBindTexture(GL_TEXTURE_2D, bloomTex_[1]);
+    glUniform1i(glGetUniformLocation(progBloomAdd_, "uSrc"), 0);
+    glUniform2f(glGetUniformLocation(progBloomAdd_, "uTexel"), 1.f / W, 1.f / H);
+    glUniform1f(glGetUniformLocation(progBloomAdd_, "uStrength"), level >= 2 ? 0.45f : 0.3f);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDisable(GL_BLEND);
+    glBindVertexArray(vao_);
+    gpuBloom_.End();
 }
 
 // ---------------------------------------------------------------------------
