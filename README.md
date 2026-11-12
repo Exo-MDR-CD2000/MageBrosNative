@@ -226,10 +226,22 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   Settings, saves and the log live in `~/Library/Application Support/MageBrosNative`; the
   application bundle itself is never written to. Music needs a General MIDI SoundFont, as on
   Windows.
-- **Linux and the R36S:** the tools and tests build on Linux (`-DMBN_BUILD_GAME=OFF`), and the
-  Windows game cross-compiles with MinGW-w64
-  (`-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`). The game on Linux and the R36S needs
-  the GLES renderer, which is still to come.
+- **R36S (aarch64 handheld):** Docker on any machine, no cross toolchain to prepare.
+
+  ```sh
+  tools/r36s/build.sh                    # Debian 13 container, static SDL3, GLES backend
+  tools/r36s/install.sh ark@192.168.0.104   # writes /roms2/ports/ on the console
+  ```
+
+  Put your own `MageBros.exe` in `/roms2/ports/magebros/`, then start **MageBros** from the
+  console's Ports menu. The launcher sets the one environment hint this device needs
+  (`SDL_EGL_LIBRARY=libMali.so`, because the console's EGL/GLES live in libMali and SDL does not
+  find them by itself), runs the game through OpenGL ES 3.0 on KMSDRM at 640x480, and writes a
+  log to `/roms2/ports/magebros/magebros.log`. Nothing on the system is replaced.
+- **Linux desktop:** the tools and tests build with `-DMBN_BUILD_GAME=OFF`, and a GLES-only
+  Linux device can be built with `-DMBN_GLES=ON`; a desktop with OpenGL 3.3 uses the default
+  backend. The Windows game cross-compiles with MinGW-w64
+  (`-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`).
 - **What gets built:**
 
   | Program | What it does | Needs the game | In the zip |

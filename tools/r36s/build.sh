@@ -37,6 +37,7 @@ docker run --rm --platform linux/arm64 \
             -DMBN_BUILD_GAME=ON \
             -DMBN_BUILD_R36S_PROBE=ON \
             -DMBN_GLES=ON \
+            -DMBN_TEXTURE_DIAG=OFF \
             -DSDL_X11=OFF -DSDL_WAYLAND=OFF -DSDL_KMSDRM=ON \
             -DSDL_UNIX_CONSOLE_BUILD=ON \
             -DSDL_ALSA=ON -DSDL_PULSEAUDIO=OFF -DSDL_PIPEWIRE=OFF \
