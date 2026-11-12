@@ -14,7 +14,11 @@ namespace {
 bool OptionalOnThisBackend(const char* name) {
     if (strcmp(name, "glProvokingVertex") == 0) return true;
 #if defined(MBN_GLES)
-    return strcmp(name, "glClearDepth") == 0;
+    // Desktop-only entry points that the ES backend replaces: the depth clear, the draw-buffer
+    // selection for the shadow map (glDrawBuffers) and the 64-bit timer results (the ES 3.0
+    // glGetQueryObjectuiv). The game supplies the ES calls where it uses them.
+    return strcmp(name, "glClearDepth") == 0 || strcmp(name, "glDrawBuffer") == 0 ||
+           strcmp(name, "glGetQueryObjectiv") == 0 || strcmp(name, "glGetQueryObjectui64v") == 0;
 #else
     return strcmp(name, "glClearDepthf") == 0;
 #endif

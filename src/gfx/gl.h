@@ -182,6 +182,7 @@ typedef uint64_t GLuint64;
     X(void, glBeginQuery, (GLenum t, GLuint q))                                                              \
     X(void, glEndQuery, (GLenum t))                                                                          \
     X(void, glGetQueryObjectiv, (GLuint q, GLenum p, GLint * v))                                             \
+    X(void, glGetQueryObjectuiv, (GLuint q, GLenum p, GLuint * v))                                           \
     X(void, glGetQueryObjectui64v, (GLuint q, GLenum p, GLuint64 * v))                                       \
     X(void, glGenBuffers, (GLsizei n, GLuint * b))                                                           \
     X(void, glDeleteBuffers, (GLsizei n, const GLuint* b))                                                   \
