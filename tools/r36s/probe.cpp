@@ -16,6 +16,43 @@ namespace {
 constexpr GLenum kGlSamples = 0x80A9;  // GL_SAMPLES, not in the game's loader
 constexpr GLenum kGlShadingLanguageVersion = 0x8B8C;  // GL_SHADING_LANGUAGE_VERSION
 
+// `--buttons`: print raw joystick button indices as they are pressed. The SDL mapping for an
+// unlisted pad stops at the triggers, so this is how Select/Start (back:b8, start:b9) are
+// confirmed on a new device.
+int RunButtons() {
+    if (!SDL_Init(SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK)) {
+        std::printf("probe_failed: SDL_Init: %s\n", SDL_GetError());
+        return 1;
+    }
+    int n = 0;
+    SDL_JoystickID* ids = SDL_GetJoysticks(&n);
+    if (!ids || n < 1) {
+        std::printf("probe_failed: no joystick\n");
+        SDL_free(ids);
+        return 1;
+    }
+    SDL_Joystick* joy = SDL_OpenJoystick(ids[0]);
+    std::printf("buttons: press Start and Select now (20 s)\n");
+    std::printf("joystick: %s, %d buttons\n", joy ? SDL_GetJoystickName(joy) : "?", joy ? SDL_GetNumJoystickButtons(joy) : 0);
+    bool down[64] = {};
+    for (int tick = 0; tick < 400; tick++) {  // 400 x 50 ms = 20 s
+        int count = joy ? SDL_GetNumJoystickButtons(joy) : 0;
+        for (int b = 0; b < count && b < 64; b++) {
+            bool now = SDL_GetJoystickButton(joy, b);
+            if (now != down[b]) {
+                down[b] = now;
+                std::printf("button %d %s\n", b, now ? "down" : "up");
+                std::fflush(stdout);
+            }
+        }
+        SDL_Delay(50);
+    }
+    if (joy) SDL_CloseJoystick(joy);
+    SDL_free(ids);
+    SDL_Quit();
+    return 0;
+}
+
 void PrintDrivers() {
     int ver = SDL_GetVersion();
     std::printf("sdl_version: %d.%d.%d\n", SDL_VERSIONNUM_MAJOR(ver), SDL_VERSIONNUM_MINOR(ver),
@@ -75,8 +112,10 @@ void PlayTone() {
 
 int main(int argc, char** argv) {
     bool draw = true;
-    for (int i = 1; i < argc; i++)
+    for (int i = 1; i < argc; i++) {
+        if (SDL_strcmp(argv[i], "--buttons") == 0) return RunButtons();
         if (SDL_strcmp(argv[i], "--no-draw") == 0) draw = false;
+    }
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD)) {
         std::printf("probe_failed: SDL_Init: %s\n", SDL_GetError());
