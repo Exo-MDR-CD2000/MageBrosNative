@@ -32,8 +32,10 @@ ctest --test-dir build-mac --output-on-failure
 Result: `formats`, `map_geometry`, `hero_movement` and `collision` all passed (4/4, 1.2 s).
 The map and hero tests ran against the original above, unchanged from the Windows runs.
 
-Executable: `build-mac/MageBrosNative`, Mach-O arm64, SHA-256
-`8c2d520ba647e22ee4452473321eb8df81972f6b09ae7ded33a88d493879a6e9`.
+Executable: `build-mac/MageBrosNative.app/Contents/MacOS/MageBrosNative`, Mach-O arm64, SHA-256
+`b4db3faf02886b5d93e67d6d8a8436466c99a3b01b4761cfb6266cddc83b6acb`. (During the first
+session, before the bundle was added, the same binary was at `build-mac/MageBrosNative`;
+`build-mac/MageBrosNative.app` is where it lives now.)
 
 ## The session
 
@@ -122,6 +124,23 @@ and exited with code 0. Packaged executable SHA-256:
 | `mac-moved.png` | `eee04406ec4666a834cf1855e2f46cca7911019772db0cb5ad97b26c21ead83f` | after 1.6 s of `Right` |
 | `mac-jump.png` | `39690f6c5f4969efbad6c91421a02992e23259b6904ea23227d668922e6529e1` | mid-jump |
 | `mac-fire.png` | `965c0abd9d4dbda37a9673eece89ca30465bfb84b25a24d80e59d48efc5490da` | after firing |
+
+## Specification scenarios
+
+Every scenario in `specs/native-platforms/spec.md`, with the evidence for it.
+
+| Scenario | Result | Evidence |
+|---|---|---|
+| Clean checkout builds | Pass | A fresh `git clone` into a temporary folder, the README commands only: configure, build, `mbn_tests` and `mbn_collision_tests` pass, package written |
+| No Windows components are required | Pass | That same build used the default `MBN_BUILD_GAME=ON` on macOS with no Windows SDK, `winmm` or resource compiler |
+| Level 1-1 is played | Pass | The automated session above: level rendered, `Right` moved the hero, `Right Shift` jumped, `Right Ctrl` fired |
+| Audio is audible | Not verified | The device opened at 44100 Hz stereo; nobody has listened to it yet |
+| First run on macOS creates the data folder | Pass | The folder was removed, the game run, and `magebros_native.ini`, `magebros_native.log`, `save_location.txt` and `saves/` appeared |
+| A configured path still wins | Pass | `save_path = /tmp/mbn-save-test` in the ini: the log reported `Saves: /tmp/mbn-save-test/` and the folder was created there |
+| Capabilities appear in the log | Pass | The log excerpt above: vendor, renderer, version, `MSAA 4x`, provoking vertex |
+| A missing provoking-vertex function is not fatal | Not verified | This driver exports the function, so the branch was not exercised; the loader and `device.cpp` treat it as optional by construction |
+| Package runs on a machine without SDL3 | Partial | The bundle links only system libraries (no `/opt/homebrew`) and ran from a temporary folder; it was not tried on a second Mac |
+| Licences travel with the binary | Pass | The zip listing: `LICENSE`, `THIRD_PARTY_NOTICES.md`, `licenses/coldet-LGPL.txt` |
 
 ## Not verified
 
