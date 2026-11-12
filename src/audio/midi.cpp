@@ -18,6 +18,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mmsystem.h>
+#elif defined(__APPLE__)
+#include <AudioToolbox/AudioToolbox.h>
+#include <AudioUnit/AudioUnit.h>
 #endif
 
 namespace {
@@ -133,14 +136,18 @@ tsf* g_tsf = nullptr;
 
 #if defined(_WIN32)
 HMIDIOUT g_hmo = nullptr;
-std::thread g_thread;
-std::atomic<bool> g_quit{false};
+#elif defined(__APPLE__)
+AUGraph g_graph = nullptr;
+AUNode g_synthNode = 0, g_outputNode = 0;
+AudioUnit g_synthUnit = nullptr;
 #endif
 
-// The Windows synth plays outside our mixer, so music/master volume is applied by scaling each
-// channel's volume controller (CC7). midiOutSetVolume is not used: the MIDI mapper usually
+// The system synthesizer plays outside our mixer, so music/master volume is applied by scaling
+// each channel's volume controller (CC7). midiOutSetVolume is not used: the MIDI mapper usually
 // rejects it, and where it works it changes the synth's volume for every program.
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__APPLE__)
+std::thread g_thread;
+std::atomic<bool> g_quit{false};
 uint8_t g_chanVol[16] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};
 
 uint8_t ScaledChannelVolume(uint8_t songValue) {
@@ -149,6 +156,16 @@ uint8_t ScaledChannelVolume(uint8_t songValue) {
     float v = std::clamp(g_volume, 0.f, 1.f);
     int out = (int)(songValue * std::sqrt(v) + 0.5f);
     return (uint8_t)std::clamp(out, 0, 127);
+}
+#endif
+
+#if defined(_WIN32) || defined(__APPLE__)
+void SendSystemShort(uint8_t st, uint8_t a, uint8_t b) {
+#if defined(_WIN32)
+    if (g_hmo) midiOutShortMsg(g_hmo, (DWORD)st | (DWORD)a << 8 | (DWORD)b << 16);
+#else
+    if (g_synthUnit) MusicDeviceMIDIEvent(g_synthUnit, st, a, b, 0);
+#endif
 }
 #endif
 
@@ -162,27 +179,37 @@ void SendShort(uint8_t st, uint8_t a, uint8_t b) {
             case 0xC0: tsf_channel_set_presetnumber(g_tsf, ch, a, ch == 9); break;
             case 0xE0: tsf_channel_set_pitchwheel(g_tsf, ch, a | (b << 7)); break;
         }
+        return;
     }
-#if defined(_WIN32)
-    else if (g_backend == Backend::System && g_hmo) {
-        if ((st & 0xF0) == 0xB0 && a == 7) {
-            // Channel volume: remember the song's value and send it scaled by our volume.
-            g_chanVol[st & 0x0F] = b;
-            b = ScaledChannelVolume(b);
-        }
-        midiOutShortMsg(g_hmo, (DWORD)st | (DWORD)a << 8 | (DWORD)b << 16);
-        if ((st & 0xF0) == 0xB0 && a == 121) {
-            // Some synths reset channel volume on "reset all controllers": re-apply ours.
-            uint8_t ch = st & 0x0F;
-            midiOutShortMsg(g_hmo, (DWORD)(0xB0 | ch) | 7u << 8 | (DWORD)ScaledChannelVolume(g_chanVol[ch]) << 16);
-        }
+#if defined(_WIN32) || defined(__APPLE__)
+    if (g_backend != Backend::System) return;
+    if ((st & 0xF0) == 0xB0 && a == 7) {
+        // Channel volume: remember the song's value and send it scaled by our volume.
+        g_chanVol[st & 0x0F] = b;
+        b = ScaledChannelVolume(b);
+    }
+    SendSystemShort(st, a, b);
+    if ((st & 0xF0) == 0xB0 && a == 121) {
+        // Some synths reset channel volume on "reset all controllers": re-apply ours.
+        uint8_t ch = st & 0x0F;
+        SendSystemShort((uint8_t)(0xB0 | ch), 7, ScaledChannelVolume(g_chanVol[ch]));
     }
 #endif
 }
 
+// A GM/GS/XG reset puts every channel back to volume 100 at full scale.
+bool IsSynthReset(const std::vector<uint8_t>& sx) {
+    bool gmReset = sx.size() >= 5 && sx[1] == 0x7E && sx[3] == 0x09;
+    bool gsReset = sx.size() >= 9 && sx[1] == 0x41 && sx[3] == 0x42 && sx[5] == 0x40 && sx[6] == 0x00 && sx[7] == 0x7F;
+    bool xgReset = sx.size() >= 8 && sx[1] == 0x43 && sx[3] == 0x4C && sx[4] == 0x00 && sx[5] == 0x00 && sx[6] == 0x7E;
+    return gmReset || gsReset || xgReset;
+}
+
 void SendSysex(const std::vector<uint8_t>& sx) {
+#if defined(_WIN32) || defined(__APPLE__)
+    if (g_backend != Backend::System || sx.empty()) return;
 #if defined(_WIN32)
-    if (g_backend == Backend::System && g_hmo && !sx.empty()) {
+    {
         std::vector<uint8_t> buf = sx;
         MIDIHDR h{};
         h.lpData = (LPSTR)buf.data();
@@ -192,14 +219,22 @@ void SendSysex(const std::vector<uint8_t>& sx) {
             for (int i = 0; i < 200 && !(h.dwFlags & MHDR_DONE); i++) SDL_Delay(1);
             midiOutUnprepareHeader(g_hmo, &h, sizeof h);
         }
-        // A GM/GS/XG reset puts every channel back to volume 100 at full scale; re-apply ours.
-        bool gmReset = sx.size() >= 5 && sx[1] == 0x7E && sx[3] == 0x09;
-        bool gsReset = sx.size() >= 9 && sx[1] == 0x41 && sx[3] == 0x42 && sx[5] == 0x40 && sx[6] == 0x00 && sx[7] == 0x7F;
-        bool xgReset = sx.size() >= 8 && sx[1] == 0x43 && sx[3] == 0x4C && sx[4] == 0x00 && sx[5] == 0x00 && sx[6] == 0x7E;
-        if (gmReset || gsReset || xgReset) {
-            for (int ch = 0; ch < 16; ch++) SendShort((uint8_t)(0xB0 | ch), 7, 100);
-        }
     }
+#else
+    if (g_synthUnit) {
+        // MusicDeviceSysEx wants a complete message with both markers. The parser keeps the
+        // file's bytes, and some files carry F0 without a trailing F7.
+        std::vector<uint8_t> msg;
+        msg.reserve(sx.size() + 2);
+        if (sx.front() != 0xF0) msg.push_back(0xF0);
+        msg.insert(msg.end(), sx.begin(), sx.end());
+        if (msg.back() != 0xF7) msg.push_back(0xF7);
+        MusicDeviceSysEx(g_synthUnit, msg.data(), (UInt32)msg.size());
+    }
+#endif
+    // Re-apply our volume after the reset flattened every channel to 100.
+    if (IsSynthReset(sx))
+        for (int ch = 0; ch < 16; ch++) SendShort((uint8_t)(0xB0 | ch), 7, 100);
 #else
     (void)sx;
 #endif
@@ -258,9 +293,11 @@ void SoftRender(float* out, int frames, int rate) {
     }
 }
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__APPLE__)
 void SystemThread() {
+#if defined(_WIN32)
     timeBeginPeriod(1);
+#endif
     uint64_t freq = SDL_GetPerformanceFrequency();
     uint64_t last = SDL_GetPerformanceCounter();
     while (!g_quit) {
@@ -276,7 +313,55 @@ void SystemThread() {
         }
         SDL_Delay(1);
     }
+#if defined(_WIN32)
     timeEndPeriod(1);
+#endif
+}
+#endif
+
+#if defined(__APPLE__)
+// The platform synthesizer: the DLS synth playing through the default output unit. It is the
+// macOS counterpart of the Windows MIDI mapper and plays outside the game's mixer, like it.
+bool StartSystemSynth(std::string* error) {
+    auto fail = [&](const char* what, OSStatus st) {
+        *error = std::string(what) + " (OSStatus " + std::to_string((int)st) + ")";
+        return false;
+    };
+    OSStatus st = NewAUGraph(&g_graph);
+    if (st != noErr) return fail("NewAUGraph failed", st);
+    AudioComponentDescription synth{};
+    synth.componentType = kAudioUnitType_MusicDevice;
+    synth.componentSubType = kAudioUnitSubType_DLSSynth;
+    synth.componentManufacturer = kAudioUnitManufacturer_Apple;
+    st = AUGraphAddNode(g_graph, &synth, &g_synthNode);
+    if (st != noErr) return fail("the DLS synthesizer is not available", st);
+    AudioComponentDescription output{};
+    output.componentType = kAudioUnitType_Output;
+    output.componentSubType = kAudioUnitSubType_DefaultOutput;
+    output.componentManufacturer = kAudioUnitManufacturer_Apple;
+    st = AUGraphAddNode(g_graph, &output, &g_outputNode);
+    if (st != noErr) return fail("the default audio output is not available", st);
+    st = AUGraphOpen(g_graph);
+    if (st != noErr) return fail("AUGraphOpen failed", st);
+    st = AUGraphNodeInfo(g_graph, g_synthNode, nullptr, &g_synthUnit);
+    if (st != noErr) return fail("AUGraphNodeInfo failed", st);
+    st = AUGraphConnectNodeInput(g_graph, g_synthNode, 0, g_outputNode, 0);
+    if (st != noErr) return fail("AUGraphConnectNodeInput failed", st);
+    st = AUGraphInitialize(g_graph);
+    if (st != noErr) return fail("AUGraphInitialize failed", st);
+    st = AUGraphStart(g_graph);
+    if (st != noErr) return fail("AUGraphStart failed", st);
+    return true;
+}
+
+void StopSystemSynth() {
+    if (!g_graph) return;
+    AUGraphStop(g_graph);
+    AUGraphUninitialize(g_graph);
+    AUGraphClose(g_graph);
+    DisposeAUGraph(g_graph);
+    g_graph = nullptr;
+    g_synthUnit = nullptr;
 }
 #endif
 
@@ -359,20 +444,41 @@ bool Init(const std::string& soundFontPath) {
         Log("MIDI: using the Windows system synthesizer");
         return true;
     }
+#elif defined(__APPLE__)
+    {
+        std::string why;
+        if (StartSystemSynth(&why)) {
+            g_backend = Backend::System;
+            g_quit = false;
+            g_thread = std::thread(SystemThread);
+            Log("MIDI: using the macOS system synthesizer");
+            return true;
+        }
+        StopSystemSynth();
+        Log("MIDI: the macOS system synthesizer could not start: %s", why.c_str());
+    }
 #endif
+#if defined(__APPLE__)
+    Log("MIDI: no synthesizer available (no SoundFont was found and the macOS system synthesizer could not start)");
+#else
     Log("MIDI: no synthesizer available (place a General MIDI soundfont.sf2 next to the game to enable music)");
+#endif
     g_backend = Backend::None;
     return false;
 }
 
 static void ShutdownBackend() {
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__APPLE__)
     if (g_backend == Backend::System) {
         g_quit = true;
         if (g_thread.joinable()) g_thread.join();
+#if defined(_WIN32)
         midiOutReset(g_hmo);
         midiOutClose(g_hmo);
         g_hmo = nullptr;
+#else
+        StopSystemSynth();
+#endif
     }
 #endif
     Audio::SetMusicRenderer(nullptr);
@@ -446,7 +552,7 @@ void PlayFromStart() {
     if (!g_loaded) return;
     AllNotesOff();
     ResetControllers();
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__APPLE__)
     for (auto& c : g_chanVol) c = 100;  // GM default until the song sets its own
 #endif
     for (int ch = 0; ch < 16; ch++) SendShort((uint8_t)(0xB0 | ch), 7, 100);
@@ -492,15 +598,22 @@ bool PollFinished() { return g_finished.exchange(false); }
 void SetVolume(float v) {
     std::lock_guard<std::mutex> lk(g_mutex);
     g_volume = v;
-#if defined(_WIN32)
-    if (g_backend == Backend::System && g_hmo)
+#if defined(_WIN32) || defined(__APPLE__)
+    if (g_backend == Backend::System)
         for (int ch = 0; ch < 16; ch++) SendShort((uint8_t)(0xB0 | ch), 7, g_chanVol[ch]);
 #endif
 }
 
 const char* BackendName() {
     switch (g_backend) {
-        case Backend::System: return "Windows MIDI synth";
+        case Backend::System:
+#if defined(_WIN32)
+            return "Windows system synth";
+#elif defined(__APPLE__)
+            return "macOS system synth";
+#else
+            return "system synth";
+#endif
         case Backend::Soft: return "SoundFont synth";
         default: return "unavailable";
     }

@@ -373,7 +373,7 @@ std::string OptionsMenu::DisplayHelp(const std::string& base) const {
 // ------------------------------------------------------------------ synth list
 std::vector<std::string> OptionsMenu::SynthList() const {
     std::vector<std::string> out{""};  // automatic
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__APPLE__)
     out.push_back("system");
 #endif
     // next to the program, next to MageBros.exe, then their "soundfonts" folders (Midi::SoundFontDirs);
@@ -944,11 +944,11 @@ OptionsMenu::Page OptionsMenu::AudioPage() {
                  },
                  nullptr, nullptr});
     v.push_back({"Music synth",
-                 "Automatic uses soundfont.sf2/magebros.sf2 if present, else the Windows synth. Or pick a .sf2 file.",
+                 "Automatic uses soundfont.sf2/magebros.sf2 if present, else the system synthesizer. Or pick a .sf2 file.",
                  [] {
                      const std::string& s = GetConfig().soundFont;
                      if (s.empty()) return std::string("Automatic");
-                     if (s == "system") return std::string("Windows synth");
+                     if (s == "system") return std::string("System synth");
                      return Fit(BaseName(s), 13);
                  },
                  [this, applyVolumes](int d) {

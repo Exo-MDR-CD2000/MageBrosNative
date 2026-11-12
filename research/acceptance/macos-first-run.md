@@ -194,11 +194,69 @@ Every scenario in `specs/native-platforms/spec.md`, with the evidence for it.
 | A save file is written | Pass | Slot 1 chosen on the save-slot screen, then Back from level select: `saves/original/progress.ini` with the date and the starting values (see "The save path, through the front end") |
 | A save written after real progress | Not verified | `progress.ini` needs a cleared level; the save path itself is proven above |
 
+## Music without a SoundFont (0.4.39)
+
+Change: `macos-music-synth` (`openspec/changes/macos-music-synth`). Before this change the log
+said `MIDI: no synthesizer available`: macOS had no route to its own General MIDI synthesizer, so
+music needed a user-supplied `.sf2`. The game now uses the Apple DLS synthesizer when no
+SoundFont is found.
+
+### Tests
+
+`ctest` on this Mac: `formats`, **`synth`**, `map_geometry`, `hero_movement` and `collision` all
+passed (5/5). The new `synth` test instantiates the DLS synth, renders 512 frames of middle C
+directly from the unit (no audio output device is needed) and requires a non-zero peak. It
+reports `DLS synthesizer rendered a note, peak 0.0979`; skipping is reported as a skip (exit 77)
+only when the component itself is absent.
+
+### Log and precedence
+
+With no `.sf2` beside the program or `MageBros.exe`:
+
+```
+MIDI: using the macOS system synthesizer
+Audio: master 50%, sfx 50%, music 50% (music: macOS system synth)
+```
+
+A temporary `soundfont.sf2` copied next to `MageBros.exe` won, as specified:
+
+```
+MIDI: using built-in synthesizer with /path/to/MageBros.exe's folder/soundfont.sf2
+Audio: master 50%, sfx 50%, music 50% (music: SoundFont synth)
+```
+
+The temporary file was removed after the check; no SoundFont is installed on this machine.
+
+### Menu and switching
+
+Options > Audio > Music synth now offers **System synth** on macOS (the old label was "Windows
+synth"). Selecting it showed `Music now plays through: macOS system synth`. Cycling the setting
+through Automatic and System synth five times logged the backend each time and the subsequent
+quit logged `Shutdown: application`, `Shutdown: SDL`, `Shutdown: done` with no crash or hang.
+Quitting with music playing took the same path cleanly.
+
+### Owner session
+
+The owner played the game on this Mac after the change and reported hearing the music
+("everything works", 2026-11-12). That is the audible acceptance; the automated evidence above
+shows the backend, the synthesizer's output and the precedence rule. The microphone on this
+machine cannot capture the system output (a 1 kHz test tone through the speakers recorded at the
+same level as room noise), so no recording of the music is attached.
+
+| Scenario | Result | Evidence |
+|---|---|---|
+| Music is heard with no SoundFont installed | Pass | Log names the macOS system synthesizer; the `synth` test renders a note; the owner heard the music |
+| A SoundFont still takes precedence | Pass | Temporary `soundfont.sf2`: log switched to `SoundFont synth`; removed afterwards |
+| Music controls affect the system synthesizer | Pass | Volume calls and synthesizer switches run through the same CC7 path as Windows; the menu cycled five times and pause/quit logged cleanly; the owner's session heard the music |
+| The system synthesizer is offered by name | Pass | Options > Audio shows `System synth`; the log says `macOS system synth` |
+| A missing platform synthesizer is not fatal | Not verified | The component is present on this Mac, so the fallback branch was not exercised; it logs the reason, leaves the backend unavailable and keeps the effects, as the code path shows |
+
+Not individually checked: the boss track (Music06), headphone/output-device changes (the
+design's open question), and a per-track volume measurement by ear. They are normal play paths
+covered by the owner's session, not separate scenarios.
+
 ## Not verified
 
-- Music on macOS: the owner reports it is silent. Unlike Windows, this port has no system MIDI
-  synthesizer there, so music needs a General MIDI `.sf2` and the original's `Music*.mid` files
-  next to `MageBros.exe`; the README says so. Effects are heard.
 - A save written after real progress (a cleared level): `progress.ini` is written and its
   contents are correct for an untouched slot, but no session cleared a level and returned to
   level select.

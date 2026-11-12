@@ -6,7 +6,7 @@ An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2
 modern Windows. It plays exactly like the original, with optional extras: widescreen, any
 resolution and refresh rate, smooth motion, key rebinding and cheats.
 
-**Version 0.4.38.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
+**Version 0.4.39.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -139,6 +139,10 @@ track loop seamlessly from a point other than its start, give the file `LOOPSTAR
 it loops from the end back to the start. To use other file names, set `music_1` to `music_6` in
 the settings file. To hear the original music again, set Music source to **MIDI only**.
 
+The original MIDI music plays through the system synthesizer: the Windows MIDI synth the
+original used, or the macOS DLS synth. No extra file is needed for music on those systems. A
+console with no system synthesizer (the R36S) plays MIDI only with a SoundFont.
+
 **Better-sounding MIDI instead:** a General MIDI SoundFont (`.sf2`) changes the instruments the
 MIDI music is played with.
 
@@ -147,8 +151,10 @@ MIDI music is played with.
 2. In the game, open Options (F10) > Audio > **Music synth** and press Left or Right to choose it.
    The music switches at once and the choice is remembered.
 
-A file called `soundfont.sf2` or `magebros.sf2` in either place is used automatically. **Windows synth** plays the music as the original did, and **Automatic** goes back to the
-default.
+A file called `soundfont.sf2` or `magebros.sf2` in either place is used automatically and takes
+precedence over the system synthesizer. **System synth** always uses the platform's synthesizer,
+and **Automatic** goes back to the default: the SoundFont if one is present, otherwise the
+system synthesizer.
 
 ### Your own menu font
 
@@ -219,10 +225,10 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   ```
 
   Settings, saves and the log live in `~/Library/Application Support/MageBrosNative`; the
-  application bundle itself is never written to. Unlike Windows, this port has no system MIDI
-  synthesizer on macOS: music needs a General MIDI `.sf2` (`soundfont.sf2` or `magebros.sf2`)
-  next to `MageBros.exe`, or in a `soundfonts` folder there, and the original's `Music*.mid`
-  files. Without them the effects play and the music is silent.
+  application bundle itself is never written to. Music plays through the macOS system
+  synthesizer (the Apple DLS synth), so no SoundFont is needed; an `.sf2` next to `MageBros.exe`
+  or in a `soundfonts` folder still takes precedence, and the original's `Music*.mid` files are
+  used in either case.
   **F10** (or Fn+F10: Apple keyboards use F10 for Mute by default, or Start on a gamepad)
   opens the pause menu — Resume, video/graphics/audio/controls, Level select, Main menu and
   Quit game. **P** freezes the game, as in the original; Esc is "back" inside menus.

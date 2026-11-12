@@ -9,6 +9,13 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+## [0.4.39] - 2026-11-12
+
+- **Music plays on macOS without a SoundFont.** The game now uses the Mac's built-in General MIDI
+  synthesizer when no `.sf2` is installed, as it already did with the Windows synthesizer on
+  Windows. A SoundFont still takes precedence when one is present. The R36S has no system
+  synthesizer and still needs one.
+
 ## [0.4.38] - 2026-11-10
 
 - **Render scale now goes up to 200%** (Options > Graphics). 300% and 400% asked far more of your
