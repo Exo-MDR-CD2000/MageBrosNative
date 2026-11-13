@@ -3,8 +3,8 @@
 # Mage Bros. Native
 
 An unofficial native port of **Mage Bros.**, the 3D platformer by Saito Games (2003–2009), for
-modern Windows. It plays exactly like the original, with optional extras: widescreen, any
-resolution and refresh rate, smooth motion, key rebinding and cheats.
+modern Windows, macOS and Linux. It plays exactly like the original, with optional extras:
+widescreen, any resolution and refresh rate, smooth motion, key rebinding and cheats.
 
 **Version 0.4.47.** The whole game is in: all 4 worlds and 40 levels, every enemy and boss, one
 or two players, the shop, saving and the ending. What changed in each version:
@@ -18,8 +18,11 @@ or two players, the shop, saving and the ending. What changed in each version:
 The game itself is the original's: the same levels, enemies, physics, timing and even its quirks.
 Around it, Native adds:
 
-- **Runs natively on Windows 10 and 11** with OpenGL instead of the original's DirectX 7: no
-  compatibility settings or wrappers needed.
+- **Runs natively on Windows 10 and 11, macOS and Linux** with OpenGL instead of the original's
+  DirectX 7: no compatibility settings or wrappers needed.
+- **Music that works out of the box:** your own SoundFont when you place one next to the game,
+  otherwise the system synthesizer, with a built-in TimGM6mb General MIDI bank as the fallback
+  (and the default on Linux); the Music synth setting chooses any of them explicitly.
 - **Any resolution and screen mode:** a resizable window, borderless or exclusive fullscreen, any
   monitor, instead of the original's fixed 640 × 480. The window opens where you left it.
 - **Widescreen** (16:9, 21:9 and wider): see more of each level at the sides, with nothing
@@ -50,28 +53,34 @@ Around it, Native adds:
 ## Getting started
 
 1. Get **Mage Bros. 2.0**, the freeware version, from [saitogames.com](http://www.saitogames.com/).
-2. Download the latest `MageBrosNative-<version>-windows-x64.zip` from
+2. Download the latest `MageBrosNative-<version>-windows-x64.zip`,
+   `...-macos-arm64.zip` or `...-linux-x86_64.tar.gz` from
    [Releases](https://github.com/Exo-MDR-CD2000/MageBrosNative/releases).
-3. Unzip it and put `MageBrosNative.exe` in the same folder as `MageBros.exe` and its
-   `Music01.mid` to `Music06.mid` files.
-4. Run `MageBrosNative.exe`.
+3. Windows and macOS: unzip and put `MageBrosNative.exe` (or the `.app`) in the same folder as
+   `MageBros.exe` and its `Music01.mid` to `Music06.mid` files. Linux: unpack the tarball into a
+   writable folder and keep `MageBrosNative` beside those files.
+4. Run `MageBrosNative.exe` (`MageBrosNative` on Linux).
 
-**`MageBrosNative.exe` is the only file you need to play.** The rest of the zip is optional:
+**`MageBrosNative.exe` is the only file you need to play.** The rest of the package is optional:
 
-| In the zip | What it is |
+| In the package | What it is |
 |---|---|
 | `MageBrosAssets.exe` | A tool that lists, checks or exports the resources in your `MageBros.exe` |
-| `mbn_tests.exe`, `mbn_collision_tests.exe` | The project's automated tests |
+| `mbn_tests.exe`, `mbn_soundfont_tests.exe`, `mbn_collision_tests.exe` | The project's automated tests |
+| `TimGM6mb.sf2` | The built-in General MIDI bank, used on Linux and as the fallback or explicit choice on Windows and macOS; see [Your own music](#your-own-music) |
 | `README.md`, `docs` | This guide, and documents for developers |
 | `LICENSE`, `THIRD_PARTY_NOTICES.md`, `licenses` | The licences of the port and of the libraries built into it |
 
-You can leave these in the zip. If you pass the game on to someone else, include the licence
+You can leave these in the package. If you pass the game on to someone else, include the licence
 files with it.
 
-You need Windows 10 or 11 (64-bit). The game checks that `MageBros.exe` is the 2.0 freeware build
+You need 64-bit Windows 10 or 11, macOS 12 or newer (Apple Silicon), or a Debian 13+ desktop
+(OpenGL 3.3, X11 or Wayland). The game checks that `MageBros.exe` is the 2.0 freeware build
 (SHA-256 `ac191080af002b8ad0615e432faa92a2a47ce76a9aaa667bacf628836c098c49`); other builds are
 refused unless you start it with `--allow-unverified`. If the game is somewhere else, start it
-with `--game "C:\path\to\MageBros.exe"` or set `path` in the settings file.
+with `--game "C:\path\to\MageBros.exe"` or set `path` in the settings file. Linux players
+unpack the tarball into a writable folder and run `./MageBrosNative`; the steps are under
+[For developers](#for-developers).
 
 ## Controls
 
@@ -144,22 +153,32 @@ track loop seamlessly from a point other than its start, give the file `LOOPSTAR
 it loops from the end back to the start. To use other file names, set `music_1` to `music_6` in
 the settings file. To hear the original music again, set Music source to **MIDI only**.
 
-The original MIDI music plays through the system synthesizer: the Windows MIDI synth the
-original used, or the macOS DLS synth. No extra file is needed for music on those systems. A
-console with no system synthesizer (the R36S) plays MIDI only with a SoundFont.
+The original MIDI music plays through a synthesizer. **Automatic** (the default) uses a user
+SoundFont first: a file called `soundfont.sf2` or `magebros.sf2` next to the program or
+`MageBros.exe`, or in a `soundfonts` folder in either place. Placing it there is an intentional
+choice, so it takes precedence. With no such file the game uses the system synthesizer: the
+Windows MIDI synth the original used, or the macOS DLS synth. If the system synthesizer cannot
+start, the game uses the built-in **TimGM6mb** General MIDI bank. Linux has no system
+synthesizer, so it uses a user SoundFont and then the built-in bank.
+
+The original tracks were authored for **Yamaha XG**. The project does not include a Yamaha XG
+bank because its samples cannot be redistributed; the bundled TimGM6mb bank is General MIDI. If
+you have a legally obtained XG bank, you can use it as a user `.sf2`; the engine does not
+reproduce Yamaha XG SysEx effects.
 
 **Better-sounding MIDI instead:** a General MIDI SoundFont (`.sf2`) changes the instruments the
 MIDI music is played with.
 
 1. Put the `.sf2` file next to `MageBros.exe`, or keep them tidy in a folder called `soundfonts`
    next to it.
-2. In the game, open Options (F10) > Audio > **Music synth** and press Left or Right to choose it.
-   The music switches at once and the choice is remembered.
+2. In the game, open Options (F10) > Audio > **Music synth** and press Left or Right to choose
+   **Built-in** (the TimGM6mb bank) or your file. The music switches at once and the choice is
+   remembered.
 
-A file called `soundfont.sf2` or `magebros.sf2` in either place is used automatically and takes
-precedence over the system synthesizer. **System synth** always uses the platform's synthesizer,
-and **Automatic** goes back to the default: the SoundFont if one is present, otherwise the
-system synthesizer.
+**System synth** always uses the platform's synthesizer. **Built-in** uses the TimGM6mb bank that
+comes with the package. On Linux the system synthesizer is not offered; Automatic uses a user
+file and then the built-in bank. The built-in bank is GPL-2.0; its licence travels in
+`licenses/`.
 
 ### Your own menu font
 
@@ -204,7 +223,9 @@ give you stays in your save.
 
 - **Settings:** `magebros_native.ini` next to the program, with a comment for every option. Delete
   it to restore the defaults. A log, `magebros_native.log`, is written next to it.
-- **Saves:** `%APPDATA%\MageBrosNative\saves\original\progress.ini`, or the folder set by
+- **Saves:** `%APPDATA%\MageBrosNative\saves\original\progress.ini` on Windows,
+  `~/Library/Application Support/MageBrosNative` on macOS, and
+  `~/.local/share/MageBrosNative/saves/original/progress.ini` on Linux, or the folder set by
   `save_path` in the settings file. There are 8 save slots for one-player games and 8 for
   two-player games, as in the original. Saves from the original game are not carried over.
 
@@ -230,10 +251,9 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   ```
 
   Settings, saves and the log live in `~/Library/Application Support/MageBrosNative`; the
-  application bundle itself is never written to. Music plays through the macOS system
-  synthesizer (the Apple DLS synth), so no SoundFont is needed; an `.sf2` next to `MageBros.exe`
-  or in a `soundfonts` folder still takes precedence, and the original's `Music*.mid` files are
-  used in either case.
+  application bundle itself is never written to. Music uses a user `.sf2` next to the program or
+  `MageBros.exe` first, otherwise the macOS system synthesizer (the Apple DLS synth), with the
+  built-in TimGM6mb as the fallback; the original's `Music*.mid` files are used in every case.
   **F10** (or Fn+F10: Apple keyboards use F10 for Mute by default, or Start on a gamepad)
   opens the pause menu — Resume, video/graphics/audio/controls, Level select, Main menu and
   Quit game. **P** freezes the game, as in the original; Esc is "back" inside menus.
@@ -247,21 +267,38 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   Put your own `MageBros.exe` in `/roms2/ports/magebros/`, then start **MageBros** from the
   console's Ports menu. Copy the game's own `Music*.mid` files there too, and any General MIDI
   `.sf2` as `soundfont.sf2`: the console has no system synthesizer, so without a SoundFont the
-  effects play but the music stays silent. The launcher sets the one environment hint this
+  effects play but the music stays silent. (The desktop packages carry TimGM6mb; the console
+  installer does not copy it.) The launcher sets the one environment hint this
   device needs (`SDL_EGL_LIBRARY=libMali.so`, because the console's EGL/GLES live in libMali and
   SDL does not find them by itself), runs the game through OpenGL ES 3.0 on KMSDRM at 640x480,
   and writes a log to `/roms2/ports/magebros/magebros.log`. Nothing on the system is replaced.
-- **Linux desktop:** the tools and tests build with `-DMBN_BUILD_GAME=OFF`, and a GLES-only
-  Linux device can be built with `-DMBN_GLES=ON`; a desktop with OpenGL 3.3 uses the default
-  backend. The Windows game cross-compiles with MinGW-w64
+- **Linux desktop (Debian 13, x86_64):** Docker on any machine; no Linux toolchain or sysroot to
+  prepare. The build runs in a Debian 13 container that matches the package's glibc 2.41, with
+  SDL3 3.4.18 built from the pinned source and linked statically, X11 and Wayland, ALSA/Pulse,
+  and the OpenGL 3.3 desktop backend.
+
+  ```sh
+  tools/linux/build.sh
+  # build-linux/MageBrosNative
+  # build-linux/MageBrosNative-<version>-linux-x86_64.tar.gz
+  ```
+
+  Unpack the tarball into a writable folder, put your own `MageBros.exe` and `Music*.mid` files
+  beside `MageBrosNative`, and run `./MageBrosNative`. The package includes the TimGM6mb bank, so
+  music works without a separately installed SoundFont. Settings and the log stay beside the
+  program; saves live in `~/.local/share/MageBrosNative/`. The artifact targets Debian 13 and
+  newer (glibc 2.41); Debian 12 and older are not supported by it. The same source builds for
+  other Linux baselines by setting `MBN_LINUX_BASE`, and a GLES-only device can use
+  `-DMBN_GLES=ON`. The Windows game cross-compiles with MinGW-w64
   (`-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake`).
 - **What gets built:**
 
-  | Program | What it does | Needs the game | In the zip |
+  | Program | What it does | Needs the game | In the package |
   |---|---|---|---|
   | `MageBrosNative.exe` | The game | Yes | Yes |
   | `MageBrosAssets.exe` | Lists (`--inventory`), checks (`--selftest`) or exports (`--export FOLDER`) the resources in your `MageBros.exe` | Yes | Yes |
   | `mbn_tests.exe` | Tests the file-format readers on small built-in samples | No | Yes |
+  | `mbn_soundfont_tests.exe` | Loads the bundled TimGM6mb bank and checks that it renders a note | No | Yes |
   | `mbn_collision_tests.exe` | Tests that the ColDet collision library answers the game's kinds of query | No | Yes |
   | `mbn_map_tests.exe` | Builds all 40 levels' geometry from your copy and checks it | Yes | No |
   | `mbn_hero_tests.exe` | Runs player 1's movement on all 40 levels: landing on each start floor, the original's jump height, and long random play that must never leave the hero inside a wall | Yes | No |
