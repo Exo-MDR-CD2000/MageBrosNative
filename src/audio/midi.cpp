@@ -376,6 +376,19 @@ std::vector<SoundFontDir> SoundFontDirs() {
     std::vector<SoundFontDir> out;
     std::string base = SDL_GetBasePath() ? SDL_GetBasePath() : "";
     std::string game = Assets::GameDir();
+    if (game == "./" || game == "." || game == ".\\") {
+        // The game is in the program folder. Assets::GameDir() kept the caller's relative
+        // spelling; resolve it so the folder is not listed twice (and does not make a second
+        // menu entry for every .sf2).
+        const char* cwd = SDL_GetCurrentDirectory();
+        std::string current = cwd ? cwd : "";
+        SDL_free((void*)cwd);
+        auto trim = [](std::string s) {
+            while (!s.empty() && (s.back() == '/' || s.back() == '\\')) s.pop_back();
+            return s;
+        };
+        if (!current.empty() && trim(current) == trim(base)) game.clear();
+    }
     auto add = [&](const std::string& dir, const std::string& name) {
         if (dir.empty()) return;
         for (const SoundFontDir& d : out)
@@ -407,10 +420,9 @@ std::vector<SoundFontDir> SoundFontDirs() {
 namespace {
 
 std::string BasePath() {
+    // SDL caches this string and returns the same pointer on later calls; it must not be freed.
     const char* p = SDL_GetBasePath();
-    std::string s = p ? p : "";
-    SDL_free((void*)p);
-    return s;
+    return p ? p : "";
 }
 
 bool FileExists(const std::string& path) {

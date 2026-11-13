@@ -376,6 +376,7 @@ std::vector<std::string> OptionsMenu::SynthList() const {
     out.push_back("system");
 #endif
     const std::string builtin = Midi::BuiltinSoundFontPath();
+    const std::string builtinName = builtin.empty() ? "" : BaseName(builtin);
     if (!builtin.empty()) out.push_back("builtin");
     // next to the program, next to MageBros.exe, then their "soundfonts" folders (Midi::SoundFontDirs);
     // files in the program's own folders are stored relative to it (portable), others in full
@@ -384,7 +385,9 @@ std::vector<std::string> OptionsMenu::SynthList() const {
         char** files = SDL_GlobDirectory(d.dir.c_str(), "*.sf2", SDL_GLOB_CASEINSENSITIVE, &n);
         for (int i = 0; i < n; i++) {
             const std::string full = d.dir + files[i];
-            if (!builtin.empty() && full == builtin) continue;  // the separate Built-in entry
+            // The separate Built-in entry covers the packaged file even when the game dir is
+            // relative ("./") and produces a second path spelling for the same file.
+            if (!builtin.empty() && (full == builtin || files[i] == builtinName)) continue;
             std::string v = d.name + files[i];
             if (std::find(out.begin(), out.end(), v) == out.end()) out.push_back(v);
         }
