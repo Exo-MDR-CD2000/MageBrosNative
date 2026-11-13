@@ -113,7 +113,8 @@ docs           REVERSE_ENGINEERING.md (findings, by module), ROADMAP.md (status)
                RELEASING.md (building and publishing a release, for the owner),
                banner.png and branding/ (the README banner and the icon: SVG sources)
 res            version.h.in, magebros_native.rc (the exe's icon and version info), .ico
-third_party    ColDet 1.2, TinySoundFont, dr_libs, stb (stb_truetype too), cgltf, font8x8
+third_party    ColDet 1.2, TinySoundFont, dr_libs, stb (stb_truetype too), cgltf, font8x8,
+               TimGM6mb General MIDI bank (GPL-2.0)
 ```
 
 `src/game` is collected by `file(GLOB_RECURSE ... CONFIGURE_DEPENDS)`, so new files only need
@@ -251,10 +252,15 @@ cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake -DCM
 cmake --build build-win -j && (cd build-win && cpack -G ZIP)
 ```
 
-**Linux game build for headless testing.** Install the SDL3 build dependencies, or turn off
-SDL's X11 extras, then configure with `-DMBN_BUILD_GAME=ON`. A container with no system GL
-headers needs `GL/gl.h`, `GL/glx.h`, `GL/glext.h` and `KHR/khrplatform.h` on the include path,
-taken from the Khronos registries. Run it under Xvfb with the dummy audio driver:
+**Linux desktop build.** The release command is `tools/linux/build.sh`: it builds in a Debian 13
+x86_64 container with a static SDL3, X11/Wayland, ALSA/Pulse and OpenGL 3.3, runs the no-game
+tests and writes `build-linux/MageBrosNative-<version>-linux-x86_64.tar.gz`. Debian 13 (glibc
+2.41) is the supported baseline; Debian 12 and older are not supported by that artifact.
+
+For a quick headless test build, install the SDL3 build dependencies, or turn off SDL's X11
+extras, then configure with `-DMBN_BUILD_GAME=ON`. A container with no system GL headers needs
+`GL/gl.h`, `GL/glx.h`, `GL/glext.h` and `KHR/khrplatform.h` on the include path, taken from the
+Khronos registries. Run it under Xvfb with the dummy audio driver:
 
 ```sh
 SDL_AUDIO_DRIVER=dummy xvfb-run -a -s "-screen 0 1280x1024x24" \
@@ -640,13 +646,18 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   - `OnKeyDown(DIK_P)`: the original's pause, toggling `m_bFrameMoving`.
 - `PlayMusic` in `main.cpp` is `JMidiList::Play` with Hopmon Native's MP3/FLAC replacement
   (`MusicStream::FindReplacement`); `XApplication::StopMusic` closes both players.
-- SoundFonts (`[audio] soundfont`, Options > Audio > Music synth): `Midi::SoundFontDirs()` is the one
-  list of places for both the automatic pick (`soundfont.sf2`, then `magebros.sf2`) and the menu's
-  list (`OptionsMenu::SynthList`): next to the program, next to MageBros.exe, then a `soundfonts`
-  folder (any capitalisation) in each (since 0.4.37). Files in the program's own folders are
-  stored relative to it (`soundfonts/x.sf2`), others with the full path. Player-facing steps:
-  the README's "Your own music". Testing: the owner has SoundFonts in Downloads and on the
-  Desktop (`Hopmon Native Extras`, one of 4 GB); copy them into a test copy, never move them.
+- SoundFonts and synthesizers (`[audio] soundfont`, Options > Audio > Music synth):
+  `Midi::SoundFontDirs()` is the one list of places for the automatic pick (`soundfont.sf2`,
+  then `magebros.sf2`), the bundled `TimGM6mb.sf2` and the menu's list
+  (`OptionsMenu::SynthList`): next to the program (in a macOS bundle SDL's base path is
+  `Contents/Resources`), next to MageBros.exe, then a `soundfonts` folder (any capitalisation)
+  in each (since 0.4.37).
+  `Midi::Init` values are `""` (Automatic: system synth, then user bank, then TimGM6mb),
+  `system`, `builtin` (TimGM6mb) and a path; explicit modes do not fall back. Files in the
+  program's own folders are stored relative to it (`soundfonts/x.sf2`), others with the full
+  path. Player-facing steps: the README's "Your own music". Testing: the owner has SoundFonts in
+  Downloads and on the Desktop (`Hopmon Native Extras`, one of 4 GB); copy them into a test
+  copy, never move them.
 - `XFPSDisplay` (`src/game`) is the original's counter, drawn by `XApplication::Render(d, bb,
   showFps, fps)`.
 - The key pages are built from `kKeyActions` in `options_menu.cpp` (group, label, DIK):

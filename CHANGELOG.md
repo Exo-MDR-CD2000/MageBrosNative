@@ -1,13 +1,27 @@
 # Changelog
 
 What changed in each version of Mage Bros. Native. Every version is published as a
-[GitHub release](https://github.com/Exo-MDR-CD2000/MageBrosNative/releases) with its Windows zip.
+[GitHub release](https://github.com/Exo-MDR-CD2000/MageBrosNative/releases) with its Windows zip
+and Linux tarball.
 You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 `MageBrosNative.exe` next to `MageBros.exe`.
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
+
+- **Linux desktop release (Debian 13, x86_64).** `tools/linux/build.sh` builds a portable
+  `MageBrosNative-<version>-linux-x86_64.tar.gz` in a Debian 13 container with a static SDL3,
+  X11/Wayland and OpenGL 3.3. The package includes the TimGM6mb General MIDI bank, so music
+  works without a system synthesizer. Debian 12 and older are not supported by this artifact.
+- **The system synthesizer is now the default.** Automatic music uses the platform synthesizer
+  first, then a user `soundfont.sf2`/`magebros.sf2`, then the built-in TimGM6mb bank. A user
+  SoundFont no longer overrides the system synthesizer unless it is selected.
+  **BREAKING:** players who relied on `soundfont.sf2` being picked automatically must choose it
+  in Options > Audio > Music synth once; the choice is remembered.
+- **Music synth offers Built-in.** The setting now has Automatic, System synth (Windows/macOS),
+  Built-in (TimGM6mb) and the user `.sf2` files. The built-in bank is included on Windows, macOS
+  and Linux, with its GPL-2.0 text and attribution.
 
 ## [0.4.47] - 2026-11-13
 

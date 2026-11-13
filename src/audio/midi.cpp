@@ -132,6 +132,7 @@ std::atomic<bool> g_finished{false};
 float g_volume = 1.f;
 
 enum class Backend { None, System, Soft } g_backend = Backend::None;
+bool g_usingBuiltin = false;  // the Soft backend is playing the bundled TimGM6mb bank
 tsf* g_tsf = nullptr;
 
 #if defined(_WIN32)
@@ -197,6 +198,7 @@ void SendShort(uint8_t st, uint8_t a, uint8_t b) {
 #endif
 }
 
+#if defined(_WIN32) || defined(__APPLE__)
 // A GM/GS/XG reset puts every channel back to volume 100 at full scale.
 bool IsSynthReset(const std::vector<uint8_t>& sx) {
     bool gmReset = sx.size() >= 5 && sx[1] == 0x7E && sx[3] == 0x09;
@@ -204,6 +206,7 @@ bool IsSynthReset(const std::vector<uint8_t>& sx) {
     bool xgReset = sx.size() >= 8 && sx[1] == 0x43 && sx[3] == 0x4C && sx[4] == 0x00 && sx[5] == 0x00 && sx[6] == 0x7E;
     return gmReset || gsReset || xgReset;
 }
+#endif
 
 void SendSysex(const std::vector<uint8_t>& sx) {
 #if defined(_WIN32) || defined(__APPLE__)
@@ -381,6 +384,10 @@ std::vector<SoundFontDir> SoundFontDirs() {
     };
     add(base, "");
     add(game, game);
+#if defined(__APPLE__)
+    // In a bundle SDL_GetBasePath is Contents/Resources; also accept a bank beside the executable.
+    if (!base.empty()) add(base + "../MacOS/", "../MacOS/");
+#endif
     // then a "soundfonts" folder in each, matched case-insensitively (as the music folder)
     for (const std::string& parent : {base, game}) {
         if (parent.empty()) continue;
@@ -397,45 +404,63 @@ std::vector<SoundFontDir> SoundFontDirs() {
     return out;
 }
 
-bool Init(const std::string& soundFontPath) {
-    std::string sf = soundFontPath;
-    if (sf == "system") {
-        sf.clear();  // explicit choice of the operating system synthesizer: skip auto-detection
-    } else if (!sf.empty()) {
-        // relative paths are relative to the program's folder
-        bool absolute = sf[0] == '/' || sf[0] == '\\' || (sf.size() > 1 && sf[1] == ':');
-        if (!absolute) sf = std::string(SDL_GetBasePath() ? SDL_GetBasePath() : "") + sf;
-    } else {
-        // automatic: soundfont.sf2, then magebros.sf2, each looked for next to the program, next
-        // to MageBros.exe, then in their "soundfonts" folders
-        std::vector<SoundFontDir> dirs = SoundFontDirs();
-        for (const char* cand : {"soundfont.sf2", "magebros.sf2"}) {
-            for (const SoundFontDir& d : dirs) {
-                std::string p = d.dir + cand;
-                FILE* f = OpenFileUtf8(p.c_str(), "rb");
-                if (f) { fclose(f); sf = p; break; }
-            }
-            if (!sf.empty()) break;
+namespace {
+
+std::string BasePath() {
+    const char* p = SDL_GetBasePath();
+    std::string s = p ? p : "";
+    SDL_free((void*)p);
+    return s;
+}
+
+bool FileExists(const std::string& path) {
+    SDL_PathInfo info;
+    return SDL_GetPathInfo(path.c_str(), &info) && info.type == SDL_PATHTYPE_FILE;
+}
+
+std::string FindUserSoundFont() {
+    // automatic: soundfont.sf2, then magebros.sf2, each next to the program, next to MageBros.exe,
+    // then in their "soundfonts" folders
+    for (const char* cand : {"soundfont.sf2", "magebros.sf2"}) {
+        for (const SoundFontDir& d : SoundFontDirs()) {
+            std::string p = d.dir + cand;
+            if (FileExists(p)) return p;
         }
     }
-    if (!sf.empty()) {
-        {
-            // loaded through SDL, which takes UTF-8 paths on every system
-            size_t n = 0;
-            void* data = SDL_LoadFile(sf.c_str(), &n);
-            g_tsf = data ? tsf_load_memory(data, (int)n) : nullptr;
-            SDL_free(data);
-        }
-        if (g_tsf) {
-            tsf_set_output(g_tsf, TSF_STEREO_INTERLEAVED, Audio::OutputRate(), 0.0f);
-            tsf_set_max_voices(g_tsf, 256);
-            g_backend = Backend::Soft;
-            Audio::SetMusicRenderer(SoftRender);
-            Log("MIDI: using built-in synthesizer with %s", sf.c_str());
-            return true;
-        }
-        Log("MIDI: failed to load SoundFont %s", sf.c_str());
+    return "";
+}
+
+std::string FindBuiltinSoundFont() {
+    // The packaged bank is called TimGM6mb.sf2: it must not be confused with a player's
+    // soundfont.sf2, which is the automatic user SoundFont.
+    for (const SoundFontDir& d : SoundFontDirs()) {
+        std::string p = d.dir + "TimGM6mb.sf2";
+        if (FileExists(p)) return p;
     }
+    return "";
+}
+
+bool LoadSoftSynth(const std::string& path, bool builtin) {
+    // loaded through SDL, which takes UTF-8 paths on every system
+    size_t n = 0;
+    void* data = SDL_LoadFile(path.c_str(), &n);
+    g_tsf = data ? tsf_load_memory(data, (int)n) : nullptr;
+    SDL_free(data);
+    if (!g_tsf) {
+        Log("MIDI: failed to load SoundFont %s", path.c_str());
+        return false;
+    }
+    tsf_set_output(g_tsf, TSF_STEREO_INTERLEAVED, Audio::OutputRate(), 0.0f);
+    tsf_set_max_voices(g_tsf, 256);
+    g_backend = Backend::Soft;
+    g_usingBuiltin = builtin;
+    Audio::SetMusicRenderer(SoftRender);
+    if (builtin) Log("MIDI: using the built-in TimGM6mb bank with %s", path.c_str());
+    else Log("MIDI: using SoundFont %s", path.c_str());
+    return true;
+}
+
+bool TrySystemSynth() {
 #if defined(_WIN32)
     if (midiOutOpen(&g_hmo, MIDI_MAPPER, 0, 0, CALLBACK_NULL) == MMSYSERR_NOERROR) {
         g_backend = Backend::System;
@@ -444,28 +469,60 @@ bool Init(const std::string& soundFontPath) {
         Log("MIDI: using the Windows system synthesizer");
         return true;
     }
+    Log("MIDI: the Windows system synthesizer could not start");
 #elif defined(__APPLE__)
-    {
-        std::string why;
-        if (StartSystemSynth(&why)) {
-            g_backend = Backend::System;
-            g_quit = false;
-            g_thread = std::thread(SystemThread);
-            Log("MIDI: using the macOS system synthesizer");
-            return true;
-        }
-        StopSystemSynth();
-        Log("MIDI: the macOS system synthesizer could not start: %s", why.c_str());
+    std::string why;
+    if (StartSystemSynth(&why)) {
+        g_backend = Backend::System;
+        g_quit = false;
+        g_thread = std::thread(SystemThread);
+        Log("MIDI: using the macOS system synthesizer");
+        return true;
     }
+    StopSystemSynth();
+    Log("MIDI: the macOS system synthesizer could not start: %s", why.c_str());
 #endif
-#if defined(__APPLE__)
-    Log("MIDI: no synthesizer available (no SoundFont was found and the macOS system synthesizer could not start)");
-#else
-    Log("MIDI: no synthesizer available (place a General MIDI soundfont.sf2 next to the game to enable music)");
-#endif
-    g_backend = Backend::None;
     return false;
 }
+
+}  // namespace
+
+bool Init(const std::string& soundFontPath) {
+    g_backend = Backend::None;
+    g_usingBuiltin = false;
+
+    if (soundFontPath == "system") {
+        if (TrySystemSynth()) return true;
+        Log("MIDI: the system synthesizer is unavailable (explicit choice)");
+        return false;
+    }
+    if (soundFontPath == "builtin") {
+        std::string sf = FindBuiltinSoundFont();
+        if (!sf.empty() && LoadSoftSynth(sf, true)) return true;
+        Log("MIDI: the built-in TimGM6mb bank is missing or unreadable");
+        return false;
+    }
+    if (!soundFontPath.empty()) {
+        std::string sf = soundFontPath;
+        bool absolute = sf[0] == '/' || sf[0] == '\\' || (sf.size() > 1 && sf[1] == ':');
+        if (!absolute) sf = BasePath() + sf;
+        if (LoadSoftSynth(sf, false)) return true;
+        Log("MIDI: the selected SoundFont is unavailable; music stays silent");
+        return false;
+    }
+
+    // Automatic: the system synthesizer first, then a player's SoundFont, then the bundled bank.
+    if (TrySystemSynth()) return true;
+    std::string sf = FindUserSoundFont();
+    if (!sf.empty() && LoadSoftSynth(sf, false)) return true;
+    sf = FindBuiltinSoundFont();
+    if (!sf.empty() && LoadSoftSynth(sf, true)) return true;
+
+    Log("MIDI: no synthesizer available (no system synthesizer, user SoundFont or built-in bank)");
+    return false;
+}
+
+std::string BuiltinSoundFontPath() { return FindBuiltinSoundFont(); }
 
 static void ShutdownBackend() {
 #if defined(_WIN32) || defined(__APPLE__)
@@ -484,6 +541,7 @@ static void ShutdownBackend() {
     Audio::SetMusicRenderer(nullptr);
     if (g_tsf) tsf_close(g_tsf);
     g_tsf = nullptr;
+    g_usingBuiltin = false;
     g_backend = Backend::None;
 }
 
@@ -614,7 +672,8 @@ const char* BackendName() {
 #else
             return "system synth";
 #endif
-        case Backend::Soft: return "SoundFont synth";
+        case Backend::Soft:
+            return g_usingBuiltin ? "Built-in synth (TimGM6mb)" : "SoundFont synth";
         default: return "unavailable";
     }
 }

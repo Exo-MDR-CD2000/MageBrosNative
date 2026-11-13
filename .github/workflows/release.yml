@@ -1,10 +1,11 @@
-# Builds the Windows zip on every push to main and publishes it as a GitHub release named after
-# the version in CMakeLists.txt (project(MageBrosNative VERSION x.y.z)). A push that doesn't
-# change the version (docs only, for example) finds the release already there and stops.
+# Builds the Windows zip and, after it, the Linux tarball on every push to main and publishes
+# them as a GitHub release named after the version in CMakeLists.txt
+# (project(MageBrosNative VERSION x.y.z)). A push that doesn't change the version (docs only, for
+# example) finds the release already there and stops.
 #
-# The runner has no MageBros.exe (it must never be uploaded), so only the tests that need no game
-# files run here; the map and hero tests run locally through make_release.bat. The zip contains no
-# game content either: players still point it at their own MageBros.exe.
+# The runners have no MageBros.exe (it must never be uploaded), so only the tests that need no
+# game files run here; the map and hero tests run locally through make_release.bat. Neither
+# package contains game content: players still point it at their own MageBros.exe.
 name: Release
 
 on:
@@ -22,6 +23,9 @@ concurrency:
 jobs:
   release:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      exists: ${{ steps.version.outputs.exists }}
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -91,3 +95,22 @@ jobs:
           ) -join "`n"
           Set-Content -Path notes.md -Value $notes -Encoding utf8
           gh release create "v$ver" $zip --title "Mage Bros. Native $ver" --notes-file notes.md --target $env:GITHUB_SHA
+
+  linux:
+    needs: release
+    if: needs.release.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build, test and package the Linux tarball
+        run: tools/linux/build.sh
+
+      - name: Attach the Linux tarball
+        run: |
+          ver='${{ needs.release.outputs.version }}'
+          file="build-linux/MageBrosNative-$ver-linux-x86_64.tar.gz"
+          test -f "$file"
+          gh release upload "v$ver" "$file" --clobber

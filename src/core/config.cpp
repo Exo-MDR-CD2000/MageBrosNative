@@ -395,13 +395,16 @@ bool Config::Save() const {
       "; Volumes from 0 (silent) to 100 (full); the default is 50 for each.\n"
       "; master_volume scales both sound effects and music.\n");
     fprintf(f, "master_volume = %d\nsfx_volume = %d\nmusic_volume = %d\n\n", masterVolume, sfxVolume, musicVolume);
-    P("; soundfont: a General MIDI SoundFont (.sf2) to play the music with. Leave\n"
-      ";   empty to use soundfont.sf2 or magebros.sf2 if one is in the program or game\n"
-      ";   folder, or in a \"soundfonts\" folder in either, otherwise the system\n"
-      ";   synthesizer: the Windows MIDI synth the original used, or macOS's DLS synth.\n"
-      ";   system = always use the system synthesizer.\n"
-      ";   A relative path is relative to this program's folder.\n"
-      ";   Examples: soundfont = soundfonts\\GeneralUser GS.sf2\n"
+    P("; soundfont: which synthesizer plays the MIDI music.\n"
+      ";   empty = automatic: the system synthesizer first (the Windows MIDI synth the\n"
+      ";           original used, or macOS's DLS synth), then soundfont.sf2 or magebros.sf2\n"
+      ";           from the program or game folder or their \"soundfonts\" folders, then the\n"
+      ";           built-in TimGM6mb bank. Linux has no system synthesizer, so it starts at\n"
+      ";           the user SoundFont and then uses the built-in bank.\n"
+      ";   system = only the system synthesizer; builtin = only the built-in TimGM6mb bank.\n"
+      ";   Anything else is a .sf2 path. A relative path is relative to this program's folder.\n"
+      ";   Examples: soundfont = builtin\n"
+      ";             soundfont = soundfonts\\GeneralUser GS.sf2\n"
       ";             soundfont = C:\\SoundFonts\\GeneralUser GS.sf2\n");
     fprintf(f, "soundfont = %s\n\n", soundFont.c_str());
     P("; music_source: where the music comes from.\n"
