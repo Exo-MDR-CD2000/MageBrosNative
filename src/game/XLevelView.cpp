@@ -1,5 +1,6 @@
 #include "XLevelView.h"
 #include "core/assets.h"
+#include "core/benchmark_level.h"
 #include "core/game_files.h"
 #include "core/log.h"
 #include "framework/d3dfile.h"
@@ -102,9 +103,28 @@ bool XLevelView::Load(int world, int level) {
         Log("Level view: world %d level %d (resource %u) unreadable: %s", world + 1, level + 1, id, err.c_str());
         return false;
     }
+    return LoadGrid(std::move(g), world, level, false);
+}
+
+bool XLevelView::LoadBenchmark() {
+    LevelGrid g;
+    std::string err;
+    if (!BenchmarkLevel::Build(&g, &err)) {
+        Log("Level view: benchmark level unreadable: %s", err.c_str());
+        return false;
+    }
+    return LoadGrid(std::move(g), BenchmarkLevel::kWorld, BenchmarkLevel::kLevel, true);
+}
+
+bool XLevelView::LoadGrid(LevelGrid grid, int world, int level, bool benchmark) {
     world_ = world;
     level_ = level;
-    grid_ = std::move(g);
+    benchmark_ = benchmark;
+    floorGpu_.reset();
+    undergroundGpu_.reset();
+    goalGpu_.reset();
+    markersGpu_.reset();
+    grid_ = std::move(grid);
     geo_ = MapGeometry::Build(grid_);
     collision_ = MapCollision(geo_.cells, grid_.depth);
     floorTexture_ = kFloorTexture[world];
@@ -113,7 +133,10 @@ bool XLevelView::Load(int world, int level) {
         if (!D3DTextr_GetSurface(t)) D3DTextr_CreateTextureFromResource(t, 0, 0);
     PlaceObjects();
     BuildMarkers();
-    Log("Level view: %s", Summary().c_str());
+    if (benchmark_)
+        Log("Level view: %s (level hash %08x)", Summary().c_str(), BenchmarkLevel::Hash());
+    else
+        Log("Level view: %s", Summary().c_str());
     return true;
 }
 
@@ -136,6 +159,8 @@ void XLevelView::FilterMarkers(const std::function<bool(const Object&)>& keep) {
 void XLevelView::BuildMarkers(const std::function<bool(const Object&)>& keep) {
     goalPads_ = MapGeometry::Mesh();
     markers_ = MapGeometry::Mesh();
+    goalGpu_.reset();
+    markersGpu_.reset();
     for (const auto& o : objects_) {
         if (keep && o.kind != Kind::Goal && !keep(o)) continue;
         if (o.kind == Kind::Goal) {
@@ -157,11 +182,13 @@ int XLevelView::FloorAt(float x, float z) const {
                                    (int)(z / MapGeometry::kCellSize));
 }
 
-void XLevelView::DrawMesh(Device* d, const MapGeometry::Mesh& m, uint16_t texture) {
+void XLevelView::DrawMesh(Device* d, const MapGeometry::Mesh& m, uint16_t texture,
+                          std::unique_ptr<MeshBuffer>& gpu) {
     if (m.vertices.empty()) return;
+    if (!gpu) gpu = std::make_unique<MeshBuffer>();
     d->SetTexture(0, texture ? D3DTextr_GetSurface(texture) : nullptr);
-    d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, D3DFVF_LVERTEX, m.vertices.data(), (DWORD)m.vertices.size(),
-                            m.indices.data(), (DWORD)m.indices.size(), 0);
+    d->DrawMeshIndexed(D3DPT_TRIANGLELIST, D3DFVF_LVERTEX, gpu.get(), m.vertices.data(), (DWORD)m.vertices.size(),
+                       m.indices.data(), (DWORD)m.indices.size(), 0, (DWORD)m.indices.size());
 }
 
 void XLevelView::Render(Device* d, bool drawObjects) {
@@ -173,10 +200,10 @@ void XLevelView::Render(Device* d, bool drawObjects) {
     // pre-lit geometry (D3DLVERTEX), as the original draws its merged map meshes
     d->SetRenderState(D3DRENDERSTATE_LIGHTING, 0);
     d->SetRenderState(D3DRENDERSTATE_CULLMODE, D3DCULL_NONE);
-    DrawMesh(d, geo_.floorMesh, floorTexture_);
-    DrawMesh(d, geo_.undergroundMesh, undergroundTexture_);
-    DrawMesh(d, goalPads_, kGoalTexture);
-    DrawMesh(d, markers_, 0);
+    DrawMesh(d, geo_.floorMesh, floorTexture_, floorGpu_);
+    DrawMesh(d, geo_.undergroundMesh, undergroundTexture_, undergroundGpu_);
+    DrawMesh(d, goalPads_, kGoalTexture, goalGpu_);
+    DrawMesh(d, markers_, 0, markersGpu_);
     d->SetTexture(0, nullptr);
 
     // objects with real models
@@ -220,12 +247,22 @@ std::string XLevelView::Summary() const {
     int counts[10] = {};
     for (const auto& o : objects_) counts[(int)o.kind]++;
     char b[256];
-    std::snprintf(b, sizeof b,
-                  "World %d-%d: %d rows, %zu + %zu quads, %d coins, %d torches, %d platforms, %d objects, %d fences, "
-                  "%d enemies, %d bosses",
-                  world_ + 1, level_ + 1, grid_.depth, geo_.floorMesh.QuadCount(), geo_.undergroundMesh.QuadCount(),
-                  counts[(int)Kind::Coin], counts[(int)Kind::Torch] + counts[(int)Kind::TorchSmall],
-                  counts[(int)Kind::Platform], counts[(int)Kind::StaticObject], counts[(int)Kind::Fence],
-                  counts[(int)Kind::Enemy], counts[(int)Kind::Boss]);
+    if (benchmark_)
+        std::snprintf(b, sizeof b,
+                      "Benchmark: %d rows, %zu + %zu quads, %d coins, %d torches, %d platforms, %d objects, "
+                      "%d fences, %d enemies, %d bosses",
+                      grid_.depth, geo_.floorMesh.QuadCount(), geo_.undergroundMesh.QuadCount(),
+                      counts[(int)Kind::Coin], counts[(int)Kind::Torch] + counts[(int)Kind::TorchSmall],
+                      counts[(int)Kind::Platform], counts[(int)Kind::StaticObject], counts[(int)Kind::Fence],
+                      counts[(int)Kind::Enemy], counts[(int)Kind::Boss]);
+    else
+        std::snprintf(b, sizeof b,
+                      "World %d-%d: %d rows, %zu + %zu quads, %d coins, %d torches, %d platforms, %d objects, "
+                      "%d fences, %d enemies, %d bosses",
+                      world_ + 1, level_ + 1, grid_.depth, geo_.floorMesh.QuadCount(),
+                      geo_.undergroundMesh.QuadCount(), counts[(int)Kind::Coin],
+                      counts[(int)Kind::Torch] + counts[(int)Kind::TorchSmall], counts[(int)Kind::Platform],
+                      counts[(int)Kind::StaticObject], counts[(int)Kind::Fence], counts[(int)Kind::Enemy],
+                      counts[(int)Kind::Boss]);
     return b;
 }

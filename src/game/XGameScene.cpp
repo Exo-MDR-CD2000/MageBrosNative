@@ -6,6 +6,7 @@
 #include "game/XStatusDisplay.h"
 #include "audio/midi.h"
 #include "core/config.h"
+#include "framework/benchmark.h"
 #include "framework/d3dutil.h"
 #include "framework/interp.h"
 #include "gfx/device.h"
@@ -54,7 +55,15 @@ void XGameScene::Start() {
 
 bool XGameScene::InitLevel() {
     const XLevelStatus& ls = app_->LevelStatus();
-    if (!level_.Load(ls.currentWorld, ls.currentLevel)) return false;
+    if (Benchmark::Active()) {
+        if (Benchmark::HasOriginalLevel()) {
+            if (!level_.Load(Benchmark::OriginalWorld(), Benchmark::OriginalLevel())) return false;
+        } else if (!level_.LoadBenchmark()) {
+            return false;
+        }
+    } else if (!level_.Load(ls.currentWorld, ls.currentLevel)) {
+        return false;
+    }
     app_->MarkLevelStart();  // (native: what the options menu's "Level select" goes back to)
     // objects not reconstructed yet keep their coloured markers
     level_.FilterMarkers([](const XLevelView::Object& o) { return !XLevelLoop::IsReconstructed(o.code); });
@@ -95,7 +104,12 @@ bool XGameScene::InitLevel() {
     sd.InitForGame();  // XStatusDisplay::Reset: the counter and the lost-gold messages
     levelChanged_ = true;
     app_->PlayMusic(level_.MusicTrack());  // JMidiList::Play: Music06 with a boss, else the world's
-    StartFadeIn(PLAYING);
+    // A benchmark run must start on a fully drawn level: the fade would put the first seconds of
+    // the measurement under the strips.
+    if (Benchmark::Active())
+        StartProcess(PLAYING);
+    else
+        StartFadeIn(PLAYING);
     return true;
 }
 
@@ -149,6 +163,30 @@ void XGameScene::UpdateInput() {
     // XHeroB::_UpdateInput: D A W S; fire Left Ctrl or 1; jump Left Shift or 2
     read(inputB_, DIK_D, DIK_A, DIK_W, DIK_S, DIK_LCONTROL, DIK_1, DIK_LSHIFT, DIK_2_, 1);
     std::copy(keys, keys + 256, prevKeys_);
+}
+
+// The benchmark's scripted load: hero A stays in place and turns and fires on a tick schedule, so
+// shots light the torches and hit the enemies and props in the opening view. The schedule counts
+// ticks (not frames), so a run's simulation is the same at any frame rate.
+void XGameScene::ApplyBenchmarkInput() {
+    XHeroInput& in = inputA_;
+    in = XHeroInput();
+    in.keyControlUsed = true;  // no stick
+    const uint32_t t = Benchmark::Ticks();
+    const uint32_t turn = t % 160;
+    if (turn < 20)
+        in.keyRight = true;
+    else if (turn >= 80 && turn < 100)
+        in.keyLeft = true;
+    if (t % 25 == 0) {  // fire a burst every quarter second
+        in.button1Pressed = true;
+        in.button1Down = true;
+    }
+    if (t % 200 == 0) {  // and jump occasionally, for the landing effect
+        in.button2Pressed = true;
+        in.button2Down = true;
+    }
+    inputB_ = XHeroInput();  // one player in benchmark mode
 }
 
 // Native (widescreen): how much wider than the original's 4:3 the 3D view is, from the window's
@@ -216,7 +254,10 @@ void XGameScene::ProcessFrame(unsigned n) {
             return;
         }
     } else if (state_ == PROCESS) {
-        if (processType_ == PLAYING) {
+        if (Benchmark::Active()) {
+            // the benchmark run has no level end, level change or Escape give-up; the scripted
+            // hero is kept alive by the benchmark cheats
+        } else if (processType_ == PLAYING) {
             // one player clears the level by warping and loses it by dying; two clear it when one
             // has warped and the other has warped or died, and lose it when both have died
             const XLevelStatus& ls = app_->LevelStatus();
@@ -277,7 +318,16 @@ void XGameScene::Tick() {
     const Config& cfg = GetConfig();
     XHero::cheats = {cfg.infiniteLives, cfg.invincible, cfg.infiniteMagic, cfg.noFallingDeaths,
                      cfg.moonJump / 100.0f, cfg.runSpeed / 100.0f, cfg.rapidFire};
+    if (Benchmark::Active()) {
+        // The benchmark keeps the hero alive so the measured window always shows the same level
+        // content; these are process-local and never touch the player's configuration.
+        XHero::cheats.invincible = true;
+        XHero::cheats.infiniteLives = true;
+        XHero::cheats.noFallingDeaths = true;
+        Benchmark::AddTick();
+    }
     UpdateInput();
+    if (Benchmark::Active()) ApplyBenchmarkInput();
     app_->StatusDisplay().ProcessFrame();  // the status display first
     // native: the update range for this tick, from the view's reach (480 unless the view reaches
     // past it); set once a tick, never while drawing, as it is game logic

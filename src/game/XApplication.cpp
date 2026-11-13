@@ -1,6 +1,7 @@
 #include "XApplication.h"
 #include "core/log.h"
 #include "core/saves.h"
+#include "framework/benchmark.h"
 #include <ctime>
 #include "game/JSprite.h"
 #include "game/XEndingObject.h"
@@ -119,6 +120,31 @@ void XApplication::StartGameAt(int world, int level) {
     saveData_.levelStatus.currentLevel = (int8_t)level;
     slot_ = -1;  // a test hook's game is never saved
     EnterGame();
+}
+
+void XApplication::StartBenchmark() {
+    // A run uses a clean, fixed save so every start is alike, and puts the player's own save back
+    // when it is left (the benchmark never writes to disk).
+    benchmarkSave_ = saveData_;
+    benchmarkOnePlayer_ = onePlayer_;
+    benchmark_ = true;
+    Benchmark::SetActive(true);
+    saveData_.Reset();
+    onePlayer_ = true;
+    slot_ = -1;
+    EnterGame();
+}
+
+void XApplication::LeaveLevel() {
+    if (benchmark_) {
+        saveData_ = benchmarkSave_;
+        onePlayer_ = benchmarkOnePlayer_;
+        benchmark_ = false;
+        Benchmark::SetActive(false);
+    } else {
+        saveData_ = levelStart_;
+    }
+    state_ = SELECT_LEVEL;
 }
 
 void XApplication::Render(Device* d, BackBuffer* bb, bool showFps, int fps) {

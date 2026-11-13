@@ -1,6 +1,20 @@
 # The renderer's work per draw (an optimization for weak graphics hardware)
 
-**Status: not built, not planned. A write-up for later.** Issue 6 of the review of 2026-11-09
+**Measured on the R36S, 2026-11-13** (full record:
+[`research/acceptance/r36s-performance.md`](../research/acceptance/r36s-performance.md)):
+the state cache, static mesh buffers and merged opaque materials cut the benchmark level from
+41 ms to 15 ms of processor work and 1.16 MB to 24 KB of uploaded bytes a frame, and 1-1 from
+15.3 ms to 7.2 ms. The console still locks to 30 fps at 640x480: the limit is fill/overdraw in the
+`D3DFVF_LVERTEX` path (the level's pre-lit meshes and the game's flat particles/rectangles),
+which scales with the render target. At MSAA 0, 1-1 is 30 fps at 640x480, 30 at 0.75 and 54 at
+0.5; level meshes alone reach 60 at 0.75 and flat rects alone 55, while no 3D is 60. MSAA 0/2/4,
+texture sampling, vertex colours, backface culling, depth test/write and the GPU clock were
+ruled out. Full-resolution 60 fps needs less fill (a lower-resolution effects layer or a
+cheaper level pass), not more state caching.
+
+**Status of the plan below: R1, R2 and R3 are built, R4 is not.** The earlier note "not built,
+not planned" applied until 2026-11-13. R0's measurements are in the acceptance file. The
+remaining plan is kept for what the LVERTEX finding may still need.
 ([SMOOTH_MOTION.md](SMOOTH_MOTION.md), "Review of 2026-11-09"). The owner (2026-11-10) may come
 back to it if players on low-end hardware report low frame rates; until then nothing here is to
 be built. Written from reading the code at 0.4.32. **Nothing in this file has been measured or

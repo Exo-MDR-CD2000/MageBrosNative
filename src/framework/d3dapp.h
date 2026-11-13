@@ -1,6 +1,8 @@
 // Replacement for the DX7 SDK CD3DApplication (d3dapp.cpp) on SDL3.
 #pragma once
 #include "../core/d3dtypes.h"
+#include "../framework/benchmark.h"
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -9,6 +11,7 @@ class Device;
 class Surface;
 class OptionsMenu;
 class StatsOverlay;
+class UIDraw;
 struct SDL_Window;
 
 // What the game sees as IDirectDrawSurface7* for the back buffer.
@@ -75,6 +78,13 @@ public:
     static constexpr float kWindowScales[] = {1.f, 1.25f, 1.5f, 1.6f, 2.f, 2.5f, 3.f, 3.5f, 4.f, 4.5f, 5.f, 6.f};
     bool OptionsOpen() const;
     void OpenOptions();  // e.g. from the title screen's OPTIONS entry
+    // The performance benchmark (Options > Video or --benchmark): close the menu, enter the
+    // benchmark game and start the measured run. The game supplies the entry and the finish.
+    void StartBenchmarkFromMenu();
+    void StartBenchmarkRun(double seconds, const std::string& reportPath, std::function<void()> onFinish);
+    bool BenchmarkRunning() const { return benchmark_.Running(); }
+    double BenchmarkRemainingSeconds() const { return benchmark_.RemainingSeconds(); }
+    void DrawBenchmarkLabel();  // the small on-screen marker while a run is active
     // Hooks for the options/pause menu, implemented by the game.
     enum class UISound { Move, Confirm };
     virtual void PlayUISound(UISound s) { (void)s; }
@@ -88,6 +98,10 @@ public:
     virtual void ReloadMusic() {}                       // music source changed: restart the current track
     virtual void ApplyModChanges() {}                   // mods or level pack changed (title screen only)
     virtual const char* MusicSource() const { return ""; }
+    virtual int CurrentMusicTrack() const { return 0; }  // the benchmark report's music row
+    // The game's side of the benchmark: enter the generated level; leave it when the run ends.
+    virtual void StartBenchmarkGame() {}
+    virtual void BenchmarkFinished() {}
 
 protected:
     virtual HRESULT OneTimeSceneInit() { return S_OK; }
@@ -167,6 +181,15 @@ private:
     std::vector<int> autoHeldKeys_;
     void* autoPad_ = nullptr;  // SDL_Joystick* of the test-only virtual controller
     std::unique_ptr<OptionsMenu> menu_;
+    // The performance benchmark: one run of the generated level, sampled frame by frame. The
+    // label is a small UIDraw of its own so it is independent of the Statistics Overlay.
+    Benchmark::Run benchmark_;
+    uint64_t benchmarkLastFrameNs_ = 0;
+    double lastTickMs_ = 0, lastRenderMs_ = 0;
+    bool benchmarkFromMenu_ = false;
+    std::unique_ptr<UIDraw> benchmarkUi_;
+    void FinishBenchmark();
+    void BuildBenchmarkReport(Benchmark::Report* r) const;
 
     // The Statistics Overlay (F9, [video] stats_overlay). The figures are gathered on every
     // frame drawn (a few clock reads, whether it shows or not) and summed up each second with the

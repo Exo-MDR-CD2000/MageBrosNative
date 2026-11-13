@@ -1,5 +1,8 @@
 #include <cstdlib>
 #include "device.h"
+#ifndef GL_SAMPLES
+#define GL_SAMPLES 0x80A9
+#endif
 #include "../core/config.h"
 #include "../core/log.h"
 #include <SDL3/SDL.h>
@@ -31,10 +34,12 @@ layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNormal;
 layout(location=2) in vec4 aColor;
 layout(location=4) in vec2 aUV;
+layout(location=3) in float aMaterial;  // merged opaque model: its material slot
 uniform mat4 uWorld, uView, uProj;
 uniform bool uLighting, uLightOn, uHasVertexColor, uScreen2D;
 uniform float uBgra;  // 1: the colours arrived as RGBA and are really BGRA (ES attribute)
-uniform vec4 uMatDiffuse, uMatAmbient, uMatEmissive, uAmbient, uLightDiffuse;
+uniform int uMatMode;  // 1: take the material from aMaterial, 0: the single material below
+uniform vec4 uMatDiffuse[16], uMatAmbient[16], uMatEmissive[16], uAmbient, uLightDiffuse;
 uniform vec3 uLightDir;
 uniform vec4 uViewport2D;
 // Dynamic shadows (G4): 2 for a lit model, whose light is passed in two parts (what the light
@@ -46,11 +51,12 @@ out vec2 vUV;
 out vec3 vNormal;
 out vec3 vWorldPos, vAmbPart, vDirPart;
 flat out vec3 vAmbFlat, vDirFlat;
+flat out vec4 vMatDiffuse;
 vec4 vc(vec4 c) { return uBgra > 0.5 ? c.bgra : c; }
-vec4 d3dLight(vec3 n) {
-    vec3 c = uMatEmissive.rgb + uAmbient.rgb * uMatAmbient.rgb;
-    if (uLightOn) c += uLightDiffuse.rgb * uMatDiffuse.rgb * max(dot(n, uLightDir), 0.0);
-    return vec4(clamp(c, 0.0, 1.0), clamp(uMatDiffuse.a, 0.0, 1.0));
+vec4 d3dLight(vec3 n, vec4 md, vec4 ma, vec4 me) {
+    vec3 c = me.rgb + uAmbient.rgb * ma.rgb;
+    if (uLightOn) c += uLightDiffuse.rgb * md.rgb * max(dot(n, uLightDir), 0.0);
+    return vec4(clamp(c, 0.0, 1.0), clamp(md.a, 0.0, 1.0));
 }
 void main() {
     if (uScreen2D) {
@@ -68,13 +74,16 @@ void main() {
     // normals 1/s long, so small scaled models (the coins at 0.35 and 0.6) light up brighter.
     vec3 n = transpose(inverse(mat3(uWorld))) * aNormal;
     vNormal = n;
-    vec4 col = uLighting ? d3dLight(n) : (uHasVertexColor ? vc(aColor) : vec4(1.0));
+    int mi = uMatMode > 0 ? int(aMaterial + 0.5) : 0;
+    vec4 md = uMatDiffuse[mi], ma = uMatAmbient[mi], me = uMatEmissive[mi];
+    vMatDiffuse = md;
+    vec4 col = uLighting ? d3dLight(n, md, ma, me) : (uHasVertexColor ? vc(aColor) : vec4(1.0));
     vColor = col; vColorFlat = col; vUV = aUV;
     vWorldPos = wp.xyz;
     vec3 amb = vec3(0.0), dir = vec3(0.0);
     if (uShadowKind == 2) {
-        amb = uMatEmissive.rgb + uAmbient.rgb * uMatAmbient.rgb;
-        if (uLightOn) dir = uLightDiffuse.rgb * uMatDiffuse.rgb * max(dot(n, uLightDir), 0.0);
+        amb = me.rgb + uAmbient.rgb * ma.rgb;
+        if (uLightOn) dir = uLightDiffuse.rgb * md.rgb * max(dot(n, uLightDir), 0.0);
     }
     vAmbPart = amb; vDirPart = dir; vAmbFlat = amb; vDirFlat = dir;
 }
@@ -102,6 +111,7 @@ uniform vec2 uFboSize;
 // the light: the pre-lit level, 2 a lit model: its direct light only), the map and how to read it
 in vec3 vWorldPos, vAmbPart, vDirPart;
 flat in vec3 vAmbFlat, vDirFlat;
+flat in vec4 vMatDiffuse;
 uniform int uShadowKind, uShadowGrid;
 uniform sampler2DShadow uShadowMap;
 uniform mat4 uLightVP;
@@ -113,7 +123,6 @@ uniform vec3 uEye, uLightDir;
 uniform int uLightKind, uLightCount;
 uniform vec3 uLightPos[16], uLightColor[16];
 uniform float uLightReach[16];
-uniform vec4 uMatDiffuse;
 // With Dynamic lights, the level dimmed so they stand out (1 = as the original; the Ambient light
 // setting). Every draw of a level's 3D but the glowing sprites and the blob shadows.
 uniform float uSceneDim;
@@ -189,7 +198,7 @@ void main() {
             float facing = clamp((dot(n, L / max(d, 1e-3)) + 0.3) / 1.3, 0.0, 1.0);  // (a little round the side too)
             sum += uLightColor[i] * (a * a * facing);
         }
-        vec3 albedo = uLightKind == 2 ? uMatDiffuse.rgb : (uTexOn ? texture(uTex, vUV).rgb : vec3(1.0));
+        vec3 albedo = uLightKind == 2 ? vMatDiffuse.rgb : (uTexOn ? texture(uTex, vUV).rgb : vec3(1.0));
         result.rgb = min(result.rgb + albedo * sum, vec3(1.0));
     }
     fragColor = result * uConstColor;
@@ -375,6 +384,7 @@ void main() { fragColor = vec4(pow(texture(uTex, vUV).rgb, vec3(uGamma)), 1.0); 
 Texture::~Texture() {
     if (g_recordPending) g_device.FlushRecording();
     if (id_) glDeleteTextures(1, &id_);
+    GetDevice().InvalidateState();  // a deleted texture's name can be reused
 }
 
 Texture* Texture::Create(const Image& img, bool colorKey, uint32_t keyRGB, bool mipmaps) {
@@ -388,6 +398,7 @@ Texture* Texture::Create(const Image& img, bool colorKey, uint32_t keyRGB, bool 
 void Texture::Update(const Image& img, bool colorKey, uint32_t keyRGB) {
     if (g_recordPending) g_device.FlushRecording();
     Upload(img, colorKey, keyRGB);
+    GetDevice().InvalidateState();  // it bound the texture and set its filtering
 }
 
 void Texture::Upload(const Image& img, bool colorKey, uint32_t keyRGB) {
@@ -455,6 +466,7 @@ void Texture::Upload(const Image& img, bool colorKey, uint32_t keyRGB) {
     else glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    GetDevice().InvalidateState();  // this path bound the texture outside ApplyDrawState
 #ifdef MBN_TEXTURE_DIAG
     {
         static std::set<uint32_t> seen;
@@ -545,6 +557,8 @@ bool Device::Init(SDL_Window* window) {
     glRenderer_ = glStr(GL_RENDERER);
     glVendor_ = glStr(GL_VENDOR);
     glVersion_ = glStr(GL_VERSION);
+    glGetIntegerv(GL_SAMPLES, &windowSamples_);
+    Log("Window framebuffer: MSAA %dx", windowSamples_);
     Log("OpenGL vendor: %s", glVendor_.c_str());
 #if defined(MBN_GLES)
     Log("Renderer backend: gles");
@@ -557,8 +571,9 @@ bool Device::Init(SDL_Window* window) {
 #define U(n) u_.n = glGetUniformLocation(prog_, "u" #n[0] == 0 ? "" : nullptr)
     auto loc = [&](const char* n) { return glGetUniformLocation(prog_, n); };
     u_.world = loc("uWorld"); u_.view = loc("uView"); u_.proj = loc("uProj");
-    u_.lighting = loc("uLighting"); u_.matDiffuse = loc("uMatDiffuse"); u_.matAmbient = loc("uMatAmbient");
-    u_.matEmissive = loc("uMatEmissive"); u_.ambient = loc("uAmbient"); u_.lightOn = loc("uLightOn");
+    u_.lighting = loc("uLighting"); u_.matDiffuse = loc("uMatDiffuse[0]"); u_.matAmbient = loc("uMatAmbient[0]");
+    u_.matEmissive = loc("uMatEmissive[0]"); u_.matMode = loc("uMatMode"); u_.ambient = loc("uAmbient");
+    u_.lightOn = loc("uLightOn");
     u_.lightDir = loc("uLightDir"); u_.lightDiffuse = loc("uLightDiffuse"); u_.flat = loc("uFlat");
     u_.texOn = loc("uTexOn"); u_.colorOp = loc("uColorOp"); u_.colorArg1 = loc("uColorArg1");
     u_.colorArg2 = loc("uColorArg2"); u_.alphaOp = loc("uAlphaOp"); u_.alphaArg1 = loc("uAlphaArg1");
@@ -578,6 +593,7 @@ bool Device::Init(SDL_Window* window) {
     glUseProgram(prog_);
     glUniform1i(u_.aoTex, 1);      // (the AO texture on unit 1; the draws' own on 0)
     glUniform1i(u_.shadowMap, 2);  // (the shadow map on unit 2)
+    glUniform1i(u_.matMode, 0);
     glUniform1i(u_.shadowKind, 0);
     glUniform1i(u_.lightKind, 0);
     glUniform1f(u_.sceneDim, 1.f);
@@ -726,7 +742,20 @@ void Device::ComputeLayout() {
     bool changed = L.fboW != layout_.fboW || L.fboH != layout_.fboH || !sceneFbo_ ||
                    (cfg.bloom > 0) != (glowRb_ != 0);  // (Bloom on: the glow layer, G6)
     layout_ = L;
+    bool wantDirect = WantsDirectWindow();
+    changed = changed || wantDirect != directWindow_;
     if (changed) CreateTargets();
+}
+
+bool Device::WantsDirectWindow() const {
+#if defined(MBN_GLES)
+    const Config& cfg = GetConfig();
+    return windowSamples_ == cfg.msaa && cfg.renderScale == 1.f && cfg.bloom == 0 && cfg.brightness == 100 &&
+           layout_.destX == 0 && layout_.destY == 0 && layout_.destW == layout_.windowW &&
+           layout_.destH == layout_.windowH;
+#else
+    return false;
+#endif
 }
 
 void Device::DestroyTargets() {
@@ -741,6 +770,18 @@ void Device::DestroyTargets() {
 }
 
 void Device::CreateTargets() {
+    if (WantsDirectWindow()) {
+        DestroyTargets();
+        directWindow_ = true;
+        samples_ = windowSamples_;
+        layout_.fboW = layout_.destW;
+        layout_.fboH = layout_.destH;
+        InvalidateState();
+        InvalidateAttribs();
+        Log("Render target: the window, %dx%d, MSAA %dx", layout_.fboW, layout_.fboH, samples_);
+        return;
+    }
+    directWindow_ = false;
     DestroyTargets();
     GLint maxSamples = 0;
     glGetIntegerv(GL_MAX_SAMPLES, &maxSamples);
@@ -780,6 +821,8 @@ void Device::CreateTargets() {
     glBindFramebuffer(GL_FRAMEBUFFER, resolveFbo_);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, resolveTex_, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    InvalidateState();
+    InvalidateAttribs();
     Log("Render target %dx%d, MSAA %dx", W, H, samples_);
 }
 
@@ -793,6 +836,10 @@ void Device::OnSettingsChanged() {
 
 void Device::BeginFrame() {
     FlushRecording();  // (nothing should be left: SetGameplayView(false) sends it)
+    InvalidateState();
+    InvalidateAttribs();
+    frameDraws_ = 0;
+    frameUploadBytes_ = 0;
     gpu3D_.Poll();
     gpu3D_.FrameDone();
     gpuAO_.Poll();
@@ -824,6 +871,14 @@ void Device::WaitForGpu() { glFinish(); }
 
 void Device::Present() {
     FlushRecording();
+    InvalidateState();
+    InvalidateAttribs();
+    if (directWindow_) {
+        lastFrameDraws_ = frameDraws_ + 1;
+        lastFrameUploadBytes_ = frameUploadBytes_;
+        frameDraws_ = frameUploadBytes_ = 0;
+        return;
+    }
     glBindFramebuffer(GL_READ_FRAMEBUFFER, sceneFbo_);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, resolveFbo_);
     glBlitFramebuffer(0, 0, layout_.fboW, layout_.fboH, 0, 0, layout_.fboW, layout_.fboH, GL_COLOR_BUFFER_BIT, GL_NEAREST);
@@ -847,20 +902,26 @@ void Device::Present() {
     struct V { float x, y, z, u, v; } q[4] = {{-1, -1, 0, 0, 0}, {1, -1, 0, 1, 0}, {-1, 1, 0, 0, 1}, {1, 1, 0, 1, 1}};
     glBindVertexArray(vao_);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, sizeof q, q, GL_STREAM_DRAW);
+    BufferData(GL_ARRAY_BUFFER, sizeof q, q, GL_STREAM_DRAW);
     for (int i = 0; i < 6; i++) glDisableVertexAttribArray(i);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(V), (void*)0);
     glEnableVertexAttribArray(4);
     glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(V), (void*)12);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    lastFrameDraws_ = frameDraws_ + 1;  // the present's own quad
+    lastFrameUploadBytes_ = frameUploadBytes_;
+    frameDraws_ = 0;
+    frameUploadBytes_ = 0;
 }
 
 bool Device::SaveScreenshot(const char* path) {
     FlushRecording();
+    InvalidateState();
+    InvalidateAttribs();
     int W = layout_.fboW, H = layout_.fboH;
     std::vector<uint8_t> px((size_t)W * H * 4);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, resolveFbo_);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, directWindow_ ? 0 : resolveFbo_);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, W, H, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
@@ -896,6 +957,8 @@ bool Device::SaveScreenshot(const char* path) {
 
 HRESULT Device::Clear(DWORD, const RECT*, DWORD flags, D3DCOLOR color, float z, DWORD) {
     FlushRecording();
+    InvalidateState();
+    InvalidateAttribs();
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
     glViewport(0, 0, layout_.fboW, layout_.fboH);
     glDisable(GL_SCISSOR_TEST);
@@ -1027,6 +1090,7 @@ void Device::ApplyState(DWORD fvf, bool twoD) {
         return;
     }
     FlushRecording();  // (2D is drawn over the 3D already asked for)
+    InvalidateState();  // the 2D path sets program and state outside ApplyDrawState
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
     glViewport(0, 0, layout_.fboW, layout_.fboH);
     glUseProgram(prog_);
@@ -1034,6 +1098,7 @@ void Device::ApplyState(DWORD fvf, bool twoD) {
     glUniform4f(u_.constColor, 1, 1, 1, 1);
     glUniform1i(u_.alphaFix, 0);
     glUniform1f(u_.aoStrength, 0.f);
+    glUniform1i(u_.matMode, 0);
     glUniform1i(u_.shadowKind, 0);
     glUniform1i(u_.lightKind, 0);
     glUniform1f(u_.sceneDim, 1.f);
@@ -1042,111 +1107,302 @@ void Device::ApplyState(DWORD fvf, bool twoD) {
 
 // A 3D draw's state sent to OpenGL: the draw being asked for now, or a recorded one (the state
 // as it was when it was asked for).
-void Device::ApplyDrawState(const DrawState& st, DWORD fvf) {
+void Device::ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial) {
     const Config& cfg = GetConfig();
-    glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
-    glViewport(0, 0, layout_.fboW, layout_.fboH);
-    glUseProgram(prog_);
-    glUniform1i(u_.screen2D, 0);
-    glUniform4f(u_.constColor, 1, 1, 1, 1);
-    glUniform1i(u_.alphaFix, 0);
-    glUniform1f(u_.aoStrength, 0.f);  // (the replay sets it for the draws that take AO)
-    glUniform1i(u_.shadowKind, 0);    // (and the shadows' way, likewise)
-    glUniform1i(u_.lightKind, 0);     // (and the lights')
-    glUniform1f(u_.sceneDim, 1.f);    // (and the dimming)
-    glUniform1i(u_.glowMode, 0);      // (and what goes in the bloom's glow layer)
+    if (!glc_.valid || glc_.fbo != sceneFbo_) {
+        glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
+        glc_.fbo = sceneFbo_;
+    }
+    if (!glc_.valid || glc_.vpW != layout_.fboW || glc_.vpH != layout_.fboH) {
+        glViewport(0, 0, layout_.fboW, layout_.fboH);
+        glc_.vpW = layout_.fboW;
+        glc_.vpH = layout_.fboH;
+    }
+    if (!glc_.valid || glc_.prog != prog_) {
+        glUseProgram(prog_);
+        glc_.prog = prog_;
+    }
+    if (!glc_.valid || glc_.screen2D != 0) {
+        glUniform1i(u_.screen2D, 0);
+        glc_.screen2D = 0;
+    }
+    // the values the replay sets differently for some draws: cached like the rest, and reset here
+    // so each draw starts from the same state
+    SetConstColor(1, 1, 1, 1);
+    SetAlphaFix(0);
+    SetAOStrength(0.f);
+    SetShadowKind(0);
+    SetLightKind(0);
+    SetSceneDim(1.f);
+    SetGlowMode(0);
 
     // depth
-    if (st.zEnable) {
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LEQUAL);
-    } else {
-        glDisable(GL_DEPTH_TEST);
+    if (!glc_.valid || glc_.depthTest != (int)st.zEnable) {
+        if (st.zEnable) {
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_LEQUAL);
+        } else {
+            glDisable(GL_DEPTH_TEST);
+        }
+        glc_.depthTest = (int)st.zEnable;
     }
-    glDepthMask(st.zWrite ? GL_TRUE : GL_FALSE);
+    if (!glc_.valid || glc_.depthWrite != (int)st.zWrite) {
+        glDepthMask(st.zWrite ? GL_TRUE : GL_FALSE);
+        glc_.depthWrite = (int)st.zWrite;
+    }
     // blending
-    if (st.blendEnable) {
-        glEnable(GL_BLEND);
-        glBlendFunc(MapBlend(st.srcBlend), MapBlend(st.destBlend));
-    } else {
-        glDisable(GL_BLEND);
+    GLenum src = st.blendEnable ? MapBlend(st.srcBlend) : GL_ONE;
+    GLenum dst = st.blendEnable ? MapBlend(st.destBlend) : GL_ZERO;
+    if (!glc_.valid || glc_.blend != (int)st.blendEnable || (st.blendEnable && (glc_.srcBlend != src || glc_.dstBlend != dst))) {
+        if (st.blendEnable) {
+            glEnable(GL_BLEND);
+            glBlendFunc(src, dst);
+        } else {
+            glDisable(GL_BLEND);
+        }
+        glc_.blend = (int)st.blendEnable;
+        glc_.srcBlend = src;
+        glc_.dstBlend = dst;
     }
     // culling: D3DCULL_CCW removes triangles that appear counter-clockwise on screen, i.e. the
     // front faces are the visually clockwise ones (GL_CW in GL's convention).
-    DWORD cull = st.cullMode;
-    if (cull == D3DCULL_NONE) {
-        glDisable(GL_CULL_FACE);
-    } else {
-        glEnable(GL_CULL_FACE);
-        glFrontFace(cull == D3DCULL_CCW ? GL_CW : GL_CCW);
-        glCullFace(GL_BACK);
+    if (!glc_.valid || glc_.cull != (int)st.cullMode) {
+        DWORD cull = st.cullMode;
+        if (cull == D3DCULL_NONE) {
+            glDisable(GL_CULL_FACE);
+        } else {
+            glEnable(GL_CULL_FACE);
+            glFrontFace(cull == D3DCULL_CCW ? GL_CW : GL_CCW);
+            glCullFace(GL_BACK);
+        }
+        glc_.cull = (int)st.cullMode;
     }
 
     // transforms (with optional widescreen projection)
     D3DMATRIX world = st.world;
     D3DMATRIX proj = DrawProj(st);
-    glUniformMatrix4fv(u_.world, 1, GL_FALSE, world.m());
-    glUniformMatrix4fv(u_.view, 1, GL_FALSE, st.view.m());
-    glUniformMatrix4fv(u_.proj, 1, GL_FALSE, proj.m());
+    if (!glc_.valid || !glc_.worldSet || memcmp(&glc_.world, &world, sizeof world) != 0) {
+        glUniformMatrix4fv(u_.world, 1, GL_FALSE, world.m());
+        glc_.world = world;
+        glc_.worldSet = true;
+    }
+    if (!glc_.valid || !glc_.viewSet || memcmp(&glc_.view, &st.view, sizeof st.view) != 0) {
+        glUniformMatrix4fv(u_.view, 1, GL_FALSE, st.view.m());
+        glc_.view = st.view;
+        glc_.viewSet = true;
+    }
+    if (!glc_.valid || !glc_.projSet || memcmp(&glc_.proj, &proj, sizeof proj) != 0) {
+        glUniformMatrix4fv(u_.proj, 1, GL_FALSE, proj.m());
+        glc_.proj = proj;
+        glc_.projSet = true;
+    }
 
     // lighting
     bool lighting = st.lighting != 0 && (fvf & 0x010);  // needs normals
-    glUniform1i(u_.lighting, lighting);
-    glUniform1i(u_.hasVertexColor, (fvf & 0x040) != 0);
-    glUniform4fv(u_.matDiffuse, 1, &st.material.diffuse.r);
-    glUniform4fv(u_.matAmbient, 1, &st.material.ambient.r);
-    glUniform4fv(u_.matEmissive, 1, &st.material.emissive.r);
-    DWORD a = st.ambient;
-    glUniform4f(u_.ambient, ((a >> 16) & 0xFF) / 255.f, ((a >> 8) & 0xFF) / 255.f, (a & 0xFF) / 255.f, ((a >> 24) & 0xFF) / 255.f);
+    if (!glc_.valid || glc_.lighting != (int)lighting) {
+        glUniform1i(u_.lighting, lighting);
+        glc_.lighting = (int)lighting;
+    }
+    bool hasColor = (fvf & 0x040) != 0;
+    if (!glc_.valid || glc_.hasColor != (int)hasColor) {
+        glUniform1i(u_.hasVertexColor, hasColor);
+        glc_.hasColor = (int)hasColor;
+    }
+    bool matChanged = !mergedMaterial && (!glc_.valid || !glc_.matSet || glc_.matMode != 0 ||
+                      memcmp(glc_.matD, &st.material.diffuse.r, sizeof glc_.matD) ||
+                      memcmp(glc_.matA, &st.material.ambient.r, sizeof glc_.matA) ||
+                      memcmp(glc_.matE, &st.material.emissive.r, sizeof glc_.matE));
+    if (matChanged) {
+        SetMatMode(0);
+        glUniform4fv(u_.matDiffuse, 1, &st.material.diffuse.r);
+        glUniform4fv(u_.matAmbient, 1, &st.material.ambient.r);
+        glUniform4fv(u_.matEmissive, 1, &st.material.emissive.r);
+        memcpy(glc_.matD, &st.material.diffuse.r, sizeof glc_.matD);
+        memcpy(glc_.matA, &st.material.ambient.r, sizeof glc_.matA);
+        memcpy(glc_.matE, &st.material.emissive.r, sizeof glc_.matE);
+        glc_.matSet = true;
+    }
+    if (!glc_.valid || !glc_.ambientSet || glc_.ambient != st.ambient) {
+        DWORD a = st.ambient;
+        glUniform4f(u_.ambient, ((a >> 16) & 0xFF) / 255.f, ((a >> 8) & 0xFF) / 255.f, (a & 0xFF) / 255.f,
+                    ((a >> 24) & 0xFF) / 255.f);
+        glc_.ambient = st.ambient;
+        glc_.ambientSet = true;
+    }
     bool lightOn = st.lightEnabled && st.light.type == D3DLIGHT_DIRECTIONAL;
-    glUniform1i(u_.lightOn, lightOn);
+    if (!glc_.valid || glc_.lightOn != (int)lightOn) {
+        glUniform1i(u_.lightOn, lightOn);
+        glc_.lightOn = (int)lightOn;
+    }
     if (lightOn) {
         D3DVECTOR d = st.light.direction;
         float len = Magnitude(d);
         if (len > 0) d = d / len;
-        glUniform3f(u_.lightDir, -d.x, -d.y, -d.z);
-        glUniform4fv(u_.lightDiffuse, 1, &st.light.diffuse.r);
+        float dir[3] = {-d.x, -d.y, -d.z};
+        if (!glc_.valid || memcmp(glc_.lightDir, dir, sizeof dir) != 0) {
+            glUniform3f(u_.lightDir, dir[0], dir[1], dir[2]);
+            memcpy(glc_.lightDir, dir, sizeof dir);
+        }
+        if (!glc_.valid || memcmp(glc_.lightDiffuse, &st.light.diffuse.r, sizeof glc_.lightDiffuse) != 0) {
+            glUniform4fv(u_.lightDiffuse, 1, &st.light.diffuse.r);
+            memcpy(glc_.lightDiffuse, &st.light.diffuse.r, sizeof glc_.lightDiffuse);
+        }
     }
-    glUniform1i(u_.flat, st.shadeMode == D3DSHADE_FLAT);
+    bool flat = st.shadeMode == D3DSHADE_FLAT;
+    if (!glc_.valid || glc_.flat != (int)flat) {
+        glUniform1i(u_.flat, flat);
+        glc_.flat = (int)flat;
+    }
 
     // texture stage 0
     Texture* texture = st.texture;
     bool texOn = texture != nullptr && (fvf & 0xF00) != 0;
-    glUniform1i(u_.texOn, texOn);
-    glUniform1i(u_.colorOp, st.colorOp);
-    glUniform1i(u_.colorArg1, st.colorArg1);
-    glUniform1i(u_.colorArg2, st.colorArg2);
-    glUniform1i(u_.alphaOp, st.alphaOp);
-    glUniform1i(u_.alphaArg1, st.alphaArg1);
-    glUniform1i(u_.alphaArg2, st.alphaArg2);
-    glUniform1i(u_.alphaTest, 0);
-    if (texOn && texture->SoftAlpha() && st.blendEnable) {
-        DWORD src = st.srcBlend, dst = st.destBlend;
-        if (src == D3DBLEND_ONE) glUniform1i(u_.alphaFix, 1);
-        else if ((src == D3DBLEND_ZERO && dst == D3DBLEND_SRCCOLOR) || (src == D3DBLEND_DESTCOLOR && dst == D3DBLEND_ZERO))
-            glUniform1i(u_.alphaFix, 2);
+    bool stageChanged = !glc_.valid || glc_.texOn != (int)texOn || glc_.colorOp != (int)st.colorOp ||
+                        glc_.colorArg1 != (int)st.colorArg1 || glc_.colorArg2 != (int)st.colorArg2 ||
+                        glc_.alphaOp != (int)st.alphaOp || glc_.alphaArg1 != (int)st.alphaArg1 ||
+                        glc_.alphaArg2 != (int)st.alphaArg2;
+    if (stageChanged) {
+        glUniform1i(u_.texOn, texOn);
+        glUniform1i(u_.colorOp, st.colorOp);
+        glUniform1i(u_.colorArg1, st.colorArg1);
+        glUniform1i(u_.colorArg2, st.colorArg2);
+        glUniform1i(u_.alphaOp, st.alphaOp);
+        glUniform1i(u_.alphaArg1, st.alphaArg1);
+        glUniform1i(u_.alphaArg2, st.alphaArg2);
+        glc_.texOn = (int)texOn;
+        glc_.colorOp = (int)st.colorOp;
+        glc_.colorArg1 = (int)st.colorArg1;
+        glc_.colorArg2 = (int)st.colorArg2;
+        glc_.alphaOp = (int)st.alphaOp;
+        glc_.alphaArg1 = (int)st.alphaArg1;
+        glc_.alphaArg2 = (int)st.alphaArg2;
     }
+    if (glc_.alphaTest != 0) {
+        glUniform1i(u_.alphaTest, 0);
+        glc_.alphaTest = 0;
+    }
+    int alphaFix = 0;
+    if (texOn && texture->SoftAlpha() && st.blendEnable) {
+        DWORD srcB = st.srcBlend, dstB = st.destBlend;
+        if (srcB == D3DBLEND_ONE) alphaFix = 1;
+        else if ((srcB == D3DBLEND_ZERO && dstB == D3DBLEND_SRCCOLOR) ||
+                 (srcB == D3DBLEND_DESTCOLOR && dstB == D3DBLEND_ZERO))
+            alphaFix = 2;
+    }
+    if (alphaFix) SetAlphaFix(alphaFix);
     if (texOn) {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture->Id());
-        glUniform1i(u_.tex, 0);
+        if (!glc_.valid || glc_.texture != texture->Id()) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texture->Id());
+            SetTexUnit(0);
+            glc_.texture = texture->Id();
+            glc_.minFilter = -1;
+            glc_.magFilter = -1;
+            glc_.anisoSet = false;
+        }
         bool linMag = st.magFilter >= D3DTFG_LINEAR || cfg.smoothTextures;
         bool linMin = st.minFilter >= D3DTFG_LINEAR || cfg.smoothTextures;
         GLint minF = linMin ? GL_LINEAR : GL_NEAREST;
-        // Texture filtering (anisotropic) works on the texture's mipmaps, smoothly blended, which
-        // only applies where a texture is shrunk on screen (far away, or seen at an angle). So with
-        // it on, textures the original drew pixelated keep their sharp pixels up close (magnified,
-        // point as the original) and are filtered properly where they shrink; off, they are drawn
-        // as the original (point, no mipmaps). (Before 0.4.21 the pixelated textures got only
-        // point-sampled mipmaps and no anisotropy, so the level made no difference.)
         bool aniso = texture->HasMips() && cfg.anisotropy > 1;
         if (texture->HasMips() && (aniso || (linMin && cfg.smoothTextures))) minF = GL_LINEAR_MIPMAP_LINEAR;
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minF);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linMag ? GL_LINEAR : GL_NEAREST);
-        if (maxAniso_ > 1.f)
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY,
-                            aniso ? std::min((float)cfg.anisotropy, maxAniso_) : 1.f);
+        GLint magF = linMag ? GL_LINEAR : GL_NEAREST;
+        GLfloat anisoVal = (maxAniso_ > 1.f && aniso) ? std::min((float)cfg.anisotropy, maxAniso_) : 1.f;
+        if (glc_.minFilter != minF || glc_.magFilter != magF || !glc_.anisoSet || glc_.aniso != anisoVal) {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minF);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magF);
+            if (maxAniso_ > 1.f) glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, anisoVal);
+            glc_.minFilter = minF;
+            glc_.magFilter = magF;
+            glc_.aniso = anisoVal;
+            glc_.anisoSet = true;
+        }
     }
+    glc_.valid = true;
+}
+
+static void SetupAttribs(DWORD fvf);
+
+void Device::EnsureAttribs(DWORD fvf) {
+    if (attribFvf_ == fvf) return;
+    SetupAttribs(fvf);
+    attribFvf_ = fvf;
+}
+void Device::BindMainVao() {
+    if (boundVao_ == vao_) return;
+    glBindVertexArray(vao_);
+    boundVao_ = vao_;
+    boundElement_ = 0;  // the element buffer is part of the VAO's state
+    attribFvf_ = 0;     // the attributes live in the VAO: set them up for this one
+}
+
+void Device::BindMainArray() {
+    if (boundArray_ == vbo_) return;
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+    boundArray_ = vbo_;
+}
+
+void Device::BindMainElement() {
+    if (boundElement_ == ibo_) return;
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_);
+    boundElement_ = ibo_;
+}
+
+void Device::SetConstColor(float r, float g, float b, float a) {
+    const float c[4] = {r, g, b, a};
+    if (glc_.valid && glc_.constColorSet && memcmp(glc_.constColor, c, sizeof c) == 0) return;
+    glUniform4f(u_.constColor, r, g, b, a);
+    memcpy(glc_.constColor, c, sizeof c);
+    glc_.constColorSet = true;
+}
+
+void Device::SetAlphaFix(int v) {
+    if (glc_.valid && glc_.alphaFix == v) return;
+    glUniform1i(u_.alphaFix, v);
+    glc_.alphaFix = v;
+}
+
+void Device::SetAOStrength(float v) {
+    if (glc_.valid && glc_.aoStrength == v) return;
+    glUniform1f(u_.aoStrength, v);
+    glc_.aoStrength = v;
+}
+
+void Device::SetShadowKind(int v) {
+    if (glc_.valid && glc_.shadowKind == v) return;
+    glUniform1i(u_.shadowKind, v);
+    glc_.shadowKind = v;
+}
+
+void Device::SetLightKind(int v) {
+    if (glc_.valid && glc_.lightKind == v) return;
+    glUniform1i(u_.lightKind, v);
+    glc_.lightKind = v;
+}
+
+void Device::SetSceneDim(float v) {
+    if (glc_.valid && glc_.sceneDim == v) return;
+    glUniform1f(u_.sceneDim, v);
+    glc_.sceneDim = v;
+}
+
+void Device::SetGlowMode(int v) {
+    if (glc_.valid && glc_.glowMode == v) return;
+    glUniform1i(u_.glowMode, v);
+    glc_.glowMode = v;
+}
+
+void Device::SetFboSize(float w, float h) {
+    if (glc_.valid && glc_.fboSizeSet && glc_.fboW == w && glc_.fboH == h) return;
+    glUniform2f(u_.fboSize, w, h);
+    glc_.fboW = w;
+    glc_.fboH = h;
+    glc_.fboSizeSet = true;
+}
+
+void Device::SetTexUnit(int v) {
+    if (glc_.valid && glc_.texUnit == v) return;
+    glUniform1i(u_.tex, v);
+    glc_.texUnit = v;
 }
 
 static GLenum MapPrim(D3DPRIMITIVETYPE t, DWORD n, GLsizei* count) {
@@ -1187,6 +1443,144 @@ static void SetupAttribs(DWORD fvf) {
     }
 }
 
+MeshBuffer::~MeshBuffer() { Invalidate(); }
+
+void MeshBuffer::Invalidate() {
+    if (vao_) glDeleteVertexArrays(1, &vao_);
+    if (vbo_) glDeleteBuffers(1, &vbo_);
+    if (ibo_) glDeleteBuffers(1, &ibo_);
+    if (matVbo_) glDeleteBuffers(1, &matVbo_);
+    vao_ = vbo_ = ibo_ = matVbo_ = 0;
+    valid_ = merged_ = false;
+    vertexCount_ = indexCount_ = matCount_ = 0;
+    fvf_ = 0;
+}
+
+void Device::EnsureMesh(MeshBuffer* mesh, DWORD fvf, const void* verts, size_t numVerts, const void* indices,
+                        size_t numIndices) {
+    if (mesh->valid_ && mesh->fvf_ == fvf && mesh->vertexCount_ == numVerts && mesh->indexCount_ == numIndices) return;
+    if (!mesh->vao_) glGenVertexArrays(1, &mesh->vao_);
+    if (!mesh->vbo_) glGenBuffers(1, &mesh->vbo_);
+    if (!mesh->ibo_) glGenBuffers(1, &mesh->ibo_);
+    glBindVertexArray(mesh->vao_);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo_);
+    BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(numVerts * 32), verts, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo_);
+    BufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(numIndices * sizeof(WORD)), indices, GL_STATIC_DRAW);
+    SetupAttribs(fvf);
+    mesh->valid_ = true;
+    mesh->fvf_ = fvf;
+    mesh->vertexCount_ = numVerts;
+    mesh->indexCount_ = numIndices;
+    InvalidateAttribs();  // the bindings and attribute state changed outside the main VAO
+}
+
+void Device::BindMesh(MeshBuffer* mesh) {
+    if (boundVao_ != mesh->vao_) {
+        glBindVertexArray(mesh->vao_);
+        boundVao_ = mesh->vao_;
+        boundArray_ = mesh->vbo_;
+        boundElement_ = mesh->ibo_;
+    }
+    attribFvf_ = mesh->fvf_;  // the VAO keeps the layout; no per-draw pointer setup
+}
+
+void Device::SetMatMode(int mode) {
+    if (glc_.valid && glc_.matMode == mode) return;
+    glUniform1i(u_.matMode, mode);
+    glc_.matMode = mode;
+}
+
+void Device::SetMaterialArray(const D3DMATERIAL7* materials, DWORD numMaterials) {
+    if (glc_.valid && glc_.matMode == 1 && glc_.matKey == materials && glc_.matCount == numMaterials) return;
+    float d[16 * 4] = {}, a[16 * 4] = {}, e[16 * 4] = {};
+    DWORD n = std::min<DWORD>(numMaterials, 16);
+    for (DWORD i = 0; i < n; i++) {
+        const D3DMATERIAL7& m = materials[i];
+        memcpy(&d[i * 4], &m.diffuse.r, 4 * sizeof(float));
+        memcpy(&a[i * 4], &m.ambient.r, 4 * sizeof(float));
+        memcpy(&e[i * 4], &m.emissive.r, 4 * sizeof(float));
+    }
+    SetMatMode(1);
+    glUniform4fv(u_.matDiffuse, 16, d);
+    glUniform4fv(u_.matAmbient, 16, a);
+    glUniform4fv(u_.matEmissive, 16, e);
+    glc_.matKey = materials;
+    glc_.matCount = numMaterials;
+}
+
+void Device::EnsureMergedMesh(MeshBuffer* mesh, DWORD fvf, const void* verts, size_t numVerts, const void* indices,
+                              size_t numIndices, const unsigned char* matIndex) {
+    EnsureMesh(mesh, fvf, verts, numVerts, indices, numIndices);
+    if (mesh->merged_ && mesh->matCount_ == numVerts) return;
+    if (!mesh->matVbo_) glGenBuffers(1, &mesh->matVbo_);
+    glBindVertexArray(mesh->vao_);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->matVbo_);
+    BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)numVerts, matIndex, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 1, GL_UNSIGNED_BYTE, GL_FALSE, 1, (void*)0);
+    mesh->merged_ = true;
+    mesh->matCount_ = numVerts;
+    InvalidateAttribs();
+}
+
+void Device::DrawMergedMesh(D3DPRIMITIVETYPE type, DWORD fvf, MeshBuffer* mesh, const void* verts, DWORD numVerts,
+                            const void* indices, DWORD numIndices, const unsigned char* matIndex,
+                            const D3DMATERIAL7* materials, DWORD numMaterials) {
+    if (!mesh || !verts || !indices || !numIndices || !matIndex) return;
+    if (recording_) {
+        RecordMesh(type, fvf, mesh, verts, numVerts, indices, numIndices, 0, numIndices);
+        RecordedDraw& d = rec_.back();
+        d.merged = true;
+        d.matIndex = matIndex;
+        d.materials = materials;
+        d.numMaterials = numMaterials;
+        return;
+    }
+    frameDraws_++;
+    ApplyState(fvf, false);
+    EnsureMergedMesh(mesh, fvf, verts, numVerts, indices, numIndices, matIndex);
+    SetMaterialArray(materials, numMaterials);
+    BindMesh(mesh);
+    GLsizei n;
+    GLenum mode = MapPrim(type, numIndices, &n);
+    glDrawElements(mode, n, GL_UNSIGNED_SHORT, (void*)0);
+}
+
+void Device::RecordMesh(D3DPRIMITIVETYPE type, DWORD fvf, MeshBuffer* mesh, const void* verts, DWORD numVerts,
+                        const void* indices, DWORD numIndices, DWORD firstIndex, DWORD count) {
+    RecordedDraw d;
+    d.st = CurrentState();
+    d.fvf = fvf;
+    d.indexed = true;
+    d.mode = MapPrim(type, count, &d.count);
+    d.mesh = mesh;
+    d.meshVerts = verts;
+    d.meshIndices = indices;
+    d.meshNumVerts = numVerts;
+    d.meshNumIndices = numIndices;
+    d.meshFirstIndex = firstIndex;
+    d.meshCount = count;
+    rec_.push_back(d);
+    g_recordPending = true;
+}
+
+void Device::DrawMeshIndexed(D3DPRIMITIVETYPE type, DWORD fvf, MeshBuffer* mesh, const void* verts, DWORD numVerts,
+                             const void* indices, DWORD numIndices, DWORD firstIndex, DWORD count) {
+    if (!mesh || !verts || !indices || !count) return;
+    if (recording_) {
+        RecordMesh(type, fvf, mesh, verts, numVerts, indices, numIndices, firstIndex, count);
+        return;
+    }
+    frameDraws_++;
+    ApplyState(fvf, false);
+    EnsureMesh(mesh, fvf, verts, numVerts, indices, numIndices);
+    BindMesh(mesh);
+    GLsizei n;
+    GLenum mode = MapPrim(type, count, &n);
+    glDrawElements(mode, n, GL_UNSIGNED_SHORT, (void*)(uintptr_t)((size_t)firstIndex * sizeof(WORD)));
+}
+
 HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE type, DWORD fvf, const void* verts, DWORD numVerts,
                                      const WORD* indices, DWORD numIndices, DWORD) {
     if (!verts || !indices || !numIndices) return D3D_OK;
@@ -1194,14 +1588,15 @@ HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE type, DWORD fvf, const voi
         Record(type, fvf, verts, numVerts, indices, numIndices);
         return D3D_OK;
     }
+    frameDraws_++;
     ApplyState(fvf, false);
     size_t stride = fvf == D3DFVF_VERTEX ? sizeof(D3DVERTEX) : sizeof(D3DLVERTEX);
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, stride * numVerts, verts, GL_STREAM_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WORD) * numIndices, indices, GL_STREAM_DRAW);
-    SetupAttribs(fvf);
+    BindMainVao();
+    BindMainArray();
+    BufferData(GL_ARRAY_BUFFER, stride * numVerts, verts, GL_STREAM_DRAW);
+    BindMainElement();
+    BufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WORD) * numIndices, indices, GL_STREAM_DRAW);
+    EnsureAttribs(fvf);
     GLsizei count;
     GLenum mode = MapPrim(type, numIndices, &count);
     glDrawElements(mode, count, GL_UNSIGNED_SHORT, (void*)0);
@@ -1214,12 +1609,13 @@ HRESULT Device::DrawPrimitive(D3DPRIMITIVETYPE type, DWORD fvf, const void* vert
         Record(type, fvf, verts, numVerts, nullptr, 0);
         return D3D_OK;
     }
+    frameDraws_++;
     ApplyState(fvf, false);
     size_t stride = fvf == D3DFVF_VERTEX ? sizeof(D3DVERTEX) : sizeof(D3DLVERTEX);
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, stride * numVerts, verts, GL_STREAM_DRAW);
-    SetupAttribs(fvf);
+    BindMainVao();
+    BindMainArray();
+    BufferData(GL_ARRAY_BUFFER, stride * numVerts, verts, GL_STREAM_DRAW);
+    EnsureAttribs(fvf);
     GLsizei count;
     GLenum mode = MapPrim(type, numVerts, &count);
     glDrawArrays(mode, 0, count);
@@ -1314,11 +1710,26 @@ void Device::FlushRecording() {
     // base vertex or attribute offsets, was tried and gave two pixels of 1-6 one shade apart on
     // NVIDIA, every time: the driver doesn't treat the two ways alike to the last bit. The
     // pictures must stay byte for byte, so the game's own draws keep their own uploads.)
-    glBindVertexArray(vao_);
+    InvalidateState();
+    InvalidateAttribs();
+    BindMainVao();
     // how much ambient occlusion the level and the solid models take (by eye: the level's colours
     // are mostly light, the models' lit sides keep most of theirs)
     static constexpr float kAOLevel = 0.9f, kAOModel = 0.7f;
     for (const RecordedDraw& d : rec_) {
+        if (d.mesh) {
+            if (d.merged)
+                EnsureMergedMesh(d.mesh, d.fvf, d.meshVerts, d.meshNumVerts, d.meshIndices, d.meshNumIndices,
+                                 d.matIndex);
+            else
+                EnsureMesh(d.mesh, d.fvf, d.meshVerts, d.meshNumVerts, d.meshIndices, d.meshNumIndices);
+            ApplyDrawState(d.st, d.fvf, d.merged);
+            if (d.merged) SetMaterialArray(d.materials, d.numMaterials);
+            BindMesh(d.mesh);
+            glDrawElements(d.mode, (GLsizei)d.meshCount, GL_UNSIGNED_SHORT,
+                           (void*)(uintptr_t)(d.meshFirstIndex * sizeof(WORD)));
+            continue;
+        }
         ApplyDrawState(d.st, d.fvf);
         if (bloomActive_ && d.st.gameplayView) {
             // the glow layer: the game's glowing sprites light it, multiplied draws leave it,
@@ -1331,38 +1742,38 @@ void Device::FlushRecording() {
                     if (d.st.texture->ResId() == id) glows = true;
             // (not smoke, dust or the water's glints; nor the torches' and candles' sparks, 0x188,
             // which made the glow pulse with them, as they did the lights in 0.4.42)
-            glUniform1i(u_.glowMode, glows ? 1 : (multiplies ? 2 : 0));
+            SetGlowMode(glows ? 1 : (multiplies ? 2 : 0));
         }
         if (sceneDim < 1.f && d.st.gameplayView) {
             // not the glowing (added) sprites, nor the blob shadows (multiplied onto the floor)
             bool added = d.st.blendEnable && (d.st.destBlend == D3DBLEND_DESTALPHA || d.st.destBlend == D3DBLEND_ONE);
             bool multiplied = d.st.blendEnable && d.st.srcBlend == D3DBLEND_ZERO && d.st.destBlend == D3DBLEND_SRCCOLOR;
-            if (!added && !multiplied) glUniform1f(u_.sceneDim, sceneDim);
+            if (!added && !multiplied) SetSceneDim(sceneDim);
         }
         if (shadowActive_ || lightsActive_) {
             int kind = DrawKind(d);
             int way = kind == 0 ? 0 : (kind == 2 && d.st.lighting ? 2 : 1);
-            if (shadowActive_ && way) glUniform1i(u_.shadowKind, way);
-            if (lightsActive_ && way) glUniform1i(u_.lightKind, way);
+            if (shadowActive_ && way) SetShadowKind(way);
+            if (lightsActive_ && way) SetLightKind(way);
         }
         if (aoActive_) {
             int kind = DrawKind(d);
             if (kind) {
-                glUniform1f(u_.aoStrength, kind == 1 ? kAOLevel : kAOModel);
-                glUniform2f(u_.fboSize, (float)layout_.fboW, (float)layout_.fboH);
+                SetAOStrength(kind == 1 ? kAOLevel : kAOModel);
+                SetFboSize((float)layout_.fboW, (float)layout_.fboH);
             }
         }
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(d.numVerts * 32), recVerts_.data() + d.firstVertex * 32,
+        BindMainArray();
+        BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(d.numVerts * 32), recVerts_.data() + d.firstVertex * 32,
                      GL_STREAM_DRAW);
         if (d.indexed) {
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(d.numIndices * sizeof(WORD)),
+            BindMainElement();
+            BufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(d.numIndices * sizeof(WORD)),
                          recIdx_.data() + d.firstIndex, GL_STREAM_DRAW);
-            SetupAttribs(d.fvf);
+            EnsureAttribs(d.fvf);
             glDrawElements(d.mode, d.count, GL_UNSIGNED_SHORT, (void*)0);
         } else {
-            SetupAttribs(d.fvf);
+            EnsureAttribs(d.fvf);
             glDrawArrays(d.mode, 0, d.count);
         }
     }
@@ -1378,6 +1789,7 @@ void Device::FlushRecording() {
     shadowActive_ = false;
     lightsActive_ = false;
     frameDraws3D_ += (int)rec_.size();
+    frameDraws_ += (int)rec_.size();
     rec_.clear();
     recVerts_.clear();
     recIdx_.clear();
@@ -1520,15 +1932,16 @@ void Device::UploadPrep() {
     glBindVertexArray(vao_);
     glBindBuffer(GL_ARRAY_BUFFER, prepVbo_);
     if (!prepUploaded_)
-        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)recVerts_.size(), recVerts_.data(), GL_STREAM_DRAW);
+        BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)recVerts_.size(), recVerts_.data(), GL_STREAM_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, prepIbo_);
     if (!prepUploaded_ && !recIdx_.empty())
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(recIdx_.size() * sizeof(WORD)), recIdx_.data(),
+        BufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(recIdx_.size() * sizeof(WORD)), recIdx_.data(),
                      GL_STREAM_DRAW);
     prepUploaded_ = true;
     for (int i = 0; i < 6; i++) glDisableVertexAttribArray(i);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);  // (the position leads both formats)
+    InvalidateAttribs();
 }
 
 // ---------------------------------------------------------------------------
@@ -1993,6 +2406,7 @@ bool Device::ComputeAO() {
 
 void Device::Draw2DQuad(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, Texture* t,
                         bool alphaTest, const float* color, bool linear) {
+    frameDraws_++;
     ApplyState(0, true);
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
@@ -2030,10 +2444,10 @@ void Device::Draw2DQuad(float x0, float y0, float x1, float y1, float u0, float 
     q[2].x = x0; q[2].y = y1; q[2].tu = u0; q[2].tv = v1;
     q[3].x = x1; q[3].y = y1; q[3].tu = u1; q[3].tv = v1;
     for (auto& v : q) v.color = c;
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, sizeof q, q, GL_STREAM_DRAW);
-    SetupAttribs(D3DFVF_LVERTEX);
+    BindMainVao();
+    BindMainArray();
+    BufferData(GL_ARRAY_BUFFER, sizeof q, q, GL_STREAM_DRAW);
+    EnsureAttribs(D3DFVF_LVERTEX);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
@@ -2100,6 +2514,7 @@ int Device::HudEdgeShift() const {
 // same state as DrawUIQuad: the Statistics Overlay's letters, which one by one cost a draw each.
 void Device::DrawUIQuads(const std::vector<D3DLVERTEX>& verts, Texture* t) {
     if (verts.empty()) return;
+    frameDraws_++;
     ApplyState(0, true);
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
@@ -2130,15 +2545,16 @@ void Device::DrawUIQuads(const std::vector<D3DLVERTEX>& verts, Texture* t) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     }
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(verts.size() * sizeof(D3DLVERTEX)), verts.data(), GL_STREAM_DRAW);
-    SetupAttribs(D3DFVF_LVERTEX);
+    BindMainVao();
+    BindMainArray();
+    BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(verts.size() * sizeof(D3DLVERTEX)), verts.data(), GL_STREAM_DRAW);
+    EnsureAttribs(D3DFVF_LVERTEX);
     glDrawArrays(GL_TRIANGLES, 0, (GLsizei)verts.size());
 }
 
 void Device::DrawUIQuad(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, Texture* t,
                         const float rgba[4]) {
+    frameDraws_++;
     ApplyState(0, true);
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
@@ -2178,10 +2594,17 @@ void Device::DrawUIQuad(float x0, float y0, float x1, float y1, float u0, float 
     q[2].x = x0; q[2].y = y1; q[2].tu = u0; q[2].tv = v1;
     q[3].x = x1; q[3].y = y1; q[3].tu = u1; q[3].tv = v1;
     for (auto& v : q) v.color = c;
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, sizeof q, q, GL_STREAM_DRAW);
-    SetupAttribs(D3DFVF_LVERTEX);
+    BindMainVao();
+    BindMainArray();
+    BufferData(GL_ARRAY_BUFFER, sizeof q, q, GL_STREAM_DRAW);
+    EnsureAttribs(D3DFVF_LVERTEX);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glDisable(GL_BLEND);
+}
+
+// Buffer uploads go through one place so the benchmark can report the bytes a frame sends to the
+// vertex and index buffers (the counters are reset in BeginFrame and captured in Present).
+void Device::BufferData(GLenum target, GLsizeiptr size, const void* data, GLenum usage) {
+    if (size > 0) frameUploadBytes_ += (size_t)size;
+    hgl::glBufferData(target, size, data, usage);
 }

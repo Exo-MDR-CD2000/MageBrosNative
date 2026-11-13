@@ -718,6 +718,12 @@ OptionsMenu::Page OptionsMenu::VideoPage() {
                      Save();
                  },
                  nullptr, [] { return GetConfig().vsync != 0; }});
+    // The performance benchmark: a 30-second measured run of the dense generated level. It leaves
+    // the player's save and settings alone and returns here when it finishes.
+    v.push_back({"Performance benchmark",
+                 "Runs a 30-second dense test level and writes a report; for tuning, not normal play.",
+                 [] { return std::string("Run 30 s"); }, nullptr,
+                 [this] { app_->StartBenchmarkFromMenu(); }, nullptr});
     v.push_back({"Aspect", "4:3 as original, stretched, or widescreen (wider 3D view).",
                  [] {
                      switch (GetConfig().aspect) {

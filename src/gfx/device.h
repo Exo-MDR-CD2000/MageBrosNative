@@ -11,6 +11,22 @@
 
 struct SDL_Window;
 
+// A mesh whose vertices and indices do not change after loading (a model or the level's merged
+// geometry): uploaded once, kept on the card, drawn by index range. Owned by the model or level
+// that made it; Invalidate() after an edit, and free it while the GL context still exists.
+class MeshBuffer {
+public:
+    ~MeshBuffer();
+    void Invalidate();
+
+private:
+    friend class Device;
+    GLuint vao_ = 0, vbo_ = 0, ibo_ = 0, matVbo_ = 0;
+    bool valid_ = false, merged_ = false;
+    size_t vertexCount_ = 0, indexCount_ = 0, matCount_ = 0;
+    DWORD fvf_ = 0;
+};
+
 class Texture {
 public:
     ~Texture();
@@ -74,6 +90,7 @@ struct FrameLayout {
 
 class Device {
 public:
+    friend class Texture;  // texture creation binds and sets filtering outside ApplyDrawState
     bool Init(SDL_Window* window);
     void Shutdown();
 
@@ -126,6 +143,10 @@ public:
     // The dynamic lights in the last frame that had any (G5)
     int DynamicLights() const { return lastLights_; }
     int Draws3D() const { return lastDraws3D_; }
+    // The last completed frame's total draws (recorded 3D, 2D, UI and the present) and the bytes
+    // uploaded to vertex/index buffers. Read after Present; reset in BeginFrame.
+    int FrameDraws() const { return lastFrameDraws_; }
+    size_t FrameUploadBytes() const { return lastFrameUploadBytes_; }
     bool Recording3D() const { return recordEnabled_; }
     // Rows at the bottom of the window that are off the screen (the borderless window's extra
     // row): the picture is laid out on the rows above them (from the next frame on).
@@ -157,6 +178,11 @@ public:
     HRESULT DrawIndexedPrimitive(D3DPRIMITIVETYPE type, DWORD fvf, const void* verts, DWORD numVerts,
                                  const WORD* indices, DWORD numIndices, DWORD flags);
     HRESULT DrawPrimitive(D3DPRIMITIVETYPE type, DWORD fvf, const void* verts, DWORD numVerts, DWORD flags);
+    void DrawMeshIndexed(D3DPRIMITIVETYPE type, DWORD fvf, MeshBuffer* mesh, const void* verts, DWORD numVerts,
+                         const void* indices, DWORD numIndices, DWORD firstIndex, DWORD count);
+    void DrawMergedMesh(D3DPRIMITIVETYPE type, DWORD fvf, MeshBuffer* mesh, const void* verts, DWORD numVerts,
+                        const void* indices, DWORD numIndices, const unsigned char* matIndex,
+                        const D3DMATERIAL7* materials, DWORD numMaterials);
 
     // --- DirectDraw back-buffer operations, in the original 640x480 pixel space ---
     HRESULT BltToBackBuffer(const RECT* dst, Surface* src, const RECT* srcRect, bool useColorKey);
@@ -191,9 +217,28 @@ private:
         size_t firstVertex, numVerts;   // in recVerts_ (32 bytes a vertex, both formats)
         size_t firstIndex, numIndices;  // in recIdx_ (indexed draws only)
         bool indexed;
+        // A static mesh (model or level): the recorder holds the mesh and the range, not a copy.
+        MeshBuffer* mesh = nullptr;
+        const void* meshVerts = nullptr;
+        const void* meshIndices = nullptr;
+        size_t meshNumVerts = 0, meshNumIndices = 0;
+        size_t meshFirstIndex = 0, meshCount = 0;
+        bool merged = false;
+        const unsigned char* matIndex = nullptr;
+        const D3DMATERIAL7* materials = nullptr;
+        DWORD numMaterials = 0;
     };
     DrawState CurrentState() const;
-    void ApplyDrawState(const DrawState& st, DWORD fvf);
+    void ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial = false);
+    void RecordMesh(D3DPRIMITIVETYPE type, DWORD fvf, MeshBuffer* mesh, const void* verts, DWORD numVerts,
+                    const void* indices, DWORD numIndices, DWORD firstIndex, DWORD count);
+    void EnsureMesh(MeshBuffer* mesh, DWORD fvf, const void* verts, size_t numVerts, const void* indices,
+                    size_t numIndices);
+    void EnsureMergedMesh(MeshBuffer* mesh, DWORD fvf, const void* verts, size_t numVerts, const void* indices,
+                          size_t numIndices, const unsigned char* matIndex);
+    void BindMesh(MeshBuffer* mesh);
+    void SetMatMode(int mode);
+    void SetMaterialArray(const D3DMATERIAL7* materials, DWORD numMaterials);
     void Record(D3DPRIMITIVETYPE type, DWORD fvf, const void* verts, DWORD numVerts, const WORD* indices,
                 DWORD numIndices);
     // A graphics-card stopwatch: queries used in turn, read frames later without waiting (a query
@@ -268,12 +313,18 @@ private:
     GLint depthLoc_[3] = {-1, -1, -1};                // world, view, proj
     GLint aoLoc_[5] = {-1, -1, -1, -1, -1};          // z, texel, projScale, radius, samples
     GLint blurLoc_[3] = {-1, -1, -1};                 // z, ao, texel
+    int windowSamples_ = 0;      // the window's own MSAA, read once the context exists
+    bool directWindow_ = false;  // drawing into the window's own multisampled buffer
+    bool WantsDirectWindow() const;
     bool recordEnabled_ = true;   // off with the environment variable MBN_NO_RECORD=1 (for comparing)
     bool recording_ = false;
     std::vector<RecordedDraw> rec_;
     std::vector<unsigned char> recVerts_;
     std::vector<WORD> recIdx_;
     int frameDraws3D_ = 0, lastDraws3D_ = 0;
+    int frameDraws_ = 0, lastFrameDraws_ = 0;   // every draw a frame submits, and the last frame's
+    size_t frameUploadBytes_ = 0, lastFrameUploadBytes_ = 0;
+    void BufferData(GLenum target, GLsizeiptr size, const void* data, GLenum usage);
 
     float hudScale_ = 1.f, hudAnchorX_ = 0.f, hudAnchorY_ = 0.f, hudShiftX_ = 0.f;
     bool gameplayView_ = false;
@@ -300,8 +351,65 @@ private:
 
     GLuint prog_ = 0, progPresent_ = 0;
     GLuint vao_ = 0, vbo_ = 0, ibo_ = 0;
+    // What was last sent to OpenGL for a 3D draw, so unchanged state is not sent again. Cleared by
+    // every path that draws or changes state outside a recorded 3D draw (InvalidateState).
+    struct GlCache {
+        bool valid = false;
+        GLuint fbo = 0, prog = 0;
+        int vpW = -1, vpH = -1;
+        int depthTest = -1, depthWrite = -1, blend = -1;
+        GLenum srcBlend = 0, dstBlend = 0;
+        int cull = -1;
+        int screen2D = -1, lighting = -1, hasColor = -1, flat = -1;
+        bool worldSet = false, viewSet = false, projSet = false;
+        D3DMATRIX world{}, view{}, proj{};
+        bool matSet = false;
+        float matD[4] = {}, matA[4] = {}, matE[4] = {};
+        bool ambientSet = false;
+        DWORD ambient = 0;
+        int lightOn = -1;
+        float lightDir[3] = {}, lightDiffuse[4] = {};
+        int texOn = -1, colorOp = -1, colorArg1 = -1, colorArg2 = -1, alphaOp = -1, alphaArg1 = -1,
+            alphaArg2 = -1, alphaTest = -1;
+        int matMode = -1;
+        const void* matKey = nullptr;
+        DWORD matCount = 0;
+        bool constColorSet = false;
+        float constColor[4] = {};
+        int alphaFix = -1, shadowKind = -1, lightKind = -1, glowMode = -1;
+        float aoStrength = -2.f, sceneDim = -2.f;
+        bool fboSizeSet = false;
+        float fboW = -1.f, fboH = -1.f;
+        int texUnit = -1;
+        GLuint texture = 0;
+        GLint minFilter = -1, magFilter = -1;
+        bool anisoSet = false;
+        GLfloat aniso = 1.f;
+    } glc_;
+    void InvalidateState() { glc_.valid = false; }
+    // Vertex layout and buffer bindings have their own cache: they survive 2D drawing and are
+    // cleared by the passes that use other buffers (the AO/shadow prep, present, clear).
+    GLuint boundVao_ = 0, boundArray_ = 0, boundElement_ = 0;
+    DWORD attribFvf_ = 0;
+    void InvalidateAttribs() {
+        boundVao_ = boundArray_ = boundElement_ = 0;
+        attribFvf_ = 0;
+    }
+    void EnsureAttribs(DWORD fvf);
+    void SetConstColor(float r, float g, float b, float a);
+    void SetAlphaFix(int v);
+    void SetAOStrength(float v);
+    void SetShadowKind(int v);
+    void SetLightKind(int v);
+    void SetSceneDim(float v);
+    void SetGlowMode(int v);
+    void SetFboSize(float w, float h);
+    void SetTexUnit(int v);
+    void BindMainVao();
+    void BindMainArray();
+    void BindMainElement();
     struct Uniforms {
-        GLint world, view, proj, lighting, matDiffuse, matAmbient, matEmissive, ambient, lightOn, lightDir,
+        GLint world, view, proj, lighting, matDiffuse, matAmbient, matEmissive, matMode, ambient, lightOn, lightDir,
             lightDiffuse, flat, texOn, colorOp, colorArg1, colorArg2, alphaOp, alphaArg1, alphaArg2, alphaTest,
             hasVertexColor, tex, constColor, screen2D, viewport2D, alphaFix, bgra, aoStrength, aoTex,
             fboSize, shadowKind, shadowMap, lightVP, shadowTexel, shadowOffset, shadowStrength, shadowGrid,

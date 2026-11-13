@@ -8,6 +8,7 @@
 
 class Device;
 class Texture;
+class MeshBuffer;
 
 struct MeshMaterialData {
     D3DMATERIAL7 mtrl{};
@@ -19,6 +20,9 @@ struct MeshMaterialData {
 class CD3DFileObject {
 public:
     explicit CD3DFileObject(const std::string& name);
+    ~CD3DFileObject();
+    // The vertices changed (Scale/Shift/Rotate): upload them again on the next draw.
+    void InvalidateGpu();
     // white: draw every material with the white material (the damage flash), as the game's
     // CD3DFileObject::Render(dev, alpha, white)
     void Render(Device* dev, bool alpha, bool white = false);
@@ -31,6 +35,15 @@ public:
     DWORD numMaterials = 0;
     bool hasAlpha = false;
     std::vector<std::unique_ptr<CD3DFileObject>> children;  // child list (m_pChild + m_pNext chain)
+    std::unique_ptr<MeshBuffer> gpu_;        // per-material path: uploaded once, kept on the card
+    std::unique_ptr<MeshBuffer> mergedGpu_;  // opaque, untextured: all parts in one draw
+    std::vector<D3DVERTEX> mergedVerts_;
+    std::vector<WORD> mergedIndices_;
+    std::vector<unsigned char> mergedMat_;
+    D3DMATERIAL7 mergedMaterials_[16] = {};
+    bool mergedBuilt_ = false;
+    bool CanMerge() const;
+    void BuildMerged();
 };
 
 class CD3DFile {

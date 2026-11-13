@@ -12,7 +12,7 @@ endif()
 # mbn_core: reading the user's MageBros.exe (PE resources, bitmaps, sounds, .x models, levels).
 # No SDL dependency, so the tools and tests build anywhere.
 set(MBN_CORE_SOURCES
-  src/core/game_files.cpp src/core/image.cpp src/core/level.cpp src/core/log.cpp
+  src/core/benchmark_level.cpp src/core/game_files.cpp src/core/image.cpp src/core/level.cpp src/core/log.cpp
   src/core/pe_resources.cpp src/core/sha256.cpp src/core/wave.cpp src/core/xfile.cpp)
 add_library(mbn_core STATIC ${MBN_CORE_SOURCES})
 target_include_directories(mbn_core PUBLIC src)
@@ -39,6 +39,17 @@ enable_testing()
 add_executable(mbn_tests tests/format_tests.cpp)
 target_link_libraries(mbn_tests PRIVATE mbn_core)
 add_test(NAME formats COMMAND mbn_tests)
+
+# The generated benchmark level: valid rows, a dense mix and buildable geometry, with no game
+# files needed. It is the first half of the R36S performance acceptance (docs/…).
+add_executable(mbn_benchmark_tests tests/benchmark_tests.cpp src/game/XMapGeometry.cpp src/framework/d3dutil.cpp)
+target_link_libraries(mbn_benchmark_tests PRIVATE mbn_core)
+add_test(NAME benchmark_level COMMAND mbn_benchmark_tests)
+
+# The benchmark report's summary math and JSON escaping (no SDL, no game).
+add_executable(mbn_benchmark_stats_tests tests/benchmark_stats_tests.cpp src/framework/benchmark_stats.cpp)
+target_include_directories(mbn_benchmark_stats_tests PRIVATE src)
+add_test(NAME benchmark_stats COMMAND mbn_benchmark_stats_tests)
 
 # The bundled TimGM6mb bank, loaded through the game's TinySoundFont build. No game files or
 # sound device are needed: it only proves that the packaged bank is readable and renders notes.

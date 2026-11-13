@@ -55,6 +55,7 @@ private:
     bool InitLevel();  // XGameObject::InitLevel: the level of the level status, fading in
     void Tick();       // one 10 ms tick of play (the lists, the heroes, the camera)
     void UpdateInput();  // XHeroA::_UpdateInput and XHeroB::_UpdateInput
+    void ApplyBenchmarkInput();  // native: the scripted benchmark load, on hero A
     void PlaySound(uint16_t waveId, float z);  // XApplication::PlaySound
 
     XLevelView level_;
