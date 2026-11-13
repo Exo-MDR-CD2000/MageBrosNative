@@ -652,12 +652,13 @@ the renderer's extras (`src/gfx/device.cpp`). Chunk 1 made it Mage Bros.':
   (`OptionsMenu::SynthList`): next to the program (in a macOS bundle SDL's base path is
   `Contents/Resources`), next to MageBros.exe, then a `soundfonts` folder (any capitalisation)
   in each (since 0.4.37).
-  `Midi::Init` values are `""` (Automatic: system synth, then user bank, then TimGM6mb),
+  `Midi::Init` values are `""` (Automatic: user bank, then system synth, then TimGM6mb),
   `system`, `builtin` (TimGM6mb) and a path; explicit modes do not fall back. Files in the
   program's own folders are stored relative to it (`soundfonts/x.sf2`), others with the full
-  path. Player-facing steps: the README's "Your own music". Testing: the owner has SoundFonts in
-  Downloads and on the Desktop (`Hopmon Native Extras`, one of 4 GB); copy them into a test
-  copy, never move them.
+  path. The original tracks were authored for Yamaha XG; no XG bank is shipped because it
+  cannot be redistributed, and `tsf` does not implement XG SysEx effects. Player-facing steps:
+  the README's "Your own music". Testing: the owner has SoundFonts in Downloads and on the
+  Desktop (`Hopmon Native Extras`, one of 4 GB); copy them into a test copy, never move them.
 - `XFPSDisplay` (`src/game`) is the original's counter, drawn by `XApplication::Render(d, bb,
   showFps, fps)`.
 - The key pages are built from `kKeyActions` in `options_menu.cpp` (group, label, DIK):

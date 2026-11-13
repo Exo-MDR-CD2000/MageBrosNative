@@ -16,9 +16,9 @@ struct SoundFontDir {
 };
 std::vector<SoundFontDir> SoundFontDirs();
 
-// Chooses the synthesizer: "" = automatic (system synth, then soundfont.sf2/magebros.sf2, then
-// the bundled TimGM6mb bank), "system" = the platform synthesizer only, "builtin" = the bundled
-// TimGM6mb bank only, anything else = that .sf2 file only.
+// Chooses the synthesizer: "" = automatic (soundfont.sf2/magebros.sf2 first, then the system
+// synth, then the bundled TimGM6mb bank), "system" = the platform synthesizer only, "builtin" =
+// the bundled TimGM6mb bank only, anything else = that .sf2 file only.
 bool Init(const std::string& soundFontPath);
 void Shutdown();
 // Switch synthesizer while running (options menu); the current song keeps playing.

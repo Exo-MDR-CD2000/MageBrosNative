@@ -396,13 +396,17 @@ bool Config::Save() const {
       "; master_volume scales both sound effects and music.\n");
     fprintf(f, "master_volume = %d\nsfx_volume = %d\nmusic_volume = %d\n\n", masterVolume, sfxVolume, musicVolume);
     P("; soundfont: which synthesizer plays the MIDI music.\n"
-      ";   empty = automatic: the system synthesizer first (the Windows MIDI synth the\n"
-      ";           original used, or macOS's DLS synth), then soundfont.sf2 or magebros.sf2\n"
-      ";           from the program or game folder or their \"soundfonts\" folders, then the\n"
-      ";           built-in TimGM6mb bank. Linux has no system synthesizer, so it starts at\n"
-      ";           the user SoundFont and then uses the built-in bank.\n"
+      ";   empty = automatic: soundfont.sf2 or magebros.sf2 from the program or game folder\n"
+      ";           or their \"soundfonts\" folders first, then the system synthesizer (the\n"
+      ";           Windows MIDI synth the original used, or macOS's DLS synth), then the\n"
+      ";           built-in TimGM6mb bank. A file you place is an intentional override.\n"
+      ";           Linux has no system synthesizer, so it uses the user SoundFont and then\n"
+      ";           the built-in bank.\n"
       ";   system = only the system synthesizer; builtin = only the built-in TimGM6mb bank.\n"
       ";   Anything else is a .sf2 path. A relative path is relative to this program's folder.\n"
+      ";   The original tracks were authored for Yamaha XG; an XG bank is not included\n"
+      ";   because it cannot be redistributed. A legally obtained XG bank can be supplied\n"
+      ";   as a .sf2, but this engine does not reproduce XG SysEx effects.\n"
       ";   Examples: soundfont = builtin\n"
       ";             soundfont = soundfonts\\GeneralUser GS.sf2\n"
       ";             soundfont = C:\\SoundFonts\\GeneralUser GS.sf2\n");

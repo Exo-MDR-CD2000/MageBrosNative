@@ -283,9 +283,9 @@ frame limit of 60, 0.480. With Smooth motion off the scroll is the original's.
 | Target | State |
 |---|---|
 | Windows | The release target: `make_release.bat` builds, tests on all 40 levels and writes the zip |
-| macOS (Apple Silicon) | Builds, runs and packages (`MageBrosNative-<version>-macos-arm64.zip`); desktop OpenGL 4.1 through SDL3, MSAA 4x on the test machine; music uses the macOS DLS synthesizer by default, with the bundled TimGM6mb bank as the fallback or an explicit choice; commands in the README |
+| macOS (Apple Silicon) | Builds, runs and packages (`MageBrosNative-<version>-macos-arm64.zip`); desktop OpenGL 4.1 through SDL3, MSAA 4x on the test machine; music uses a user `.sf2` first, otherwise the macOS DLS synthesizer, with the bundled TimGM6mb bank as the fallback or an explicit choice; commands in the README |
 | R36S | Builds for aarch64 with a static SDL3 and runs through the GLES renderer (Mali-G31, ES 3.2, 4x MSAA); the device acceptance session is the remaining step |
-| Linux desktop (Debian 13, x86_64) | Builds and packages (`MageBrosNative-<version>-linux-x86_64.tar.gz`) in a Debian 13 container with a static SDL3, X11/Wayland and OpenGL 3.3; includes the TimGM6mb bank, so music works without a system synthesizer; commands in the README. Debian 12 and older are not supported by the artifact |
+| Linux desktop (Debian 13, x86_64) | Builds and packages (`MageBrosNative-<version>-linux-x86_64.tar.gz`) in a Debian 13 container with a static SDL3, X11/Wayland and OpenGL 3.3; a user `.sf2` wins, otherwise the included TimGM6mb bank plays, so music works without a system synthesizer; commands in the README. Debian 12 and older are not supported by the artifact |
 
 ## Open items
 

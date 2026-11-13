@@ -991,7 +991,7 @@ OptionsMenu::Page OptionsMenu::AudioPage() {
                  },
                  nullptr, nullptr});
     v.push_back({"Music synth",
-                 "Automatic: system synth, then soundfont.sf2/magebros.sf2, then TimGM6mb. "
+                 "Automatic: soundfont.sf2/magebros.sf2, then system synth, then TimGM6mb. "
                  "Built-in: TimGM6mb.",
                  [] {
                      const std::string& s = GetConfig().soundFont;

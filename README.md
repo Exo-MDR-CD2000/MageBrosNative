@@ -20,9 +20,9 @@ Around it, Native adds:
 
 - **Runs natively on Windows 10 and 11, macOS and Linux** with OpenGL instead of the original's
   DirectX 7: no compatibility settings or wrappers needed.
-- **Music that works out of the box:** the system synthesizer by default, a built-in TimGM6mb
-  General MIDI bank as the fallback (and the default on Linux), and a Music synth setting for
-  choosing either or your own SoundFont.
+- **Music that works out of the box:** your own SoundFont when you place one next to the game,
+  otherwise the system synthesizer, with a built-in TimGM6mb General MIDI bank as the fallback
+  (and the default on Linux); the Music synth setting chooses any of them explicitly.
 - **Any resolution and screen mode:** a resizable window, borderless or exclusive fullscreen, any
   monitor, instead of the original's fixed 640 × 480. The window opens where you left it.
 - **Widescreen** (16:9, 21:9 and wider): see more of each level at the sides, with nothing
@@ -153,14 +153,21 @@ track loop seamlessly from a point other than its start, give the file `LOOPSTAR
 it loops from the end back to the start. To use other file names, set `music_1` to `music_6` in
 the settings file. To hear the original music again, set Music source to **MIDI only**.
 
-The original MIDI music plays through the system synthesizer by default: the Windows MIDI synth
-the original used, or the macOS DLS synth. No extra file is needed for music on those systems.
-Linux has no system synthesizer, so its package includes the **TimGM6mb** General MIDI bank and
-uses it out of the box.
+The original MIDI music plays through a synthesizer. **Automatic** (the default) uses a user
+SoundFont first: a file called `soundfont.sf2` or `magebros.sf2` next to the program or
+`MageBros.exe`, or in a `soundfonts` folder in either place. Placing it there is an intentional
+choice, so it takes precedence. With no such file the game uses the system synthesizer: the
+Windows MIDI synth the original used, or the macOS DLS synth. If the system synthesizer cannot
+start, the game uses the built-in **TimGM6mb** General MIDI bank. Linux has no system
+synthesizer, so it uses a user SoundFont and then the built-in bank.
 
-**Automatic** (the default) uses the system synthesizer first. If it cannot start, the game tries
-a user `.sf2` next to the program or `MageBros.exe` (`soundfont.sf2` or `magebros.sf2`), then the
-built-in TimGM6mb. A system synthesizer that works but sounds wrong can be replaced at any time:
+The original tracks were authored for **Yamaha XG**. The project does not include a Yamaha XG
+bank because its samples cannot be redistributed; the bundled TimGM6mb bank is General MIDI. If
+you have a legally obtained XG bank, you can use it as a user `.sf2`; the engine does not
+reproduce Yamaha XG SysEx effects.
+
+**Better-sounding MIDI instead:** a General MIDI SoundFont (`.sf2`) changes the instruments the
+MIDI music is played with.
 
 1. Put the `.sf2` file next to `MageBros.exe`, or keep them tidy in a folder called `soundfonts`
    next to it.
@@ -169,9 +176,8 @@ built-in TimGM6mb. A system synthesizer that works but sounds wrong can be repla
    remembered.
 
 **System synth** always uses the platform's synthesizer. **Built-in** uses the TimGM6mb bank that
-comes with the package. A user file is used only when selected, or automatically after the system
-synthesizer fails. On Linux the system synthesizer is not offered, so Automatic starts with a
-user file and then uses the built-in bank. The built-in bank is GPL-2.0; its licence travels in
+comes with the package. On Linux the system synthesizer is not offered; Automatic uses a user
+file and then the built-in bank. The built-in bank is GPL-2.0; its licence travels in
 `licenses/`.
 
 ### Your own menu font
@@ -245,11 +251,9 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   ```
 
   Settings, saves and the log live in `~/Library/Application Support/MageBrosNative`; the
-  application bundle itself is never written to. Music plays through the macOS system
-  synthesizer (the Apple DLS synth) by default, so no SoundFont is needed. A `.sf2` next to
-  `MageBros.exe`, in a `soundfonts` folder, or the built-in TimGM6mb is used when selected, or
-  automatically if the system synthesizer cannot start; the original's `Music*.mid` files are
-  used in every case.
+  application bundle itself is never written to. Music uses a user `.sf2` next to the program or
+  `MageBros.exe` first, otherwise the macOS system synthesizer (the Apple DLS synth), with the
+  built-in TimGM6mb as the fallback; the original's `Music*.mid` files are used in every case.
   **F10** (or Fn+F10: Apple keyboards use F10 for Mute by default, or Start on a gamepad)
   opens the pause menu — Resume, video/graphics/audio/controls, Level select, Main menu and
   Quit game. **P** freezes the game, as in the original; Esc is "back" inside menus.

@@ -511,10 +511,11 @@ bool Init(const std::string& soundFontPath) {
         return false;
     }
 
-    // Automatic: the system synthesizer first, then a player's SoundFont, then the bundled bank.
-    if (TrySystemSynth()) return true;
+    // Automatic: a player's SoundFont is an intentional override, then the system synthesizer,
+    // then the bundled bank.
     std::string sf = FindUserSoundFont();
     if (!sf.empty() && LoadSoftSynth(sf, false)) return true;
+    if (TrySystemSynth()) return true;
     sf = FindBuiltinSoundFont();
     if (!sf.empty() && LoadSoftSynth(sf, true)) return true;
 

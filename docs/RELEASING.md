@@ -79,9 +79,10 @@ GitHub workflow publishes the Windows zip and the Linux tarball; the macOS zip i
 until the release job covers it.
 
 The bundle is never written to: settings, saves and the log live in
-`~/Library/Application Support/MageBrosNative`. Music uses the macOS DLS synthesizer by default;
-the bundled TimGM6mb bank is the fallback and an explicit choice in Options > Audio > Music
-synth.
+`~/Library/Application Support/MageBrosNative`. Music uses a user `.sf2` first, otherwise the
+macOS DLS synthesizer, with the bundled TimGM6mb bank as the fallback and an explicit choice in
+Options > Audio > Music synth. The original tracks were authored for Yamaha XG; an XG bank is
+not shipped because it cannot be redistributed.
 
 ## Building the Linux package
 
@@ -98,9 +99,12 @@ tools/linux/build.sh
 The script builds SDL3 3.4.18 from the pinned source and links it statically, enables X11,
 Wayland, ALSA/Pulse/PipeWire and the OpenGL 3.3 backend, runs the tests that need no game files,
 and packages a tarball with a top-level folder. The tarball holds the game, the tools and tests,
-`TimGM6mb.sf2`, the README, the licence files and the docs; it contains no game content. The
-game binary keeps only the system C++ runtime, `libm`, `libgcc_s` and `libc` as dynamic
-dependencies; inspect it with `readelf -d` or `ldd` in the container.
+`TimGM6mb.sf2`, the README, the licence files and the docs; it contains no game content. A
+user `soundfont.sf2`/`magebros.sf2` next to the binary takes precedence, then the built-in
+TimGM6mb bank. The original tracks were authored for Yamaha XG; no XG bank is shipped because
+it cannot be redistributed, and the engine does not reproduce XG SysEx effects. The game binary
+keeps only the system C++ runtime, `libm`, `libgcc_s` and `libc` as dynamic dependencies;
+inspect it with `readelf -d` or `ldd` in the container.
 
 `MBN_LINUX_SKIP_TESTS=1` builds and packages without running `ctest`. `MBN_LINUX_BASE` changes
 the base image for a contributor experiment; the released artifact and its documentation are
