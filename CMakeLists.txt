@@ -40,6 +40,17 @@ add_executable(mbn_tests tests/format_tests.cpp)
 target_link_libraries(mbn_tests PRIVATE mbn_core)
 add_test(NAME formats COMMAND mbn_tests)
 
+# The bundled TimGM6mb bank, loaded through the game's TinySoundFont build. No game files or
+# sound device are needed: it only proves that the packaged bank is readable and renders notes.
+add_executable(mbn_soundfont_tests tests/soundfont_tests.cpp)
+target_include_directories(mbn_soundfont_tests PRIVATE third_party)
+target_compile_definitions(mbn_soundfont_tests PRIVATE
+  MBN_SOUNDFONT_PATH="${CMAKE_SOURCE_DIR}/third_party/soundfonts/TimGM6mb.sf2")
+if(NOT MSVC)
+  target_link_libraries(mbn_soundfont_tests PRIVATE m)
+endif()
+add_test(NAME soundfont COMMAND mbn_soundfont_tests ${CMAKE_SOURCE_DIR}/third_party/soundfonts/TimGM6mb.sf2)
+
 # macOS: the platform's General MIDI synthesizer, which plays the music when no SoundFont is
 # installed. It renders directly, so no audio output device is needed.
 if(APPLE)
@@ -178,6 +189,8 @@ if(MBN_BUILD_GAME)
     target_link_libraries(MageBrosNative PRIVATE winmm)
   elseif(NOT APPLE)
     target_link_libraries(MageBrosNative PRIVATE m pthread)
+    # Keep the release tarball independent of the builder's GLIBCXX/libgcc versions.
+    target_link_options(MageBrosNative PRIVATE -static-libstdc++ -static-libgcc)
   endif()
   if(MSVC)
     # main() entry point in a Windows GUI program
@@ -207,16 +220,24 @@ if(MBN_BUILD_GAME)
 endif()
 
 # ---------------------------------------------------------------------------------------------
-# Release zip: `cmake --build build --config Release --target package` (or make_release.bat)
-install(TARGETS MageBrosAssets mbn_tests RUNTIME DESTINATION .)
+# Release package: `cmake --build build --config Release --target package` (or make_release.bat)
+install(TARGETS MageBrosAssets mbn_tests mbn_soundfont_tests RUNTIME DESTINATION .)
 install(FILES README.md LICENSE THIRD_PARTY_NOTICES.md DESTINATION .)
+# The bundled General MIDI bank: beside the program on Windows/Linux, in the bundle's Resources
+# on macOS. The game looks for TimGM6mb.sf2 for its Built-in synth and its automatic fallback.
+if(APPLE)
+  install(FILES third_party/soundfonts/TimGM6mb.sf2
+          DESTINATION "MageBrosNative.app/Contents/Resources" RENAME TimGM6mb.sf2)
+else()
+  install(FILES third_party/soundfonts/TimGM6mb.sf2 DESTINATION . RENAME TimGM6mb.sf2)
+endif()
 # the LGPL text must travel with binaries that contain ColDet
 if(EXISTS ${CMAKE_SOURCE_DIR}/third_party/coldet/COPYING)
   install(FILES third_party/coldet/COPYING DESTINATION licenses RENAME coldet-LGPL.txt)
 endif()
 file(GLOB MBN_THIRD_PARTY_LICENSES ${CMAKE_SOURCE_DIR}/third_party/*-LICENSE)
 install(FILES ${MBN_THIRD_PARTY_LICENSES} DESTINATION licenses)
-install(DIRECTORY docs/ DESTINATION docs)
+install(DIRECTORY docs/ DESTINATION docs PATTERN ".DS_Store" EXCLUDE PATTERN "._*" EXCLUDE)
 set(CPACK_GENERATOR ZIP)
 set(CPACK_PACKAGE_NAME MageBrosNative)
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
@@ -224,6 +245,13 @@ if(WIN32)
   set(CPACK_SYSTEM_NAME windows-x64)
 elseif(APPLE)
   set(CPACK_SYSTEM_NAME macos-arm64)  # Apple Silicon only, as the port targets it
+elseif(UNIX)
+  # A portable tarball: TGZ keeps the executable bit, which a zip extractor may not.
+  set(CPACK_SYSTEM_NAME "linux-${CMAKE_SYSTEM_PROCESSOR}")
+  set(CPACK_GENERATOR TGZ)
 endif()
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+if(UNIX AND NOT APPLE)
+  set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY ON)
+endif()
 include(CPack)

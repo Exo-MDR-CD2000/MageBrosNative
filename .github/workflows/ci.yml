@@ -1,11 +1,11 @@
-# Compiles the game on macOS on every push and pull request. The runner has no MageBros.exe
-# (it must never be uploaded), so only the tests that need no game files run here; the map,
-# hero and collision tests need the original and run locally. SDL3 is built from the pinned
-# source, which is the same path the macos package uses.
+# Compiles the game on macOS and Linux on every push and pull request. The runner has no
+# MageBros.exe (it must never be uploaded), so only the tests that need no game files run here;
+# the map and hero tests need the original and run locally. SDL3 is built from the pinned
+# source, which is the same path both packages use.
 #
-# Locally: `actionlint` checks this file; `act -j macos -P macos-latest=<image with cmake>`
-# runs the steps in a Linux container. GitHub's macOS runner cannot be reproduced locally, so
-# the container run proves the workflow's shape and commands, not Apple's toolchain.
+# The Linux job runs tools/linux/build.sh, so CI uses the exact Debian 13 container that makes
+# the release tarball. Locally: `actionlint` checks this file; `act -j macos -P
+# macos-latest=<image with cmake>` runs the macOS steps in a Linux container.
 name: CI
 
 on:
@@ -32,3 +32,11 @@ jobs:
 
       - name: Test (no game files)
         run: ctest --test-dir build --output-on-failure
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build, test and package in the Debian 13 container
+        run: tools/linux/build.sh

@@ -1,6 +1,7 @@
 # Building and releasing
 
-How to build Mage Bros. Native on Windows and publish a new version, step by step.
+How to build Mage Bros. Native on Windows, macOS and Linux and publish a new version, step by
+step.
 
 ## Quick reference
 
@@ -46,11 +47,12 @@ It then:
 The game itself is also at `build\Release\MageBrosNative.exe`, the same program as in the zip.
 
 **What the zip holds** (the `install(...)` lines in `CMakeLists.txt` decide it): the game,
-`MageBrosNative.exe`; the asset tool `MageBrosAssets.exe`; the tests `mbn_tests.exe` and
-`mbn_collision_tests.exe`; `README.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`; the `licenses`
-folder (ColDet's LGPL text must travel with the program); and the `docs` folder. Players only
-need the game; the README's "Getting started" says so in a table. If what's packaged changes,
-change that table too.
+`MageBrosNative.exe`; the asset tool `MageBrosAssets.exe`; the tests `mbn_tests.exe`,
+`mbn_soundfont_tests.exe` and `mbn_collision_tests.exe`; the `TimGM6mb.sf2` General MIDI bank;
+`README.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`; the `licenses` folder (ColDet's LGPL text and
+TimGM6mb's GPL-2.0 text must travel with the program); and the `docs` folder. Players only need
+the game; the README's "Getting started" says so in a table. If what's packaged changes, change
+that table too.
 
 **If something fails**, the script prints `Release failed.` and puts a raised version back, so
 `CMakeLists.txt` is as it was. Scroll up to see the build error or the failed test.
@@ -71,12 +73,46 @@ cmake --build build --target package
 
 `-DMBN_SDL_FROM_SOURCE=ON` builds the pinned SDL3 from source instead of taking a system copy,
 so the zip carries its own SDL3. The result is
-`build/MageBrosNative-<version>-macos-arm64.zip`, holding `MageBrosNative.app` and the same
-licence files as the Windows zip. The GitHub workflow publishes the Windows zip only; the macOS
-zip is built by hand until the release job covers both.
+`build/MageBrosNative-<version>-macos-arm64.zip`, holding `MageBrosNative.app`,
+`TimGM6mb.sf2` inside `Contents/Resources/`, and the same licence files as the Windows zip. The
+GitHub workflow publishes the Windows zip and the Linux tarball; the macOS zip is built by hand
+until the release job covers it.
 
 The bundle is never written to: settings, saves and the log live in
-`~/Library/Application Support/MageBrosNative`.
+`~/Library/Application Support/MageBrosNative`. Music uses a user `.sf2` first, otherwise the
+macOS DLS synthesizer, with the bundled TimGM6mb bank as the fallback and an explicit choice in
+Options > Audio > Music synth. The original tracks were authored for Yamaha XG; an XG bank is
+not shipped because it cannot be redistributed.
+
+## Building the Linux package
+
+The Linux package targets **Debian 13 (glibc 2.41) and newer**. The build runs in a Debian 13
+x86_64 container on any machine with Docker, so an Apple Silicon or ARM machine does not need a
+Linux toolchain or a hand-prepared sysroot:
+
+```sh
+tools/linux/build.sh
+# build-linux/MageBrosNative
+# build-linux/MageBrosNative-<version>-linux-x86_64.tar.gz
+```
+
+The script builds SDL3 3.4.18 from the pinned source and links it statically, enables X11,
+Wayland, ALSA/Pulse/PipeWire and the OpenGL 3.3 backend, runs the tests that need no game files,
+and packages a tarball with a top-level folder. The tarball holds the game, the tools and tests,
+`TimGM6mb.sf2`, the README, the licence files and the docs; it contains no game content. A
+user `soundfont.sf2`/`magebros.sf2` next to the binary takes precedence, then the built-in
+TimGM6mb bank. The original tracks were authored for Yamaha XG; no XG bank is shipped because
+it cannot be redistributed, and the engine does not reproduce XG SysEx effects. The game binary
+keeps only the system C++ runtime, `libm`, `libgcc_s` and `libc` as dynamic dependencies;
+inspect it with `readelf -d` or `ldd` in the container.
+
+`MBN_LINUX_SKIP_TESTS=1` builds and packages without running `ctest`. `MBN_LINUX_BASE` changes
+the base image for a contributor experiment; the released artifact and its documentation are
+still Debian 13.
+
+The GitHub `CI` workflow runs the same script on every push, and the `Release` workflow builds
+the tarball after the Windows zip and attaches it to the same release. The live-session
+acceptance is recorded in `research/acceptance/linux-desktop.md`.
 
 ## Building for the R36S
 

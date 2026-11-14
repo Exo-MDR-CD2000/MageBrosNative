@@ -1,13 +1,29 @@
 # Changelog
 
 What changed in each version of Mage Bros. Native. Every version is published as a
-[GitHub release](https://github.com/Exo-MDR-CD2000/MageBrosNative/releases) with its Windows zip.
+[GitHub release](https://github.com/Exo-MDR-CD2000/MageBrosNative/releases) with its Windows zip
+and Linux tarball.
 You still need your own copy of Mage Bros. 2.0 (the freeware build) to play: put
 `MageBrosNative.exe` next to `MageBros.exe`.
 
 Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
+
+- **Linux desktop release (Debian 13, x86_64).** `tools/linux/build.sh` builds a portable
+  `MageBrosNative-<version>-linux-x86_64.tar.gz` in a Debian 13 container with a static SDL3,
+  X11/Wayland and OpenGL 3.3. The package includes the TimGM6mb General MIDI bank, so music
+  works without a system synthesizer. Debian 12 and older are not supported by this artifact.
+- **Automatic music keeps your SoundFont first.** A user `soundfont.sf2`/`magebros.sf2` next to
+  the game is an intentional override and takes precedence. Without one the game uses the system
+  synthesizer; if that cannot start it uses the bundled TimGM6mb bank.
+- **Music synth offers Built-in.** The setting now has Automatic, System synth (Windows/macOS),
+  Built-in (TimGM6mb) and the user `.sf2` files. The built-in bank is included on Windows, macOS
+  and Linux, with its GPL-2.0 text and attribution.
+- **Yamaha XG note.** The original tracks were authored for Yamaha XG, but an XG bank is not
+  included because it cannot be redistributed. The bundled TimGM6mb bank is General MIDI; a
+  legally obtained XG bank can be used as a user SoundFont, though the engine does not reproduce
+  XG SysEx effects.
 
 ## [0.4.47] - 2026-11-13
 

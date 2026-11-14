@@ -375,12 +375,19 @@ std::vector<std::string> OptionsMenu::SynthList() const {
 #if defined(_WIN32) || defined(__APPLE__)
     out.push_back("system");
 #endif
+    const std::string builtin = Midi::BuiltinSoundFontPath();
+    const std::string builtinName = builtin.empty() ? "" : BaseName(builtin);
+    if (!builtin.empty()) out.push_back("builtin");
     // next to the program, next to MageBros.exe, then their "soundfonts" folders (Midi::SoundFontDirs);
     // files in the program's own folders are stored relative to it (portable), others in full
     for (const Midi::SoundFontDir& d : Midi::SoundFontDirs()) {
         int n = 0;
         char** files = SDL_GlobDirectory(d.dir.c_str(), "*.sf2", SDL_GLOB_CASEINSENSITIVE, &n);
         for (int i = 0; i < n; i++) {
+            const std::string full = d.dir + files[i];
+            // The separate Built-in entry covers the packaged file even when the game dir is
+            // relative ("./") and produces a second path spelling for the same file.
+            if (!builtin.empty() && (full == builtin || files[i] == builtinName)) continue;
             std::string v = d.name + files[i];
             if (std::find(out.begin(), out.end(), v) == out.end()) out.push_back(v);
         }
@@ -987,11 +994,13 @@ OptionsMenu::Page OptionsMenu::AudioPage() {
                  },
                  nullptr, nullptr});
     v.push_back({"Music synth",
-                 "Automatic uses soundfont.sf2/magebros.sf2 if present, else the system synthesizer. Or pick a .sf2 file.",
+                 "Automatic: soundfont.sf2/magebros.sf2, then system synth, then TimGM6mb. "
+                 "Built-in: TimGM6mb.",
                  [] {
                      const std::string& s = GetConfig().soundFont;
                      if (s.empty()) return std::string("Automatic");
                      if (s == "system") return std::string("System synth");
+                     if (s == "builtin") return std::string("Built-in");
                      return Fit(BaseName(s), 13);
                  },
                  [this, applyVolumes](int d) {
@@ -1001,7 +1010,10 @@ OptionsMenu::Page OptionsMenu::AudioPage() {
                      Midi::SwitchSynth(c.soundFont);
                      applyVolumes();
                      Save();
-                     SetMessage(std::string("Music now plays through: ") + Midi::BackendName());
+                     const char* backend = Midi::BackendName();
+                     SetMessage(std::string(backend) == "unavailable"
+                                    ? "No MIDI synthesizer is available."
+                                    : std::string("Music now plays through: ") + backend);
                  },
                  nullptr, nullptr});
     v.push_back({"Back", "", nullptr, nullptr, [this] { Back(false); }, nullptr});
