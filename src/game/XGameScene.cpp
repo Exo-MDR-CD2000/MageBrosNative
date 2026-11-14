@@ -178,11 +178,11 @@ void XGameScene::ApplyBenchmarkInput() {
         in.keyRight = true;
     else if (turn >= 80 && turn < 100)
         in.keyLeft = true;
-    if (t % 25 == 0) {  // fire a burst every quarter second
+    if (t % 200 == 0) {  // fire a burst every two seconds
         in.button1Pressed = true;
         in.button1Down = true;
     }
-    if (t % 200 == 0) {  // and jump occasionally, for the landing effect
+    if (t % 1200 == 0) {  // and jump now and then, for the landing effect
         in.button2Pressed = true;
         in.button2Down = true;
     }

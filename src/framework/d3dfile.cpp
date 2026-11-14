@@ -273,7 +273,7 @@ void CD3DFileObject::InvalidateGpu() {
 }
 
 bool CD3DFileObject::CanMerge() const {
-    if (hasAlpha || numMaterials == 0) return false;
+    if (numMaterials == 0) return false;
     for (DWORD i = 0; i < numMaterials && i < 16; i++)
         if (materials[i].numIndices && materials[i].tex) return false;  // per-material textures
     return true;

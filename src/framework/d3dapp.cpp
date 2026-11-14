@@ -141,7 +141,8 @@ void CD3DApplication::DrawBenchmarkLabel() {
     else
         std::snprintf(text, sizeof text, "BENCHMARK warm-up");
     float w = benchmarkUi_->TextWidth(text, 1.f) + 12.f;
-    float x = benchmarkUi_->Right() - w - 6.f, y = 6.f;
+    // bottom-left, clear of the HUD's status panels and the FPS counter
+    float x = benchmarkUi_->Left() + 6.f, y = 444.f;
     benchmarkUi_->BeginBatch();
     benchmarkUi_->Rect(x, y, x + w, y + 18.f, UIColor{0.04f, 0.04f, 0.07f, 0.65f});
     benchmarkUi_->Text(x + 6.f, y + 5.f, text, 1.f, UIColor{1.f, 0.85f, 0.30f, 1.f});

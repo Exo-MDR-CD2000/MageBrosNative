@@ -336,6 +336,12 @@ private:
     void ApplyState(DWORD fvf, bool twoD);
     void Draw2DQuad(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, Texture* t,
                     bool alphaTest, const float* color, bool linear);
+    // 2D/HUD quads are gathered by texture and state and drawn at the next state change or before
+    // the 3D, a clear, a screenshot or the present. The per-quad order is kept.
+    std::vector<D3DLVERTEX> batch2D_;
+    Texture* batchTex_ = nullptr;
+    bool batchAlpha_ = false, batchLinear_ = false;
+    void Flush2D();
     GLuint CompileProgram(const char* vs, const char* fs);
 
     SDL_Window* window_ = nullptr;
@@ -349,7 +355,10 @@ private:
     int samples_ = 0;
     bool inScene_ = false;
 
-    GLuint prog_ = 0, progPresent_ = 0;
+    GLuint prog_ = 0, progBase_ = 0, progLevel_ = 0, progPresent_ = 0;
+    bool BasePath() const;
+    bool LevelPath(const DrawState& st, DWORD fvf) const;
+    void ApplyLevelDrawState(const DrawState& st);
     GLuint vao_ = 0, vbo_ = 0, ibo_ = 0;
     // What was last sent to OpenGL for a 3D draw, so unchanged state is not sent again. Cleared by
     // every path that draws or changes state outside a recorded 3D draw (InvalidateState).
@@ -414,7 +423,8 @@ private:
             hasVertexColor, tex, constColor, screen2D, viewport2D, alphaFix, bgra, aoStrength, aoTex,
             fboSize, shadowKind, shadowMap, lightVP, shadowTexel, shadowOffset, shadowStrength, shadowGrid,
             eye, lightKind, lightCount, lightPos, lightColor, lightReach, sceneDim, glowMode;
-    } u_{};
+    } u_{}, uBase_{}, uLevel_{};
+    Uniforms* activeU_ = &u_;
     GLint presentTexLoc_ = -1, presentGammaLoc_ = -1;
 
     DWORD rs_[D3DRENDERSTATE_MAX];

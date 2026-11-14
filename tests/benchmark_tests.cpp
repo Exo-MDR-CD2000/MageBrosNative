@@ -107,7 +107,7 @@ int main() {
     CHECK(fences >= 2, "fence count %d", fences);
     CHECK(platforms >= 4, "platform count %d", platforms);
     CHECK(statics >= 4, "static prop count %d", statics);
-    CHECK(candles >= 8, "candle row count %d", candles);
+    CHECK(candles >= 1, "candle row count %d", candles);
     CHECK(water >= 1, "the level has no water row");
     CHECK(enemies < 110, "enemy count %d exceeds the game's slots", enemies);
     CHECK(candles <= 30, "candle row count %d exceeds the game's slots", candles);

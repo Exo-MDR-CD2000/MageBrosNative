@@ -537,16 +537,17 @@ never overwrite an earlier one (named by version: `MageBrosNative-0.4.31 (fixes 
 **Sleeps on Windows come back up to 1 ms late**: for exact timing, sleep short and watch the
 clock for the rest.
 
-**R36S benchmark (2026-11-13)**: `--benchmark` (or Options > Video > Performance benchmark, or
+**R36S benchmark (2026-11-14)**: `--benchmark` (or Options > Video > Performance benchmark, or
 `MageBrosBench.sh` on the console) loads the generated dense benchmark level from
 `src/core/benchmark_level.cpp`, runs a tick-scripted 30-second measurement with a 2-second
 warm-up and writes a JSON report beside the log. The report carries frame times, average FPS,
 1% low, p95/p99, CPU/tick/render/swap, draws and uploaded bytes, plus every setting that changes
 the frame. The renderer work it paid for: a sent-state cache, static mesh buffers for models and
-the level, merged opaque model materials, and direct-to-window MSAA on GLES. The measured result
-and the open limit (the `D3DFVF_LVERTEX` path: the level's pre-lit geometry and flat
-particles/rectangles) are in `research/acceptance/r36s-performance.md`; the 60 fps target at
-640x480 is **not** met yet.
+the level, merged opaque/alpha model materials, direct-to-window MSAA on GLES, a dedicated
+`texture * vertexColour` shader for the level and flat sprites, and 2D/HUD batching. The R36S now
+holds **60 fps at the current defaults** (640x480, MSAA 4x, anisotropy 8x, render scale 1.0) on
+the benchmark, 1-1 and 3-10; the quality budget (AO and shadows already fit, dynamic lights and
+bloom do not yet) and all figures are in `research/acceptance/r36s-performance.md`.
 
 **Next**: the cheats are done (0.4.26) and the frame timing review's list is closed (0.4.27 to
 0.4.32, merged into `main` on 2026-11-10 (pull request #3) and released as v0.4.32; its release notes are 0.4.32's

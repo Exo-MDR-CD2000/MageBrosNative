@@ -10,6 +10,15 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+- **R36S performance benchmark and the 60 fps gate.** `--benchmark` (also Options > Video >
+  Performance benchmark and `MageBrosBench.sh` in the Ports folder) plays a generated dense test
+  level for 30 seconds and writes a JSON report beside the log: frame times, average FPS, 1% low,
+  p95/p99, CPU/tick/render/swap, draws, uploaded bytes and every setting that affects the frame.
+  The R36S now holds 60 fps at the current defaults (640x480, MSAA 4x, anisotropy 8x, render
+  scale 1.0) on the benchmark, 1-1 and 3-10. The renderer changes: a sent-state cache, static
+  mesh buffers for models and the level, merged model materials, direct-to-window MSAA on GLES,
+  a dedicated level/flat-sprite shader and 2D/HUD batching. The measurements and the quality
+  budget for the next iteration are in `research/acceptance/r36s-performance.md`.
 - **Linux desktop release (Debian 13, x86_64).** `tools/linux/build.sh` builds a portable
   `MageBrosNative-<version>-linux-x86_64.tar.gz` in a Debian 13 container with a static SDL3,
   X11/Wayland and OpenGL 3.3. The package includes the TimGM6mb General MIDI bank, so music

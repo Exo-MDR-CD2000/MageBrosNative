@@ -206,6 +206,113 @@ void main() {
 }
 )GLSL";
 
+// The level's path: its pre-lit, point-sampled meshes are drawn with one texture fetch and a
+// vertex-colour multiply (D3DTOP_MODULATE with the texture and the diffuse/current colour), the
+// only state the level uses at the defaults. It produces the same RGB as the full shader.
+static const char* kLevelVS = MBN_GLSL_HEADER R"GLSL(
+layout(location=0) in vec3 aPos;
+layout(location=2) in vec4 aColor;
+layout(location=4) in vec2 aUV;
+uniform mat4 uWorld, uView, uProj;
+uniform float uBgra;
+out vec4 vColor;
+flat out vec4 vColorFlat;
+out vec2 vUV;
+void main() {
+    gl_Position = uProj * (uView * (uWorld * vec4(aPos, 1.0)));
+    vec4 c = uBgra > 0.5 ? aColor.bgra : aColor;
+    vColor = c; vColorFlat = c; vUV = aUV;
+}
+)GLSL";
+
+static const char* kLevelFS = MBN_GLSL_HEADER R"GLSL(
+in vec4 vColor;
+flat in vec4 vColorFlat;
+in vec2 vUV;
+uniform sampler2D uTex;
+uniform vec4 uConstColor;
+uniform bool uFlat;
+layout(location = 0) out vec4 fragColor;
+void main() {
+    vec4 diff = uFlat ? vColorFlat : vColor;
+    fragColor = texture(uTex, vUV) * diff * uConstColor;
+}
+)GLSL";
+
+// The base program: the same result as the full shader with every enhancement off (no ambient
+// occlusion, shadows, dynamic lights or bloom), with only the varyings that path reads. It keeps
+// the picture identical and cuts the per-pixel interpolation and branching on weak hardware.
+static const char* kBaseVS = MBN_GLSL_HEADER R"GLSL(
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNormal;
+layout(location=2) in vec4 aColor;
+layout(location=4) in vec2 aUV;
+layout(location=3) in float aMaterial;
+uniform mat4 uWorld, uView, uProj;
+uniform bool uLighting, uLightOn, uHasVertexColor;
+uniform float uBgra;
+uniform int uMatMode;
+uniform vec4 uMatDiffuse[16], uMatAmbient[16], uMatEmissive[16], uAmbient, uLightDiffuse;
+uniform vec3 uLightDir;
+out vec4 vColor;
+flat out vec4 vColorFlat;
+out vec2 vUV;
+vec4 vc(vec4 c) { return uBgra > 0.5 ? c.bgra : c; }
+void main() {
+    vec4 wp = uWorld * vec4(aPos, 1.0);
+    gl_Position = uProj * (uView * wp);
+    vec3 n = transpose(inverse(mat3(uWorld))) * aNormal;
+    int mi = uMatMode > 0 ? int(aMaterial + 0.5) : 0;
+    vec4 md = uMatDiffuse[mi], ma = uMatAmbient[mi], me = uMatEmissive[mi];
+    vec4 col;
+    if (uLighting) {
+        vec3 c = me.rgb + uAmbient.rgb * ma.rgb;
+        if (uLightOn) c += uLightDiffuse.rgb * md.rgb * max(dot(n, uLightDir), 0.0);
+        col = vec4(clamp(c, 0.0, 1.0), clamp(md.a, 0.0, 1.0));
+    } else {
+        col = uHasVertexColor ? vc(aColor) : vec4(1.0);
+    }
+    vColor = col; vColorFlat = col; vUV = aUV;
+}
+)GLSL";
+
+static const char* kBaseFS = MBN_GLSL_HEADER R"GLSL(
+in vec4 vColor;
+flat in vec4 vColorFlat;
+in vec2 vUV;
+uniform sampler2D uTex;
+uniform bool uTexOn, uFlat, uAlphaTest;
+uniform int uColorOp, uColorArg1, uColorArg2, uAlphaOp, uAlphaArg1, uAlphaArg2;
+uniform vec4 uConstColor;
+uniform int uAlphaFix;
+layout(location = 0) out vec4 fragColor;
+vec4 pick(int a, vec4 diff, vec4 tex) { return a == 2 ? tex : diff; }
+vec4 op(int o, vec4 a1, vec4 a2) {
+    if (o == 2) return a1;
+    if (o == 3) return a2;
+    if (o == 4) return a1 * a2;
+    if (o == 5) return clamp(a1 * a2 * 2.0, 0.0, 1.0);
+    if (o == 6) return clamp(a1 * a2 * 4.0, 0.0, 1.0);
+    if (o == 7) return clamp(a1 + a2, 0.0, 1.0);
+    return a2;
+}
+void main() {
+    vec4 diff = uFlat ? vColorFlat : vColor;
+    vec4 result = diff;
+    if (uTexOn && uColorOp != 1) {
+        vec4 t = texture(uTex, vUV);
+        result.rgb = op(uColorOp, pick(uColorArg1, diff, t), pick(uColorArg2, diff, t)).rgb;
+        result.a = uAlphaOp == 1 ? diff.a : op(uAlphaOp, pick(uAlphaArg1, diff, t), pick(uAlphaArg2, diff, t)).a;
+    }
+    if (uAlphaTest && result.a < 0.5) discard;
+    if (uAlphaFix != 0 && uTexOn) {
+        float ta = texture(uTex, vUV).a;
+        result.rgb = uAlphaFix == 1 ? result.rgb * ta : mix(vec3(1.0), result.rgb, ta);
+    }
+    fragColor = result * uConstColor;
+}
+)GLSL";
+
 // Ambient occlusion (G3). The depth pass: view-space depth (distance along the view) of the solid
 // draws, 0 where nothing is drawn.
 static const char* kDepthVS = MBN_GLSL_HEADER R"GLSL(
@@ -546,6 +653,128 @@ GLuint Device::CompileProgram(const char* vs, const char* fs) {
     return p;
 }
 
+static GLenum MapBlend(DWORD b);
+
+bool Device::BasePath() const {
+    const Config& cfg = GetConfig();
+    return !cfg.ambientOcclusion && cfg.dynamicShadows == 0 && !cfg.dynamicLights && cfg.bloom == 0;
+}
+
+bool Device::LevelPath(const DrawState& st, DWORD fvf) const {
+    if (fvf != D3DFVF_LVERTEX || st.lighting || !st.texture) return false;
+    if (st.shadeMode == D3DSHADE_FLAT) return false;
+    if (st.colorOp != D3DTOP_MODULATE || st.colorArg1 != D3DTA_TEXTURE) return false;
+    if (st.colorArg2 != D3DTA_CURRENT && st.colorArg2 != D3DTA_DIFFUSE) return false;
+    if (st.alphaOp != D3DTOP_SELECTARG1 && st.alphaOp != D3DTOP_MODULATE) return false;
+    if (st.alphaArg1 != D3DTA_TEXTURE) return false;
+    if (st.alphaArg2 != D3DTA_CURRENT && st.alphaArg2 != D3DTA_DIFFUSE) return false;
+    if (st.texture->SoftAlpha()) return false;
+    return true;
+}
+
+void Device::ApplyLevelDrawState(const DrawState& st) {
+    Flush2D();
+    activeU_ = &uLevel_;
+    if (!glc_.valid || glc_.fbo != sceneFbo_) {
+        glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
+        glc_.fbo = sceneFbo_;
+    }
+    if (!glc_.valid || glc_.vpW != layout_.fboW || glc_.vpH != layout_.fboH) {
+        glViewport(0, 0, layout_.fboW, layout_.fboH);
+        glc_.vpW = layout_.fboW;
+        glc_.vpH = layout_.fboH;
+    }
+    if (!glc_.valid || glc_.prog != progLevel_) {
+        glUseProgram(progLevel_);
+        glc_.valid = false;
+        glc_.prog = progLevel_;
+    }
+    if (!glc_.valid || glc_.depthTest != (int)st.zEnable) {
+        if (st.zEnable) {
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_LEQUAL);
+        } else {
+            glDisable(GL_DEPTH_TEST);
+        }
+        glc_.depthTest = (int)st.zEnable;
+    }
+    if (!glc_.valid || glc_.depthWrite != (int)st.zWrite) {
+        glDepthMask(st.zWrite ? GL_TRUE : GL_FALSE);
+        glc_.depthWrite = (int)st.zWrite;
+    }
+    GLenum src = st.blendEnable ? MapBlend(st.srcBlend) : GL_ONE;
+    GLenum dst = st.blendEnable ? MapBlend(st.destBlend) : GL_ZERO;
+    if (!glc_.valid || glc_.blend != (int)st.blendEnable ||
+        (st.blendEnable && (glc_.srcBlend != src || glc_.dstBlend != dst))) {
+        if (st.blendEnable) {
+            glEnable(GL_BLEND);
+            glBlendFunc(src, dst);
+        } else {
+            glDisable(GL_BLEND);
+        }
+        glc_.blend = (int)st.blendEnable;
+        glc_.srcBlend = src;
+        glc_.dstBlend = dst;
+    }
+    if (!glc_.valid || glc_.cull != (int)st.cullMode) {
+        DWORD cull = st.cullMode;
+        if (cull == D3DCULL_NONE) {
+            glDisable(GL_CULL_FACE);
+        } else {
+            glEnable(GL_CULL_FACE);
+            glFrontFace(cull == D3DCULL_CCW ? GL_CW : GL_CCW);
+            glCullFace(GL_BACK);
+        }
+        glc_.cull = (int)st.cullMode;
+    }
+    D3DMATRIX world = st.world;
+    D3DMATRIX proj = DrawProj(st);
+    if (!glc_.valid || !glc_.worldSet || memcmp(&glc_.world, &world, sizeof world) != 0) {
+        glUniformMatrix4fv(activeU_->world, 1, GL_FALSE, world.m());
+        glc_.world = world;
+        glc_.worldSet = true;
+    }
+    if (!glc_.valid || !glc_.viewSet || memcmp(&glc_.view, &st.view, sizeof st.view) != 0) {
+        glUniformMatrix4fv(activeU_->view, 1, GL_FALSE, st.view.m());
+        glc_.view = st.view;
+        glc_.viewSet = true;
+    }
+    if (!glc_.valid || !glc_.projSet || memcmp(&glc_.proj, &proj, sizeof proj) != 0) {
+        glUniformMatrix4fv(activeU_->proj, 1, GL_FALSE, proj.m());
+        glc_.proj = proj;
+        glc_.projSet = true;
+    }
+    SetConstColor(1, 1, 1, 1);
+    if (!glc_.valid) glUniform1i(activeU_->flat, 0);
+    if (!glc_.valid || glc_.texture != st.texture->Id()) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, st.texture->Id());
+        SetTexUnit(0);
+        glc_.texture = st.texture->Id();
+        glc_.minFilter = -1;
+        glc_.magFilter = -1;
+        glc_.anisoSet = false;
+    }
+    const Config& cfg = GetConfig();
+    bool linMag = st.magFilter >= D3DTFG_LINEAR || cfg.smoothTextures;
+    bool linMin = st.minFilter >= D3DTFG_LINEAR || cfg.smoothTextures;
+    GLint minF = linMin ? GL_LINEAR : GL_NEAREST;
+    bool aniso = st.texture->HasMips() && cfg.anisotropy > 1;
+    if (st.texture->HasMips() && (aniso || (linMin && cfg.smoothTextures))) minF = GL_LINEAR_MIPMAP_LINEAR;
+    GLint magF = linMag ? GL_LINEAR : GL_NEAREST;
+    GLfloat anisoVal = (maxAniso_ > 1.f && aniso) ? std::min((float)cfg.anisotropy, maxAniso_) : 1.f;
+    if (glc_.minFilter != minF || glc_.magFilter != magF || !glc_.anisoSet || glc_.aniso != anisoVal) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minF);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magF);
+        if (maxAniso_ > 1.f) glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, anisoVal);
+        glc_.minFilter = minF;
+        glc_.magFilter = magF;
+        glc_.aniso = anisoVal;
+        glc_.anisoSet = true;
+    }
+    glc_.valid = true;
+}
+
 bool Device::Init(SDL_Window* window) {
     window_ = window;
     if (!hgl::Load()) return false;
@@ -567,6 +796,8 @@ bool Device::Init(SDL_Window* window) {
 #endif
 
     prog_ = CompileProgram(kVS, kFS);
+    progBase_ = CompileProgram(kBaseVS, kBaseFS);
+    progLevel_ = CompileProgram(kLevelVS, kLevelFS);
     progPresent_ = CompileProgram(kPresentVS, kPresentFS);
 #define U(n) u_.n = glGetUniformLocation(prog_, "u" #n[0] == 0 ? "" : nullptr)
     auto loc = [&](const char* n) { return glGetUniformLocation(prog_, n); };
@@ -599,6 +830,33 @@ bool Device::Init(SDL_Window* window) {
     glUniform1f(u_.sceneDim, 1.f);
     u_.glowMode = loc("uGlowMode");
     glUniform1i(u_.glowMode, 0);
+    {
+        auto lvl = [&](const char* n) { return glGetUniformLocation(progLevel_, n); };
+        uLevel_.world = lvl("uWorld"); uLevel_.view = lvl("uView"); uLevel_.proj = lvl("uProj");
+        uLevel_.bgra = lvl("uBgra"); uLevel_.tex = lvl("uTex"); uLevel_.constColor = lvl("uConstColor");
+        uLevel_.flat = lvl("uFlat");
+        glUseProgram(progLevel_);
+        glUniform1f(uLevel_.bgra, 1.0f);
+        glUniform1i(uLevel_.tex, 0);
+        glUniform1i(uLevel_.flat, 0);
+        glUniform4f(uLevel_.constColor, 1, 1, 1, 1);
+    }
+    {
+        auto bloc = [&](const char* n) { return glGetUniformLocation(progBase_, n); };
+        uBase_.world = bloc("uWorld"); uBase_.view = bloc("uView"); uBase_.proj = bloc("uProj");
+        uBase_.lighting = bloc("uLighting"); uBase_.lightOn = bloc("uLightOn");
+        uBase_.hasVertexColor = bloc("uHasVertexColor"); uBase_.bgra = bloc("uBgra");
+        uBase_.flat = bloc("uFlat"); uBase_.tex = bloc("uTex"); uBase_.texOn = bloc("uTexOn");
+        uBase_.colorOp = bloc("uColorOp"); uBase_.colorArg1 = bloc("uColorArg1");
+        uBase_.colorArg2 = bloc("uColorArg2"); uBase_.alphaOp = bloc("uAlphaOp");
+        uBase_.alphaArg1 = bloc("uAlphaArg1"); uBase_.alphaArg2 = bloc("uAlphaArg2");
+        uBase_.alphaTest = bloc("uAlphaTest"); uBase_.alphaFix = bloc("uAlphaFix");
+        uBase_.constColor = bloc("uConstColor");
+        uBase_.matDiffuse = bloc("uMatDiffuse[0]"); uBase_.matAmbient = bloc("uMatAmbient[0]");
+        uBase_.matEmissive = bloc("uMatEmissive[0]"); uBase_.matMode = bloc("uMatMode");
+        uBase_.ambient = bloc("uAmbient"); uBase_.lightDir = bloc("uLightDir");
+        uBase_.lightDiffuse = bloc("uLightDiffuse");
+    }
     progBloomDown_ = CompileProgram(kFullVS, kBloomDownFS);
     progBloomUp_ = CompileProgram(kFullVS, kBloomUpFS);
     progBloomAdd_ = CompileProgram(kFullVS, kBloomAddFS);
@@ -628,6 +886,13 @@ bool Device::Init(SDL_Window* window) {
     if (u_.bgra >= 0) {
         glUseProgram(prog_);
         glUniform1f(u_.bgra, kBgraSwizzle);
+        glUseProgram(0);
+    }
+    if (progBase_ && uBase_.bgra >= 0) {
+        glUseProgram(progBase_);
+        glUniform1f(uBase_.bgra, kBgraSwizzle);
+        glUniform1i(uBase_.matMode, 0);
+        glUniform1i(uBase_.tex, 0);
         glUseProgram(0);
     }
 
@@ -836,6 +1101,7 @@ void Device::OnSettingsChanged() {
 
 void Device::BeginFrame() {
     FlushRecording();  // (nothing should be left: SetGameplayView(false) sends it)
+    Flush2D();
     InvalidateState();
     InvalidateAttribs();
     frameDraws_ = 0;
@@ -871,6 +1137,7 @@ void Device::WaitForGpu() { glFinish(); }
 
 void Device::Present() {
     FlushRecording();
+    Flush2D();
     InvalidateState();
     InvalidateAttribs();
     if (directWindow_) {
@@ -917,6 +1184,7 @@ void Device::Present() {
 
 bool Device::SaveScreenshot(const char* path) {
     FlushRecording();
+    Flush2D();
     InvalidateState();
     InvalidateAttribs();
     int W = layout_.fboW, H = layout_.fboH;
@@ -957,6 +1225,7 @@ bool Device::SaveScreenshot(const char* path) {
 
 HRESULT Device::Clear(DWORD, const RECT*, DWORD flags, D3DCOLOR color, float z, DWORD) {
     FlushRecording();
+    Flush2D();
     InvalidateState();
     InvalidateAttribs();
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
@@ -1094,6 +1363,7 @@ void Device::ApplyState(DWORD fvf, bool twoD) {
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
     glViewport(0, 0, layout_.fboW, layout_.fboH);
     glUseProgram(prog_);
+    activeU_ = &u_;
     glUniform1i(u_.screen2D, 1);
     glUniform4f(u_.constColor, 1, 1, 1, 1);
     glUniform1i(u_.alphaFix, 0);
@@ -1108,7 +1378,16 @@ void Device::ApplyState(DWORD fvf, bool twoD) {
 // A 3D draw's state sent to OpenGL: the draw being asked for now, or a recorded one (the state
 // as it was when it was asked for).
 void Device::ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial) {
+    Flush2D();
+    if (BasePath() && LevelPath(st, fvf)) {
+        ApplyLevelDrawState(st);
+        return;
+    }
     const Config& cfg = GetConfig();
+    const bool base = BasePath();
+    GLuint prog = base ? progBase_ : prog_;
+    Uniforms& U = base ? uBase_ : u_;
+    activeU_ = &U;
     if (!glc_.valid || glc_.fbo != sceneFbo_) {
         glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
         glc_.fbo = sceneFbo_;
@@ -1118,23 +1397,26 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial)
         glc_.vpW = layout_.fboW;
         glc_.vpH = layout_.fboH;
     }
-    if (!glc_.valid || glc_.prog != prog_) {
-        glUseProgram(prog_);
-        glc_.prog = prog_;
+    if (!glc_.valid || glc_.prog != prog) {
+        glUseProgram(prog);
+        glc_.valid = false;  // the cached values belong to the other program
+        glc_.prog = prog;
     }
-    if (!glc_.valid || glc_.screen2D != 0) {
-        glUniform1i(u_.screen2D, 0);
+    if (!base && (!glc_.valid || glc_.screen2D != 0)) {
+        glUniform1i(U.screen2D, 0);
         glc_.screen2D = 0;
     }
     // the values the replay sets differently for some draws: cached like the rest, and reset here
     // so each draw starts from the same state
     SetConstColor(1, 1, 1, 1);
     SetAlphaFix(0);
-    SetAOStrength(0.f);
-    SetShadowKind(0);
-    SetLightKind(0);
-    SetSceneDim(1.f);
-    SetGlowMode(0);
+    if (!base) {
+        SetAOStrength(0.f);
+        SetShadowKind(0);
+        SetLightKind(0);
+        SetSceneDim(1.f);
+        SetGlowMode(0);
+    }
 
     // depth
     if (!glc_.valid || glc_.depthTest != (int)st.zEnable) {
@@ -1182,17 +1464,17 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial)
     D3DMATRIX world = st.world;
     D3DMATRIX proj = DrawProj(st);
     if (!glc_.valid || !glc_.worldSet || memcmp(&glc_.world, &world, sizeof world) != 0) {
-        glUniformMatrix4fv(u_.world, 1, GL_FALSE, world.m());
+        glUniformMatrix4fv(U.world, 1, GL_FALSE, world.m());
         glc_.world = world;
         glc_.worldSet = true;
     }
     if (!glc_.valid || !glc_.viewSet || memcmp(&glc_.view, &st.view, sizeof st.view) != 0) {
-        glUniformMatrix4fv(u_.view, 1, GL_FALSE, st.view.m());
+        glUniformMatrix4fv(U.view, 1, GL_FALSE, st.view.m());
         glc_.view = st.view;
         glc_.viewSet = true;
     }
     if (!glc_.valid || !glc_.projSet || memcmp(&glc_.proj, &proj, sizeof proj) != 0) {
-        glUniformMatrix4fv(u_.proj, 1, GL_FALSE, proj.m());
+        glUniformMatrix4fv(U.proj, 1, GL_FALSE, proj.m());
         glc_.proj = proj;
         glc_.projSet = true;
     }
@@ -1200,12 +1482,12 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial)
     // lighting
     bool lighting = st.lighting != 0 && (fvf & 0x010);  // needs normals
     if (!glc_.valid || glc_.lighting != (int)lighting) {
-        glUniform1i(u_.lighting, lighting);
+        glUniform1i(U.lighting, lighting);
         glc_.lighting = (int)lighting;
     }
     bool hasColor = (fvf & 0x040) != 0;
     if (!glc_.valid || glc_.hasColor != (int)hasColor) {
-        glUniform1i(u_.hasVertexColor, hasColor);
+        glUniform1i(U.hasVertexColor, hasColor);
         glc_.hasColor = (int)hasColor;
     }
     bool matChanged = !mergedMaterial && (!glc_.valid || !glc_.matSet || glc_.matMode != 0 ||
@@ -1214,9 +1496,9 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial)
                       memcmp(glc_.matE, &st.material.emissive.r, sizeof glc_.matE));
     if (matChanged) {
         SetMatMode(0);
-        glUniform4fv(u_.matDiffuse, 1, &st.material.diffuse.r);
-        glUniform4fv(u_.matAmbient, 1, &st.material.ambient.r);
-        glUniform4fv(u_.matEmissive, 1, &st.material.emissive.r);
+        glUniform4fv(U.matDiffuse, 1, &st.material.diffuse.r);
+        glUniform4fv(U.matAmbient, 1, &st.material.ambient.r);
+        glUniform4fv(U.matEmissive, 1, &st.material.emissive.r);
         memcpy(glc_.matD, &st.material.diffuse.r, sizeof glc_.matD);
         memcpy(glc_.matA, &st.material.ambient.r, sizeof glc_.matA);
         memcpy(glc_.matE, &st.material.emissive.r, sizeof glc_.matE);
@@ -1224,14 +1506,14 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial)
     }
     if (!glc_.valid || !glc_.ambientSet || glc_.ambient != st.ambient) {
         DWORD a = st.ambient;
-        glUniform4f(u_.ambient, ((a >> 16) & 0xFF) / 255.f, ((a >> 8) & 0xFF) / 255.f, (a & 0xFF) / 255.f,
+        glUniform4f(U.ambient, ((a >> 16) & 0xFF) / 255.f, ((a >> 8) & 0xFF) / 255.f, (a & 0xFF) / 255.f,
                     ((a >> 24) & 0xFF) / 255.f);
         glc_.ambient = st.ambient;
         glc_.ambientSet = true;
     }
     bool lightOn = st.lightEnabled && st.light.type == D3DLIGHT_DIRECTIONAL;
     if (!glc_.valid || glc_.lightOn != (int)lightOn) {
-        glUniform1i(u_.lightOn, lightOn);
+        glUniform1i(U.lightOn, lightOn);
         glc_.lightOn = (int)lightOn;
     }
     if (lightOn) {
@@ -1240,17 +1522,17 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial)
         if (len > 0) d = d / len;
         float dir[3] = {-d.x, -d.y, -d.z};
         if (!glc_.valid || memcmp(glc_.lightDir, dir, sizeof dir) != 0) {
-            glUniform3f(u_.lightDir, dir[0], dir[1], dir[2]);
+            glUniform3f(U.lightDir, dir[0], dir[1], dir[2]);
             memcpy(glc_.lightDir, dir, sizeof dir);
         }
         if (!glc_.valid || memcmp(glc_.lightDiffuse, &st.light.diffuse.r, sizeof glc_.lightDiffuse) != 0) {
-            glUniform4fv(u_.lightDiffuse, 1, &st.light.diffuse.r);
+            glUniform4fv(U.lightDiffuse, 1, &st.light.diffuse.r);
             memcpy(glc_.lightDiffuse, &st.light.diffuse.r, sizeof glc_.lightDiffuse);
         }
     }
     bool flat = st.shadeMode == D3DSHADE_FLAT;
     if (!glc_.valid || glc_.flat != (int)flat) {
-        glUniform1i(u_.flat, flat);
+        glUniform1i(U.flat, flat);
         glc_.flat = (int)flat;
     }
 
@@ -1262,13 +1544,13 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial)
                         glc_.alphaOp != (int)st.alphaOp || glc_.alphaArg1 != (int)st.alphaArg1 ||
                         glc_.alphaArg2 != (int)st.alphaArg2;
     if (stageChanged) {
-        glUniform1i(u_.texOn, texOn);
-        glUniform1i(u_.colorOp, st.colorOp);
-        glUniform1i(u_.colorArg1, st.colorArg1);
-        glUniform1i(u_.colorArg2, st.colorArg2);
-        glUniform1i(u_.alphaOp, st.alphaOp);
-        glUniform1i(u_.alphaArg1, st.alphaArg1);
-        glUniform1i(u_.alphaArg2, st.alphaArg2);
+        glUniform1i(U.texOn, texOn);
+        glUniform1i(U.colorOp, st.colorOp);
+        glUniform1i(U.colorArg1, st.colorArg1);
+        glUniform1i(U.colorArg2, st.colorArg2);
+        glUniform1i(U.alphaOp, st.alphaOp);
+        glUniform1i(U.alphaArg1, st.alphaArg1);
+        glUniform1i(U.alphaArg2, st.alphaArg2);
         glc_.texOn = (int)texOn;
         glc_.colorOp = (int)st.colorOp;
         glc_.colorArg1 = (int)st.colorArg1;
@@ -1278,7 +1560,7 @@ void Device::ApplyDrawState(const DrawState& st, DWORD fvf, bool mergedMaterial)
         glc_.alphaArg2 = (int)st.alphaArg2;
     }
     if (glc_.alphaTest != 0) {
-        glUniform1i(u_.alphaTest, 0);
+        glUniform1i(U.alphaTest, 0);
         glc_.alphaTest = 0;
     }
     int alphaFix = 0;
@@ -1350,50 +1632,50 @@ void Device::BindMainElement() {
 void Device::SetConstColor(float r, float g, float b, float a) {
     const float c[4] = {r, g, b, a};
     if (glc_.valid && glc_.constColorSet && memcmp(glc_.constColor, c, sizeof c) == 0) return;
-    glUniform4f(u_.constColor, r, g, b, a);
+    glUniform4f(activeU_->constColor, r, g, b, a);
     memcpy(glc_.constColor, c, sizeof c);
     glc_.constColorSet = true;
 }
 
 void Device::SetAlphaFix(int v) {
     if (glc_.valid && glc_.alphaFix == v) return;
-    glUniform1i(u_.alphaFix, v);
+    glUniform1i(activeU_->alphaFix, v);
     glc_.alphaFix = v;
 }
 
 void Device::SetAOStrength(float v) {
     if (glc_.valid && glc_.aoStrength == v) return;
-    glUniform1f(u_.aoStrength, v);
+    glUniform1f(activeU_->aoStrength, v);
     glc_.aoStrength = v;
 }
 
 void Device::SetShadowKind(int v) {
     if (glc_.valid && glc_.shadowKind == v) return;
-    glUniform1i(u_.shadowKind, v);
+    glUniform1i(activeU_->shadowKind, v);
     glc_.shadowKind = v;
 }
 
 void Device::SetLightKind(int v) {
     if (glc_.valid && glc_.lightKind == v) return;
-    glUniform1i(u_.lightKind, v);
+    glUniform1i(activeU_->lightKind, v);
     glc_.lightKind = v;
 }
 
 void Device::SetSceneDim(float v) {
     if (glc_.valid && glc_.sceneDim == v) return;
-    glUniform1f(u_.sceneDim, v);
+    glUniform1f(activeU_->sceneDim, v);
     glc_.sceneDim = v;
 }
 
 void Device::SetGlowMode(int v) {
     if (glc_.valid && glc_.glowMode == v) return;
-    glUniform1i(u_.glowMode, v);
+    glUniform1i(activeU_->glowMode, v);
     glc_.glowMode = v;
 }
 
 void Device::SetFboSize(float w, float h) {
     if (glc_.valid && glc_.fboSizeSet && glc_.fboW == w && glc_.fboH == h) return;
-    glUniform2f(u_.fboSize, w, h);
+    glUniform2f(activeU_->fboSize, w, h);
     glc_.fboW = w;
     glc_.fboH = h;
     glc_.fboSizeSet = true;
@@ -1401,7 +1683,7 @@ void Device::SetFboSize(float w, float h) {
 
 void Device::SetTexUnit(int v) {
     if (glc_.valid && glc_.texUnit == v) return;
-    glUniform1i(u_.tex, v);
+    glUniform1i(activeU_->tex, v);
     glc_.texUnit = v;
 }
 
@@ -1487,7 +1769,7 @@ void Device::BindMesh(MeshBuffer* mesh) {
 
 void Device::SetMatMode(int mode) {
     if (glc_.valid && glc_.matMode == mode) return;
-    glUniform1i(u_.matMode, mode);
+    glUniform1i(activeU_->matMode, mode);
     glc_.matMode = mode;
 }
 
@@ -1502,9 +1784,9 @@ void Device::SetMaterialArray(const D3DMATERIAL7* materials, DWORD numMaterials)
         memcpy(&e[i * 4], &m.emissive.r, 4 * sizeof(float));
     }
     SetMatMode(1);
-    glUniform4fv(u_.matDiffuse, 16, d);
-    glUniform4fv(u_.matAmbient, 16, a);
-    glUniform4fv(u_.matEmissive, 16, e);
+    glUniform4fv(activeU_->matDiffuse, 16, d);
+    glUniform4fv(activeU_->matAmbient, 16, a);
+    glUniform4fv(activeU_->matEmissive, 16, e);
     glc_.matKey = materials;
     glc_.matCount = numMaterials;
 }
@@ -1629,6 +1911,7 @@ static_assert(sizeof(D3DVERTEX) == 32 && sizeof(D3DLVERTEX) == 32, "both vertex 
 
 void Device::SetGameplayView(bool on) {
     if (on) {
+        Flush2D();
         if (!gameplayView_) recording_ = recordEnabled_;
         gameplayView_ = true;
     } else {
@@ -1763,6 +2046,7 @@ void Device::FlushRecording() {
                 SetFboSize((float)layout_.fboW, (float)layout_.fboH);
             }
         }
+        BindMainVao();  // dynamic draws use the main layout, not the last model's VAO
         BindMainArray();
         BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(d.numVerts * 32), recVerts_.data() + d.firstVertex * 32,
                      GL_STREAM_DRAW);
@@ -2406,8 +2690,37 @@ bool Device::ComputeAO() {
 
 void Device::Draw2DQuad(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, Texture* t,
                         bool alphaTest, const float* color, bool linear) {
-    frameDraws_++;
-    ApplyState(0, true);
+    if (batchTex_ != t || batchAlpha_ != alphaTest || batchLinear_ != linear) {
+        Flush2D();
+        batchTex_ = t;
+        batchAlpha_ = alphaTest;
+        batchLinear_ = linear;
+    }
+    uint32_t c = 0xFFFFFFFF;
+    if (color) {
+        c = (uint32_t)(color[3] * 255) << 24 | (uint32_t)(color[0] * 255) << 16 | (uint32_t)(color[1] * 255) << 8 |
+            (uint32_t)(color[2] * 255);
+    }
+    D3DLVERTEX q[4];
+    memset(q, 0, sizeof q);
+    q[0].x = x0; q[0].y = y0; q[0].tu = u0; q[0].tv = v0;
+    q[1].x = x1; q[1].y = y0; q[1].tu = u1; q[1].tv = v0;
+    q[2].x = x0; q[2].y = y1; q[2].tu = u0; q[2].tv = v1;
+    q[3].x = x1; q[3].y = y1; q[3].tu = u1; q[3].tv = v1;
+    for (auto& v : q) v.color = c;
+    batch2D_.push_back(q[0]); batch2D_.push_back(q[1]); batch2D_.push_back(q[2]);
+    batch2D_.push_back(q[2]); batch2D_.push_back(q[1]); batch2D_.push_back(q[3]);
+}
+
+void Device::Flush2D() {
+    if (batch2D_.empty()) return;
+    Texture* t = batchTex_;
+    bool alphaTest = batchAlpha_;
+    bool linear = batchLinear_;
+    std::vector<D3DLVERTEX> quads;
+    quads.swap(batch2D_);
+    batchTex_ = nullptr;
+    ApplyState(0, true);  // also flushes any recorded 3D first, keeping the order
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
     glDisable(GL_BLEND);
@@ -2423,6 +2736,7 @@ void Device::Draw2DQuad(float x0, float y0, float x1, float y1, float u0, float 
     glUniform1i(u_.colorArg1, D3DTA_TEXTURE);
     glUniform1i(u_.alphaOp, D3DTOP_SELECTARG1);
     glUniform1i(u_.alphaArg1, D3DTA_TEXTURE);
+    glUniform4f(u_.constColor, 1, 1, 1, 1);
     if (t) {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, t->Id());
@@ -2432,23 +2746,12 @@ void Device::Draw2DQuad(float x0, float y0, float x1, float y1, float u0, float 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     }
-    uint32_t c = 0xFFFFFFFF;
-    if (color) {
-        c = (uint32_t)(color[3] * 255) << 24 | (uint32_t)(color[0] * 255) << 16 | (uint32_t)(color[1] * 255) << 8 |
-            (uint32_t)(color[2] * 255);
-    }
-    D3DLVERTEX q[4];
-    memset(q, 0, sizeof q);
-    q[0].x = x0; q[0].y = y0; q[0].tu = u0; q[0].tv = v0;
-    q[1].x = x1; q[1].y = y0; q[1].tu = u1; q[1].tv = v0;
-    q[2].x = x0; q[2].y = y1; q[2].tu = u0; q[2].tv = v1;
-    q[3].x = x1; q[3].y = y1; q[3].tu = u1; q[3].tv = v1;
-    for (auto& v : q) v.color = c;
     BindMainVao();
     BindMainArray();
-    BufferData(GL_ARRAY_BUFFER, sizeof q, q, GL_STREAM_DRAW);
+    BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(quads.size() * sizeof(D3DLVERTEX)), quads.data(), GL_STREAM_DRAW);
     EnsureAttribs(D3DFVF_LVERTEX);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glDrawArrays(GL_TRIANGLES, 0, (GLsizei)quads.size());
+    frameDraws_++;
 }
 
 HRESULT Device::BltToBackBuffer(const RECT* dst, Surface* src, const RECT* srcRect, bool useColorKey) {
@@ -2479,7 +2782,6 @@ HRESULT Device::ColorFill(const RECT* dst, uint32_t rgb) {
     RECT d = dst ? *dst : RECT{0, 0, 640, 480};
     float c[4] = {((rgb >> 16) & 0xFF) / 255.f, ((rgb >> 8) & 0xFF) / 255.f, (rgb & 0xFF) / 255.f, 1.f};
     // Untextured quad with constant colour
-    ApplyState(0, true);
     Draw2DQuad((float)d.left, (float)d.top, (float)d.right, (float)d.bottom, 0, 0, 0, 0, nullptr, false, c, false);
     return D3D_OK;
 }
@@ -2514,6 +2816,7 @@ int Device::HudEdgeShift() const {
 // same state as DrawUIQuad: the Statistics Overlay's letters, which one by one cost a draw each.
 void Device::DrawUIQuads(const std::vector<D3DLVERTEX>& verts, Texture* t) {
     if (verts.empty()) return;
+    Flush2D();
     frameDraws_++;
     ApplyState(0, true);
     glDisable(GL_DEPTH_TEST);
