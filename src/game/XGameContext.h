@@ -43,6 +43,9 @@ struct XGameContext {
     bool onePlayer = true;  // XApplication's one-player flag
     int world = 0;          // XLevelStatus: 0-based world
     bool useWater = false;  // XMap::UseWater
+    // native (R36S fragments): draw-only culling of effects/torches/particles. Normally on; the
+    // test hook MBN_NO_EFFECT_CULL=1 turns it off to measure the same run before the change.
+    bool effectCull = true;
 
     // XCamera::IsVisible / IsUpdatable: within 400 / 480 units of the look-at point along Z. The
     // original's 4:3 view never reaches 400, so its drawing test is never seen. Native: the draw
@@ -55,7 +58,9 @@ struct XGameContext {
     // XGameScene::Tick sets it before each tick (UpdateRange in XGameScene.cpp).
     float visibleRange = 400.0f;
     float updateRange = 480.0f;
-    bool IsVisible(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < visibleRange; }
+    bool IsVisible(const D3DVECTOR& p, float radius = 0.0f) const {
+        return Abs(cameraZ - p.z) < visibleRange + radius;
+    }
     bool IsUpdatable(const D3DVECTOR& p) const { return Abs(cameraZ - p.z) < updateRange; }
 
     // XGameObject::GetCloserHero: hero A unless hero B is strictly closer; only heroes in the

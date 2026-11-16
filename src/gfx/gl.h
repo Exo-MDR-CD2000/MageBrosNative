@@ -176,6 +176,8 @@ typedef uint64_t GLuint64;
     X(void, glGenerateMipmap, (GLenum t))                                                                    \
     X(void, glDrawArrays, (GLenum m, GLint first, GLsizei count))                                            \
     X(void, glDrawElements, (GLenum m, GLsizei count, GLenum type, const void* idx))                         \
+    X(void, glDrawElementsInstanced, (GLenum m, GLsizei count, GLenum type, const void* idx, GLsizei n))     \
+    X(void, glVertexAttribDivisor, (GLuint i, GLuint d))                                                     \
     X(void, glDrawElementsBaseVertex, (GLenum m, GLsizei count, GLenum type, const void* idx, GLint base))    \
     X(void, glGenQueries, (GLsizei n, GLuint * q))                                                           \
     X(void, glDeleteQueries, (GLsizei n, const GLuint* q))                                                   \

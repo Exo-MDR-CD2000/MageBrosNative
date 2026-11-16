@@ -334,6 +334,7 @@ public:
         };
         const auto& s = kShapes[type < 0 || type > 9 ? 0 : type];
         model_ = std::make_unique<JObject3DX>(s.model);
+        model_->SetBatchable(true);  // native (R36S fragments): static fence pieces
         if (s.yaw != 0) model_->SetYaw(s.yaw);
         collideBox_ = std::make_unique<XCollideBox>(s.wx, 100.0f, s.wz);
         collideBox_->SetPos(D3DVECTOR(pos_.x + s.dx, pos_.y, pos_.z));

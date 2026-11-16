@@ -67,5 +67,6 @@ private:
     uint8_t prevKeys_[256] = {};
     uint8_t prevButtons_[2][2] = {};  // gamepad 1 (player 1) and 2 (player 2), buttons 1 and 2
     bool levelChanged_ = false;
+    float sweepZ_ = 160.0f;  // native (fragment sweep): the next camera Z to step to
     std::unique_ptr<XShadow> heroShadowA_, heroShadowB_;
 };

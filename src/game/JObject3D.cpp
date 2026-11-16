@@ -89,6 +89,15 @@ void JObject3DRect::SetTexture(uint16_t resId) {
     texture_ = resId;  // (made on first draw: the original creates every texture at start-up)
 }
 
+float JObject3DRect::BoundsRadius() const {
+    float r2 = 0.0f;
+    for (const auto& v : v_) {
+        float d = v.x * v.x + v.y * v.y + v.z * v.z;
+        if (d > r2) r2 = d;
+    }
+    return std::sqrt(r2);
+}
+
 void JObject3DRect::UpdateWorldMatrix() {
     D3DMATRIX s, rz, rx, ry, t;
     D3DUtil_SetScaleMatrix(s, scale_.x, scale_.y, scale_.z);

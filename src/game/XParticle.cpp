@@ -448,7 +448,11 @@ void XParticleBase::KeepPrevPos() {
 
 void XParticleBase::Render(Device* d, const D3DMATRIX& view) {
     if (state_ == NON || !particle_) return;
-    particle_->SetWorldPos(Interp::BlendPos(prevPos_, pos_, prevTick_));  // (native: smooth motion)
+    D3DVECTOR drawPos = Interp::BlendPos(prevPos_, pos_, prevTick_);  // (native: smooth motion)
+    // native (R36S fragments): a draw-only cull; a particle outside the level's draw range plus
+    // its own radius cannot touch the screen, so it is not submitted.
+    if (!list_->Visible(drawPos, DrawRadius())) return;
+    particle_->SetWorldPos(drawPos);
     if (billboard_) {
         particle_->Render2(d, view);
     } else {
@@ -456,6 +460,8 @@ void XParticleBase::Render(Device* d, const D3DMATRIX& view) {
         particle_->Render(d);
     }
 }
+
+float XParticleBase::DrawRadius() const { return particle_ ? particle_->BoundsRadius() : 0.0f; }
 
 // ------------------------------------------------------------------------------- XParticleList
 

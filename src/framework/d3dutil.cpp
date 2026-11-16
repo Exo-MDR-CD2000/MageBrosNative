@@ -199,6 +199,8 @@ void Randomize() {
         std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
+void SetRandomSeed(uint32_t seed) { g_randState = seed; }
+
 long Random(long range) {
     if (range < 1) return 0;
     return msvc_rand() % range;

@@ -839,13 +839,21 @@ HRESULT CD3DFile::Render(Device* dev) {
     dev->GetRenderState(D3DRENDERSTATE_SRCBLEND, &srcBlend);
     dev->GetRenderState(D3DRENDERSTATE_DESTBLEND, &destBlend);
     root_->Render(dev, false, white_);
-    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, TRUE);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
-    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
-    root_->Render(dev, true, white_);
-    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, alphaState);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, srcBlend);
-    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, destBlend);
+    // native (R36S fragments): a fully opaque model has nothing for the see-through pass; skip it
+    // and the blend-state changes around it. The pass still runs when any material is see-through.
+    bool anyAlpha = false;
+    ForEachMesh([&](CD3DFileObject& mesh) {
+        if (mesh.hasAlpha) anyAlpha = true;
+    });
+    if (anyAlpha) {
+        dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, TRUE);
+        dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
+        dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
+        root_->Render(dev, true, white_);
+        dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, alphaState);
+        dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, srcBlend);
+        dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, destBlend);
+    }
     dev->SetTransform(D3DTRANSFORMSTATE_WORLD, &matSaved);
     dev->SetTexture(0, texSaved);
     dev->SetMaterial(&mtrlSaved);

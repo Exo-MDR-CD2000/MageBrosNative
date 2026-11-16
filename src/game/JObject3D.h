@@ -40,6 +40,9 @@ public:
     void SetAlphaState(AlphaState s) { alphaState_ = s; }
     void SetFilterState(FilterState s) { filterState_ = s; }
     void UsePerspective(bool p) { usePerspective_ = p; }
+    // Native (fragment culling): the radius of the quad around its origin, after Scale/Rotate/
+    // Shift. A billboard turned to the camera stays inside it whatever the view.
+    float BoundsRadius() const;
 
     // JObject3DBase: the transform
     void SetWorldPos(const D3DVECTOR& p) { worldPos_ = p; }

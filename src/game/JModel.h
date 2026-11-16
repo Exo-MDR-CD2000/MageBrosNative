@@ -49,6 +49,10 @@ public:
     // Draw with the white material (the hero's damage flash), as JObject3DX::UseWhiteMaterial.
     void UseWhiteMaterial(bool w) { white_ = w; }
     bool UsingWhiteMaterial() const { return white_; }
+    // Native (R36S fragments): this model is safe to draw with other instances of itself in one
+    // instanced call (a static fence piece: opaque, no shadow, never moved after loading).
+    void SetBatchable(bool on) { batchable_ = on; }
+    bool Batchable() const { return batchable_; }
 
     void Render(Device* d);
 
@@ -87,6 +91,7 @@ private:
     std::unique_ptr<CollisionModel3D> col_;
     bool blend_ = true;
     uint16_t firstModel_ = 0;  // (for the drawn-twice log)
+    bool batchable_ = false;   // native (R36S fragments): static fence pieces
     unsigned poseTick_ = 0;    // Interp::CurrentTick when the pose last changed
     unsigned snapTick_ = ~0u;  // a tick drawn without blending (not drawn in the frame before it)
     unsigned lastDrawFrame_ = ~0u;  // Interp::FramesDrawn when last drawn

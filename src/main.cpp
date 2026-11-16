@@ -12,6 +12,8 @@
 #include "core/log.h"
 #include "core/mods.h"
 #include "core/saves.h"
+#include "framework/benchmark.h"
+#include "framework/benchmark_spec.h"
 #include "framework/d3dapp.h"
 #include "framework/d3dfile.h"
 #include "framework/interp.h"
@@ -533,6 +535,21 @@ int main(int argc, char** argv) {
         else if (args[i] == "--benchmark-level" && i + 1 < args.size()) {
             int w = 1, l = 1;
             if (std::sscanf(args[++i].c_str(), "%d,%d", &w, &l) == 2) Benchmark::SetOriginalLevel(w - 1, l - 1);
+        }
+        else if (args[i] == "--benchmark-fragment" && i + 1 < args.size()) {
+            int w = 1, l = 1;
+            float x = 140.0f, z = 0.0f;
+            if (BenchmarkSpec::ParseFragment(args[++i].c_str(), &w, &l, &x, &z)) {
+                Benchmark::SetFragment(w - 1, l - 1, x, z);
+                benchmark = true;  // a fragment run is a benchmark run
+            }
+        }
+        else if (args[i] == "--benchmark-sweep" && i + 1 < args.size()) {
+            int w = 1, l = 1;
+            if (BenchmarkSpec::ParseSweep(args[++i].c_str(), &w, &l)) {
+                Benchmark::SetSweep(w - 1, l - 1);
+                benchmark = true;
+            }
         }
         else if (args[i] == "--windowed") cfg.fullscreen = FullscreenMode::Windowed;
         else if (args[i] == "--fullscreen") cfg.fullscreen = FullscreenMode::Borderless;

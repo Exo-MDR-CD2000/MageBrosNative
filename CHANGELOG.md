@@ -19,6 +19,16 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
   mesh buffers for models and the level, merged model materials, direct-to-window MSAA on GLES,
   a dedicated level/flat-sprite shader and 2D/HUD batching. The measurements and the quality
   budget for the next iteration are in `research/acceptance/r36s-performance.md`.
+- **Campaign fragments hold 60 fps on the R36S.** Ten campaign stretches (1-5, 1-8, 1-9, 2-2,
+  2-4, 2-5, 2-7, 2-8, 3-2 and 3-3) that fell to 30 fps after the benchmark work now hold
+  59.2-60.0 fps at the same defaults. A real level carries effects the benchmark level did not:
+  every particle and torch was submitted wherever it was, and every blob shadow was its own draw.
+  The renderer now skips off-screen particles/torches with the effect's own radius, draws
+  consecutive identical opaque models with per-instance world matrices (byte-identical), and
+  batches the shadows after the models. The shadow blend is rounded to 8 bits, so the batch
+  changes 35-354 pixels at shadow edges (max 53); `MBN_NO_SHADOW_BATCH=1` restores the old order.
+  The fragment run is `--benchmark-fragment w,l,x,z`, the sweep `--benchmark-sweep w,l`; figures
+  and the pixel checks are in `research/acceptance/r36s-performance.md`.
 - **Linux desktop release (Debian 13, x86_64).** `tools/linux/build.sh` builds a portable
   `MageBrosNative-<version>-linux-x86_64.tar.gz` in a Debian 13 container with a static SDL3,
   X11/Wayland and OpenGL 3.3. The package includes the TimGM6mb General MIDI bank, so music

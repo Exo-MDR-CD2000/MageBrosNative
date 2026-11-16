@@ -14,6 +14,10 @@ namespace {
 bool g_active = false;
 uint32_t g_ticks = 0;
 int g_originalWorld = -1, g_originalLevel = -1;
+bool g_fragment = false;
+float g_fragmentX = 0, g_fragmentZ = 0;
+bool g_sweep = false;
+float g_cameraZ = 0;
 
 std::string FolderOf(const std::string& path) {
     size_t p = path.find_last_of("/\\");
@@ -62,6 +66,32 @@ int OriginalWorld() { return g_originalWorld; }
 
 int OriginalLevel() { return g_originalLevel; }
 
+void SetFragment(int world, int level, float x, float z) {
+    g_originalWorld = world;
+    g_originalLevel = level;
+    g_fragment = true;
+    g_fragmentX = x;
+    g_fragmentZ = z;
+}
+
+bool HasFragment() { return g_fragment; }
+
+float FragmentX() { return g_fragmentX; }
+
+float FragmentZ() { return g_fragmentZ; }
+
+void SetSweep(int world, int level) {
+    g_originalWorld = world;
+    g_originalLevel = level;
+    g_sweep = true;
+}
+
+bool Sweep() { return g_sweep; }
+
+void SetCameraZ(float z) { g_cameraZ = z; }
+
+float CameraZ() { return g_cameraZ; }
+
 uint32_t Ticks() { return g_ticks; }
 
 void AddTick() {
@@ -98,6 +128,7 @@ void Run::Begin(double seconds, const std::string& reportPath, std::function<voi
     draws3DFrames_ = 0;
     samples_.clear();
     warmupMs_.clear();
+    windows_.clear();
     reportPath_ = reportPath;
     onFinish_ = std::move(onFinish);
     SetActive(true);
@@ -135,7 +166,7 @@ void Run::Frame(double frameMs, double cpuMs, double swapMs, double gpuWaitMs, d
     measuredMs_ += frameMs;
 }
 
-void Run::Second(double gpu3DMs, int draws3D) {
+void Run::Second(double gpu3DMs, int draws3D, double fps, double cpuMs, int draws, size_t uploadBytes) {
     if (!running_ || !measuring_) return;
     if (gpu3DMs >= 0) {
         gpuSum_ += gpu3DMs;
@@ -144,6 +175,16 @@ void Run::Second(double gpu3DMs, int draws3D) {
     if (draws3D > 0) {
         draws3DSum_ += draws3D;
         draws3DFrames_++;
+    }
+    if (g_sweep) {
+        Window w;
+        w.t = measuredMs_ / 1000.0;
+        w.fps = fps;
+        w.cpu = cpuMs;
+        w.draws = draws;
+        w.bytes = uploadBytes;
+        w.cameraZ = g_cameraZ;
+        windows_.push_back(w);
     }
 }
 
@@ -212,6 +253,9 @@ void Run::Finish(const Report& r, const std::string& reportPath) {
     kv("gl_version", "\"" + JsonEscape(r.glVersion) + "\"");
     kv("display_mode", "\"" + JsonEscape(r.displayMode) + "\"");
     kv("level", "\"" + JsonEscape(r.level) + "\"");
+    kv("fragment", r.fragment ? "true" : "false");
+    kv("fragment_x", num(r.fragmentX, 1));
+    kv("fragment_z", num(r.fragmentZ, 1));
     kv("refresh_hz", num(r.refreshHz, 2));
     kv("window_w", std::to_string(r.windowW));
     kv("window_h", std::to_string(r.windowH));
@@ -239,6 +283,20 @@ void Run::Finish(const Report& r, const std::string& reportPath) {
     kv("duration_s", num(targetMs_ / 1000.0, 1));
     kv("measured_s", num(measuredMs_ / 1000.0, 3));
     kv("frames", std::to_string(n));
+    kv("sweep", g_sweep ? "true" : "false");
+    if (g_sweep) {
+        out += "  \"sweep\": [\n";
+        for (size_t i = 0; i < windows_.size(); i++) {
+            const Window& w = windows_[i];
+            std::snprintf(b, sizeof b,
+                          "    {\"t\": %.1f, \"camera_z\": %.1f, \"fps\": %.2f, \"cpu_ms\": %.2f, "
+                          "\"draws\": %d, \"upload_bytes\": %zu}",
+                          w.t, w.cameraZ, w.fps, w.cpu, w.draws, w.bytes);
+            out += b;
+            out += (i + 1 < windows_.size()) ? ",\n" : "\n";
+        }
+        out += "  ],\n";
+    }
     out += "  \"summary\": {\n";
     auto skv = [&](const char* key, const std::string& val, bool comma = true) {
         out += "    \"";

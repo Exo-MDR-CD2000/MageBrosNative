@@ -18,6 +18,19 @@ void SetOriginalLevel(int world, int level);
 bool HasOriginalLevel();
 int OriginalWorld();
 int OriginalLevel();
+// A campaign fragment: the original level plus a hero position, with the camera placed there
+// before the warm-up. Used by the R36S fragment acceptance.
+void SetFragment(int world, int level, float x, float z);
+bool HasFragment();
+float FragmentX();
+float FragmentZ();
+// A level sweep: the scripted load walks hero A through an original level, and the run records a
+// figure for each second against the camera Z it covered (a diagnostic for finding hot spots).
+void SetSweep(int world, int level);
+bool Sweep();
+// The camera's look-at Z for the sweep's window (set by the game each frame).
+void SetCameraZ(float z);
+float CameraZ();
 // Ticks run since benchmark mode started (the scripted input is scheduled on this count).
 uint32_t Ticks();
 void AddTick();
@@ -26,6 +39,8 @@ void AddTick();
 struct Report {
     std::string version, platform, backend, vendor, renderer, glVersion;
     std::string displayMode, musicSource, level;
+    bool fragment = false;
+    float fragmentX = 0, fragmentZ = 0;
     int windowW = 0, windowH = 0, fboW = 0, fboH = 0, destW = 0, destH = 0;
     double refreshHz = 0;
     int vsync = 0, swapEvery = 1, samples = 0, maxFps = 0, brightness = 100, musicTrack = 0;
@@ -52,8 +67,8 @@ public:
     void Frame(double frameMs, double cpuMs, double swapMs, double gpuWaitMs, double tickMs, double renderMs,
                int draws, size_t uploadBytes);
     // Once a second, after the game's own summary: the graphics card's time for the level's 3D
-    // (-1 when the driver has no timer query).
-    void Second(double gpu3DMs, int draws3D);
+    // (-1 when the driver has no timer query), and the sweep's per-second figures when sweeping.
+    void Second(double gpu3DMs, int draws3D, double fps, double cpuMs, int draws, size_t uploadBytes);
     // Ends the run, writes the report and calls the finish callback once.
     void Finish(const Report& report, const std::string& reportPath = std::string());
     // Used by the game loop when the measurement window is over.
@@ -67,6 +82,13 @@ private:
         int draws = 0;
         size_t bytes = 0;
     };
+    struct Window {
+        double t = 0, fps = 0, cpu = 0;
+        int draws = 0;
+        size_t bytes = 0;
+        float cameraZ = 0;
+    };
+    std::vector<Window> windows_;
     bool running_ = false;
     bool measuring_ = false;
     bool gpuWaitSeen_ = false;

@@ -51,6 +51,11 @@ add_executable(mbn_benchmark_stats_tests tests/benchmark_stats_tests.cpp src/fra
 target_include_directories(mbn_benchmark_stats_tests PRIVATE src)
 add_test(NAME benchmark_stats COMMAND mbn_benchmark_stats_tests)
 
+# The draw-only culling rule used by the campaign fragment runs (no SDL, no game files).
+add_executable(mbn_fragment_tests tests/fragment_tests.cpp)
+target_include_directories(mbn_fragment_tests PRIVATE src)
+add_test(NAME fragment_culling COMMAND mbn_fragment_tests)
+
 # The bundled TimGM6mb bank, loaded through the game's TinySoundFont build. No game files or
 # sound device are needed: it only proves that the packaged bank is readable and renders notes.
 add_executable(mbn_soundfont_tests tests/soundfont_tests.cpp)

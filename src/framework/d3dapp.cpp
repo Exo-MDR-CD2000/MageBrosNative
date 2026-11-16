@@ -97,6 +97,9 @@ void CD3DApplication::BuildBenchmarkReport(Benchmark::Report* r) const {
     } else {
         r->level = "benchmark";
     }
+    r->fragment = Benchmark::HasFragment();
+    r->fragmentX = Benchmark::FragmentX();
+    r->fragmentZ = Benchmark::FragmentZ();
     r->windowW = L.windowW;
     r->windowH = L.windowH;
     r->fboW = L.fboW;
@@ -127,11 +130,33 @@ void CD3DApplication::FinishBenchmark() {
     Benchmark::Report report;
     BuildBenchmarkReport(&report);
     benchmark_.Finish(report);
+    {
+        int opaque = 0, shadows = 0, blended = 0;
+        GetDevice().DrawKinds3D(&opaque, &shadows, &blended);
+        Log("Benchmark draw kinds (last frame): opaque %d, shadows %d, blended %d", opaque, shadows, blended);
+    }
     benchmarkLastFrameNs_ = 0;
     benchmarkFromMenu_ = false;
 }
 
+// Test hook: one screenshot at an exact benchmark tick, taken after the frame is presented, so
+// two builds can be compared at the same game state (MBN_SHOT_TICK=<tick> MBN_SHOT_PATH=<file>,
+// with MBN_ONE_TICK=1 and MBN_NO_BENCH_LABEL=1 for the pixel checks).
+static void MaybeSaveTickScreenshot() {
+    static const int tick = [] {
+        const char* s = std::getenv("MBN_SHOT_TICK");
+        return s ? std::atoi(s) : -1;
+    }();
+    static const char* path = std::getenv("MBN_SHOT_PATH");
+    static bool done = false;
+    if (done || !path || tick < 0 || !Benchmark::Active() || (int)Benchmark::Ticks() != tick) return;
+    Log("Test screenshot at benchmark tick %u", Benchmark::Ticks());
+    GetDevice().SaveScreenshot(path);
+    done = true;
+}
+
 void CD3DApplication::DrawBenchmarkLabel() {
+    if (std::getenv("MBN_NO_BENCH_LABEL")) return;
     if (!benchmark_.Running()) return;
     if (!benchmarkUi_) benchmarkUi_ = std::make_unique<UIDraw>();
     benchmarkUi_->Begin(&GetDevice());
@@ -637,7 +662,9 @@ void CD3DApplication::UpdateStats() {
         m_fFPS = statsFrames_ * 1000.f / (float)(t - statsLastTime_);
         g_frameRate = m_fFPS;
         SummarizeStats(t - statsLastTime_);
-        if (benchmark_.Running()) benchmark_.Second(statsSec_.gpu3D, statsSec_.draws3D);
+        if (benchmark_.Running())
+            benchmark_.Second(statsSec_.gpu3D, statsSec_.draws3D, statsSec_.fps, statsSec_.cpu,
+                              GetDevice().FrameDraws(), GetDevice().FrameUploadBytes());
         statsFrames_ = 0;
         statsLastTime_ = t;
         UpdateRefreshRate();  // (the window may have been moved to another monitor)
@@ -905,6 +932,7 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
         UpdateStats();
         GetDevice().Present();
         SwapFrame();
+        MaybeSaveTickScreenshot();
         return S_OK;
     }
     // with Smooth motion, the first frame after the menu or a pause carries on from the held
@@ -916,6 +944,19 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
     heldLastFrame_ = !m_bFrameMoving;
     uint64_t elapsed = tickNow > lastTickNs_ ? tickNow - lastTickNs_ : 0;
     DWORD ticks = (DWORD)(elapsed / kTickNs);
+    // test hook: one tick a frame, so MBN_SHOT_TICK can capture an exact game state
+    static const bool oneTick = std::getenv("MBN_ONE_TICK") != nullptr;
+    if (oneTick && ticks > 1) ticks = 1;
+    // test hook: stop the game at an exact tick, so two builds can be compared without a moving
+    // enemy in the picture (MBN_FREEZE_TICK=<tick>)
+    static const int freezeTick = [] {
+        const char* s = std::getenv("MBN_FREEZE_TICK");
+        return s ? std::atoi(s) : -1;
+    }();
+    if (freezeTick >= 0 && (int)Benchmark::Ticks() >= freezeTick) {
+        ticks = 0;
+        forceRender = true;  // keep drawing the frozen state so the benchmark still finishes
+    }
     if (ticks == 0 && !forceRender) return S_OK;
     DWORD ran = 0;
     lastTickMs_ = lastRenderMs_ = 0;
@@ -951,6 +992,7 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
     UpdateStats();
     GetDevice().Present();
     SwapFrame();
+    MaybeSaveTickScreenshot();
     return S_OK;
 }
 

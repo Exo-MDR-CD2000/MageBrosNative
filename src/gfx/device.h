@@ -143,6 +143,12 @@ public:
     // The dynamic lights in the last frame that had any (G5)
     int DynamicLights() const { return lastLights_; }
     int Draws3D() const { return lastDraws3D_; }
+    // Native (R36S fragments): the last frame's actual 3D draws, split for the report.
+    void DrawKinds3D(int* opaque, int* shadows, int* blended) const {
+        *opaque = lastOpaque3D_;
+        *shadows = lastShadow3D_;
+        *blended = lastBlended3D_;
+    }
     // The last completed frame's total draws (recorded 3D, 2D, UI and the present) and the bytes
     // uploaded to vertex/index buffers. Read after Present; reset in BeginFrame.
     int FrameDraws() const { return lastFrameDraws_; }
@@ -193,6 +199,9 @@ public:
                     const float rgba[4]);
     // Many such quads in one draw: six vertices (two triangles) a quad, drawn in order
     void DrawUIQuads(const std::vector<D3DLVERTEX>& verts, Texture* t);
+    // Native (R36S fragments): marks the model draws that follow as safe for consecutive
+    // instancing (the static fence pieces). Cleared by JObject3DX::Render after the model.
+    void SetModelBatchable(bool on) { modelBatchable_ = on; }
 
     int ScreenWidth() const { return 640; }
     int ScreenHeight() const { return 480; }
@@ -224,6 +233,7 @@ private:
         size_t meshNumVerts = 0, meshNumIndices = 0;
         size_t meshFirstIndex = 0, meshCount = 0;
         bool merged = false;
+        bool batchable = false;  // native (R36S fragments): an opaque static fence piece
         const unsigned char* matIndex = nullptr;
         const D3DMATERIAL7* materials = nullptr;
         DWORD numMaterials = 0;
@@ -236,6 +246,12 @@ private:
                     size_t numIndices);
     void EnsureMergedMesh(MeshBuffer* mesh, DWORD fvf, const void* verts, size_t numVerts, const void* indices,
                           size_t numIndices, const unsigned char* matIndex);
+    // Native (R36S fragments): one instanced draw for a run of identical opaque merged models.
+    void DrawMergedInstanced(const std::vector<RecordedDraw>& draws, const std::vector<size_t>& indices);
+    int DrawShadowBatch(const std::vector<size_t>& indices);
+    int DrawShadowBatchOne(const std::vector<size_t>& indices);
+    void SetInstanced(bool on);
+    void SetLevelInstanced(bool on);
     void BindMesh(MeshBuffer* mesh);
     void SetMatMode(int mode);
     void SetMaterialArray(const D3DMATERIAL7* materials, DWORD numMaterials);
@@ -318,10 +334,13 @@ private:
     bool WantsDirectWindow() const;
     bool recordEnabled_ = true;   // off with the environment variable MBN_NO_RECORD=1 (for comparing)
     bool recording_ = false;
+    bool modelBatchable_ = false;  // native (R36S fragments): the current model may be instanced
     std::vector<RecordedDraw> rec_;
     std::vector<unsigned char> recVerts_;
     std::vector<WORD> recIdx_;
     int frameDraws3D_ = 0, lastDraws3D_ = 0;
+    int frameOpaque3D_ = 0, frameShadow3D_ = 0, frameBlended3D_ = 0;
+    int lastOpaque3D_ = 0, lastShadow3D_ = 0, lastBlended3D_ = 0;
     int frameDraws_ = 0, lastFrameDraws_ = 0;   // every draw a frame submits, and the last frame's
     size_t frameUploadBytes_ = 0, lastFrameUploadBytes_ = 0;
     void BufferData(GLenum target, GLsizeiptr size, const void* data, GLenum usage);
@@ -356,6 +375,7 @@ private:
     bool inScene_ = false;
 
     GLuint prog_ = 0, progBase_ = 0, progLevel_ = 0, progPresent_ = 0;
+    GLuint instVbo_ = 0, instVao_ = 0;  // per-instance world matrices (R36S fragment batching)
     bool BasePath() const;
     bool LevelPath(const DrawState& st, DWORD fvf) const;
     void ApplyLevelDrawState(const DrawState& st);
@@ -386,6 +406,7 @@ private:
         bool constColorSet = false;
         float constColor[4] = {};
         int alphaFix = -1, shadowKind = -1, lightKind = -1, glowMode = -1;
+        int instanced = -1;
         float aoStrength = -2.f, sceneDim = -2.f;
         bool fboSizeSet = false;
         float fboW = -1.f, fboH = -1.f;
@@ -422,7 +443,7 @@ private:
             lightDiffuse, flat, texOn, colorOp, colorArg1, colorArg2, alphaOp, alphaArg1, alphaArg2, alphaTest,
             hasVertexColor, tex, constColor, screen2D, viewport2D, alphaFix, bgra, aoStrength, aoTex,
             fboSize, shadowKind, shadowMap, lightVP, shadowTexel, shadowOffset, shadowStrength, shadowGrid,
-            eye, lightKind, lightCount, lightPos, lightColor, lightReach, sceneDim, glowMode;
+            eye, lightKind, lightCount, lightPos, lightColor, lightReach, sceneDim, glowMode, instanced;
     } u_{}, uBase_{}, uLevel_{};
     Uniforms* activeU_ = &u_;
     GLint presentTexLoc_ = -1, presentGammaLoc_ = -1;

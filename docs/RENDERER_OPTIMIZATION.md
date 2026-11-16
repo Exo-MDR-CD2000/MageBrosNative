@@ -17,6 +17,21 @@ the GPU clock were ruled out along the way.
 **Status of the plan below: R1, R2, R3 and R4 are built.** The remaining text is kept as the
 record of the original plan and the decisions it led to.
 
+**Campaign fragments (2026-11-16):** the benchmark level was not the whole game. Ten campaign
+stretches still fell to 30 fps on the R36S; the common cost was off-screen work the benchmark
+level does not carry: every particle and torch in the level was submitted wherever it was, and
+every blob shadow was its own draw. Drawing now skips effects and torches outside the draw range
+(plus each effect's radius), draws consecutive identical opaque models with per-instance world
+matrices (fences, enemies and similar), and batches the shadows into one instanced pass after the
+models. The shadow blend is a rounded 8-bit multiply, so that one pass changes 35-354 pixels at
+shadow edges (max 53) in the measured scenes; every other pixel and the model instancing are
+byte-identical, and `MBN_NO_SHADOW_BATCH=1` restores the old shadow order. At the current defaults
+every named fragment holds 59.4-60.0 fps with a 1% low of at least 59.3; the table, the draw-count
+A/B and the pixel checks are in
+[`research/acceptance/r36s-performance.md`](../research/acceptance/r36s-performance.md). The
+fragment run is `--benchmark-fragment w,l,x,z`; `--benchmark-sweep w,l` records each second
+against camera Z.
+
 ## In short
 
 - The port draws by imitating the original's Direct3D 7 calls on OpenGL, one for one. For every
@@ -243,8 +258,10 @@ their vertices in place.
 
 ### Left out on purpose
 
-- **Sorting or merging draws**, instancing, texture atlases: they change the draw order or the
-  shader, and with them the picture. Rule 2.
+- **Sorting or merging draws**, texture atlases: they change the draw order or the shader, and
+  with them the picture. Rule 2. (Consecutive identical opaque models with only their world
+  matrix differing were later instanced in the campaign-fragment work above; the order is kept
+  and the byte-for-byte screenshot check passes.)
 - **A second thread for drawing**: far more risk than this game's few hundred draws justify.
 - **Replacing OpenGL** (Vulkan, Direct3D 11): another project. (The paused `dxgi-present` branch
   only changes how the finished picture is shown, not how it is drawn.)

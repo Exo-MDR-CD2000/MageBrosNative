@@ -215,6 +215,8 @@ void JObject3DX::Render(Device* d) {
     }
     // models are shared between objects, so the flag is set for this draw only
     mesh->UseWhiteMaterial(white_);
+    d->SetModelBatchable(batchable_);
     mesh->Render(d);
+    d->SetModelBatchable(false);
     mesh->UseWhiteMaterial(false);
 }

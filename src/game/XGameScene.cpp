@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 
 namespace {
 // XGameObject::XGameObject: the start positions, side by side across the level in a two-player
@@ -101,6 +102,13 @@ bool XGameScene::InitLevel() {
     loop_.SetShopHandler([this](XHero* hero) { shop_->Start(hero); });
     shop_->Reset();
     camera_.ResetForGame(level_.Depth());
+    sweepZ_ = camera_.LookAt().z;
+    if (Benchmark::HasFragment()) {
+        // A campaign fragment starts on the measured scene: the hero is dropped at the reported
+        // spot and the camera is placed there at once (the normal follow would take seconds).
+        TestPlaceHero(Benchmark::FragmentX(), Benchmark::FragmentZ());
+        camera_.PlaceLookAtZ(Benchmark::FragmentZ());
+    }
     sd.InitForGame();  // XStatusDisplay::Reset: the counter and the lost-gold messages
     levelChanged_ = true;
     app_->PlayMusic(level_.MusicTrack());  // JMidiList::Play: Music06 with a boss, else the world's
@@ -173,11 +181,23 @@ void XGameScene::ApplyBenchmarkInput() {
     in = XHeroInput();
     in.keyControlUsed = true;  // no stick
     const uint32_t t = Benchmark::Ticks();
-    const uint32_t turn = t % 160;
-    if (turn < 20)
+    if (Benchmark::Sweep()) {
+        // A diagnostic scan: step the camera and hero 240 units along the level each second, so a
+        // level with a blocking fan or a fence still produces a window for every part of it. The
+        // camera is placed at once; the hero drops in as at a level start.
+        if (t > 0 && t % 100 == 0) {
+            sweepZ_ += 240.0f;
+            TestPlaceHero(140.0f, sweepZ_);
+            camera_.PlaceLookAtZ(sweepZ_);
+        }
         in.keyRight = true;
-    else if (turn >= 80 && turn < 100)
-        in.keyLeft = true;
+    } else {
+        const uint32_t turn = t % 160;
+        if (turn < 20)
+            in.keyRight = true;
+        else if (turn >= 80 && turn < 100)
+            in.keyLeft = true;
+    }
     if (t % 200 == 0) {  // fire a burst every two seconds
         in.button1Pressed = true;
         in.button1Down = true;
@@ -365,6 +385,7 @@ void XGameScene::Render(Device* d, BackBuffer* bb) {
     Interp::BeginFrame();
     D3DMATRIX view = camera_.BlendedView();
     d->SetTransform(D3DTRANSFORMSTATE_VIEW, &view);
+    Benchmark::SetCameraZ(camera_.LookAt().z);  // the sweep's window
     // native: the draw range grows with the 3D view (ViewReachFactor): 400 at 4:3, 533 at 16:9,
     // 600 at 4:3 with the field of view at 150%
     loop_.SetVisibleRange(400.0f * ViewReachFactor());

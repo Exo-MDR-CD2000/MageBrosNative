@@ -549,6 +549,18 @@ holds **60 fps at the current defaults** (640x480, MSAA 4x, anisotropy 8x, rende
 the benchmark, 1-1 and 3-10; the quality budget (AO and shadows already fit, dynamic lights and
 bloom do not yet) and all figures are in `research/acceptance/r36s-performance.md`.
 
+**R36S campaign fragments (2026-11-16)**: ten campaign stretches still fell to 30 fps after the
+benchmark gate, because a real level carries effects the benchmark level does not: every particle
+and torch was drawn wherever it was, and every blob shadow was its own draw. Drawing now skips
+off-screen particles/torches (each effect's own radius included), draws consecutive identical
+opaque models with per-instance world matrices (byte-identical), and batches the shadows after
+the models. The shadow blend is a rounded 8-bit multiply, so the batch changes 35-354 pixels at
+shadow edges (max 53) in the measured scenes; `MBN_NO_SHADOW_BATCH=1` restores the old order and
+byte identity, at the cost of 1-8/2-7/2-8. `--benchmark-fragment w,l,x,z` measures a campaign
+position and `--benchmark-sweep w,l` records each second against camera Z. Every named fragment
+(1-5, 1-8, 1-9, 2-2, 2-4, 2-5, 2-7, 2-8, 3-2, 3-3) holds 59.4-60.0 fps at the defaults; the
+table and the pixel checks are in `research/acceptance/r36s-performance.md`.
+
 **Next**: the cheats are done (0.4.26) and the frame timing review's list is closed (0.4.27 to
 0.4.32, merged into `main` on 2026-11-10 (pull request #3) and released as v0.4.32; its release notes are 0.4.32's
 CHANGELOG section alone, as the six versions were not summed up in it). Then (0.4.33, 2026-11-10):

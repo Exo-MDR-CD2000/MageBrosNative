@@ -2,6 +2,9 @@
 #include "core/log.h"
 #include "core/saves.h"
 #include "framework/benchmark.h"
+#include "framework/d3dutil.h"
+#include "game/XMath.h"
+#include <cstdlib>
 #include <ctime>
 #include "game/JSprite.h"
 #include "game/XEndingObject.h"
@@ -124,7 +127,11 @@ void XApplication::StartGameAt(int world, int level) {
 
 void XApplication::StartBenchmark() {
     // A run uses a clean, fixed save so every start is alike, and puts the player's own save back
-    // when it is left (the benchmark never writes to disk).
+    // when it is left (the benchmark never writes to disk). Both random generators are reset, so
+    // two benchmark runs of the same build really are alike (the benchmark's own promise).
+    std::srand(1);
+    SetRandomSeed(1);
+    SetDeterministicUnitRand(true);
     benchmarkSave_ = saveData_;
     benchmarkOnePlayer_ = onePlayer_;
     benchmark_ = true;
@@ -141,6 +148,7 @@ void XApplication::LeaveLevel() {
         onePlayer_ = benchmarkOnePlayer_;
         benchmark_ = false;
         Benchmark::SetActive(false);
+        SetDeterministicUnitRand(false);
     } else {
         saveData_ = levelStart_;
     }

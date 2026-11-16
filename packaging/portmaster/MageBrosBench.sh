@@ -6,6 +6,10 @@
 # Runs the generated dense benchmark level for 30 seconds, writes a JSON report beside the game
 # and a log next to the normal launcher's, then exits. No input is needed, so it can be started
 # from the Ports menu or over SSH.
+#
+#   MAGEBROS_FRAGMENT=1,5,140,3600 /roms2/ports/MageBrosBench.sh   # one campaign position
+#   MAGEBROS_SWEEP=2,8 /roms2/ports/MageBrosBench.sh               # one window a second
+#   MAGEBROS_SECONDS=10 /roms2/ports/MageBrosBench.sh              # a shorter run
 set -u
 
 base_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -14,6 +18,15 @@ binary="$game_dir/MageBrosNative"
 game_exe="$game_dir/MageBros.exe"
 log="$game_dir/benchmark.log"
 report="$game_dir/benchmark-report.json"
+run_args="--benchmark"
+if [ -n "${MAGEBROS_FRAGMENT:-}" ]; then
+    run_args="--benchmark-fragment $MAGEBROS_FRAGMENT"
+    report="$game_dir/benchmark-fragment.json"
+elif [ -n "${MAGEBROS_SWEEP:-}" ]; then
+    run_args="--benchmark-sweep $MAGEBROS_SWEEP"
+    report="$game_dir/benchmark-sweep.json"
+fi
+seconds=${MAGEBROS_SECONDS:-30}
 
 mkdir -p "$game_dir"
 : > "$log"
@@ -48,7 +61,7 @@ if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet emulation
     fi
 fi
 
-"$binary" --game "$game_exe" --benchmark --benchmark-seconds 30 --benchmark-report "$report"
+"$binary" --game "$game_exe" $run_args --benchmark-seconds "$seconds" --benchmark-report "$report"
 status=$?
 printf 'exit: %s\n' "$status"
 
