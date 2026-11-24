@@ -8,6 +8,7 @@
 #include "../audio/midi.h"
 #include "../ui/options_menu.h"
 #include "../ui/stats_overlay.h"
+#include "../ui/ui_draw.h"
 #include "version.h"
 #include <SDL3/SDL.h>
 #include <algorithm>
@@ -36,6 +37,7 @@ CD3DApplication::CD3DApplication()
 CD3DApplication::~CD3DApplication() {
     menu_.reset();  // owns a GL texture: free it while the context still exists
     statsOverlay_.reset();  // (the same)
+    benchmarkUi_.reset();
     D3DTextr_FreeAll();
     Log("Shutdown: device");
     GetDevice().Shutdown();
@@ -51,7 +53,125 @@ int CD3DApplication::DisplayFPS() const { return GetConfig().showFps ? 1 : 0; }
 bool CD3DApplication::OptionsOpen() const { return menu_ && menu_->IsOpen(); }
 
 void CD3DApplication::OpenOptions() {
+    if (benchmark_.Running()) return;  // a measured run is not interrupted by the menu
     if (menu_) menu_->Open();
+}
+
+void CD3DApplication::StartBenchmarkFromMenu() {
+    if (benchmark_.Running() || !menu_) return;
+    menu_->Close();
+    benchmarkFromMenu_ = true;
+    StartBenchmarkGame();
+    StartBenchmarkRun(30.0, std::string(), [this] { BenchmarkFinished(); });
+    Log("Benchmark: started from the menu");
+}
+
+void CD3DApplication::StartBenchmarkRun(double seconds, const std::string& reportPath,
+                                        std::function<void()> onFinish) {
+    benchmarkLastFrameNs_ = 0;
+    if (!benchmarkUi_) benchmarkUi_ = std::make_unique<UIDraw>();
+    benchmark_.Begin(seconds, reportPath, std::move(onFinish));
+}
+
+void CD3DApplication::BuildBenchmarkReport(Benchmark::Report* r) const {
+    const Config& cfg = GetConfig();
+    const Device& d = GetDevice();
+    const FrameLayout& L = d.Layout();
+    r->version = MBN_VERSION_STRING;
+    r->platform = SDL_GetPlatform();
+#if defined(MBN_GLES)
+    r->backend = "gles";
+#else
+    r->backend = "gl";
+#endif
+    r->vendor = d.GLVendor();
+    r->renderer = d.GLRenderer();
+    r->glVersion = d.GLVersion();
+    r->displayMode = cfg.fullscreen == FullscreenMode::Windowed      ? "Window"
+                     : cfg.fullscreen == FullscreenMode::Borderless ? "Borderless"
+                                                                   : "Exclusive";
+    if (Benchmark::HasOriginalLevel()) {
+        char b[48];
+        std::snprintf(b, sizeof b, "world %d-%d", Benchmark::OriginalWorld() + 1, Benchmark::OriginalLevel() + 1);
+        r->level = b;
+    } else {
+        r->level = "benchmark";
+    }
+    r->fragment = Benchmark::HasFragment();
+    r->fragmentX = Benchmark::FragmentX();
+    r->fragmentZ = Benchmark::FragmentZ();
+    r->windowW = L.windowW;
+    r->windowH = L.windowH;
+    r->fboW = L.fboW;
+    r->fboH = L.fboH;
+    r->destW = L.destW;
+    r->destH = L.destH;
+    r->refreshHz = refreshHz_;
+    r->vsync = vsyncInEffect_;
+    r->swapEvery = swapEvery_;
+    r->samples = d.Samples();
+    r->maxFps = cfg.maxFps;
+    r->brightness = cfg.brightness;
+    r->smoothMotion = cfg.interpolation;
+    r->lowLatency = cfg.lowLatency;
+    r->renderScale = cfg.renderScale;
+    r->anisotropy = cfg.anisotropy;
+    r->maxAnisotropy = d.MaxAnisotropy();
+    r->ambientOcclusion = cfg.ambientOcclusion;
+    r->dynamicShadows = cfg.dynamicShadows;
+    r->dynamicLights = cfg.dynamicLights;
+    r->bloom = cfg.bloom;
+    r->musicSource = MusicSource();
+    r->musicTrack = CurrentMusicTrack();
+}
+
+void CD3DApplication::FinishBenchmark() {
+    if (!benchmark_.Running()) return;
+    Benchmark::Report report;
+    BuildBenchmarkReport(&report);
+    benchmark_.Finish(report);
+    {
+        int opaque = 0, shadows = 0, blended = 0;
+        GetDevice().DrawKinds3D(&opaque, &shadows, &blended);
+        Log("Benchmark draw kinds (last frame): opaque %d, shadows %d, blended %d", opaque, shadows, blended);
+    }
+    benchmarkLastFrameNs_ = 0;
+    benchmarkFromMenu_ = false;
+}
+
+// Test hook: one screenshot at an exact benchmark tick, taken after the frame is presented, so
+// two builds can be compared at the same game state (MBN_SHOT_TICK=<tick> MBN_SHOT_PATH=<file>,
+// with MBN_ONE_TICK=1 and MBN_NO_BENCH_LABEL=1 for the pixel checks).
+static void MaybeSaveTickScreenshot() {
+    static const int tick = [] {
+        const char* s = std::getenv("MBN_SHOT_TICK");
+        return s ? std::atoi(s) : -1;
+    }();
+    static const char* path = std::getenv("MBN_SHOT_PATH");
+    static bool done = false;
+    if (done || !path || tick < 0 || !Benchmark::Active() || (int)Benchmark::Ticks() != tick) return;
+    Log("Test screenshot at benchmark tick %u", Benchmark::Ticks());
+    GetDevice().SaveScreenshot(path);
+    done = true;
+}
+
+void CD3DApplication::DrawBenchmarkLabel() {
+    if (std::getenv("MBN_NO_BENCH_LABEL")) return;
+    if (!benchmark_.Running()) return;
+    if (!benchmarkUi_) benchmarkUi_ = std::make_unique<UIDraw>();
+    benchmarkUi_->Begin(&GetDevice());
+    char text[64];
+    if (benchmark_.Measuring())
+        std::snprintf(text, sizeof text, "BENCHMARK %.1f s", benchmark_.RemainingSeconds() + 0.05);
+    else
+        std::snprintf(text, sizeof text, "BENCHMARK warm-up");
+    float w = benchmarkUi_->TextWidth(text, 1.f) + 12.f;
+    // bottom-left, clear of the HUD's status panels and the FPS counter
+    float x = benchmarkUi_->Left() + 6.f, y = 444.f;
+    benchmarkUi_->BeginBatch();
+    benchmarkUi_->Rect(x, y, x + w, y + 18.f, UIColor{0.04f, 0.04f, 0.07f, 0.65f});
+    benchmarkUi_->Text(x + 6.f, y + 5.f, text, 1.f, UIColor{1.f, 0.85f, 0.30f, 1.f});
+    benchmarkUi_->EndBatch();
 }
 
 // The finished frame to the screen. With VSync and [video] low_latency, the graphics card is
@@ -73,6 +193,18 @@ void CD3DApplication::SwapFrame() {
             statsWin_.gpuSum += (double)(t2 - t1) / 1e6;
             statsWin_.gpuWaits++;
         }
+    }
+    if (benchmark_.Running()) {
+        double dt = benchmarkLastFrameNs_ && frameStartNs_ > benchmarkLastFrameNs_
+                        ? (double)(frameStartNs_ - benchmarkLastFrameNs_) / 1e6
+                        : 0.0;
+        benchmarkLastFrameNs_ = frameStartNs_;
+        double cpu = frameStartNs_ && t0 >= frameStartNs_ ? (double)(t0 - frameStartNs_) / 1e6 : 0.0;
+        double swap = t1 >= t0 ? (double)(t1 - t0) / 1e6 : 0.0;
+        double gpuWait = gpu && t2 >= t1 ? (double)(t2 - t1) / 1e6 : -1.0;
+        benchmark_.Frame(dt, cpu, swap, gpuWait, lastTickMs_, lastRenderMs_, GetDevice().FrameDraws(),
+                         GetDevice().FrameUploadBytes());
+        if (benchmark_.Done()) FinishBenchmark();
     }
 }
 
@@ -443,7 +575,19 @@ HRESULT CD3DApplication::Create(const std::vector<std::string>& args) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 #endif
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+#if defined(MBN_GLES)
+    // The console's EGL config can give the window itself MSAA: drawing straight into it lets the
+    // display resolve the samples, which on the Mali is far cheaper than glBlitFramebuffer from an
+    // off-screen target (measured: 60 vs 30 frames a second at 640x480, MSAA 4x). Only the direct
+    // path uses the window's samples; a render scale or a fallback would otherwise pay for two
+    // resolves.
+    bool windowMsaa = cfg.renderScale == 1.f && cfg.bloom == 0 && cfg.brightness == 100;
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, windowMsaa && cfg.msaa > 1 ? 1 : 0);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, windowMsaa ? cfg.msaa : 0);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+#else
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
+#endif
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
     window_ = SDL_CreateWindow(m_strWindowTitle, cfg.windowWidth, cfg.windowHeight,
                                SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN);
@@ -518,6 +662,9 @@ void CD3DApplication::UpdateStats() {
         m_fFPS = statsFrames_ * 1000.f / (float)(t - statsLastTime_);
         g_frameRate = m_fFPS;
         SummarizeStats(t - statsLastTime_);
+        if (benchmark_.Running())
+            benchmark_.Second(statsSec_.gpu3D, statsSec_.draws3D, statsSec_.fps, statsSec_.cpu,
+                              GetDevice().FrameDraws(), GetDevice().FrameUploadBytes());
         statsFrames_ = 0;
         statsLastTime_ = t;
         UpdateRefreshRate();  // (the window may have been moved to another monitor)
@@ -780,10 +927,12 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
         HRESULT hr = Render();
         if (FAILED(hr)) return hr;
         DrawStatsOverlay();
+        DrawBenchmarkLabel();
         menu_->Render(&GetDevice());
         UpdateStats();
         GetDevice().Present();
         SwapFrame();
+        MaybeSaveTickScreenshot();
         return S_OK;
     }
     // with Smooth motion, the first frame after the menu or a pause carries on from the held
@@ -795,12 +944,28 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
     heldLastFrame_ = !m_bFrameMoving;
     uint64_t elapsed = tickNow > lastTickNs_ ? tickNow - lastTickNs_ : 0;
     DWORD ticks = (DWORD)(elapsed / kTickNs);
+    // test hook: one tick a frame, so MBN_SHOT_TICK can capture an exact game state
+    static const bool oneTick = std::getenv("MBN_ONE_TICK") != nullptr;
+    if (oneTick && ticks > 1) ticks = 1;
+    // test hook: stop the game at an exact tick, so two builds can be compared without a moving
+    // enemy in the picture (MBN_FREEZE_TICK=<tick>)
+    static const int freezeTick = [] {
+        const char* s = std::getenv("MBN_FREEZE_TICK");
+        return s ? std::atoi(s) : -1;
+    }();
+    if (freezeTick >= 0 && (int)Benchmark::Ticks() >= freezeTick) {
+        ticks = 0;
+        forceRender = true;  // keep drawing the frozen state so the benchmark still finishes
+    }
     if (ticks == 0 && !forceRender) return S_OK;
     DWORD ran = 0;
+    lastTickMs_ = lastRenderMs_ = 0;
     if (ticks > 0) {
         SetLastTick(tickNow - elapsed % kTickNs);
         if (m_bFrameMoving || m_bSingleStep) {
+            uint64_t t0 = AppTimeNs();
             HRESULT hr = FrameMove(ticks);
+            lastTickMs_ = (double)(AppTimeNs() - t0) / 1e6;
             if (FAILED(hr)) return hr;
             m_bSingleStep = false;
             ran = ticks;
@@ -818,12 +983,16 @@ HRESULT CD3DApplication::Render3DEnvironment(DWORD now, bool forceRender) {
     }
     StatsFrameAlpha(GetConfig().interpolation ? g_tickAlpha : 1.f);  // (the blend this frame is drawn at)
     GetDevice().BeginFrame();
+    uint64_t renderStart = AppTimeNs();
     HRESULT hr = Render();
+    lastRenderMs_ = (double)(AppTimeNs() - renderStart) / 1e6;
     if (FAILED(hr)) return hr;
     DrawStatsOverlay();
+    DrawBenchmarkLabel();
     UpdateStats();
     GetDevice().Present();
     SwapFrame();
+    MaybeSaveTickScreenshot();
     return S_OK;
 }
 

@@ -117,6 +117,12 @@ void XLevelLoop::Load(const XLevelView& level, XHero* heroA, XHero* heroB, bool 
     g.onePlayer = onePlayer;
     g.world = level.World();
     g.useWater = useWater_;
+    g.effectCull = std::getenv("MBN_NO_EFFECT_CULL") == nullptr;
+    // native (R36S fragments): particles are draw-only culled by the same range as objects, plus
+    // their own radius; the update, sound and effects are unchanged.
+    particles_->SetVisible([this](const D3DVECTOR& p, float radius) {
+        return !game_->effectCull || game_->IsVisible(p, radius);
+    });
 
     // XMap::_ConstructWallObjects: a candle on the back wall of each row flagged 'C'
     for (int z = 0; z < level.Depth(); z++)
@@ -526,7 +532,8 @@ void XLevelLoop::RenderObjects(Device* d, const D3DMATRIX& view) {
         c.shadow->SetPosXZ(c.pos + c.model->BlendOffset());  // (native: where the model is drawn)
         c.shadow->Render(d);
     }
-    for (Torch& t : torches_) t.model->Render(d);
+    for (Torch& t : torches_)
+        if (!game_->effectCull || game_->IsVisible(t.pos)) t.model->Render(d);
     // platforms, static objects, candles, bullets, enemies, the boss
     platforms_->Render(d);
     statics_->Render(d);

@@ -79,6 +79,16 @@ void XCamera::UpdateLookAtPos(float z) {
     eyeBase_.z = lookAt_.z;
 }
 
+// Native (benchmark fragment): the same limits, with no easing.
+void XCamera::PlaceLookAtZ(float z) {
+    if (minZ_ > z) z = minZ_;
+    else if (z > maxZ_) z = maxZ_;
+    lookAt_.z = z;
+    eyeBase_.z = z;
+    Snap();
+    UpdateViewMatrix();
+}
+
 void XCamera::UpdateViewMatrix() { BuildView(view_, eyeBase_, lookAt_); }
 
 void XCamera::BuildView(D3DMATRIX& view, const D3DVECTOR& eyeBase, const D3DVECTOR& lookAt) const {

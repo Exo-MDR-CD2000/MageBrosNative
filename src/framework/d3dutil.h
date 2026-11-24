@@ -23,6 +23,8 @@ HRESULT D3DMath_VertexMatrixMultiply(D3DVERTEX& out, const D3DVERTEX& in, const 
 
 // JStandard helpers
 void Randomize();
+// Native (benchmark repeatability): set the shared Random() sequence to a fixed seed.
+void SetRandomSeed(uint32_t seed);
 long Random(long range);
 long Round(float f);
 D3DVECTOR D3DVectorMultiply(const D3DVECTOR& v, float s);

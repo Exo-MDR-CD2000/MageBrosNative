@@ -1,21 +1,36 @@
 # The renderer's work per draw (an optimization for weak graphics hardware)
 
-**Status: not built, not planned. A write-up for later.** Issue 6 of the review of 2026-11-09
-([SMOOTH_MOTION.md](SMOOTH_MOTION.md), "Review of 2026-11-09"). The owner (2026-11-10) may come
-back to it if players on low-end hardware report low frame rates; until then nothing here is to
-be built. Written from reading the code at 0.4.32. **Nothing in this file has been measured or
-tried**: the first chunk below is to measure, and the plan after it should be judged again from
-those numbers.
+**Measured on the R36S, 2026-11-14** (full record:
+[`research/acceptance/r36s-performance.md`](../research/acceptance/r36s-performance.md)):
+the state cache, static mesh buffers, merged opaque/alpha model materials, a direct-to-window
+MSAA path, a dedicated level/flat-sprite shader and 2D batching took the benchmark level from
+11.8 to 59.9 fps at the current defaults (640x480, MSAA 4x, anisotropy 8x, render scale 1.0).
+CPU work fell from 41 to 6.6 ms a frame and uploads from 1.16 MB to 11 KB. 1-1 and 3-10 hold 60
+as well; Smooth motion off is the same.
 
-**Since then (2026-11-11, on the `graphics-enhancements` branch, merged into `main` as 0.4.46):** the graphics enhancements'
-G2 built a recorder in `Device` (`docs/GRAPHICS_ENHANCEMENTS.md`, "G2 as built"): a level's 3D
-draws are now gathered with their state (`DrawState`) and sent together, `ApplyState` became
-`ApplyDrawState`, and the Statistics Overlay shows the card's time for them (GPU 3D) and their
-count (3D draws: about 100 in 1-1, 270 in 3-10), which covers much of R0's measuring. That is where
-R1 and R2 would now go. The game's own draws still upload their vertices one draw at a time: one
-shared upload changed two pixels by a shade in a test (see the warning under R3). The figures
-below are from the RTX 3090 Ti; on the RTX 5080 (2026-11-11) 1-1 runs at about 2050 frames a
-second and 3-10 at about 1110 (1280 x 960, VSync off, Smooth motion on).
+The decisive finding was that the remaining cost was **fill/overdraw in the pre-lit level and
+flat sprite path**, not state or submission. A shader that draws those surfaces as exactly
+`texture * vertexColour` (with the same filtering) removed it; batching the 2D/HUD quads then
+gave the last margin. MSAA 0/2/4, mipmaps, vertex colours, depth test/write, backface culling and
+the GPU clock were ruled out along the way.
+
+**Status of the plan below: R1, R2, R3 and R4 are built.** The remaining text is kept as the
+record of the original plan and the decisions it led to.
+
+**Campaign fragments (2026-11-16):** the benchmark level was not the whole game. Ten campaign
+stretches still fell to 30 fps on the R36S; the common cost was off-screen work the benchmark
+level does not carry: every particle and torch in the level was submitted wherever it was, and
+every blob shadow was its own draw. Drawing now skips effects and torches outside the draw range
+(plus each effect's radius), draws consecutive identical opaque models with per-instance world
+matrices (fences, enemies and similar), and batches the shadows into one instanced pass after the
+models. The shadow blend is a rounded 8-bit multiply, so that one pass changes 35-354 pixels at
+shadow edges (max 53) in the measured scenes; every other pixel and the model instancing are
+byte-identical, and `MBN_NO_SHADOW_BATCH=1` restores the old shadow order. At the current defaults
+every named fragment holds 59.4-60.0 fps with a 1% low of at least 59.3; the table, the draw-count
+A/B and the pixel checks are in
+[`research/acceptance/r36s-performance.md`](../research/acceptance/r36s-performance.md). The
+fragment run is `--benchmark-fragment w,l,x,z`; `--benchmark-sweep w,l` records each second
+against camera Z.
 
 ## In short
 
@@ -243,8 +258,10 @@ their vertices in place.
 
 ### Left out on purpose
 
-- **Sorting or merging draws**, instancing, texture atlases: they change the draw order or the
-  shader, and with them the picture. Rule 2.
+- **Sorting or merging draws**, texture atlases: they change the draw order or the shader, and
+  with them the picture. Rule 2. (Consecutive identical opaque models with only their world
+  matrix differing were later instanced in the campaign-fragment work above; the order is kept
+  and the byte-for-byte screenshot check passes.)
 - **A second thread for drawing**: far more risk than this game's few hundred draws justify.
 - **Replacing OpenGL** (Vulkan, Direct3D 11): another project. (The paused `dxgi-present` branch
   only changes how the finished picture is shown, not how it is drawn.)

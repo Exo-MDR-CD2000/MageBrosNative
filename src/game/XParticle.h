@@ -39,6 +39,8 @@ protected:
     std::unique_ptr<JObject3DRect> particle_;
     D3DVECTOR prevPos_{0, 0, 0};  // native (smooth motion): pos_ before tick prevTick_
     unsigned prevTick_ = ~0u;
+    // native (R36S fragments): the radius of the drawn quad, for the draw-only visibility test
+    float DrawRadius() const;
 };
 
 class XParticleList {
@@ -46,6 +48,8 @@ public:
     static constexpr int kSlots = 300;
     // where a hero is (the warp photons circle it); `heroA` picks player 1
     using HeroPosFn = std::function<D3DVECTOR(bool heroA)>;
+    // native (R36S fragments): draw-only visibility, by the position and radius of the effect
+    using VisibleFn = std::function<bool(const D3DVECTOR& pos, float radius)>;
 
     XParticleList();
     ~XParticleList();
@@ -54,6 +58,8 @@ public:
 
     void SetHeroPos(HeroPosFn f) { heroPos_ = std::move(f); }
     D3DVECTOR HeroPos(bool heroA) const { return heroPos_ ? heroPos_(heroA) : D3DVECTOR(0, 0, 0); }
+    void SetVisible(VisibleFn f) { visible_ = std::move(f); }
+    bool Visible(const D3DVECTOR& p, float radius) const { return !visible_ || visible_(p, radius); }
     void SetPlaySound(SoundFn f) { playSound_ = std::move(f); }
     void PlaySound(uint16_t waveId, float z) const {
         if (playSound_) playSound_(waveId, z);
@@ -89,6 +95,7 @@ private:
     std::unique_ptr<XParticleBase> slots_[kSlots];
     int arrayPointer_ = 0;
     HeroPosFn heroPos_;
+    VisibleFn visible_;
     SoundFn playSound_;
 };
 

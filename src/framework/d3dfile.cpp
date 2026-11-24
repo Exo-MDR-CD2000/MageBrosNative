@@ -261,6 +261,45 @@ void CollectFrames(const XNode& n, CD3DFileObject* parent, const std::map<std::s
 
 }  // namespace
 
+CD3DFileObject::~CD3DFileObject() = default;
+
+void CD3DFileObject::InvalidateGpu() {
+    if (gpu_) gpu_->Invalidate();
+    if (mergedGpu_) mergedGpu_->Invalidate();
+    mergedBuilt_ = false;
+    mergedVerts_.clear();
+    mergedIndices_.clear();
+    mergedMat_.clear();
+}
+
+bool CD3DFileObject::CanMerge() const {
+    if (numMaterials == 0) return false;
+    for (DWORD i = 0; i < numMaterials && i < 16; i++)
+        if (materials[i].numIndices && materials[i].tex) return false;  // per-material textures
+    return true;
+}
+
+void CD3DFileObject::BuildMerged() {
+    mergedVerts_.clear();
+    mergedIndices_.clear();
+    mergedMat_.clear();
+    size_t offset = 0;
+    for (DWORD i = 0; i < numMaterials && i < 16; i++) {
+        mergedMaterials_[i] = materials[i].mtrl;
+        DWORD n = materials[i].numIndices;
+        if (!n) continue;
+        for (DWORD k = 0; k < n; k++) {
+            WORD old = indices[offset + k];
+            if (old >= vertices.size()) continue;
+            mergedIndices_.push_back((WORD)mergedVerts_.size());
+            mergedVerts_.push_back(vertices[old]);
+            mergedMat_.push_back((unsigned char)i);
+        }
+        offset += n;
+    }
+    mergedBuilt_ = mergedVerts_.size() <= 65535;
+}
+
 CD3DFileObject::CD3DFileObject(const std::string& n) : name(n) {
     D3DUtil_SetIdentityMatrix(mat);
     for (auto& m : materials) m = MeshMaterialData();
@@ -294,6 +333,18 @@ void CD3DFileObject::Render(Device* dev, bool alpha, bool white) {
         }
         return;
     }
+    if (!white && alpha == hasAlpha && CanMerge()) {
+        if (!mergedBuilt_) BuildMerged();
+        if (mergedBuilt_ && !mergedVerts_.empty()) {
+            if (!mergedGpu_) mergedGpu_ = std::make_unique<MeshBuffer>();
+            dev->DrawMergedMesh(D3DPT_TRIANGLELIST, D3DFVF_VERTEX, mergedGpu_.get(), mergedVerts_.data(),
+                                (DWORD)mergedVerts_.size(), mergedIndices_.data(), (DWORD)mergedIndices_.size(),
+                                mergedMat_.data(), mergedMaterials_, numMaterials);
+            for (auto& c : children) c->Render(dev, alpha, white);
+            return;
+        }
+    }
+    if (!gpu_) gpu_ = std::make_unique<MeshBuffer>();
     size_t offset = 0;
     for (DWORD i = 0; i <= numMaterials && i < 16; i++) {
         DWORD n = materials[i].numIndices;
@@ -314,13 +365,13 @@ void CD3DFileObject::Render(Device* dev, bool alpha, bool white) {
                     dev->SetTextureStageState(0, kStates[k], kValues[k]);
                 }
                 dev->SetTexture(0, materials[i].tex.get());
-                dev->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, D3DFVF_VERTEX, vertices.data(), (DWORD)vertices.size(),
-                                          indices.data() + offset, n, 0);
+                dev->DrawMeshIndexed(D3DPT_TRIANGLELIST, D3DFVF_VERTEX, gpu_.get(), vertices.data(),
+                                     (DWORD)vertices.size(), indices.data(), (DWORD)indices.size(), (DWORD)offset, n);
                 dev->SetTexture(0, texSaved);
                 for (int k = 0; k < 6; k++) dev->SetTextureStageState(0, kStates[k], saved[k]);
             } else {
-                dev->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, D3DFVF_VERTEX, vertices.data(), (DWORD)vertices.size(),
-                                          indices.data() + offset, n, 0);
+                dev->DrawMeshIndexed(D3DPT_TRIANGLELIST, D3DFVF_VERTEX, gpu_.get(), vertices.data(),
+                                     (DWORD)vertices.size(), indices.data(), (DWORD)indices.size(), (DWORD)offset, n);
             }
         }
         offset += n;
@@ -788,13 +839,21 @@ HRESULT CD3DFile::Render(Device* dev) {
     dev->GetRenderState(D3DRENDERSTATE_SRCBLEND, &srcBlend);
     dev->GetRenderState(D3DRENDERSTATE_DESTBLEND, &destBlend);
     root_->Render(dev, false, white_);
-    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, TRUE);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
-    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
-    root_->Render(dev, true, white_);
-    dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, alphaState);
-    dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, srcBlend);
-    dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, destBlend);
+    // native (R36S fragments): a fully opaque model has nothing for the see-through pass; skip it
+    // and the blend-state changes around it. The pass still runs when any material is see-through.
+    bool anyAlpha = false;
+    ForEachMesh([&](CD3DFileObject& mesh) {
+        if (mesh.hasAlpha) anyAlpha = true;
+    });
+    if (anyAlpha) {
+        dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, TRUE);
+        dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
+        dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
+        root_->Render(dev, true, white_);
+        dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, alphaState);
+        dev->SetRenderState(D3DRENDERSTATE_SRCBLEND, srcBlend);
+        dev->SetRenderState(D3DRENDERSTATE_DESTBLEND, destBlend);
+    }
     dev->SetTransform(D3DTRANSFORMSTATE_WORLD, &matSaved);
     dev->SetTexture(0, texSaved);
     dev->SetMaterial(&mtrlSaved);
@@ -803,18 +862,21 @@ HRESULT CD3DFile::Render(Device* dev) {
 
 void CD3DFile::Scale(float s) {
     ForEachMesh([&](CD3DFileObject& m) {
+        m.InvalidateGpu();
         for (auto& v : m.vertices) { v.x *= s; v.y *= s; v.z *= s; }
     });
 }
 
 void CD3DFile::Shift(const D3DVECTOR& d) {
     ForEachMesh([&](CD3DFileObject& m) {
+        m.InvalidateGpu();
         for (auto& v : m.vertices) { v.x += d.x; v.y += d.y; v.z += d.z; }
     });
 }
 
 static void RotateMeshes(CD3DFile* f, const D3DMATRIX& mat) {
     f->ForEachMesh([&](CD3DFileObject& m) {
+        m.InvalidateGpu();
         for (auto& v : m.vertices) {
             D3DVERTEX out = v;
             D3DMath_VertexMatrixMultiply(out, v, mat);

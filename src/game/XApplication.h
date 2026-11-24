@@ -62,10 +62,7 @@ public:
     // level select, with the save as it was when the level started (no gold, life, magic or
     // purchases from the abandoned level are kept, and nothing is written)
     void MarkLevelStart() { levelStart_ = saveData_; }
-    void LeaveLevel() {
-        saveData_ = levelStart_;
-        state_ = SELECT_LEVEL;
-    }
+    void LeaveLevel();
 
     JSoundList& Sounds() { return sounds_; }
     JDInput& GetDInput() { return dinput_; }  // the menus' input, updated by each screen
@@ -106,6 +103,10 @@ public:
     // Test hook (N / B, F2, --auto level=): straight into the game at that level, now, without a
     // save slot (so nothing it does is saved)
     void StartGameAt(int world, int level);
+    // Native (the performance benchmark): start on the generated benchmark level, without a save
+    // slot or any campaign progress.
+    void StartBenchmark();
+    bool InBenchmark() const { return benchmark_; }
 
 private:
     void EnterGame();
@@ -128,6 +129,9 @@ private:
     std::unique_ptr<XFPSDisplay> fpsDisplay_;  // +0x1cc
     XSaveData saveData_;  // +0x1d4
     XSaveData levelStart_;  // (native) saveData_ as the current level began
+    XSaveData benchmarkSave_;  // (native) the player's save, put back after a benchmark run
     int slot_ = -1;       // +0x1a8: the slot of the save being played, -1 for none
     bool onePlayer_ = true;
+    bool benchmark_ = false;  // native: the generated benchmark level is running
+    bool benchmarkOnePlayer_ = true;
 };

@@ -10,6 +10,42 @@ Where we are and what comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 
+- **The graphics enhancements work again on every build (Windows, macOS, R36S).** The level and
+  the models are recorded as merged meshes; the ambient-occlusion and dynamic-shadow depth passes
+  still read their vertices from the frame's single upload, so the level was missing from both
+  maps, and the main pass applied neither effect to mesh draws. Every recorded solid now draws the
+  extra passes from its own buffers, and mesh draws take the AO, shadows, dynamic lights and glow
+  state, so **Ambient occlusion**, **Dynamic shadows**, **Dynamic lights** and **Bloom** take
+  effect again. Checked with same-tick screenshots on macOS, Windows 11 (AMD Vega 8) and the R36S
+  (the R36S AO buffer reads back open with dark corners; shadows are visible on walls, floors and
+  objects). Against the same Windows frame, AO changes 89,277 pixels, shadows High 24,661,
+  dynamic lights 164,694 and Bloom 26,907; all 8 Windows test executables pass. The console needed
+  its own fix: the Mali driver loses the window's draw/read buffers after the extra passes bind
+  their framebuffers, so the HUD/fade (and with shadows the whole frame) went black in play. The
+  window and its GL_BACK buffers are now rebound before the scene; normal-play captures at Render
+  scale 1.0 show the level, the HUD and AO (84,185 pixels), shadows (80,824) and Bloom (23,310)
+  against the base frame. Ambient occlusion runs at half resolution with 8 samples on GLES (the
+  console cannot afford the full-size pass): 59.9 fps off, 20.0 with AO, 15.4/12.8/10.4 with
+  Dynamic shadows Low/Medium/High at 1-8.
+- **R36S performance benchmark and the 60 fps gate.** `--benchmark` (also Options > Video >
+  Performance benchmark and `MageBrosBench.sh` in the Ports folder) plays a generated dense test
+  level for 30 seconds and writes a JSON report beside the log: frame times, average FPS, 1% low,
+  p95/p99, CPU/tick/render/swap, draws, uploaded bytes and every setting that affects the frame.
+  The R36S now holds 60 fps at the current defaults (640x480, MSAA 4x, anisotropy 8x, render
+  scale 1.0) on the benchmark, 1-1 and 3-10. The renderer changes: a sent-state cache, static
+  mesh buffers for models and the level, merged model materials, direct-to-window MSAA on GLES,
+  a dedicated level/flat-sprite shader and 2D/HUD batching. The measurements and the quality
+  budget for the next iteration are in `research/acceptance/r36s-performance.md`.
+- **Campaign fragments hold 60 fps on the R36S.** Ten campaign stretches (1-5, 1-8, 1-9, 2-2,
+  2-4, 2-5, 2-7, 2-8, 3-2 and 3-3) that fell to 30 fps after the benchmark work now hold
+  59.2-60.0 fps at the same defaults. A real level carries effects the benchmark level did not:
+  every particle and torch was submitted wherever it was, and every blob shadow was its own draw.
+  The renderer now skips off-screen particles/torches with the effect's own radius, draws
+  consecutive identical opaque models with per-instance world matrices (byte-identical), and
+  batches the shadows after the models. The shadow blend is rounded to 8 bits, so the batch
+  changes 35-354 pixels at shadow edges (max 53); `MBN_NO_SHADOW_BATCH=1` restores the old order.
+  The fragment run is `--benchmark-fragment w,l,x,z`, the sweep `--benchmark-sweep w,l`; figures
+  and the pixel checks are in `research/acceptance/r36s-performance.md`.
 - **Linux desktop release (Debian 13, x86_64).** `tools/linux/build.sh` builds a portable
   `MageBrosNative-<version>-linux-x86_64.tar.gz` in a Debian 13 container with a static SDL3,
   X11/Wayland and OpenGL 3.3. The package includes the TimGM6mb General MIDI bank, so music

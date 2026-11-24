@@ -12,6 +12,8 @@
 #include "core/log.h"
 #include "core/mods.h"
 #include "core/saves.h"
+#include "framework/benchmark.h"
+#include "framework/benchmark_spec.h"
 #include "framework/d3dapp.h"
 #include "framework/d3dfile.h"
 #include "framework/interp.h"
@@ -29,6 +31,7 @@
 #include <SDL3/SDL.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -61,7 +64,11 @@ bool WaveData(const std::vector<uint8_t>& w, const uint8_t** pcm, size_t* len, i
 
 class AssetViewerApp : public CD3DApplication {
 public:
-    AssetViewerApp(bool twoPlayer, bool ending) : startAtEnding_(ending) {
+    AssetViewerApp(bool twoPlayer, bool ending, bool benchmark, double benchmarkSeconds, std::string benchmarkReport)
+        : startAtEnding_(ending),
+          benchmark_(benchmark),
+          benchmarkSeconds_(benchmarkSeconds),
+          benchmarkReport_(std::move(benchmarkReport)) {
         m_strWindowTitle = "Mage Bros. Native";
         app_.SetTwoPlayer(twoPlayer);
     }
@@ -88,9 +95,17 @@ protected:
         LoadModel();
         levelView_.Load(0, 0);
         app_.Init();  // the original's screens, from the logo
-        if (startAtEnding_) app_.SetState(XApplication::ENDING);  // test hook: --ending
+        if (benchmark_) {
+            // straight into the generated benchmark level (or a chosen original level), no logo
+            // or save slot; the run stops itself and the finish callback quits the program
+            app_.StartBenchmark();
+            StartBenchmarkRun(benchmarkSeconds_, benchmarkReport_, [this] { RequestQuit(); });
+            Log("Benchmark: started from the command line");
+        } else if (startAtEnding_) {
+            app_.SetState(XApplication::ENDING);  // test hook: --ending
+        }
         ResetCamera();
-        PlayMusic(levelView_.MusicTrack());
+        if (!benchmark_) PlayMusic(levelView_.MusicTrack());
         return S_OK;
     }
 
@@ -223,6 +238,7 @@ protected:
     }
 
     void OnKeyDown(int dik) override {
+        if (BenchmarkRunning()) return;  // a measured run takes no game input (F9/F11/F12 are handled above)
         if (dik == DIK_P) {
             // XApplication::MsgProc: WM_KEYDOWN 'P' posts IDM_TOGGLESTART, the framework's pause
             // (nothing ticks, the last picture stays). The original also toggles on the key's
@@ -335,6 +351,13 @@ protected:
     const char* MusicSource() const override {
         if (streaming_ && MusicStream::IsOpen()) return "MP3/FLAC file";
         return Midi::IsLoaded() ? "MIDI" : "";
+    }
+    int CurrentMusicTrack() const override { return app_.CurrentMusic(); }
+    void StartBenchmarkGame() override { app_.StartBenchmark(); }
+    void BenchmarkFinished() override {
+        app_.LeaveLevel();
+        m_bFrameMoving = true;
+        OpenOptions();  // back to Options > Video, as the player left it
     }
 
 private:
@@ -461,6 +484,9 @@ private:
     Mode mode_ = Mode::Game;  // Tab cycles game -> level viewer -> model viewer
     bool levelMode_ = false;
     bool startAtEnding_ = false;  // --ending
+    bool benchmark_ = false;      // --benchmark
+    double benchmarkSeconds_ = 30.0;
+    std::string benchmarkReport_;
     float camZ_ = 160.0f, camDist_ = 340.0f, camPitch_ = 0.610865f;
 };
 
@@ -495,11 +521,36 @@ int main(int argc, char** argv) {
     }
     std::string gamePath = cfg.gamePath;
     bool allowUnverified = false, twoPlayer = false, ending = false;
+    bool benchmark = false;
+    double benchmarkSeconds = 30.0;
+    std::string benchmarkReport;
     for (size_t i = 0; i < args.size(); i++) {
         if (args[i] == "--game" && i + 1 < args.size()) gamePath = args[++i];
         else if (args[i] == "--allow-unverified") allowUnverified = true;
         else if (args[i] == "--two-player") twoPlayer = true;
         else if (args[i] == "--ending") ending = true;  // test hook: start at the ending
+        else if (args[i] == "--benchmark") benchmark = true;  // test hook: the performance run
+        else if (args[i] == "--benchmark-seconds" && i + 1 < args.size()) benchmarkSeconds = atof(args[++i].c_str());
+        else if (args[i] == "--benchmark-report" && i + 1 < args.size()) benchmarkReport = args[++i];
+        else if (args[i] == "--benchmark-level" && i + 1 < args.size()) {
+            int w = 1, l = 1;
+            if (std::sscanf(args[++i].c_str(), "%d,%d", &w, &l) == 2) Benchmark::SetOriginalLevel(w - 1, l - 1);
+        }
+        else if (args[i] == "--benchmark-fragment" && i + 1 < args.size()) {
+            int w = 1, l = 1;
+            float x = 140.0f, z = 0.0f;
+            if (BenchmarkSpec::ParseFragment(args[++i].c_str(), &w, &l, &x, &z)) {
+                Benchmark::SetFragment(w - 1, l - 1, x, z);
+                benchmark = true;  // a fragment run is a benchmark run
+            }
+        }
+        else if (args[i] == "--benchmark-sweep" && i + 1 < args.size()) {
+            int w = 1, l = 1;
+            if (BenchmarkSpec::ParseSweep(args[++i].c_str(), &w, &l)) {
+                Benchmark::SetSweep(w - 1, l - 1);
+                benchmark = true;
+            }
+        }
         else if (args[i] == "--windowed") cfg.fullscreen = FullscreenMode::Windowed;
         else if (args[i] == "--fullscreen") cfg.fullscreen = FullscreenMode::Borderless;
         else if (args[i] == "--size" && i + 2 < args.size()) {
@@ -530,7 +581,7 @@ int main(int argc, char** argv) {
 
     int res = 0;
     {
-        AssetViewerApp app(twoPlayer, ending);
+        AssetViewerApp app(twoPlayer, ending, benchmark, benchmarkSeconds, benchmarkReport);
         if (FAILED(app.Create(args)))
             FatalError("Mage Bros. Native",
 #if defined(MBN_GLES)

@@ -25,6 +25,9 @@ public:
     void ProcessFrame(float zA, bool aliveA, float zB, bool aliveB);
     // XCamera::StartShaking: bob the look-at point up and down by `magnitude`, fading out
     void StartShaking(float magnitude) { shakeMagnitude_ = magnitude; }
+    // Native (benchmark fragment): put the look-at point at `z` at once, without the easing a
+    // normal tick uses, so a fragment run starts on the measured scene. Clamped like the follow.
+    void PlaceLookAtZ(float z);
     void DoSetTransform(Device* d) const;  // XCamera::DoSetTransform: the view matrix
     const D3DVECTOR& LookAt() const { return lookAt_; }
     const D3DMATRIX& View() const { return view_; }

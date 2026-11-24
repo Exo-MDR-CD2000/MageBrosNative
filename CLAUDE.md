@@ -537,6 +537,42 @@ never overwrite an earlier one (named by version: `MageBrosNative-0.4.31 (fixes 
 **Sleeps on Windows come back up to 1 ms late**: for exact timing, sleep short and watch the
 clock for the rest.
 
+**R36S benchmark (2026-11-14)**: `--benchmark` (or Options > Video > Performance benchmark, or
+`MageBrosBench.sh` on the console) loads the generated dense benchmark level from
+`src/core/benchmark_level.cpp`, runs a tick-scripted 30-second measurement with a 2-second
+warm-up and writes a JSON report beside the log. The report carries frame times, average FPS,
+1% low, p95/p99, CPU/tick/render/swap, draws and uploaded bytes, plus every setting that changes
+the frame. The renderer work it paid for: a sent-state cache, static mesh buffers for models and
+the level, merged opaque/alpha model materials, direct-to-window MSAA on GLES, a dedicated
+`texture * vertexColour` shader for the level and flat sprites, and 2D/HUD batching. The R36S now
+holds **60 fps at the current defaults** (640x480, MSAA 4x, anisotropy 8x, render scale 1.0) on
+the benchmark, 1-1 and 3-10; the quality budget (AO and shadows already fit, dynamic lights and
+bloom do not yet) and all figures are in `research/acceptance/r36s-performance.md`.
+
+**R36S campaign fragments (2026-11-16)**: ten campaign stretches still fell to 30 fps after the
+benchmark gate, because a real level carries effects the benchmark level does not: every particle
+and torch was drawn wherever it was, and every blob shadow was its own draw. Drawing now skips
+off-screen particles/torches (each effect's own radius included), draws consecutive identical
+opaque models with per-instance world matrices (byte-identical), and batches the shadows after
+the models. The shadow blend is a rounded 8-bit multiply, so the batch changes 35-354 pixels at
+shadow edges (max 53) in the measured scenes; `MBN_NO_SHADOW_BATCH=1` restores the old order and
+byte identity, at the cost of 1-8/2-7/2-8. `--benchmark-fragment w,l,x,z` measures a campaign
+position and `--benchmark-sweep w,l` records each second against camera Z. Every named fragment
+(1-5, 1-8, 1-9, 2-2, 2-4, 2-5, 2-7, 2-8, 3-2, 3-3) holds 59.4-60.0 fps at the defaults; the
+table and the pixel checks are in `research/acceptance/r36s-performance.md`.
+
+**Graphics enhancements and merged draws (2026-11-24)**: after the fragment work the level and
+the models are merged mesh draws, whose vertices live in each mesh's own buffers. The AO and
+shadow depth passes must draw them with `Device::DrawRecordedSolid` (the frame's shared upload
+holds only non-mesh draws), and every solid draw, mesh or not, must take the enhancement state
+(AO strength, shadow/light kind, scene dim, glow) — `applyEnhancements` in `FlushRecording` does
+that. Missing either step makes Ambient occlusion and Dynamic shadows silently do nothing. On the
+R36S, binding the extra passes' framebuffers also makes the driver lose the window's GL_BACK
+draw/read buffers (the shadow map sets GL_NONE), which blacked out the HUD/fade and the shadow
+frame; FlushRecording rebinds the window and both buffers before the scene. The console runs the
+effects with AO at half resolution and 8 samples: 59.9 fps off, 20.0 with AO, 15.4/12.8/10.4 with
+Dynamic shadows Low/Medium/High at 1-8; they stay off by default.
+
 **Next**: the cheats are done (0.4.26) and the frame timing review's list is closed (0.4.27 to
 0.4.32, merged into `main` on 2026-11-10 (pull request #3) and released as v0.4.32; its release notes are 0.4.32's
 CHANGELOG section alone, as the six versions were not summed up in it). Then (0.4.33, 2026-11-10):

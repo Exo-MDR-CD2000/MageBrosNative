@@ -55,6 +55,7 @@ private:
     bool InitLevel();  // XGameObject::InitLevel: the level of the level status, fading in
     void Tick();       // one 10 ms tick of play (the lists, the heroes, the camera)
     void UpdateInput();  // XHeroA::_UpdateInput and XHeroB::_UpdateInput
+    void ApplyBenchmarkInput();  // native: the scripted benchmark load, on hero A
     void PlaySound(uint16_t waveId, float z);  // XApplication::PlaySound
 
     XLevelView level_;
@@ -66,5 +67,6 @@ private:
     uint8_t prevKeys_[256] = {};
     uint8_t prevButtons_[2][2] = {};  // gamepad 1 (player 1) and 2 (player 2), buttons 1 and 2
     bool levelChanged_ = false;
+    float sweepZ_ = 160.0f;  // native (fragment sweep): the next camera Z to step to
     std::unique_ptr<XShadow> heroShadowA_, heroShadowB_;
 };

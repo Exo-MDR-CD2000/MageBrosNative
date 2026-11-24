@@ -93,7 +93,21 @@ float ApproxDistanceXZ(const D3DVECTOR& a, const D3DVECTOR& b) {
     return d;
 }
 
-float UnitRand() { return (float)(std::rand() % 1000) / 1000.0f; }
+namespace {
+uint32_t g_unitRandState = 1;
+bool g_unitRandFixed = false;
+}  // namespace
+
+void SetDeterministicUnitRand(bool on) {
+    g_unitRandFixed = on;
+    if (on) g_unitRandState = 1;
+}
+
+float UnitRand() {
+    if (!g_unitRandFixed) return (float)(std::rand() % 1000) / 1000.0f;
+    g_unitRandState = g_unitRandState * 1664525u + 1013904223u;
+    return (float)((g_unitRandState >> 16) % 1000) / 1000.0f;
+}
 
 float RandomF(float lo, float hi) { return UnitRand() * (hi - lo) + lo; }
 

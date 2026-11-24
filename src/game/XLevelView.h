@@ -19,6 +19,7 @@
 
 class Device;
 class CD3DFile;
+class MeshBuffer;
 
 class XLevelView {
 public:
@@ -27,6 +28,9 @@ public:
 
     // world 0..3, level 0..9. Returns false if the level can't be read.
     bool Load(int world, int level);
+    // Native: the generated benchmark level (benchmark mode only).
+    bool LoadBenchmark();
+    bool IsBenchmark() const { return benchmark_; }
     // `drawObjects`: also draw the coins and torches (the level viewer); the game draws its own.
     void Render(Device* d, bool drawObjects = true);
 
@@ -69,11 +73,13 @@ public:
     }
 
 private:
+    bool LoadGrid(LevelGrid grid, int world, int level, bool benchmark);
     void PlaceObjects();
     void BuildMarkers(const std::function<bool(const Object&)>& keep = nullptr);
-    void DrawMesh(Device* d, const MapGeometry::Mesh& m, uint16_t texture);
+    void DrawMesh(Device* d, const MapGeometry::Mesh& m, uint16_t texture, std::unique_ptr<MeshBuffer>& gpu);
 
     int world_ = -1, level_ = -1;
+    bool benchmark_ = false;
     LevelGrid grid_;
     MapGeometry::Result geo_;
     MapCollision collision_;
@@ -81,4 +87,5 @@ private:
     std::vector<Object> objects_;
     MapGeometry::Mesh goalPads_;  // the goal's 88x88 pad (texture 420)
     MapGeometry::Mesh markers_;   // coloured boxes, untextured
+    std::unique_ptr<MeshBuffer> floorGpu_, undergroundGpu_, goalGpu_, markersGpu_;
 };

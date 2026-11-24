@@ -272,6 +272,31 @@ it, or to run the tests that need the game, you still need your own `MageBros.ex
   device needs (`SDL_EGL_LIBRARY=libMali.so`, because the console's EGL/GLES live in libMali and
   SDL does not find them by itself), runs the game through OpenGL ES 3.0 on KMSDRM at 640x480,
   and writes a log to `/roms2/ports/magebros/magebros.log`. Nothing on the system is replaced.
+
+  **Performance benchmark.** Start **MageBrosBench** from the Ports menu (or run
+  `/roms2/ports/MageBrosBench.sh` over SSH) to play the generated dense benchmark level for
+  30 seconds and write `benchmark-report.json` and `benchmark.log` in the game folder. The same
+  run is available from a desktop command line:
+
+  ```sh
+  ./MageBrosNative --game /path/to/MageBros.exe --benchmark --benchmark-seconds 30       --benchmark-report reports/run.json
+  ```
+
+  The report names the build, renderer, display, VSync, Smooth motion, MSAA, anisotropy, render
+  scale and enhancements, and carries the frame times plus the average FPS, 1% low, p95/p99,
+  CPU/tick/render/swap split, draws and uploaded bytes. `--benchmark-level 1,1` runs the same
+  harness on an original level (for comparing the benchmark with the busiest campaign levels).
+  `--benchmark-fragment w,l,x,z` starts at a campaign position (for example
+  `--benchmark-fragment 1,5,140,3600`); `--benchmark-sweep w,l` steps through a level and records
+  each second against camera Z. The launcher takes the same runs over SSH:
+  `MAGEBROS_FRAGMENT=1,5,140,3600 /roms2/ports/MageBrosBench.sh`. The benchmark level is generated from the port's own data, never
+  appears in the campaign, and writes no saves. Every named campaign fragment (1-5, 1-8, 1-9,
+  2-2, 2-4, 2-5, 2-7, 2-8, 3-2, 3-3) now holds 59.4-60.0 fps at the R36S defaults. Off-screen
+  effects and torches are skipped, consecutive identical opaque models share one instanced draw
+  (byte-identical), and the shadows are batched after the models; the shadow blend is rounded to
+  8 bits, so the batching changes 35-354 pixels at shadow edges (max 53), recorded with the table
+  and the pixel checks in
+  [`research/acceptance/r36s-performance.md`](research/acceptance/r36s-performance.md).
 - **Linux desktop (Debian 13, x86_64):** Docker on any machine; no Linux toolchain or sysroot to
   prepare. The build runs in a Debian 13 container that matches the package's glibc 2.41, with
   SDL3 3.4.18 built from the pinned source and linked statically, X11 and Wayland, ALSA/Pulse,

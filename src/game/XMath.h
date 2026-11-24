@@ -39,5 +39,9 @@ float ApproxDistanceXZ(const D3DVECTOR& a, const D3DVECTOR& b);  // the same, ig
 // UnitRand = (rand() % 1000) / 1000; RandomF = lo + UnitRand * (hi - lo);
 // RandomPosXZ = a point at a random angle and a random distance up to `radius` around `centre`.
 float UnitRand();
+// Native (benchmark repeatability): UnitRand uses std::rand, which other code can share. With
+// this on, it uses a private, fixed sequence instead, so two benchmark runs of the same build
+// start from the same random state.
+void SetDeterministicUnitRand(bool on);
 float RandomF(float lo, float hi);
 D3DVECTOR RandomPosXZ(const D3DVECTOR& centre, float radius);

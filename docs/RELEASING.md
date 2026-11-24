@@ -125,13 +125,18 @@ tools/r36s/build.sh                       # build + tests, output in build-r36s/
 tools/r36s/install.sh ark@192.168.0.104   # copy to /roms2/ports/ over SSH
 ```
 
-`install.sh` writes `/roms2/ports/MageBros.sh` and `/roms2/ports/magebros/`; put your own
+`install.sh` writes `/roms2/ports/MageBros.sh`, `/roms2/ports/MageBrosBench.sh` (the performance
+benchmark launcher) and `/roms2/ports/magebros/`; put your own
 `MageBros.exe` and its `Music*.mid` files in that folder, plus a General MIDI `.sf2` named
 `soundfont.sf2` if you want music (the console has no system synthesizer). The launcher needs
 one environment hint — `SDL_EGL_LIBRARY` pointing at `libMali.so` — and nothing else:
 `SDL_VIDEO_DRIVER`, `SDL_OPENGL_LIBRARY` and `SDL_OPENGL_ES_DRIVER` were each tested and are not
 needed. The game writes its own log next to the launcher's. In game, **Start** opens the pause
 menu with "Level select" and "Quit game", and **Select+Start** quits from anywhere.
+`MageBrosBench.sh` stops EmulationStation if it is running (needed over SSH), runs the generated
+benchmark level for 30 seconds, writes `benchmark-report.json` and `benchmark.log` beside the
+game, then restarts the frontend. The report fields and the desktop command line are in
+`README.md`; the measured results are in `research/acceptance/r36s-performance.md`.
 
 The Ports menu is EmulationStation's; it scans `/roms2/ports` at start, so restart the frontend
 (or reboot the console) after the first install.
