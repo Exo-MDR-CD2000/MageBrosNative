@@ -2162,6 +2162,19 @@ void Device::FlushRecording() {
         glDrawBuffers(2, kBoth);
         glClearBufferfv(GL_COLOR, 1, kBlack);
     }
+    // The console's Mali driver forgets the window's draw buffer when the extra passes bind their
+    // own framebuffers: after that the level still reached the window, but the HUD/fade quads went
+    // nowhere and the frame looked black. Put GL_BACK back before the scene's draws.
+    // The Mali driver loses the window's draw buffer when the extra passes bind their own
+    // framebuffers (the shadow map also sets GL_NONE): the level still reached the window, but the
+    // HUD/fade quads went nowhere and the frame looked black. Bind the window and its GL_BACK draw
+    // buffer again before the scene's draws.
+    glBindFramebuffer(GL_FRAMEBUFFER, sceneFbo_);
+    if (sceneFbo_ == 0) {
+        static const GLenum kBack[1] = {0x0405};  // GL_BACK: the window's own buffer
+        glDrawBuffers(1, kBack);
+        glReadBuffer(0x0405);
+    }
     gpu3D_.Begin();
     // Each draw exactly as it would have been sent when it was asked for: its state, then its own
     // vertices and indices uploaded on their own. (Drawing them all from one shared upload, with a
@@ -2174,6 +2187,44 @@ void Device::FlushRecording() {
     // how much ambient occlusion the level and the solid models take (by eye: the level's colours
     // are mostly light, the models' lit sides keep most of theirs)
     static constexpr float kAOLevel = 0.9f, kAOModel = 0.7f;
+    // The enhancement state every solid draw needs, whether it comes from a mesh or the frame's
+    // own upload: the glow layer, the level dim, the shadows and the dynamic lights, then the AO.
+    // (Before this was only applied to the draws that are not meshes, so a merged model, and the
+    // level's merged geometry, took neither the shadows nor the AO.)
+    auto applyEnhancements = [&](const RecordedDraw& d) {
+        if (bloomActive_ && d.st.gameplayView) {
+            // the glow layer: the game's glowing sprites light it, multiplied draws leave it,
+            // anything else hides what is behind it
+            bool added = d.st.blendEnable && (d.st.destBlend == D3DBLEND_DESTALPHA || d.st.destBlend == D3DBLEND_ONE);
+            bool multiplies = d.st.blendEnable && (d.st.srcBlend == D3DBLEND_ZERO || d.st.srcBlend == D3DBLEND_DESTCOLOR);
+            bool glows = false;
+            if (added && d.st.texture)
+                for (uint16_t id : {0x187, 0x15c, 0x184, 0x15d, 0x185, 0x194, 0x195, 0x190, 0x192, 0x1a5, 0x294})
+                    if (d.st.texture->ResId() == id) glows = true;
+            // (not smoke, dust or the water's glints; nor the torches' and candles' sparks, 0x188,
+            // which made the glow pulse with them, as they did the lights in 0.4.42)
+            SetGlowMode(glows ? 1 : (multiplies ? 2 : 0));
+        }
+        if (sceneDim < 1.f && d.st.gameplayView) {
+            // not the glowing (added) sprites, nor the blob shadows (multiplied onto the floor)
+            bool added = d.st.blendEnable && (d.st.destBlend == D3DBLEND_DESTALPHA || d.st.destBlend == D3DBLEND_ONE);
+            bool multiplied = d.st.blendEnable && d.st.srcBlend == D3DBLEND_ZERO && d.st.destBlend == D3DBLEND_SRCCOLOR;
+            if (!added && !multiplied) SetSceneDim(sceneDim);
+        }
+        if (shadowActive_ || lightsActive_) {
+            int kind = DrawKind(d);
+            int way = kind == 0 ? 0 : (kind == 2 && d.st.lighting ? 2 : 1);
+            if (shadowActive_ && way) SetShadowKind(way);
+            if (lightsActive_ && way) SetLightKind(way);
+        }
+        if (aoActive_) {
+            int kind = DrawKind(d);
+            if (kind) {
+                SetAOStrength(kind == 1 ? kAOLevel : kAOModel);
+                SetFboSize((float)layout_.fboW, (float)layout_.fboH);
+            }
+        }
+    };
     // native (R36S fragments): a run of identical opaque merged models differs only in its world
     // matrix; everything else must match for the instanced draw to be exact.
     auto sameExceptWorld = [](const RecordedDraw& a, const RecordedDraw& b) {
@@ -2272,6 +2323,7 @@ void Device::FlushRecording() {
                 EnsureMesh(d.mesh, d.fvf, d.meshVerts, d.meshNumVerts, d.meshIndices, d.meshNumIndices);
             ApplyDrawState(d.st, d.fvf, d.merged);
             if (d.merged) SetMaterialArray(d.materials, d.numMaterials);
+            applyEnhancements(d);
             BindMesh(d.mesh);
             glDrawElements(d.mode, (GLsizei)d.meshCount, GL_UNSIGNED_SHORT,
                            (void*)(uintptr_t)(d.meshFirstIndex * sizeof(WORD)));
@@ -2285,38 +2337,7 @@ void Device::FlushRecording() {
             else frameOpaque3D_++;
         }
         ApplyDrawState(d.st, d.fvf);
-        if (bloomActive_ && d.st.gameplayView) {
-            // the glow layer: the game's glowing sprites light it, multiplied draws leave it,
-            // anything else hides what is behind it
-            bool added = d.st.blendEnable && (d.st.destBlend == D3DBLEND_DESTALPHA || d.st.destBlend == D3DBLEND_ONE);
-            bool multiplies = d.st.blendEnable && (d.st.srcBlend == D3DBLEND_ZERO || d.st.srcBlend == D3DBLEND_DESTCOLOR);
-            bool glows = false;
-            if (added && d.st.texture)
-                for (uint16_t id : {0x187, 0x15c, 0x184, 0x15d, 0x185, 0x194, 0x195, 0x190, 0x192, 0x1a5, 0x294})
-                    if (d.st.texture->ResId() == id) glows = true;
-            // (not smoke, dust or the water's glints; nor the torches' and candles' sparks, 0x188,
-            // which made the glow pulse with them, as they did the lights in 0.4.42)
-            SetGlowMode(glows ? 1 : (multiplies ? 2 : 0));
-        }
-        if (sceneDim < 1.f && d.st.gameplayView) {
-            // not the glowing (added) sprites, nor the blob shadows (multiplied onto the floor)
-            bool added = d.st.blendEnable && (d.st.destBlend == D3DBLEND_DESTALPHA || d.st.destBlend == D3DBLEND_ONE);
-            bool multiplied = d.st.blendEnable && d.st.srcBlend == D3DBLEND_ZERO && d.st.destBlend == D3DBLEND_SRCCOLOR;
-            if (!added && !multiplied) SetSceneDim(sceneDim);
-        }
-        if (shadowActive_ || lightsActive_) {
-            int kind = DrawKind(d);
-            int way = kind == 0 ? 0 : (kind == 2 && d.st.lighting ? 2 : 1);
-            if (shadowActive_ && way) SetShadowKind(way);
-            if (lightsActive_ && way) SetLightKind(way);
-        }
-        if (aoActive_) {
-            int kind = DrawKind(d);
-            if (kind) {
-                SetAOStrength(kind == 1 ? kAOLevel : kAOModel);
-                SetFboSize((float)layout_.fboW, (float)layout_.fboH);
-            }
-        }
+        applyEnhancements(d);
         BindMainVao();  // dynamic draws use the main layout, not the last model's VAO
         BindMainArray();
         BufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(d.numVerts * 32), recVerts_.data() + d.firstVertex * 32,
@@ -2499,6 +2520,33 @@ void Device::UploadPrep() {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, (void*)0);  // (the position leads both formats)
     InvalidateAttribs();
+    // the cache follows the bindings made above, so a following mesh bind is not skipped
+    boundVao_ = vao_;
+    boundArray_ = prepVbo_;
+    boundElement_ = prepIbo_;
+}
+
+// The extra passes (the shadow map, the AO's depth) draw the same recorded solids the main pass
+// does. A merged model keeps its own buffers: its vertices are not in the frame's single upload,
+// so it must be drawn from its mesh. Drawing it with the shared base vertex read unrelated
+// vertices, which left the level out of both maps (the enhancements then had nothing to apply).
+void Device::DrawRecordedSolid(const RecordedDraw& d) {
+    if (d.mesh) {
+        if (d.merged)
+            EnsureMergedMesh(d.mesh, d.fvf, d.meshVerts, d.meshNumVerts, d.meshIndices, d.meshNumIndices, d.matIndex);
+        else
+            EnsureMesh(d.mesh, d.fvf, d.meshVerts, d.meshNumVerts, d.meshIndices, d.meshNumIndices);
+        BindMesh(d.mesh);
+        glDrawElements(d.mode, (GLsizei)d.meshCount, GL_UNSIGNED_SHORT,
+                       (void*)(uintptr_t)(d.meshFirstIndex * sizeof(WORD)));
+        return;
+    }
+    UploadPrep();
+    if (d.indexed)
+        glDrawElementsBaseVertex(d.mode, d.count, GL_UNSIGNED_SHORT, (void*)(d.firstIndex * sizeof(WORD)),
+                                 (GLint)d.firstVertex);
+    else
+        glDrawArrays(d.mode, (GLint)d.firstVertex, d.count);
 }
 
 // ---------------------------------------------------------------------------
@@ -2862,11 +2910,7 @@ bool Device::ComputeShadows(int quality) {
     for (const RecordedDraw& d : rec_) {
         if (!DrawKind(d)) continue;
         glUniformMatrix4fv(shadowLoc_[0], 1, GL_FALSE, d.st.world.m());
-        if (d.indexed)
-            glDrawElementsBaseVertex(d.mode, d.count, GL_UNSIGNED_SHORT, (void*)(d.firstIndex * sizeof(WORD)),
-                                     (GLint)d.firstVertex);
-        else
-            glDrawArrays(d.mode, (GLint)d.firstVertex, d.count);
+        DrawRecordedSolid(d);
     }
     glDisable(GL_POLYGON_OFFSET_FILL);
     gpuShadow_.End();
@@ -2885,7 +2929,16 @@ bool Device::ComputeAO() {
     if (!lens) return false;
     // at the picture's size (more pixels from Render scale add nothing to a soft shading). (0.4.39
     // also had Low, at half the size with half the samples: removed, the owner found it looked bad.)
-    int w = std::max(1, std::min(layout_.destW, layout_.fboW)), h = std::max(1, std::min(layout_.destH, layout_.fboH));
+    // The console's Mali-G31 cannot afford 16 full-size occlusion samples (about 100 ms a frame).
+    // Half the picture and half the samples is soft enough for the 640x480 screen and keeps the
+    // setting usable; the desktop keeps the full-size version.
+#if defined(MBN_GLES)
+    static constexpr int kAOScale = 2, kAOSamples = 8;
+#else
+    static constexpr int kAOScale = 1, kAOSamples = 16;
+#endif
+    int w = std::max(1, std::min(layout_.destW, layout_.fboW) / kAOScale);
+    int h = std::max(1, std::min(layout_.destH, layout_.fboH) / kAOScale);
     EnsureAOTargets(w, h);
     gpuAO_.Begin();
 
@@ -2921,11 +2974,7 @@ bool Device::ComputeAO() {
         glUniformMatrix4fv(depthLoc_[0], 1, GL_FALSE, d.st.world.m());
         glUniformMatrix4fv(depthLoc_[1], 1, GL_FALSE, d.st.view.m());
         glUniformMatrix4fv(depthLoc_[2], 1, GL_FALSE, proj.m());
-        if (d.indexed)
-            glDrawElementsBaseVertex(d.mode, d.count, GL_UNSIGNED_SHORT, (void*)(d.firstIndex * sizeof(WORD)),
-                                     (GLint)d.firstVertex);
-        else
-            glDrawArrays(d.mode, (GLint)d.firstVertex, d.count);
+        DrawRecordedSolid(d);
     }
 
     // 2. the occlusion, 3. the blur
@@ -2942,7 +2991,7 @@ bool Device::ComputeAO() {
     glUniform2f(aoLoc_[1], 1.f / w, 1.f / h);
     glUniform2f(aoLoc_[2], proj._11, proj._22);
     glUniform1f(aoLoc_[3], 30.f);  // world units: about half a map cell (40), a floor step is 25
-    glUniform1i(aoLoc_[4], 16);
+    glUniform1i(aoLoc_[4], kAOSamples);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindFramebuffer(GL_FRAMEBUFFER, aoFbo_[2]);
     glUseProgram(progBlur_);

@@ -287,6 +287,9 @@ private:
     void DestroyAOTargets();
     // The frame's vertices in one upload, for the extra passes (depth only: AO's and the shadows')
     void UploadPrep();
+    // One recorded solid draw for the extra passes' depth (the shadow map and the AO's depth):
+    // a mesh draw from its own buffers, anything else from the frame's single upload.
+    void DrawRecordedSolid(const RecordedDraw& d);
     bool prepUploaded_ = false;
     // Dynamic shadows (G4): a depth map of the solid draws seen from the game's own light, fitted
     // each frame round the part of the level the camera sees and snapped to whole map pixels;

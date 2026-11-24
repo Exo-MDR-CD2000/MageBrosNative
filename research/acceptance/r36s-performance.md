@@ -163,6 +163,40 @@ engine's own), so two runs of the same build start from the same state; before t
   the lowest window was 59.0 average and no window fell below 59, so the sweep found no extra hot
   spot beyond the named fragments.
 
+### Graphics enhancements after the fragment work
+
+The fragment work made the level and the models merged mesh draws. The AO and shadow depth passes
+still drew everything from the frame's single upload, where only the non-mesh draws live, and the
+main pass applied the AO/shadow state only to non-mesh draws. Both were fixed: the extra passes
+draw each recorded solid from its own buffers (`DrawRecordedSolid`), and the main pass applies the
+same enhancement state to mesh draws.
+
+The console needed a second fix. After the extra passes bound their own framebuffers, the Mali
+driver lost the window's draw and read buffers (the shadow map also sets `GL_NONE`): the level
+still reached the window, but the HUD/fade quads did not and, with shadows, the whole frame was
+black in play. `FlushRecording` now rebinds the window and its `GL_BACK` draw/read buffers before
+the scene's draws. Checked with normal-play captures (`--auto`, not the benchmark hooks) at Render
+scale 1.0 on the final console build and at the same frozen tick on macOS:
+
+| setting | macOS differing pixels vs off | R36S differing pixels vs off |
+|---|---:|---:|
+| Ambient occlusion | 352,137 (max 178) | 84,185 (max 251) |
+| Dynamic shadows (High) | 95,770 (max 152) | 80,824 (max 251) |
+| Bloom | (checked by eye) | 23,310 (max 251) |
+
+With both settings off the base path is unchanged: no extra pass and no enhancement state. On
+Windows 11 (DESKTOP-I493CKM, AMD Radeon Vega 8, OpenGL 3.3 core, 640x480, same fragment and tick,
+cross-built MinGW binary) the comparison gives AO 89,277 pixels, Dynamic shadows High 24,661,
+Dynamic lights 164,694 and Bloom 26,907 against the base frame. The eight Windows test executables
+pass (`mbn_tests`, benchmark, benchmark stats, collision, fragment; hero and map with `--game`;
+soundfont with the cross-build's TimGM6mb path supplied).
+
+The Mali-G31 cannot afford the full-size AO pass (16 samples at 640x480 cost about 100 ms a
+frame), so AO runs at half resolution (320x240) with 8 samples on GLES; the depth pass covers
+249-523 world units and the shadow map holds the level. At 1-8 (start): off 59.9 fps, Ambient
+occlusion 20.0 fps, Dynamic shadows Low 15.4, Medium 12.8, High 10.4 fps at 1024/2048/4096. The
+effects are off by default and the campaign acceptance above is measured with them off.
+
 ### Verification
 
 - `ctest` on macOS: 9/9 (the new `fragment_culling` test is included); in the R36S Debian 13
